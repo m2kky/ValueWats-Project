@@ -1,0 +1,254 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../api/client';
+import { 
+  PaperAirplaneIcon, 
+  PhotoIcon, 
+  DevicePhoneMobileIcon,
+  UserGroupIcon,
+  DocumentArrowUpIcon,
+  XMarkIcon
+} from '@heroicons/react/24/outline';
+
+export default function NewCampaign() {
+  const [instances, setInstances] = useState([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    instanceId: '',
+    message: '',
+    numbers: ''
+  });
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('manual'); // 'manual' or 'csv'
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchInstances();
+  }, []);
+
+  const fetchInstances = async () => {
+    try {
+      const response = await api.get('/instances');
+      setInstances(response.data.instances.filter(i => i.status === 'connected'));
+    } catch (error) {
+      console.error('Failed to fetch instances');
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const data = new FormData();
+      data.append('name', formData.name);
+      data.append('instanceId', formData.instanceId);
+      data.append('message', formData.message);
+      
+      if (activeTab === 'manual') {
+        data.append('numbers', formData.numbers);
+      } else if (file) {
+        data.append('file', file);
+      }
+
+      await api.post('/campaigns', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      navigate('/campaigns');
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to create campaign');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans py-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+            <h3 className="text-lg font-medium leading-6 text-gray-900">Create New Campaign</h3>
+            <span className="text-sm text-gray-500">Step 1 of 1</span>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {/* Campaign Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
+              <input
+                type="text"
+                required
+                className="input w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g. Summer Sale Promo"
+                value={formData.name}
+                onChange={e => setFormData({...formData, name: e.target.value})}
+              />
+            </div>
+
+            {/* Instance Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Select WhatsApp Instance</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {instances.length === 0 ? (
+                   <div className="col-span-2 p-4 bg-yellow-50 text-yellow-700 rounded-lg text-sm border border-yellow-200">
+                     No connected instances found. Please connect a WhatsApp number first.
+                   </div>
+                ) : (
+                  instances.map(instance => (
+                    <div 
+                      key={instance.id}
+                      onClick={() => setFormData({...formData, instanceId: instance.id})}
+                      className={`cursor-pointer border rounded-lg p-4 flex items-center gap-3 transition-all ${
+                        formData.instanceId === instance.id 
+                          ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50' 
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <DevicePhoneMobileIcon className={`w-6 h-6 ${formData.instanceId === instance.id ? 'text-blue-600' : 'text-gray-400'}`} />
+                      <div>
+                        <p className={`font-medium text-sm ${formData.instanceId === instance.id ? 'text-blue-900' : 'text-gray-900'}`}>{instance.instanceName}</p>
+                        <p className="text-xs text-gray-500">{instance.phoneNumber}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Message Template */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Message Content</label>
+              <div className="relative">
+                <textarea
+                  required
+                  rows={5}
+                  className="input w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                  placeholder="Hi there! Check out our new offers..."
+                  value={formData.message}
+                  onChange={e => setFormData({...formData, message: e.target.value})}
+                />
+                <div className="absolute bottom-3 right-3 flex gap-2">
+                   <button type="button" className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100" title="Add Image (Coming Soon)">
+                     <PhotoIcon className="w-5 h-5" />
+                   </button>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">Variables like {`{name}`} coming soon.</p>
+            </div>
+
+            {/* Recipient Source Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Recipients</label>
+              <div className="flex border-b border-gray-200 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('manual')}
+                  className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'manual' 
+                      ? 'border-blue-500 text-blue-600' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Manual Input
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('csv')}
+                  className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'csv' 
+                      ? 'border-blue-500 text-blue-600' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Upload CSV
+                </button>
+              </div>
+
+              {activeTab === 'manual' ? (
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute top-3 left-3 pointer-events-none">
+                    <UserGroupIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <textarea
+                    required={activeTab === 'manual'}
+                    rows={6}
+                    className="input w-full pl-10 rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                    placeholder={"1234567890\n9876543210"}
+                    value={formData.numbers}
+                    onChange={e => setFormData({...formData, numbers: e.target.value})}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Enter phone numbers (one per line) with country code (e.g., 201xxxxxxxxx).</p>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+                  {file ? (
+                    <div className="flex items-center justify-center gap-2 text-green-600 bg-green-50 p-2 rounded-lg inline-block">
+                      <DocumentArrowUpIcon className="w-5 h-5" />
+                      <span className="text-sm font-medium">{file.name}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setFile(null)}
+                        className="p-1 hover:bg-green-100 rounded-full"
+                      >
+                        <XMarkIcon className="w-4 h-4 text-green-700" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <DocumentArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
+                        <label
+                          htmlFor="file-upload"
+                          className="relative cursor-pointer rounded-md bg-white font-semibold text-blue-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 hover:text-blue-500"
+                        >
+                          <span>Upload a file</span>
+                          <input 
+                            id="file-upload" 
+                            name="file-upload" 
+                            type="file" 
+                            className="sr-only" 
+                            accept=".csv"
+                            onChange={(e) => setFile(e.target.files[0])}
+                          />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-600">CSV files only (Column 'number' required)</p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/campaigns')}
+                className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || !formData.instanceId || (activeTab === 'csv' && !file)}
+                onClick={handleSubmit}
+              >
+                {loading ? 'Launching...' : (
+                  <>
+                    <PaperAirplaneIcon className="-ml-1 mr-2 h-5 w-5" />
+                    Launch Campaign
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}

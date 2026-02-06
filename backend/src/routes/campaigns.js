@@ -1,0 +1,14 @@
+const express = require('express');
+const router = express.Router();
+const campaignController = require('../controllers/campaignController');
+const authenticate = require('../middleware/tenantContext');
+
+router.use(authenticate);
+
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
+
+router.post('/', upload.single('file'), campaignController.createCampaign);
+router.get('/', campaignController.getCampaigns);
+
+module.exports = router;
