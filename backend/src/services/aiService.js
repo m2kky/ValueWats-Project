@@ -17,7 +17,8 @@ class AIService {
   async generateResponse(prompt, systemContent = 'You are a helpful assistant.') {
     try {
       if (!process.env.DEEPSEEK_API_KEY) {
-        throw new Error('DEEPSEEK_API_KEY is not configured');
+        console.warn('DEEPSEEK_API_KEY is not configured. Using fallback response.');
+        return "شكراً لرسالتك! سنقوم بالرد عليك في أقرب وقت ممكن.";
       }
 
       const completion = await this.client.chat.completions.create({

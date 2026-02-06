@@ -23,7 +23,17 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    services: {
+      evolutionApi: process.env.EVOLUTION_API_URL ? 'configured' : 'missing',
+      database: process.env.DATABASE_URL ? 'configured' : 'missing',
+      redis: process.env.REDIS_HOST ? 'configured' : 'missing',
+      ai: process.env.DEEPSEEK_API_KEY ? 'configured' : 'missing',
+      backendUrl: process.env.BACKEND_URL || 'missing'
+    }
+  });
 });
 
 // Public routes (no authentication required)

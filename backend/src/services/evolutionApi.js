@@ -36,6 +36,15 @@ class EvolutionAPI {
         },
       });
 
+      // ✨ Auto-configure webhook
+      if (process.env.BACKEND_URL && process.env.BACKEND_URL !== 'http://localhost:3000') {
+          const webhookUrl = `${process.env.BACKEND_URL}/api/webhooks/whatsapp`;
+          console.log('Setting webhook for instance:', instanceName, 'URL:', webhookUrl);
+          await this.setWebhook(instanceName, webhookUrl, true);
+      } else {
+          console.warn('⚠️ Webhook NOT set: BACKEND_URL is missing or localhost');
+      }
+
       return {
         ...instance,
         qrCode: response.data.qrcode?.base64,
