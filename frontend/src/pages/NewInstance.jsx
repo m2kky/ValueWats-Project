@@ -95,7 +95,11 @@ export default function NewInstance() {
 
               <div className="bg-white p-4 border-2 border-gray-100 rounded-xl inline-block shadow-sm">
                 {qrCode ? (
-                  <img src={`data:image/png;base64,${qrCode}`} alt="QR Code" className="w-64 h-64 object-contain" />
+                  <img 
+                    src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`} 
+                    alt="QR Code" 
+                    className="w-64 h-64 object-contain" 
+                  />
                 ) : (
                   <div className="w-64 h-64 flex items-center justify-center bg-gray-50 text-gray-400">
                     <QrCodeIcon className="w-12 h-12" />
