@@ -12,12 +12,17 @@ class EvolutionAPI {
    */
   async createInstance(tenantId, instanceName) {
     try {
-      console.log('Creating instance:', instanceName, 'at', this.baseURL);
+      // Sanitize instance name (remove spaces)
+      const sanitizedInstanceName = instanceName.replace(/\s+/g, '');
+      console.log('Creating instance:', sanitizedInstanceName, 'at', this.baseURL);
+      
       const response = await axios.post(
         `${this.baseURL}/instance/create`,
         {
-          instanceName,
+          instanceName: sanitizedInstanceName,
+          token: sanitizedInstanceName, // Often used as token too
           qrcode: true,
+          integration: 'WHATSAPP-BAILEYS', // Required for v2
         },
         {
           headers: { apikey: this.apiKey },
@@ -30,7 +35,7 @@ class EvolutionAPI {
       const instance = await prisma.instance.create({
         data: {
           tenantId,
-          instanceName,
+          instanceName: sanitizedInstanceName,
           status: 'qr_pending',
           qrCode: response.data.qrcode?.base64 || null,
         },
@@ -39,8 +44,8 @@ class EvolutionAPI {
       // ✨ Auto-configure webhook
       if (process.env.BACKEND_URL && process.env.BACKEND_URL !== 'http://localhost:3000') {
           const webhookUrl = `${process.env.BACKEND_URL}/api/webhooks/whatsapp`;
-          console.log('Setting webhook for instance:', instanceName, 'URL:', webhookUrl);
-          await this.setWebhook(instanceName, webhookUrl, true);
+          console.log('Setting webhook for instance:', sanitizedInstanceName, 'URL:', webhookUrl);
+          await this.setWebhook(sanitizedInstanceName, webhookUrl, true);
       } else {
           console.warn('⚠️ Webhook NOT set: BACKEND_URL is missing or localhost');
       }
@@ -51,10 +56,11 @@ class EvolutionAPI {
       };
     } catch (error) {
       const fs = require('fs');
+      const errorResponse = error.response?.data;
       const errorLog = `
 Timestamp: ${new Date().toISOString()}
 Message: ${error.message}
-Response Data: ${JSON.stringify(error.response?.data, null, 2)}
+Response Data: ${JSON.stringify(errorResponse, null, 2)}
 Status: ${error.response?.status}
 Stack: ${error.stack}
 ----------------------------------------
@@ -63,10 +69,13 @@ Stack: ${error.stack}
 
       console.error('Create instance error details:', {
         message: error.message,
-        response: error.response?.data,
+        response: errorResponse,
         status: error.response?.status
       });
-      throw new Error('Failed to create instance: ' + (error.response?.data?.error || error.message));
+      
+      // Extract specific validation message if available
+      const specificMessage = errorResponse?.response?.message || errorResponse?.message || error.message;
+      throw new Error('Failed to create instance: ' + (Array.isArray(specificMessage) ? specificMessage.join(', ') : specificMessage));
     }
   }
 
