@@ -111,42 +111,48 @@ async function checkCampaignCompletion(campaignId) {
 }
 
 /**
- * Add messages to the queue for a campaign with staggered delays and multi-instance support
+ * Add messages to the queue for a campaign with staggered delays, multi-instance support, and message rotation
  * @param {Array} instances - List of instances to use [{ id, instanceName }]
  * @param {Array} contacts - List of contacts [{ number, ... }]
- * @param {string} messageTemplate - Message text
+ * @param {Array} messageTemplates - List of message templates (strings)
  * @param {string} campaignId - DB ID of the campaign
  * @param {string} tenantId - Tenant ID
  * @param {number} delayMin - Minimum delay between messages (seconds)
  * @param {number} delayMax - Maximum delay between messages (seconds)
  * @param {number} instanceSwitchCount - Switch instance every N messages
+ * @param {number} messageRotationCount - Switch template every N messages
  */
-const addToQueue = async (instances, contacts, messageTemplate, campaignId, tenantId, delayMin = 5, delayMax = 15, instanceSwitchCount = 50) => {
+const addToQueue = async (instances, contacts, messageTemplates, campaignId, tenantId, delayMin = 5, delayMax = 15, instanceSwitchCount = 50, messageRotationCount = 1) => {
   let cumulativeDelay = 0;
   const jobs = [];
   
-  // Ensure instances is an array
+  // Ensure inputs are arrays
   const instanceList = Array.isArray(instances) ? instances : [instances];
+  // Backwards compatibility: if messageTemplates is a string, wrap in array
+  const templates = Array.isArray(messageTemplates) ? messageTemplates : [messageTemplates];
   
   for (let i = 0; i < contacts.length; i++) {
     const contact = contacts[i];
     
-    // Determine which instance to use based on round-robin and switch count
-    // Example: switch every 50 messages. Messages 0-49 use instance 0, 50-99 use instance 1, etc.
+    // Determine which instance to use
     const instanceIndex = Math.floor(i / instanceSwitchCount) % instanceList.length;
     const currentInstance = instanceList[instanceIndex];
+    
+    // Determine which message template to use
+    const templateIndex = Math.floor(i / messageRotationCount) % templates.length;
+    const currentMessage = templates[templateIndex];
     
     if (!currentInstance) {
       console.error(`[Queue] No instance available for message ${i}`);
       continue;
     }
 
-    // Create DB record first with correct field names from Schema
+    // Create DB record first
     const messageRecord = await prisma.message.create({
       data: {
         campaignId,
         instanceId: currentInstance.id,
-        messageText: messageTemplate,
+        messageText: currentMessage,
         status: 'pending',
         recipientNumber: contact.number,
         tenantId
@@ -157,12 +163,12 @@ const addToQueue = async (instances, contacts, messageTemplate, campaignId, tena
     const randomDelay = Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin;
     cumulativeDelay += randomDelay * 1000; // Convert to milliseconds
     
-    console.log(`[Queue] Scheduling message ${i + 1}/${contacts.length} to ${contact.number} via ${currentInstance.instanceName} with ${cumulativeDelay}ms delay`);
+    console.log(`[Queue] Scheduling message ${i + 1}/${contacts.length} to ${contact.number} via ${currentInstance.instanceName} (Template ${templateIndex + 1}) with ${cumulativeDelay}ms delay`);
     
     const job = messageQueue.add({
       instanceName: currentInstance.instanceName,
       number: contact.number,
-      message: messageTemplate,
+      message: currentMessage,
       campaignId,
       messageRecordId: messageRecord.id,
       tenantId

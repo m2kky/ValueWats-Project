@@ -7,11 +7,19 @@ const { parseCsv } = require('../services/csvService');
 
 const createCampaign = async (req, res) => {
   try {
-    const { name, instanceIds, message, numbers, delayMin = 5, delayMax = 15, instanceSwitchCount = 50 } = req.body;
+    const { name, instanceIds, message, messages, numbers, delayMin = 5, delayMax = 15, instanceSwitchCount = 50, messageRotationCount = 1 } = req.body;
     const tenantId = req.user.tenantId;
 
+    // Handle messages (support both single 'message' and array 'messages')
+    let messageList = [];
+    if (messages && Array.isArray(messages)) {
+      messageList = messages.filter(m => m.trim().length > 0);
+    } else if (message) {
+      messageList = [message];
+    }
+
     // Validate required fields
-    if (!name || !message) {
+    if (!name || messageList.length === 0) {
       return res.status(400).json({ error: 'Missing required fields: name, message' });
     }
 
@@ -64,12 +72,13 @@ const createCampaign = async (req, res) => {
     const campaign = await prisma.campaign.create({
       data: {
         name,
-        messageTemplate: message,
+        messageTemplate: messageList[0], // Primary message
         status: 'PROCESSING',
         totalContacts: contacts.length,
         delayMin: parseInt(delayMin),
         delayMax: parseInt(delayMax),
         instanceSwitchCount: parseInt(instanceSwitchCount),
+        messageRotationCount: parseInt(messageRotationCount),
         instanceId: instances[0].id, // Default to first instance
         tenantId
       }
@@ -86,25 +95,38 @@ const createCampaign = async (req, res) => {
       });
     }
 
-    console.log(`[Campaign] Created campaign ${campaign.id} with ${contacts.length} contacts, instances: ${instances.length}, switch: ${instanceSwitchCount}`);
+    // Create MessageTemplate records
+    if (messageList.length > 0) {
+      await prisma.messageTemplate.createMany({
+        data: messageList.map((content, index) => ({
+          campaignId: campaign.id,
+          content,
+          orderIndex: index
+        }))
+      });
+    }
+
+    console.log(`[Campaign] Created campaign ${campaign.id} with ${contacts.length} contacts, instances: ${instances.length}, templates: ${messageList.length}`);
 
     // Add to Queue
     await queueService.addToQueue(
       instances,
       contacts,
-      message,
+      messageList,
       campaign.id,
       tenantId,
       parseInt(delayMin),
       parseInt(delayMax),
-      parseInt(instanceSwitchCount)
+      parseInt(instanceSwitchCount),
+      parseInt(messageRotationCount)
     );
 
     res.status(201).json({ 
       message: 'Campaign created and processing started', 
       campaignId: campaign.id,
       totalContacts: contacts.length,
-      instanceCount: instances.length
+      instanceCount: instances.length,
+      templateCount: messageList.length
     });
 
   } catch (error) {

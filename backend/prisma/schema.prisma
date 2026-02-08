@@ -70,6 +70,7 @@ model Campaign {
   delayMin        Int       @default(5) @map("delay_min")   // Min delay in seconds
   delayMax        Int       @default(15) @map("delay_max")  // Max delay in seconds
   instanceSwitchCount Int     @default(50) @map("instance_switch_count") // Switch instance every N messages
+  messageRotationCount Int    @default(1) @map("message_rotation_count") // Switch template every N messages
   scheduledAt     DateTime? @map("scheduled_at")
   createdAt       DateTime  @default(now()) @map("created_at")
 
@@ -77,8 +78,20 @@ model Campaign {
   instance      Instance? @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   messages      Message[]
   campaignInstances CampaignInstance[]
+  messageTemplates MessageTemplate[]
 
   @@map("campaigns")
+}
+
+model MessageTemplate {
+  id          String   @id @default(uuid())
+  campaignId  String   @map("campaign_id")
+  content     String   @db.Text
+  orderIndex  Int      @map("order_index")
+
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("message_templates")
 }
 
 model CampaignInstance {
