@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { 
   PlusIcon,
@@ -35,6 +36,7 @@ const StatCard = ({ title, value, icon: Icon, color }) => (
 );
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
@@ -45,6 +47,13 @@ export default function Dashboard() {
       setUser(JSON.parse(userData));
     }
     fetchInstances();
+
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(() => {
+      fetchInstances();
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchInstances = async () => {
@@ -55,6 +64,20 @@ export default function Dashboard() {
       console.error('Failed to fetch instances:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDisconnect = async (instanceId, instanceName) => {
+    if (!confirm(`Are you sure you want to disconnect "${instanceName}"?`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/instances/${instanceId}`);
+      fetchInstances(); // Refresh list
+    } catch (error) {
+      console.error('Failed to disconnect instance:', error);
+      alert('Failed to disconnect instance. Please try again.');
     }
   };
 
@@ -149,10 +172,16 @@ export default function Dashboard() {
                     <p className="text-gray-500 text-sm mb-4">{instance.phoneNumber || 'Waiting for connection...'}</p>
                     
                     <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
-                      <button className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">
+                      <button 
+                        onClick={() => navigate(`/instances/${instance.id}`)}
+                        className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors"
+                      >
                         View Details
                       </button>
-                      <button className="text-sm font-medium text-red-600 hover:text-red-700 transition-colors">
+                      <button 
+                        onClick={() => handleDisconnect(instance.id, instance.instanceName)}
+                        className="text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
+                      >
                         Disconnect
                       </button>
                     </div>
