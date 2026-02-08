@@ -20,8 +20,10 @@ router.get('/', async (req, res) => {
       instances.map(async (instance) => {
         try {
           const status = await evolutionApi.getInstanceStatus(instance.instanceName);
-          const newStatus = status.state === 'open' ? 'connected' : 
-                           status.state === 'connecting' ? 'qr_pending' : 'disconnected';
+          // Evolution API returns { instance: { state: "open" | "connecting" | ... } }
+          const state = status.instance?.state || status.state;
+          const newStatus = state === 'open' ? 'connected' : 
+                           state === 'connecting' ? 'qr_pending' : 'disconnected';
           
           // Update in DB if status changed
           if (instance.status !== newStatus) {
