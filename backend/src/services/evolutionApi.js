@@ -167,7 +167,11 @@ Stack: ${error.stack}
           webhook: {
             url: webhookUrl,
             byEvents: true,
-            events: ['MESSAGES_UPSERT'],
+            events: [
+              'MESSAGES_UPSERT',
+              'CONNECTION_UPDATE',
+              'QRCODE_UPDATED'
+            ],
             enabled
           }
         },

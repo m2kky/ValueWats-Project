@@ -5,10 +5,29 @@ const prisma = new PrismaClient();
 
 const handleIncomingMessage = async (req, res) => {
   try {
-    const { type, instance: instanceName, data } = req.body;
+    const { event, instance: instanceName, data } = req.body;
+
+    // Handle connection status updates
+    if (event === 'connection.update') {
+      console.log(`[Webhook] Connection update for ${instanceName}:`, data);
+      
+      if (data.state === 'open') {
+        // Instance is connected
+        await prisma.instance.update({
+          where: { instanceName },
+          data: { 
+            status: 'connected',
+            phoneNumber: data.phoneNumber || null
+          }
+        });
+        console.log(`[Webhook] Instance ${instanceName} marked as connected`);
+      }
+      
+      return res.status(200).send('OK');
+    }
 
     // Only process text messages
-    if (type !== 'messages.upsert') {
+    if (event !== 'messages.upsert') {
       return res.status(200).send('OK');
     }
 
