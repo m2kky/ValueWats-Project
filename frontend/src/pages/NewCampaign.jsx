@@ -16,7 +16,9 @@ export default function NewCampaign() {
     name: '',
     instanceId: '',
     message: '',
-    numbers: ''
+    numbers: '',
+    delayMin: 5,
+    delayMax: 15
   });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -45,6 +47,8 @@ export default function NewCampaign() {
       data.append('name', formData.name);
       data.append('instanceId', formData.instanceId);
       data.append('message', formData.message);
+      data.append('delayMin', formData.delayMin);
+      data.append('delayMax', formData.delayMax);
       
       if (activeTab === 'manual') {
         data.append('numbers', formData.numbers);
@@ -222,6 +226,52 @@ export default function NewCampaign() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Delay Configuration - P1 Feature */}
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                ⏱️ Message Delay (Anti-Spam)
+              </label>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Minimum Delay: <span className="font-semibold text-gray-700">{formData.delayMin}s</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="60"
+                    value={formData.delayMin}
+                    onChange={e => setFormData({...formData, delayMin: parseInt(e.target.value)})}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>1s</span>
+                    <span>60s</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Maximum Delay: <span className="font-semibold text-gray-700">{formData.delayMax}s</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="120"
+                    value={formData.delayMax}
+                    onChange={e => setFormData({...formData, delayMax: parseInt(e.target.value)})}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>1s</span>
+                    <span>120s</span>
+                  </div>
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                💡 Random delay between {formData.delayMin}-{formData.delayMax} seconds to avoid WhatsApp spam detection.
+              </p>
             </div>
             
             <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">

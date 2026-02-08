@@ -111,16 +111,24 @@ async function checkCampaignCompletion(campaignId) {
 }
 
 /**
- * Add messages to the queue for a campaign
+ * Add messages to the queue for a campaign with staggered delays
  * @param {string} instanceName - The WhatsApp instance to use
  * @param {string} instanceId - DB ID of the instance
  * @param {Array} contacts - List of contacts [{ number, ... }]
  * @param {string} messageTemplate - Message text
  * @param {string} campaignId - DB ID of the campaign
  * @param {string} tenantId - Tenant ID
+ * @param {number} delayMin - Minimum delay between messages (seconds)
+ * @param {number} delayMax - Maximum delay between messages (seconds)
  */
-const addToQueue = async (instanceName, instanceId, contacts, messageTemplate, campaignId, tenantId) => {
-  const jobs = contacts.map(async (contact) => {
+const addToQueue = async (instanceName, instanceId, contacts, messageTemplate, campaignId, tenantId, delayMin = 5, delayMax = 15) => {
+  let cumulativeDelay = 0;
+  
+  const jobs = [];
+  
+  for (let i = 0; i < contacts.length; i++) {
+    const contact = contacts[i];
+    
     // Create DB record first with correct field names from Schema
     const messageRecord = await prisma.message.create({
       data: {
@@ -132,18 +140,31 @@ const addToQueue = async (instanceName, instanceId, contacts, messageTemplate, c
         tenantId
       }
     });
-
-    return messageQueue.add({
+    
+    // Random delay between delayMin and delayMax (in seconds, convert to ms)
+    const randomDelay = Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin;
+    cumulativeDelay += randomDelay * 1000; // Convert to milliseconds
+    
+    console.log(`[Queue] Scheduling message ${i + 1}/${contacts.length} to ${contact.number} with ${cumulativeDelay}ms delay`);
+    
+    const job = messageQueue.add({
       instanceName,
       number: contact.number,
       message: messageTemplate,
       campaignId,
       messageRecordId: messageRecord.id,
-      tenantId  // Pass tenantId to job for sendMessage
+      tenantId
     }, {
-      // Add simple rate limiting delay if needed, though Bull has rate lmiters too
+      delay: i === 0 ? 0 : cumulativeDelay, // First message immediate, rest with delay
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 2000
+      }
     });
-  });
+    
+    jobs.push(job);
+  }
 
   return Promise.all(jobs);
 };

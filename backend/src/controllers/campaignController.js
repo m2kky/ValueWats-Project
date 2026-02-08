@@ -60,32 +60,44 @@ const createCampaign = async (req, res) => {
       return res.status(400).json({ error: 'Instance is not connected' });
     }
 
-    // Create Campaign with total contacts count
+    // Get delay params from request (default 5-15 seconds)
+    const delayMin = parseInt(req.body.delayMin) || 5;
+    const delayMax = parseInt(req.body.delayMax) || 15;
+
+    // Create Campaign with total contacts count and delay settings
     const campaign = await prisma.campaign.create({
       data: {
         name,
         messageTemplate: message,
         status: 'PROCESSING',
         totalContacts: contacts.length,
+        delayMin,
+        delayMax,
         tenantId,
         instanceId
       }
     });
 
-    // Add to Queue
+    console.log(`[Campaign] Created campaign ${campaign.id} with ${contacts.length} contacts, delay ${delayMin}-${delayMax}s`);
+
+    // Add to Queue with delay settings
     await queueService.addToQueue(
       instance.instanceName,
-      instance.id,      // instanceId
+      instance.id,
       contacts,
       message,
       campaign.id,
-      tenantId
+      tenantId,
+      delayMin,
+      delayMax
     );
 
     res.status(201).json({ 
       message: 'Campaign created and processing started', 
       campaignId: campaign.id,
-      totalContacts: contacts.length 
+      totalContacts: contacts.length,
+      delayMin,
+      delayMax
     });
 
   } catch (error) {
