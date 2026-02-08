@@ -1,0 +1,19 @@
+
+2026-02-07T10:50:10.758275292Z 1:C 07 Feb 2026 10:50:10.751 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+2026-02-07T10:50:10.758304533Z 1:C 07 Feb 2026 10:50:10.752 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+2026-02-07T10:50:10.758307542Z 1:C 07 Feb 2026 10:50:10.752 * Redis version=7.4.7, bits=64, commit=00000000, modified=0, pid=1, just started
+2026-02-07T10:50:10.758309742Z 1:C 07 Feb 2026 10:50:10.752 * Configuration loaded
+2026-02-07T10:50:10.758311763Z 1:M 07 Feb 2026 10:50:10.752 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+2026-02-07T10:50:10.758314142Z 1:M 07 Feb 2026 10:50:10.752 * monotonic clock: POSIX clock_gettime
+2026-02-07T10:50:10.767678540Z 1:M 07 Feb 2026 10:50:10.764 * Running mode=standalone, port=6379.
+2026-02-07T10:50:10.767697660Z 1:M 07 Feb 2026 10:50:10.764 * Server initialized
+2026-02-07T10:50:10.767700450Z 1:M 07 Feb 2026 10:50:10.764 * Reading RDB base file on AOF loading...
+2026-02-07T10:50:10.767702561Z 1:M 07 Feb 2026 10:50:10.764 * Loading RDB produced by version 7.4.7
+2026-02-07T10:50:10.767704981Z 1:M 07 Feb 2026 10:50:10.764 * RDB age 46733 seconds
+2026-02-07T10:50:10.767707141Z 1:M 07 Feb 2026 10:50:10.764 * RDB memory usage when created 0.90 Mb
+2026-02-07T10:50:10.767718101Z 1:M 07 Feb 2026 10:50:10.764 * RDB is base AOF
+2026-02-07T10:50:10.767720291Z 1:M 07 Feb 2026 10:50:10.764 * Done loading RDB, keys loaded: 0, keys expired: 0.
+2026-02-07T10:50:10.767722501Z 1:M 07 Feb 2026 10:50:10.764 * DB loaded from base file appendonly.aof.1.base.rdb: 0.000 seconds
+2026-02-07T10:50:10.767724521Z 1:M 07 Feb 2026 10:50:10.764 * DB loaded from append only file: 0.000 seconds
+2026-02-07T10:50:10.767726471Z 1:M 07 Feb 2026 10:50:10.764 * Opening AOF incr file appendonly.aof.1.incr.aof on server start
+2026-02-07T10:50:10.767728571Z 1:M 07 Feb 2026 10:50:10.764 * Ready to accept connections tcp

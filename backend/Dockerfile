@@ -8,7 +8,6 @@ RUN npm install --production
 
 # Copy source
 COPY . .
-COPY .env.example .env
 
 # Generate Prisma Client
 RUN npx prisma generate
