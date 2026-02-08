@@ -23,12 +23,12 @@ const messageQueue = new Queue('campaign-messages', {
 
 // Process jobs
 messageQueue.process(async (job) => {
-  const { instanceName, number, message, campaignId, messageRecordId } = job.data;
+  const { instanceName, number, message, campaignId, messageRecordId, tenantId } = job.data;
   
   try {
     console.log(`Processing message for ${number} via ${instanceName}`);
     
-    const result = await evolutionApi.sendMessage(instanceName, number, message);
+    const result = await evolutionApi.sendMessage(tenantId, instanceName, number, message);
     
     // Update message status in database
     await prisma.message.update({
@@ -64,20 +64,22 @@ messageQueue.on('failed', (job, err) => {
 /**
  * Add messages to the queue for a campaign
  * @param {string} instanceName - The WhatsApp instance to use
+ * @param {string} instanceId - DB ID of the instance
  * @param {Array} contacts - List of contacts [{ number, ... }]
  * @param {string} messageTemplate - Message text
  * @param {string} campaignId - DB ID of the campaign
  * @param {string} tenantId - Tenant ID
  */
-const addToQueue = async (instanceName, contacts, messageTemplate, campaignId, tenantId) => {
+const addToQueue = async (instanceName, instanceId, contacts, messageTemplate, campaignId, tenantId) => {
   const jobs = contacts.map(async (contact) => {
-    // Create DB record first
+    // Create DB record first with correct field names from Schema
     const messageRecord = await prisma.message.create({
       data: {
         campaignId,
-        content: messageTemplate,
-        status: 'PENDING',
-        to: contact.number,
+        instanceId,
+        messageText: messageTemplate,
+        status: 'pending',
+        recipientNumber: contact.number,
         tenantId
       }
     });
@@ -87,7 +89,8 @@ const addToQueue = async (instanceName, contacts, messageTemplate, campaignId, t
       number: contact.number,
       message: messageTemplate,
       campaignId,
-      messageRecordId: messageRecord.id
+      messageRecordId: messageRecord.id,
+      tenantId  // Pass tenantId to job for sendMessage
     }, {
       // Add simple rate limiting delay if needed, though Bull has rate lmiters too
     });

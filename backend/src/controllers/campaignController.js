@@ -74,6 +74,7 @@ const createCampaign = async (req, res) => {
     // Add to Queue
     await queueService.addToQueue(
       instance.instanceName,
+      instance.id,      // instanceId
       contacts,
       message,
       campaign.id,
