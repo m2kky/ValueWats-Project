@@ -92,6 +92,7 @@ Stack: ${error.stack}
         }
       );
 
+      console.log(`[getInstanceStatus] ${instanceName}:`, JSON.stringify(response.data));
       return response.data;
     } catch (error) {
       console.error('Get status error:', error.response?.data || error.message);
