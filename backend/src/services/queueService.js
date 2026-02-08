@@ -53,13 +53,62 @@ messageQueue.process(async (job) => {
 });
 
 // Queue events logging
-messageQueue.on('completed', (job) => {
+messageQueue.on('completed', async (job) => {
   console.log(`Job ${job.id} completed!`);
+  
+  // Update campaign sent count
+  try {
+    const { campaignId } = job.data;
+    await prisma.campaign.update({
+      where: { id: campaignId },
+      data: { sentCount: { increment: 1 } }
+    });
+    
+    // Check if all messages for this campaign are processed
+    await checkCampaignCompletion(campaignId);
+  } catch (err) {
+    console.error('Error updating campaign count:', err.message);
+  }
 });
 
-messageQueue.on('failed', (job, err) => {
+messageQueue.on('failed', async (job, err) => {
   console.error(`Job ${job.id} failed: ${err.message}`);
+  
+  // Update campaign failed count
+  try {
+    const { campaignId } = job.data;
+    await prisma.campaign.update({
+      where: { id: campaignId },
+      data: { failedCount: { increment: 1 } }
+    });
+    
+    // Check if all messages for this campaign are processed
+    await checkCampaignCompletion(campaignId);
+  } catch (err) {
+    console.error('Error updating campaign failed count:', err.message);
+  }
 });
+
+/**
+ * Check if all messages for a campaign are processed and update status
+ */
+async function checkCampaignCompletion(campaignId) {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId }
+  });
+  
+  if (!campaign) return;
+  
+  const totalProcessed = campaign.sentCount + campaign.failedCount;
+  
+  if (totalProcessed >= campaign.totalContacts && campaign.status === 'PROCESSING') {
+    await prisma.campaign.update({
+      where: { id: campaignId },
+      data: { status: 'COMPLETED' }
+    });
+    console.log(`Campaign ${campaignId} completed! Sent: ${campaign.sentCount}, Failed: ${campaign.failedCount}`);
+  }
+}
 
 /**
  * Add messages to the queue for a campaign

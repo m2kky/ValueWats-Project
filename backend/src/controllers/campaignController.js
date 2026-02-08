@@ -60,12 +60,13 @@ const createCampaign = async (req, res) => {
       return res.status(400).json({ error: 'Instance is not connected' });
     }
 
-    // Create Campaign
+    // Create Campaign with total contacts count
     const campaign = await prisma.campaign.create({
       data: {
         name,
         messageTemplate: message,
         status: 'PROCESSING',
+        totalContacts: contacts.length,
         tenantId,
         instanceId
       }

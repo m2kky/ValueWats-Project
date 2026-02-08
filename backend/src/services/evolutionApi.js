@@ -101,13 +101,13 @@ Stack: ${error.stack}
   }
 
   /**
-   * Send a single text message
+   * Send a single text message via Evolution API
+   * Note: Message DB record should be created by the caller (queueService)
    */
   async sendMessage(tenantId, instanceName, number, text) {
     try {
-      // Check tenant quota (basic implementation)
-      // TODO: Implement proper quota checking based on subscription plan
-
+      console.log(`[sendMessage] Sending to ${number} via ${instanceName}`);
+      
       const response = await axios.post(
         `${this.baseURL}/message/sendText/${instanceName}`,
         {
@@ -119,23 +119,10 @@ Stack: ${error.stack}
         }
       );
 
-      // Log message to database
-      await prisma.message.create({
-        data: {
-          tenantId,
-          instanceId: (await prisma.instance.findFirst({
-            where: { instanceName, tenantId },
-          })).id,
-          recipientNumber: number,
-          messageText: text,
-          status: 'sent',
-          sentAt: new Date(),
-        },
-      });
-
+      console.log(`[sendMessage] Success:`, JSON.stringify(response.data));
       return response.data;
     } catch (error) {
-      console.error('Send message error:', error.response?.data || error.message);
+      console.error('[sendMessage] Error:', error.response?.data || error.message);
       throw new Error('Failed to send message');
     }
   }
