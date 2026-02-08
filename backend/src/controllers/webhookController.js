@@ -7,8 +7,10 @@ const handleIncomingMessage = async (req, res) => {
   try {
     const { event, instance: instanceName, data } = req.body;
 
+    console.log(`[Webhook] Received event: ${event} for instance: ${instanceName}`);
+
     // Handle connection status updates
-    if (event === 'connection.update') {
+    if (event === 'CONNECTION_UPDATE' || event === 'connection.update') {
       console.log(`[Webhook] Connection update for ${instanceName}:`, data);
       
       if (data.state === 'open') {
@@ -27,7 +29,7 @@ const handleIncomingMessage = async (req, res) => {
     }
 
     // Only process text messages
-    if (event !== 'messages.upsert') {
+    if (event !== 'messages.upsert' && event !== 'MESSAGES_UPSERT') {
       return res.status(200).send('OK');
     }
 
