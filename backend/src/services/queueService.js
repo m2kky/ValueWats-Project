@@ -111,29 +111,41 @@ async function checkCampaignCompletion(campaignId) {
 }
 
 /**
- * Add messages to the queue for a campaign with staggered delays
- * @param {string} instanceName - The WhatsApp instance to use
- * @param {string} instanceId - DB ID of the instance
+ * Add messages to the queue for a campaign with staggered delays and multi-instance support
+ * @param {Array} instances - List of instances to use [{ id, instanceName }]
  * @param {Array} contacts - List of contacts [{ number, ... }]
  * @param {string} messageTemplate - Message text
  * @param {string} campaignId - DB ID of the campaign
  * @param {string} tenantId - Tenant ID
  * @param {number} delayMin - Minimum delay between messages (seconds)
  * @param {number} delayMax - Maximum delay between messages (seconds)
+ * @param {number} instanceSwitchCount - Switch instance every N messages
  */
-const addToQueue = async (instanceName, instanceId, contacts, messageTemplate, campaignId, tenantId, delayMin = 5, delayMax = 15) => {
+const addToQueue = async (instances, contacts, messageTemplate, campaignId, tenantId, delayMin = 5, delayMax = 15, instanceSwitchCount = 50) => {
   let cumulativeDelay = 0;
-  
   const jobs = [];
+  
+  // Ensure instances is an array
+  const instanceList = Array.isArray(instances) ? instances : [instances];
   
   for (let i = 0; i < contacts.length; i++) {
     const contact = contacts[i];
     
+    // Determine which instance to use based on round-robin and switch count
+    // Example: switch every 50 messages. Messages 0-49 use instance 0, 50-99 use instance 1, etc.
+    const instanceIndex = Math.floor(i / instanceSwitchCount) % instanceList.length;
+    const currentInstance = instanceList[instanceIndex];
+    
+    if (!currentInstance) {
+      console.error(`[Queue] No instance available for message ${i}`);
+      continue;
+    }
+
     // Create DB record first with correct field names from Schema
     const messageRecord = await prisma.message.create({
       data: {
         campaignId,
-        instanceId,
+        instanceId: currentInstance.id,
         messageText: messageTemplate,
         status: 'pending',
         recipientNumber: contact.number,
@@ -145,10 +157,10 @@ const addToQueue = async (instanceName, instanceId, contacts, messageTemplate, c
     const randomDelay = Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin;
     cumulativeDelay += randomDelay * 1000; // Convert to milliseconds
     
-    console.log(`[Queue] Scheduling message ${i + 1}/${contacts.length} to ${contact.number} with ${cumulativeDelay}ms delay`);
+    console.log(`[Queue] Scheduling message ${i + 1}/${contacts.length} to ${contact.number} via ${currentInstance.instanceName} with ${cumulativeDelay}ms delay`);
     
     const job = messageQueue.add({
-      instanceName,
+      instanceName: currentInstance.instanceName,
       number: contact.number,
       message: messageTemplate,
       campaignId,

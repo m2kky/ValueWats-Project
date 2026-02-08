@@ -7,97 +7,104 @@ const { parseCsv } = require('../services/csvService');
 
 const createCampaign = async (req, res) => {
   try {
-    const { name, instanceId, message, numbers } = req.body;
-    const file = req.file;
+    const { name, instanceIds, message, numbers, delayMin = 5, delayMax = 15, instanceSwitchCount = 50 } = req.body;
     const tenantId = req.user.tenantId;
 
-    // Validate inputs
-    if (!name || !instanceId || !message) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    // Validate required fields
+    if (!name || !message) {
+      return res.status(400).json({ error: 'Missing required fields: name, message' });
     }
 
+    // Handle instanceIds (can be array or single value back-compat)
+    // If instanceIds is provided, use it. If not, check for instanceId (legacy)
+    let instanceIdList = [];
+    if (instanceIds) {
+      instanceIdList = Array.isArray(instanceIds) ? instanceIds : [instanceIds];
+    } else if (req.body.instanceId) {
+      instanceIdList = [req.body.instanceId];
+    } else {
+      return res.status(400).json({ error: 'At least one instance is required' });
+    }
+    
+    // Verify instances exist and are connected
+    const instances = await prisma.instance.findMany({
+      where: {
+        id: { in: instanceIdList },
+        tenantId,
+        status: 'connected'
+      }
+    });
+
+    if (instances.length === 0) {
+      return res.status(400).json({ error: 'No connected instances found' });
+    }
+
+    // Parse contacts
     let contacts = [];
-
-    // Handle manual numbers input
-    if (numbers) {
-      const manualContacts = numbers.split('\n')
-        .map(n => n.trim())
-        .filter(n => n)
-        .map(n => ({ number: n.replace(/\D/g, '') }));
-      contacts = [...contacts, ...manualContacts];
-    }
-
-    // Handle CSV file upload
-    if (file) {
+    if (req.file) {
       try {
-        const fileContacts = await parseCsv(file.path);
-        contacts = [...contacts, ...fileContacts];
-        // Clean up file
-        fs.unlinkSync(file.path);
+        const results = await parseCsv(req.file.buffer);
+        contacts = results.map(row => ({ number: row.number }));
       } catch (err) {
         console.error('CSV Parse Error:', err);
         return res.status(400).json({ error: 'Failed to parse CSV file' });
       }
+    } else if (numbers) {
+      const lines = numbers.split('\n');
+      contacts = lines.map(line => ({ number: line.trim() })).filter(c => c.number);
+    } else {
+      return res.status(400).json({ error: 'No contacts provided' });
     }
 
     if (contacts.length === 0) {
       return res.status(400).json({ error: 'No valid contacts provided' });
     }
 
-    // Check if instance exists and belongs to tenant
-    const instance = await prisma.instance.findUnique({
-      where: { 
-        id: instanceId,
-        tenantId
-      }
-    });
-
-    if (!instance) {
-      return res.status(404).json({ error: 'Instance not found' });
-    }
-
-    if (instance.status !== 'connected') {
-      return res.status(400).json({ error: 'Instance is not connected' });
-    }
-
-    // Get delay params from request (default 5-15 seconds)
-    const delayMin = parseInt(req.body.delayMin) || 5;
-    const delayMax = parseInt(req.body.delayMax) || 15;
-
-    // Create Campaign with total contacts count and delay settings
+    // Create Campaign
     const campaign = await prisma.campaign.create({
       data: {
         name,
         messageTemplate: message,
         status: 'PROCESSING',
         totalContacts: contacts.length,
-        delayMin,
-        delayMax,
-        tenantId,
-        instanceId
+        delayMin: parseInt(delayMin),
+        delayMax: parseInt(delayMax),
+        instanceSwitchCount: parseInt(instanceSwitchCount),
+        instanceId: instances[0].id, // Default to first instance
+        tenantId
       }
     });
 
-    console.log(`[Campaign] Created campaign ${campaign.id} with ${contacts.length} contacts, delay ${delayMin}-${delayMax}s`);
+    // Create CampaignInstance records
+    if (instances.length > 0) {
+      await prisma.campaignInstance.createMany({
+        data: instances.map((instance, index) => ({
+          campaignId: campaign.id,
+          instanceId: instance.id,
+          orderIndex: index
+        }))
+      });
+    }
 
-    // Add to Queue with delay settings
+    console.log(`[Campaign] Created campaign ${campaign.id} with ${contacts.length} contacts, instances: ${instances.length}, switch: ${instanceSwitchCount}`);
+
+    // Add to Queue
     await queueService.addToQueue(
-      instance.instanceName,
-      instance.id,
+      instances,
       contacts,
       message,
       campaign.id,
       tenantId,
-      delayMin,
-      delayMax
+      parseInt(delayMin),
+      parseInt(delayMax),
+      parseInt(instanceSwitchCount)
     );
 
     res.status(201).json({ 
       message: 'Campaign created and processing started', 
       campaignId: campaign.id,
       totalContacts: contacts.length,
-      delayMin,
-      delayMax
+      instanceCount: instances.length
     });
 
   } catch (error) {
@@ -105,7 +112,6 @@ const createCampaign = async (req, res) => {
     res.status(500).json({ error: 'Failed to create campaign' });
   }
 };
-
 const getCampaigns = async (req, res) => {
   try {
     const tenantId = req.user.tenantId;

@@ -52,6 +52,7 @@ model Instance {
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaigns    Campaign[]
   messages     Message[]
+  campaignInstances CampaignInstance[]
 
   @@map("instances")
 }
@@ -59,7 +60,7 @@ model Instance {
 model Campaign {
   id              String    @id @default(uuid())
   tenantId        String    @map("tenant_id")
-  instanceId      String    @map("instance_id")
+  instanceId      String?   @map("instance_id") // Made optional for multi-instance campaigns
   name            String
   messageTemplate String    @map("message_template") @db.Text
   status          String    // 'draft', 'scheduled', 'running', 'completed'
@@ -68,14 +69,28 @@ model Campaign {
   failedCount     Int       @default(0) @map("failed_count")
   delayMin        Int       @default(5) @map("delay_min")   // Min delay in seconds
   delayMax        Int       @default(15) @map("delay_max")  // Max delay in seconds
+  instanceSwitchCount Int     @default(50) @map("instance_switch_count") // Switch instance every N messages
   scheduledAt     DateTime? @map("scheduled_at")
   createdAt       DateTime  @default(now()) @map("created_at")
 
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  instance      Instance  @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  instance      Instance? @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   messages      Message[]
+  campaignInstances CampaignInstance[]
 
   @@map("campaigns")
+}
+
+model CampaignInstance {
+  id          String   @id @default(uuid())
+  campaignId  String   @map("campaign_id")
+  instanceId  String   @map("instance_id")
+  orderIndex  Int      @map("order_index")
+
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  instance    Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_instances")
 }
 
 model Message {
