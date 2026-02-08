@@ -6,6 +6,7 @@ const router = express.Router();
 
 /**
  * GET /api/instances - List all instances for tenant
+ * Syncs status from Evolution API for each instance
  */
 router.get('/', async (req, res) => {
   try {
@@ -14,7 +15,30 @@ router.get('/', async (req, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ instances });
+    // Sync status from Evolution API for each instance
+    const syncedInstances = await Promise.all(
+      instances.map(async (instance) => {
+        try {
+          const status = await evolutionApi.getInstanceStatus(instance.instanceName);
+          const newStatus = status.state === 'open' ? 'connected' : 
+                           status.state === 'connecting' ? 'qr_pending' : 'disconnected';
+          
+          // Update in DB if status changed
+          if (instance.status !== newStatus) {
+            await prisma.instance.update({
+              where: { id: instance.id },
+              data: { status: newStatus }
+            });
+            instance.status = newStatus;
+          }
+        } catch (err) {
+          console.log(`Could not sync status for ${instance.instanceName}:`, err.message);
+        }
+        return instance;
+      })
+    );
+
+    res.json({ instances: syncedInstances });
   } catch (error) {
     console.error('List instances error:', error);
     res.status(500).json({ error: 'Failed to fetch instances' });
