@@ -42,13 +42,13 @@ class EvolutionAPI {
       });
 
       // ✨ Auto-configure webhook
-      if (process.env.BACKEND_URL && process.env.BACKEND_URL !== 'http://localhost:3000') {
-          const webhookUrl = `${process.env.BACKEND_URL}/api/webhooks/whatsapp`;
-          console.log('Setting webhook for instance:', sanitizedInstanceName, 'URL:', webhookUrl);
-          await this.setWebhook(sanitizedInstanceName, webhookUrl, true);
-      } else {
-          console.warn('⚠️ Webhook NOT set: BACKEND_URL is missing or localhost');
-      }
+    // Use internal service name for Docker network communication
+    const webhookUrl = process.env.NODE_ENV === 'production' 
+      ? 'http://valuewats-backend:3000/api/webhooks/whatsapp'
+      : `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/whatsapp`;
+    
+    console.log('Setting webhook for instance:', sanitizedInstanceName, 'URL:', webhookUrl);
+    await this.setWebhook(sanitizedInstanceName, webhookUrl, true);
 
       return {
         ...instance,
