@@ -19,6 +19,11 @@ const init = (server) => {
       console.log(`[Socket] Client ${socket.id} joined campaign_${campaignId}`);
     });
 
+    socket.on('join_tenant', (tenantId) => {
+      socket.join(`tenant_${tenantId}`);
+      console.log(`[Socket] Client ${socket.id} joined tenant_${tenantId}`);
+    });
+
     socket.on('disconnect', () => {
       console.log('[Socket] Client disconnected:', socket.id);
     });
@@ -35,9 +40,18 @@ const getIo = () => {
 };
 
 // Helper to emit campaign progress updates
-const emitCampaignProgress = (campaignId, data) => {
+const emitCampaignProgress = (campaignId, tenantId, data) => {
   if (io) {
+    // Emit to specific campaign room (for details page)
     io.to(`campaign_${campaignId}`).emit('campaign_progress', data);
+    
+    // Emit to tenant room (for global progress bar)
+    if (tenantId) {
+      io.to(`tenant_${tenantId}`).emit('campaign_progress', {
+        ...data,
+        campaignId // Ensure campaignId is in the payload
+      });
+    }
   }
 };
 

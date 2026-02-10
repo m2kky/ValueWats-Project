@@ -75,16 +75,22 @@ const handleIncomingMessage = async (req, res) => {
              // We could add deliveredCount and readCount to Campaign schema later.
              
              // Emit socket event
+             // Emit socket event
              const socketService = require('../services/socketService');
              // Emit to campaign room if campaignId exists
              if (message.campaignId) {
-                socketService.emitCampaignProgress(message.campaignId, {
+                // Fetch latest stats only if needed, or pass minimal info.
+                // For global progress, we need campaign name.
+                // message.campaign is included in the query above.
+                
+                socketService.emitCampaignProgress(message.campaignId, message.campaign.tenantId, {
                   type: 'MESSAGE_UPDATE',
                   messageId: message.id,
                   status: statusString,
-                  stats: {
-                    // We can optionally send updated stats here if we calculate them
-                  }
+                  campaignName: message.campaign.name,
+                  totalContacts: message.campaign.totalContacts,
+                  // We could calculate percent here if we tracked counters on campaign
+                  // For now frontend will have to approximate or fetch
                 });
              }
           } else {

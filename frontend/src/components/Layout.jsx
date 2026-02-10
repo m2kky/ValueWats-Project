@@ -1,4 +1,4 @@
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   HomeIcon, 
   MegaphoneIcon, 
@@ -6,18 +6,36 @@ import {
   ArrowRightOnRectangleIcon as LogoutIcon 
 } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
+import io from 'socket.io-client';
+import GlobalProgressBar from './GlobalProgressBar';
 
 export default function Layout({ children }) {
-  const [user, setUser] = useState(null);
-  const navigate = useNavigate();
+  const [user, setUser] = useState(() => {
+    const userData = localStorage.getItem('user');
+    return userData ? JSON.parse(userData) : null;
+  });
+  const [socket, setSocket] = useState(null);
   const location = useLocation();
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
+    if (user && user.tenantId) {
+      const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const baseUrl = socketUrl.replace('/api', '');
+      
+      const newSocket = io(baseUrl);
+
+      newSocket.on('connect', () => {
+        // console.log('Layout socket connected, joining tenant:', user.tenantId);
+        newSocket.emit('join_tenant', user.tenantId);
+      });
+
+      setSocket(newSocket);
+
+      return () => {
+        newSocket.disconnect();
+      };
     }
-  }, []);
+  }, [user]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -82,6 +100,7 @@ export default function Layout({ children }) {
         </div>
       </nav>
       {children}
+      <GlobalProgressBar socket={socket} />
     </div>
   );
 }
