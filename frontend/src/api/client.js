@@ -5,9 +5,8 @@ const API_URL = envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
 
 const api = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // Don't set Content-Type globally — axios auto-detects
+  // multipart/form-data for FormData and application/json for objects
 });
 
 // Add token to requests if available
