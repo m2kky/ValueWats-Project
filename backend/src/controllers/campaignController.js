@@ -6,6 +6,7 @@ const googleSheetService = require('../services/googleSheetService');
 const fs = require('fs');
 const xlsx = require('xlsx');
 const linkShortener = require('../services/linkShortener');
+const storageService = require('../services/storageService');
 
 // Helper to extract IPs from text
 const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -144,13 +145,24 @@ const createCampaign = async (req, res) => {
       return res.status(400).json({ error: 'No valid contacts found.' });
     }
 
+    // Sanitize phone numbers: strip non-digits, validate length
+    contacts = contacts.map(c => ({
+      ...c,
+      number: c.number.replace(/[^0-9]/g, '')
+    })).filter(c => c.number.length >= 7 && c.number.length <= 15);
+
+    if (contacts.length === 0) {
+      return res.status(400).json({ error: 'No valid phone numbers found. Numbers must be 7-15 digits.' });
+    }
+
     // Handle Media Attachment
     let mediaUrl = null;
     let mediaType = null;
     if (req.files && req.files['media']) {
       const mediaFile = req.files['media'][0];
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
-      mediaUrl = `${backendUrl}/uploads/${mediaFile.filename}`;
+      
+      // Upload to S3/MinIO
+      mediaUrl = await storageService.uploadFile(mediaFile);
       
       // Determine media type
       if (mediaFile.mimetype.startsWith('image/')) mediaType = 'image';
@@ -304,6 +316,12 @@ const createCampaign = async (req, res) => {
         mediaUrl,
         mediaType
       );
+
+      // Update status to PROCESSING now that messages are queued
+      await prisma.campaign.update({
+        where: { id: campaign.id },
+        data: { status: 'PROCESSING' }
+      });
 
       res.status(201).json({ 
         message: 'Campaign created and processing started', 

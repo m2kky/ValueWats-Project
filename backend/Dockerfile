@@ -12,6 +12,12 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
+# Ensure uploads directory exists
+RUN mkdir -p /app/uploads
+
+# Persist uploads across restarts
+VOLUME /app/uploads
+
 EXPOSE 3000
 
 CMD ["npm", "start"]

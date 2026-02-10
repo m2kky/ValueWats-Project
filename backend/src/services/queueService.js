@@ -110,7 +110,7 @@ async function checkCampaignCompletion(campaignId) {
   
   const totalProcessed = campaign.sentCount + campaign.failedCount;
   
-  if (totalProcessed >= campaign.totalContacts && campaign.status === 'PROCESSING') {
+  if (totalProcessed >= campaign.totalContacts && ['PROCESSING', 'PENDING'].includes(campaign.status)) {
     await prisma.campaign.update({
       where: { id: campaignId },
       data: { status: 'COMPLETED' }
