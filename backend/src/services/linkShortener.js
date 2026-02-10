@@ -1,6 +1,14 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { nanoid } = require('nanoid');
+// nanoid v5+ is ESM-only — use dynamic import() for CommonJS compatibility
+let _nanoid;
+const getNanoid = async () => {
+  if (!_nanoid) {
+    const mod = await import('nanoid');
+    _nanoid = mod.nanoid;
+  }
+  return _nanoid;
+};
 
 // Generate a short URL for a specific campaign and/or message
 const generateShortUrl = async (originalUrl, campaignId, messageId = null) => {
@@ -10,6 +18,7 @@ const generateShortUrl = async (originalUrl, campaignId, messageId = null) => {
   
   // Implementation: Always create new for now to simplify logic, or check uniqueness.
   // Using nanoid(8) for sufficient entropy.
+  const nanoid = await getNanoid();
   const shortCode = nanoid(8);
 
   const link = await prisma.link.create({
