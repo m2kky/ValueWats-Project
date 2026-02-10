@@ -46,6 +46,15 @@ export default function Dashboard() {
   });
   const [user, setUser] = useState(null);
 
+  const fetchStats = async () => {
+    try {
+      const response = await api.get('/dashboard/stats');
+      setStats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
+
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
@@ -60,15 +69,6 @@ export default function Dashboard() {
 
     return () => clearInterval(interval);
   }, []);
-
-  const fetchStats = async () => {
-    try {
-      const response = await api.get('/dashboard/stats');
-      setStats(response.data);
-    } catch (error) {
-      console.error('Failed to fetch stats:', error);
-    }
-  };
 
   return (
     <div className="font-sans">

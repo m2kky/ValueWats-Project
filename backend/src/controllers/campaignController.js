@@ -153,7 +153,83 @@ const getCampaigns = async (req, res) => {
   }
 };
 
+const getCampaignById = async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const { id } = req.params;
+
+    const campaign = await prisma.campaign.findFirst({
+      where: { id, tenantId },
+      include: {
+        instance: true,
+        campaignInstances: {
+          include: { instance: true }
+        },
+        messageTemplates: {
+          orderBy: { orderIndex: 'asc' }
+        }
+      }
+    });
+
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+
+    // Get message stats
+    const messageStats = await prisma.message.groupBy({
+      by: ['status'],
+      where: { campaignId: id },
+      _count: { id: true }
+    });
+
+    const stats = { sent: 0, delivered: 0, read: 0, failed: 0, pending: 0 };
+    messageStats.forEach(stat => {
+      const status = stat.status.toLowerCase();
+      if (stats.hasOwnProperty(status)) {
+        stats[status] = stat._count.id;
+      }
+    });
+
+    res.json({
+      ...campaign,
+      stats
+    });
+
+  } catch (error) {
+    console.error('Get Campaign Error:', error);
+    res.status(500).json({ error: 'Failed to fetch campaign details' });
+  }
+};
+
+// Get active (PROCESSING) campaigns for the tenant
+const getActiveCampaigns = async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+
+    const campaigns = await prisma.campaign.findMany({
+      where: { tenantId, status: 'PROCESSING' },
+      select: {
+        id: true,
+        name: true,
+        totalContacts: true,
+        sentCount: true,
+        failedCount: true,
+        status: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ campaigns });
+  } catch (error) {
+    console.error('Get Active Campaigns Error:', error);
+    res.status(500).json({ error: 'Failed to fetch active campaigns' });
+  }
+};
+
 module.exports = {
   createCampaign,
-  getCampaigns
+  getCampaigns,
+  getCampaignById,
+  getActiveCampaigns
 };

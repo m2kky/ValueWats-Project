@@ -10,5 +10,7 @@ const upload = multer({ dest: 'uploads/' });
 
 router.post('/', upload.single('file'), campaignController.createCampaign);
 router.get('/', campaignController.getCampaigns);
+router.get('/active', campaignController.getActiveCampaigns);
+router.get('/:id', campaignController.getCampaignById);
 
 module.exports = router;

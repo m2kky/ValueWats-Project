@@ -47,18 +47,15 @@ export default function CampaignDetails() {
       const response = await api.get(`/campaigns/${id}`);
       setCampaign(response.data);
       
-      // Calculate stats from campaign object if available, or fetch separately
-      // Assuming response.data has stats or we calculate from messages if we fetch them
-      // For now, let's assume campaign object has counts:
+      // Use stats from the API response
+      const apiStats = response.data.stats || {};
       setStats({
           total: response.data.totalContacts || 0,
-          sent: response.data.sentCount || 0,
-          failed: response.data.failedCount || 0,
-          // delivered/read might not be on campaign object yet unless we added them
-          // otherwise we defaults to 0
-          delivered: 0, 
-          read: 0, 
-          pending: (response.data.totalContacts || 0) - (response.data.sentCount || 0) - (response.data.failedCount || 0)
+          sent: apiStats.sent || response.data.sentCount || 0,
+          delivered: apiStats.delivered || 0,
+          read: apiStats.read || 0,
+          failed: apiStats.failed || response.data.failedCount || 0,
+          pending: apiStats.pending || 0
       });
 
     } catch (error) {
