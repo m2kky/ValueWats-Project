@@ -42,6 +42,32 @@ export default function CampaignDetails() {
 
   const socketRef = useRef();
 
+  const fetchCampaignDetails = useCallback(async () => {
+    try {
+      const response = await api.get(`/campaigns/${id}`);
+      setCampaign(response.data);
+      
+      // Calculate stats from campaign object if available, or fetch separately
+      // Assuming response.data has stats or we calculate from messages if we fetch them
+      // For now, let's assume campaign object has counts:
+      setStats({
+          total: response.data.totalContacts || 0,
+          sent: response.data.sentCount || 0,
+          failed: response.data.failedCount || 0,
+          // delivered/read might not be on campaign object yet unless we added them
+          // otherwise we defaults to 0
+          delivered: 0, 
+          read: 0, 
+          pending: (response.data.totalContacts || 0) - (response.data.sentCount || 0) - (response.data.failedCount || 0)
+      });
+
+    } catch (error) {
+      console.error('Failed to fetch campaign details:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchCampaignDetails();
 
@@ -79,32 +105,6 @@ export default function CampaignDetails() {
       if (socketRef.current) socketRef.current.disconnect();
     };
   }, [id, fetchCampaignDetails]);
-
-  const fetchCampaignDetails = useCallback(async () => {
-    try {
-      const response = await api.get(`/campaigns/${id}`);
-      setCampaign(response.data);
-      
-      // Calculate stats from campaign object if available, or fetch separately
-      // Assuming response.data has stats or we calculate from messages if we fetch them
-      // For now, let's assume campaign object has counts:
-      setStats({
-          total: response.data.totalContacts || 0,
-          sent: response.data.sentCount || 0,
-          failed: response.data.failedCount || 0,
-          // delivered/read might not be on campaign object yet unless we added them
-          // otherwise we defaults to 0
-          delivered: 0, 
-          read: 0, 
-          pending: (response.data.totalContacts || 0) - (response.data.sentCount || 0) - (response.data.failedCount || 0)
-      });
-
-    } catch (error) {
-      console.error('Failed to fetch campaign details:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
 
   if (loading) {
     return (
