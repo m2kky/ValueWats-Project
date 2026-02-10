@@ -1,4 +1,6 @@
 const { S3Client, PutObjectCommand, CreateBucketCommand, HeadBucketCommand } = require('@aws-sdk/client-s3');
+const { NodeHttpHandler } = require("@smithy/node-http-handler");
+const https = require("https");
 const path = require('path');
 const fs = require('fs');
 
@@ -11,6 +13,9 @@ const s3Client = new S3Client({
     secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin',
   },
   forcePathStyle: true, // Required for MinIO (uses path-style URLs instead of virtual-hosted)
+  requestHandler: new NodeHttpHandler({
+    httpsAgent: new https.Agent({ rejectUnauthorized: false })
+  }),
 });
 
 const BUCKET_NAME = process.env.S3_BUCKET || 'valuewats-media';
