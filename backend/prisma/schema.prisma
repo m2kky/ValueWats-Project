@@ -116,6 +116,7 @@ model Message {
   status          String    // 'pending', 'sent', 'delivered', 'failed'
   sentAt          DateTime? @map("sent_at")
   deliveredAt     DateTime? @map("delivered_at")
+  wamid           String?   @unique @map("wamid") // Evolution API Message ID
 
   tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaign        Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)

@@ -12,7 +12,13 @@ const webhookRoutes = require('./routes/webhooks');
 // Middleware
 const tenantContext = require('./middleware/tenantContext');
 
+const http = require('http');
+const socketService = require('./services/socketService');
+
 const app = express();
+const server = http.createServer(app);
+const io = socketService.init(server);
+
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -31,11 +37,13 @@ app.get('/health', (req, res) => {
       database: process.env.DATABASE_URL ? 'configured' : 'missing',
       redis: process.env.REDIS_HOST ? 'configured' : 'missing',
       ai: process.env.DEEPSEEK_API_KEY ? 'configured' : 'missing',
-      backendUrl: process.env.BACKEND_URL || 'missing'
+      backendUrl: process.env.BACKEND_URL || 'missing',
+      socket: 'active'
     }
   });
 });
 
+// ... (routes remain same)
 // Public routes (no authentication required)
 app.post('/api/auth/register', authRoutes.register);
 app.post('/api/auth/login', authRoutes.login);
@@ -61,7 +69,7 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
 });

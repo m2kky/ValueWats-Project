@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Campaigns from './pages/Campaigns';
 import NewCampaign from './pages/NewCampaign';
 import NewInstance from './pages/NewInstance';
+import CampaignDetails from './pages/CampaignDetails';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -44,6 +45,12 @@ function App() {
         <Route path="/instances/new" element={
           <PrivateRoute>
             <NewInstance />
+          </PrivateRoute>
+        } />
+
+        <Route path="/campaigns/:id" element={
+          <PrivateRoute>
+            <CampaignDetails />
           </PrivateRoute>
         } />
         

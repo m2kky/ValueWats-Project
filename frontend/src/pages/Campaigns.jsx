@@ -94,38 +94,40 @@ export default function Campaigns() {
             <ul className="divide-y divide-gray-200">
               {campaigns.map((campaign) => (
                 <li key={campaign.id}>
-                  <div className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors cursor-pointer">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                         <div className="bg-blue-100 p-2 rounded-lg">
-                           <MegaphoneIcon className="h-5 w-5 text-blue-600" />
-                         </div>
-                         <div>
-                            <p className="text-sm font-medium text-blue-600 truncate">{campaign.name}</p>
-                            <p className="flex items-center text-sm text-gray-500 mt-0.5">
-                              <span className="truncate">{campaign.messageTemplate.substring(0, 50)}...</span>
-                            </p>
-                         </div>
+                  <Link to={`/campaigns/${campaign.id}`} className="block hover:bg-gray-50 transition-colors">
+                    <div className="px-4 py-4 sm:px-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                           <div className="bg-blue-100 p-2 rounded-lg">
+                             <MegaphoneIcon className="h-5 w-5 text-blue-600" />
+                           </div>
+                           <div>
+                              <p className="text-sm font-medium text-blue-600 truncate">{campaign.name}</p>
+                              <p className="flex items-center text-sm text-gray-500 mt-0.5">
+                                <span className="truncate">{campaign.messageTemplate.substring(0, 50)}...</span>
+                              </p>
+                           </div>
+                        </div>
+                        <div className="ml-2 flex-shrink-0 flex gap-2">
+                          <CampaignStatus status={campaign.status} />
+                        </div>
                       </div>
-                      <div className="ml-2 flex-shrink-0 flex gap-2">
-                        <CampaignStatus status={campaign.status} />
+                      <div className="mt-2 sm:flex sm:justify-between">
+                        <div className="sm:flex sm:gap-6">
+                          <p className="flex items-center text-sm text-gray-500">
+                            <CheckCircleIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-green-400" />
+                            {campaign._count?.messages || 0} messages
+                          </p>
+                         </div>
+                        <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                          <ClockIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                          <p>
+                            Created on <time dateTime={campaign.createdAt}>{new Date(campaign.createdAt).toLocaleDateString()}</time>
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex sm:gap-6">
-                        <p className="flex items-center text-sm text-gray-500">
-                          <CheckCircleIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-green-400" />
-                          {campaign._count?.messages || 0} messages
-                        </p>
-                       </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                        <ClockIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                        <p>
-                          Created on <time dateTime={campaign.createdAt}>{new Date(campaign.createdAt).toLocaleDateString()}</time>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  </Link>
                 </li>
               ))}
             </ul>

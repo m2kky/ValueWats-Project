@@ -30,12 +30,17 @@ messageQueue.process(async (job) => {
     
     const result = await evolutionApi.sendMessage(tenantId, instanceName, number, message);
     
+    // Extract wamid (message ID) from Evolution API response
+    // V2 structure: result.key.id
+    const wamid = result.key?.id || result.id;
+    
     // Update message status in database
     await prisma.message.update({
       where: { id: messageRecordId },
       data: { 
         status: 'SENT',
-        sentAt: new Date()
+        sentAt: new Date(),
+        wamid
       }
     });
 
