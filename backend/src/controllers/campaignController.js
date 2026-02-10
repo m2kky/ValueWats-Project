@@ -547,10 +547,11 @@ const previewSheet = async (req, res) => {
 module.exports = {
   createCampaign,
   getCampaigns,
-  getCampaignDetails,
+  getCampaignById,
   pauseCampaign,
   resumeCampaign,
+  stopCampaign,
   deleteCampaign,
-  updateCampaignStatus,
+  getActiveCampaigns,
   previewSheet
 };
