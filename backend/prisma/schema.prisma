@@ -23,6 +23,7 @@ model Tenant {
   campaigns         Campaign[]
   messages          Message[]
   billing           Billing[]
+  automationRules   AutomationRule[]
 
   @@map("tenants")
 }
@@ -53,6 +54,7 @@ model Instance {
   campaigns    Campaign[]
   messages     Message[]
   campaignInstances CampaignInstance[]
+  automationRules   AutomationRule[]
 
   @@map("instances")
 }
@@ -137,4 +139,21 @@ model Billing {
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("billing")
+}
+
+model AutomationRule {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  instanceId    String   @map("instance_id")
+  name          String
+  triggerType   String   @map("trigger_type")   // 'keyword', 'any_message', 'welcome'
+  triggerValue  String?  @map("trigger_value")   // keyword to match (if triggerType is 'keyword')
+  responseText  String   @map("response_text") @db.Text
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  instance      Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@map("automation_rules")
 }

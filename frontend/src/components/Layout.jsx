@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   HomeIcon, 
   MegaphoneIcon, 
+  BoltIcon,
   ChatBubbleLeftRightIcon,
   ArrowRightOnRectangleIcon as LogoutIcon 
 } from '@heroicons/react/24/outline';
@@ -46,6 +47,7 @@ export default function Layout({ children }) {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: HomeIcon },
     { name: 'Campaigns', path: '/campaigns', icon: MegaphoneIcon },
+    { name: 'Automations', path: '/automations', icon: BoltIcon },
   ];
 
   return (

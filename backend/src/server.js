@@ -52,6 +52,7 @@ app.post('/api/auth/login', authRoutes.login);
 app.use('/api/instances', tenantContext, instanceRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/automations', require('./routes/automations'));
 
 // Public routes (Webhooks)
 app.use('/api/webhooks', webhookRoutes);
