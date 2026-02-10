@@ -10,7 +10,8 @@ import {
   PlayIcon,
   StopIcon,
   TrashIcon,
-  EllipsisVerticalIcon
+  EllipsisVerticalIcon,
+  CalendarDaysIcon
 } from '@heroicons/react/24/outline';
 
 const CampaignStatus = ({ status }) => {
@@ -166,7 +167,7 @@ export default function Campaigns() {
                                     <PlayIcon className="h-4 w-4" /> Resume
                                   </button>
                                 )}
-                                {(campaign.status === 'PROCESSING' || campaign.status === 'PAUSED') && (
+                                {(campaign.status === 'PROCESSING' || campaign.status === 'PAUSED' || campaign.status === 'SCHEDULED') && (
                                   <button
                                     onClick={(e) => handleAction(e, campaign.id, 'stop', 'Stop this campaign and cancel pending messages?')}
                                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors"
@@ -191,6 +192,12 @@ export default function Campaigns() {
                             <CheckCircleIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-green-400" />
                             {campaign._count?.messages || 0} messages
                           </p>
+                          {campaign.status === 'SCHEDULED' && campaign.scheduledAt && (
+                            <p className="flex items-center text-sm text-indigo-600 font-medium">
+                              <CalendarDaysIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-indigo-500" />
+                              Scheduled: {new Date(campaign.scheduledAt).toLocaleString()}
+                            </p>
+                          )}
                          </div>
                         <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
                           <ClockIcon className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />

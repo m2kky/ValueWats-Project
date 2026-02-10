@@ -7,7 +7,9 @@ import {
   DevicePhoneMobileIcon,
   UserGroupIcon,
   DocumentArrowUpIcon,
-  XMarkIcon
+  XMarkIcon,
+  CalendarDaysIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 
 export default function NewCampaign() {
@@ -21,7 +23,9 @@ export default function NewCampaign() {
     delayMin: 5,
     delayMax: 15,
     instanceSwitchCount: 50,
-    messageRotationCount: 1 // New field
+    messageRotationCount: 1,
+    scheduleEnabled: false,
+    scheduledAt: ''
   });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -98,6 +102,10 @@ export default function NewCampaign() {
       data.append('delayMax', formData.delayMax);
       data.append('instanceSwitchCount', formData.instanceSwitchCount);
       data.append('messageRotationCount', formData.messageRotationCount);
+      
+      if (formData.scheduleEnabled && formData.scheduledAt) {
+        data.append('scheduledAt', new Date(formData.scheduledAt).toISOString());
+      }
       
       if (activeTab === 'manual') {
         data.append('numbers', formData.numbers);
@@ -406,6 +414,47 @@ export default function NewCampaign() {
               </p>
             </div>
             
+            {/* Schedule Campaign */}
+            <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-indigo-900">
+                  <CalendarDaysIcon className="h-5 w-5" />
+                  Schedule Campaign
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, scheduleEnabled: !formData.scheduleEnabled, scheduledAt: ''})}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    formData.scheduleEnabled ? 'bg-indigo-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    formData.scheduleEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+              {formData.scheduleEnabled ? (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <ClockIcon className="h-4 w-4 text-indigo-500" />
+                    <input
+                      type="datetime-local"
+                      required={formData.scheduleEnabled}
+                      min={new Date(Date.now() + 5 * 60000).toISOString().slice(0, 16)}
+                      value={formData.scheduledAt}
+                      onChange={e => setFormData({...formData, scheduledAt: e.target.value})}
+                      className="flex-1 px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-indigo-600">
+                    💡 Campaign will automatically launch at the scheduled time. Minimum 5 minutes from now.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-indigo-600">Campaign will launch immediately after creation.</p>
+              )}
+            </div>
+
             <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
               <button
                 type="button"
@@ -420,10 +469,13 @@ export default function NewCampaign() {
                 disabled={loading || formData.instanceIds.length === 0 || (activeTab === 'csv' && !file)}
                 onClick={handleSubmit}
               >
-                {loading ? 'Launching...' : (
+                {loading ? (formData.scheduleEnabled ? 'Scheduling...' : 'Launching...') : (
                   <>
-                    <PaperAirplaneIcon className="-ml-1 mr-2 h-5 w-5" />
-                    Launch Campaign
+                    {formData.scheduleEnabled ? (
+                      <><CalendarDaysIcon className="-ml-1 mr-2 h-5 w-5" />Schedule Campaign</>
+                    ) : (
+                      <><PaperAirplaneIcon className="-ml-1 mr-2 h-5 w-5" />Launch Campaign</>
+                    )}
                   </>
                 )}
               </button>

@@ -7,7 +7,7 @@ const { parseCsv } = require('../services/csvService');
 
 const createCampaign = async (req, res) => {
   try {
-    const { name, instanceIds, message, messages, numbers, delayMin = 5, delayMax = 15, instanceSwitchCount = 50, messageRotationCount = 1 } = req.body;
+    const { name, instanceIds, message, messages, numbers, delayMin = 5, delayMax = 15, instanceSwitchCount = 50, messageRotationCount = 1, scheduledAt } = req.body;
     const tenantId = req.user.tenantId;
 
     // Handle messages (support both single 'message' and array 'messages')
@@ -24,7 +24,6 @@ const createCampaign = async (req, res) => {
     }
 
     // Handle instanceIds (can be array or single value back-compat)
-    // If instanceIds is provided, use it. If not, check for instanceId (legacy)
     let instanceIdList = [];
     if (instanceIds) {
       instanceIdList = Array.isArray(instanceIds) ? instanceIds : [instanceIds];
@@ -68,17 +67,22 @@ const createCampaign = async (req, res) => {
       return res.status(400).json({ error: 'No valid contacts provided' });
     }
 
+    // Determine if this is a scheduled campaign
+    const isScheduled = scheduledAt && new Date(scheduledAt) > new Date();
+    const campaignStatus = isScheduled ? 'SCHEDULED' : 'PROCESSING';
+
     // Create Campaign
     const campaign = await prisma.campaign.create({
       data: {
         name,
         messageTemplate: messageList[0], // Primary message
-        status: 'PROCESSING',
+        status: campaignStatus,
         totalContacts: contacts.length,
         delayMin: parseInt(delayMin),
         delayMax: parseInt(delayMax),
         instanceSwitchCount: parseInt(instanceSwitchCount),
         messageRotationCount: parseInt(messageRotationCount),
+        scheduledAt: isScheduled ? new Date(scheduledAt) : null,
         instanceId: instances[0].id, // Default to first instance
         tenantId
       }
@@ -106,28 +110,62 @@ const createCampaign = async (req, res) => {
       });
     }
 
-    console.log(`[Campaign] Created campaign ${campaign.id} with ${contacts.length} contacts, instances: ${instances.length}, templates: ${messageList.length}`);
+    console.log(`[Campaign] Created campaign ${campaign.id} with ${contacts.length} contacts, instances: ${instances.length}, templates: ${messageList.length}, status: ${campaignStatus}`);
 
-    // Add to Queue
-    await queueService.addToQueue(
-      instances,
-      contacts,
-      messageList,
-      campaign.id,
-      tenantId,
-      parseInt(delayMin),
-      parseInt(delayMax),
-      parseInt(instanceSwitchCount),
-      parseInt(messageRotationCount)
-    );
+    if (isScheduled) {
+      // For scheduled campaigns: create message records but don't queue yet
+      // Store contacts as pending messages so the scheduler can re-queue them
+      const instanceList = Array.isArray(instances) ? instances : [instances];
+      const templates = Array.isArray(messageList) ? messageList : [messageList];
 
-    res.status(201).json({ 
-      message: 'Campaign created and processing started', 
-      campaignId: campaign.id,
-      totalContacts: contacts.length,
-      instanceCount: instances.length,
-      templateCount: messageList.length
-    });
+      for (let i = 0; i < contacts.length; i++) {
+        const contact = contacts[i];
+        const instanceIndex = Math.floor(i / parseInt(instanceSwitchCount)) % instanceList.length;
+        const currentInstance = instanceList[instanceIndex];
+        const templateIndex = Math.floor(i / parseInt(messageRotationCount)) % templates.length;
+        const currentMessage = templates[templateIndex];
+
+        await prisma.message.create({
+          data: {
+            campaignId: campaign.id,
+            instanceId: currentInstance.id,
+            messageText: currentMessage,
+            status: 'pending',
+            recipientNumber: contact.number,
+            tenantId
+          }
+        });
+      }
+
+      res.status(201).json({ 
+        message: `Campaign scheduled for ${new Date(scheduledAt).toLocaleString()}`, 
+        campaignId: campaign.id,
+        totalContacts: contacts.length,
+        status: 'SCHEDULED',
+        scheduledAt: scheduledAt
+      });
+    } else {
+      // Add to Queue immediately
+      await queueService.addToQueue(
+        instances,
+        contacts,
+        messageList,
+        campaign.id,
+        tenantId,
+        parseInt(delayMin),
+        parseInt(delayMax),
+        parseInt(instanceSwitchCount),
+        parseInt(messageRotationCount)
+      );
+
+      res.status(201).json({ 
+        message: 'Campaign created and processing started', 
+        campaignId: campaign.id,
+        totalContacts: contacts.length,
+        instanceCount: instances.length,
+        templateCount: messageList.length
+      });
+    }
 
   } catch (error) {
     console.error('Create Campaign Error:', error);

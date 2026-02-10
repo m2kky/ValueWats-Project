@@ -10,6 +10,7 @@ import {
   PlayIcon,
   StopIcon,
   TrashIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 
 const CampaignStatus = ({ status }) => {
@@ -166,6 +167,12 @@ export default function CampaignDetails() {
                   <ClockIcon className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
                   Created {new Date(campaign.createdAt).toLocaleDateString()}
                 </div>
+                {campaign.status === 'SCHEDULED' && campaign.scheduledAt && (
+                  <div className="mt-2 flex items-center text-sm text-indigo-600 font-medium">
+                    <CalendarDaysIcon className="flex-shrink-0 mr-1.5 h-5 w-5 text-indigo-500" />
+                    Scheduled: {new Date(campaign.scheduledAt).toLocaleString()}
+                  </div>
+                )}
               </div>
             </div>
 
