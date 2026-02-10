@@ -1,15 +1,46 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { QrCodeIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 export default function NewInstance() {
   const navigate = useNavigate();
-  const [instanceName, setInstanceName] = useState('');
+  const [searchParams] = useSearchParams();
+  const instanceId = searchParams.get('instanceId');
+  const instanceNameParam = searchParams.get('name');
+
+  const [instanceName, setInstanceName] = useState(instanceNameParam || '');
   const [loading, setLoading] = useState(false);
   const [qrCode, setQrCode] = useState(null);
   const [status, setStatus] = useState('input'); // input, creating, qr_ready, connected
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (instanceId) {
+      fetchQrForInstance(instanceId);
+    }
+  }, [instanceId]);
+
+  const fetchQrForInstance = async (id) => {
+    setLoading(true);
+    setStatus('creating'); // Reuse creating spinner
+    setError(null);
+    try {
+      const res = await api.get(`/instances/${id}/connect`);
+      if (res.data.qrCode) {
+        setQrCode(res.data.qrCode);
+        setStatus('qr_ready');
+      } else {
+        throw new Error('No QR code returned');
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.error || 'Failed to get QR code');
+      setStatus('input'); // Go back to input (or maybe show error state?)
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,8 +50,17 @@ export default function NewInstance() {
 
     try {
       const response = await api.post('/instances', { instanceName });
-      setQrCode(response.data.instance.qrCode);
-      setStatus('qr_ready');
+      
+      // If QR code is present, show it
+      if (response.data.instance.qrCode) {
+        setQrCode(response.data.instance.qrCode);
+        setStatus('qr_ready');
+      } else {
+        // If no QR, enter polling/waiting mode or show message
+        // But for now, let's assume the backend fix handles fetching it
+        setError('Instance created but QR code not received yet. Please try reconnecting from the list.');
+        setStatus('input');
+      }
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.error || 'Failed to create instance');

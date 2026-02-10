@@ -123,6 +123,39 @@ router.get('/:id/status', async (req, res) => {
 });
 
 /**
+ * GET /api/instances/:id/connect - Get QR code for existing instance
+ */
+router.get('/:id/connect', async (req, res) => {
+  try {
+    const instance = await prisma.instance.findFirst({
+      where: {
+        id: req.params.id,
+        tenantId: req.tenantId,
+      },
+    });
+
+    if (!instance) {
+      return res.status(404).json({ error: 'Instance not found' });
+    }
+
+    const qrCode = await evolutionApi.fetchQrCode(instance.instanceName);
+
+    // Update QR in DB
+    if (qrCode) {
+      await prisma.instance.update({
+        where: { id: instance.id },
+        data: { qrCode }
+      });
+    }
+
+    res.json({ qrCode });
+  } catch (error) {
+    console.error('Get QR error:', error);
+    res.status(500).json({ error: 'Failed to get QR code' });
+  }
+});
+
+/**
  * DELETE /api/instances/:id - Delete instance
  */
 router.delete('/:id', async (req, res) => {

@@ -190,7 +190,7 @@ export default function Instances() {
                             </button>
                             {instance.status !== 'connected' && (
                               <Link
-                                to="/instances/new"
+                                to={`/instances/new?instanceId=${instance.id}&name=${encodeURIComponent(instance.instanceName)}`}
                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors"
                               >
                                 <QrCodeIcon className="h-4 w-4" /> Reconnect

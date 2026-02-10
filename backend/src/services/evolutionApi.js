@@ -26,10 +26,31 @@ class EvolutionAPI {
         },
         {
           headers: { apikey: this.apiKey },
+          timeout: 40000 // Increase timeout to 40s
         }
       );
 
-      console.log('Instance created at Evolution API:', response.data);
+      console.log('Instance created at Evolution API:', JSON.stringify(response.data));
+
+      let qrCode = response.data.qrcode?.base64 || response.data.qrcode;
+
+      // Fallback: If no QR code returned, try to fetch it via connect endpoint
+      if (!qrCode) {
+        console.log('QR code not returned in create response, fetching via /connect...');
+        try {
+          const connectRes = await axios.get(
+            `${this.baseURL}/instance/connect/${sanitizedInstanceName}`,
+            {
+              headers: { apikey: this.apiKey },
+              timeout: 20000
+            }
+          );
+          qrCode = connectRes.data?.qrcode?.base64 || connectRes.data?.base64;
+          console.log('QR code fetched via /connect:', qrCode ? 'Success' : 'Failed');
+        } catch (connectErr) {
+          console.error('Failed to fetch QR via /connect:', connectErr.message);
+        }
+      }
 
       // Save to database
       const instance = await prisma.instance.create({
@@ -37,7 +58,7 @@ class EvolutionAPI {
           tenantId,
           instanceName: sanitizedInstanceName,
           status: 'qr_pending',
-          qrCode: response.data.qrcode?.base64 || null,
+          qrCode: qrCode || null,
         },
       });
 
@@ -49,11 +70,14 @@ class EvolutionAPI {
         : `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/whatsapp`);
     
     console.log('Setting webhook for instance:', sanitizedInstanceName, 'URL:', webhookUrl);
-    await this.setWebhook(sanitizedInstanceName, webhookUrl, true);
+    // Don't await webhook setup to speed up response
+    this.setWebhook(sanitizedInstanceName, webhookUrl, true).catch(err => 
+      console.error('Background webhook setup failed:', err.message)
+    );
 
       return {
         ...instance,
-        qrCode: response.data.qrcode?.base64,
+        qrCode: qrCode,
       };
     } catch (error) {
       const fs = require('fs');
@@ -143,6 +167,26 @@ Stack: ${error.stack}
     } catch (error) {
       console.error('Delete instance error:', error.response?.data || error.message);
       throw new Error('Failed to delete instance');
+    }
+  }
+
+  /**
+   * Fetch QR Code for an existing instance
+   */
+  async fetchQrCode(instanceName) {
+    try {
+      console.log(`Fetching QR code for ${instanceName}...`);
+      const response = await axios.get(
+        `${this.baseURL}/instance/connect/${instanceName}`,
+        {
+          headers: { apikey: this.apiKey },
+          timeout: 20000
+        }
+      );
+      return response.data?.qrcode?.base64 || response.data?.base64 || response.data?.qrcode;
+    } catch (error) {
+      console.error('Fetch QR error:', error.response?.data || error.message);
+      throw new Error('Failed to fetch QR code');
     }
   }
   /**
