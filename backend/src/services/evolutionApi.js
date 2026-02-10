@@ -158,6 +158,7 @@ Stack: ${error.stack}
             byEvents: true,
             events: [
               'MESSAGES_UPSERT',
+              'MESSAGES_UPDATE',
               'CONNECTION_UPDATE',
               'QRCODE_UPDATED'
             ],
