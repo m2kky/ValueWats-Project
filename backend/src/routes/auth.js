@@ -1,3 +1,5 @@
+const express = require('express');
+const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/database');
@@ -330,9 +332,11 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = {
-  register,
-  verifyOtp,
-  resendOtp,
-  login,
-};
+
+// Routes
+router.post('/register', register);
+router.post('/verify-otp', verifyOtp);
+router.post('/resend-otp', resendOtp);
+router.post('/login', login);
+
+module.exports = router;
