@@ -261,6 +261,23 @@ export default function CampaignDetails() {
                  <dd className="mt-1 text-3xl font-semibold text-yellow-600">{stats.pending}</dd>
               </div>
             </div>
+
+            {/* Click Tracking Stats */}
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="px-4 py-5 sm:p-6">
+                 <dt className="text-sm font-medium text-gray-500 truncate">Clicks</dt>
+                 <dd className="mt-1 text-3xl font-semibold text-indigo-600">{campaign.clicks || 0}</dd>
+              </div>
+            </div>
+
+             <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="px-4 py-5 sm:p-6">
+                 <dt className="text-sm font-medium text-gray-500 truncate">CTR (Click Rate)</dt>
+                 <dd className="mt-1 text-3xl font-semibold text-indigo-600">
+                    {stats.sent > 0 ? ((campaign.clicks || 0) / stats.sent * 100).toFixed(1) : 0}%
+                 </dd>
+              </div>
+            </div>
         </div>
         
         {/* Message Content Preview */}

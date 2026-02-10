@@ -112,6 +112,7 @@ model Campaign {
   messages      Message[]
   campaignInstances CampaignInstance[]
   messageTemplates MessageTemplate[]
+  links         Link[]
 
   @@map("campaigns")
 }
@@ -156,6 +157,7 @@ model Message {
   tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaign        Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   instance        Instance  @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  links           Link[]
 
   @@map("messages")
 }
@@ -189,4 +191,33 @@ model AutomationRule {
   instance      Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
   @@map("automation_rules")
+}
+
+model Link {
+  id          String   @id @default(uuid())
+  originalUrl String   @map("original_url")
+  shortCode   String   @unique @map("short_code")
+  campaignId  String   @map("campaign_id")
+  messageId   String?  @map("message_id") // Optional for per-user tracking
+  clicks      Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  message     Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  clickEvents ClickEvent[]
+
+  @@map("links")
+}
+
+model ClickEvent {
+  id        String   @id @default(uuid())
+  linkId    String   @map("link_id")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  device    String?  // 'mobile', 'desktop', 'tablet'
+  clickedAt DateTime @default(now()) @map("clicked_at")
+
+  link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@map("click_events")
 }

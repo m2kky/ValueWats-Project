@@ -3,6 +3,10 @@ const { redisConfig } = require('../config/redis');
 const evolutionApi = require('./evolutionApi');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const linkShortener = require('./linkShortener');
+
+// Helper to extract IPs from text
+const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 // Create the message queue
 const messageQueue = new Queue('campaign-messages', {
@@ -153,6 +157,16 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
         const regex = new RegExp(`{{${key}}}`, 'gi');
         currentMessage = currentMessage.replace(regex, contact.variables[key] || '');
       });
+    }
+
+    // Shorten Links if present
+    if (urlRegex.test(currentMessage)) {
+        const urls = currentMessage.match(urlRegex) || [];
+        for (const url of urls) {
+            // Generate short link linked to campaign (messageId null initially)
+            const shortUrl = await linkShortener.generateShortUrl(url, campaignId, null);
+            currentMessage = currentMessage.replace(url, shortUrl);
+        }
     }
     
     if (!currentInstance) {

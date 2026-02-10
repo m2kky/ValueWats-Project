@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const instanceRoutes = require('./routes/instances');
 const campaignRoutes = require('./routes/campaigns');
 const webhookRoutes = require('./routes/webhooks');
+const linkRoutes = require('./routes/links');
 
 // Middleware
 const tenantContext = require('./middleware/tenantContext');
@@ -50,6 +51,7 @@ app.get('/health', (req, res) => {
 // ... (routes remain same)
 // Public routes (no authentication required)
 app.use('/api/auth', authRoutes);
+app.use('/l', linkRoutes); // Short links (root level or /l)
 
 // Serve uploads directory statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
