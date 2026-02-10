@@ -12,7 +12,9 @@ import {
   PaperClipIcon,
   BoldIcon,
   ItalicIcon,
-  CodeBracketIcon
+  CodeBracketIcon,
+  TableCellsIcon,
+  TagIcon
 } from '@heroicons/react/24/outline';
 
 export default function NewCampaign() {
@@ -34,7 +36,11 @@ export default function NewCampaign() {
   const [file, setFile] = useState(null); // CSV contact file
   const [mediaFile, setMediaFile] = useState(null); // Media attachment
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('manual'); // 'manual' or 'csv'
+  const [activeTab, setActiveTab] = useState('manual'); // 'manual', 'csv', 'sheet'
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [sheetColumns, setSheetColumns] = useState([]);
+  const [phoneColumn, setPhoneColumn] = useState('');
+  const [fetchingColumns, setFetchingColumns] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -47,6 +53,21 @@ export default function NewCampaign() {
       setInstances(response.data.instances.filter(i => i.status === 'connected'));
     } catch (error) {
       console.error('Failed to fetch instances', error);
+    }
+  };
+
+  const fetchSheetColumns = async () => {
+    if (!sheetUrl) return;
+    setFetchingColumns(true);
+    setSheetColumns([]);
+    setPhoneColumn('');
+    try {
+      const response = await api.post('/campaigns/preview-sheet', { url: sheetUrl });
+      setSheetColumns(response.data.columns);
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to fetch sheet columns. Ensure it is public.');
+    } finally {
+      setFetchingColumns(false);
     }
   };
 
@@ -112,6 +133,24 @@ export default function NewCampaign() {
     }, 0);
   };
 
+  const insertVariable = (index, variable) => {
+    const textarea = document.getElementById(`message-input-${index}`);
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = formData.messages[index];
+    const newText = `{{${variable}}}`;
+    
+    const updatedMessage = text.substring(0, start) + newText + text.substring(end);
+    handleMessageChange(index, updatedMessage);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + newText.length, start + newText.length);
+    }, 0);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -145,8 +184,11 @@ export default function NewCampaign() {
       
       if (activeTab === 'manual') {
         data.append('numbers', formData.numbers);
-      } else if (file) {
+      } else if (activeTab === 'csv' && file) {
         data.append('file', file);
+      } else if (activeTab === 'sheet') {
+        data.append('googleSheetUrl', sheetUrl);
+        data.append('phoneColumn', phoneColumn);
       }
 
       if (mediaFile) {
@@ -372,7 +414,18 @@ export default function NewCampaign() {
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Upload CSV
+                  Upload CSV/Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('sheet')}
+                  className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'sheet' 
+                      ? 'border-blue-500 text-blue-600' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Google Sheet
                 </button>
               </div>
 
@@ -391,7 +444,7 @@ export default function NewCampaign() {
                   />
                   <p className="mt-1 text-xs text-gray-500">Enter phone numbers (one per line) with country code (e.g., 201xxxxxxxxx).</p>
                 </div>
-              ) : (
+              ) : activeTab === 'csv' ? (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
                   {file ? (
                     <div className="flex items-center justify-center gap-2 text-green-600 bg-green-50 p-2 rounded-lg inline-block">
@@ -419,14 +472,74 @@ export default function NewCampaign() {
                             name="file-upload" 
                             type="file" 
                             className="sr-only" 
-                            accept=".csv"
+                            accept=".csv, .xlsx, .xls"
                             onChange={(e) => setFile(e.target.files[0])}
                           />
                         </label>
                         <p className="pl-1">or drag and drop</p>
                       </div>
-                      <p className="text-xs text-gray-600">CSV files only (Column 'number' required)</p>
+                      <p className="text-xs text-gray-600">Supports .csv, .xlsx, .xls (Column 'number' required)</p>
                     </>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Google Sheet Public URL</label>
+                    <div className="flex gap-2">
+                       <input 
+                         type="url"
+                         className="flex-1 input rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                         placeholder="https://docs.google.com/spreadsheets/d/..."
+                         value={sheetUrl}
+                         onChange={e => setSheetUrl(e.target.value)}
+                       />
+                       <button
+                         type="button"
+                         onClick={fetchSheetColumns}
+                         disabled={fetchingColumns || !sheetUrl}
+                         className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                       >
+                         {fetchingColumns ? 'Fetching...' : 'Fetch Columns'}
+                       </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Make sure the sheet is "Everyone with the link"</p>
+                  </div>
+                  
+                  {sheetColumns.length > 0 && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Select Phone Number Column</label>
+                      <select 
+                        className="input w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                        value={phoneColumn}
+                        onChange={e => setPhoneColumn(e.target.value)}
+                        required={activeTab === 'sheet'}
+                      >
+                        <option value="">-- Select Column --</option>
+                        {sheetColumns.map(col => (
+                          <option key={col} value={col}>{col}</option>
+                        ))}
+                      </select>
+                      
+                      <div className="mt-4">
+                        <label className="block text-xs font-medium text-gray-500 mb-2">Available Variables (Click to insert)</label>
+                        <div className="flex flex-wrap gap-2">
+                          {sheetColumns.map(col => (
+                             <button
+                               key={col}
+                               type="button"
+                               onClick={() => {
+                                 const focusedIndex = 0; // Default to first for now, or track focused input
+                                 insertVariable(focusedIndex, col); 
+                               }} 
+                               className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer border border-blue-200"
+                             >
+                               {`{{${col}}}`}
+                             </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
@@ -553,7 +666,7 @@ export default function NewCampaign() {
               <button
                 type="button"
                 className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={loading || formData.instanceIds.length === 0 || (activeTab === 'csv' && !file)}
+                disabled={loading || formData.instanceIds.length === 0 || (activeTab === 'csv' && !file) || (activeTab === 'sheet' && (!sheetUrl || !phoneColumn))}
                 onClick={handleSubmit}
               >
                 {loading ? (formData.scheduleEnabled ? 'Scheduling...' : 'Launching...') : (

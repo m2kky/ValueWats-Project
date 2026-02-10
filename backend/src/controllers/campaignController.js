@@ -1,9 +1,10 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const queueService = require('../services/queueService');
+const googleSheetService = require('../services/googleSheetService');
 
 const fs = require('fs');
-const { parseCsv } = require('../services/csvService');
+const xlsx = require('xlsx');
 
 const createCampaign = async (req, res) => {
   try {
@@ -46,29 +47,97 @@ const createCampaign = async (req, res) => {
       return res.status(400).json({ error: 'No connected instances found' });
     }
 
-    // Parse contacts
+    // Handle Contacts (CSV File or Manual Input or Google Sheet)
     let contacts = [];
+
+    // 1. CSV File Upload
+    // 1. File Upload (CSV or Excel)
     if (req.files && req.files['file']) {
+      const filePath = req.files['file'][0].path;
+      
       try {
-        const fileBuffer = fs.readFileSync(req.files['file'][0].path);
-        const results = await parseCsv(fileBuffer);
-        contacts = results.map(row => ({ number: row.number }));
-        // Clean up temp file? Multer diskStorage keeps it. We might want to keep it or delete it.
-        // For CSVs, we probably don't need to keep them after parsing.
-        try { fs.unlinkSync(req.files['file'][0].path); } catch(e) {}
+        // Read file using xlsx (supports CSV, XLS, XLSX)
+        const workbook = xlsx.readFile(filePath);
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Convert to JSON array
+        const jsonData = xlsx.utils.sheet_to_json(worksheet, { defval: "" }); // defval ensures empty cells are empty strings
+        
+        if (jsonData.length === 0) {
+           try { fs.unlinkSync(filePath); } catch(e) {}
+           return res.status(400).json({ error: 'File is empty.' });
+        }
+
+        // Detect phone column
+        const headers = Object.keys(jsonData[0]).map(h => h.trim().toLowerCase());
+        const originalHeaders = Object.keys(jsonData[0]); // Keep original case for data extraction
+        
+        const numberIndex = headers.indexOf('number');
+        const phoneIndex = headers.indexOf('phone');
+        const mobileIndex = headers.indexOf('mobile');
+        
+        // Find the matching key in original headers
+        let targetKey = null;
+        if (numberIndex !== -1) targetKey = originalHeaders[numberIndex];
+        else if (phoneIndex !== -1) targetKey = originalHeaders[phoneIndex];
+        else if (mobileIndex !== -1) targetKey = originalHeaders[mobileIndex];
+
+        if (!targetKey) {
+           try { fs.unlinkSync(filePath); } catch(e) {}
+           return res.status(400).json({ error: "File must contain a 'number', 'phone', or 'mobile' column header." });
+        }
+
+        contacts = jsonData.map(row => {
+          const number = String(row[targetKey]).trim();
+          if (number && number.length >= 7) {
+             return { number, variables: row };
+          }
+          return null;
+        }).filter(Boolean);
+
       } catch (err) {
-        console.error('CSV Parse Error:', err);
-        return res.status(400).json({ error: 'Failed to parse CSV file' });
+        console.error('File Parse Error:', err);
+        return res.status(400).json({ error: 'Failed to parse file. Ensure it is a valid CSV or Excel file.' });
+      } finally {
+        try { fs.unlinkSync(filePath); } catch(e) {} // Clean up
       }
-    } else if (numbers) {
+    } 
+    // 2. Google Sheet Import
+    else if (googleSheetUrl) {
+      const sheetData = await googleSheetService.fetchSheetData(googleSheetUrl);
+      
+      if (sheetData.length === 0) {
+        return res.status(400).json({ error: "Google Sheet is empty or could not be read." });
+      }
+
+      // Identify Phone Column
+      if (!phoneColumn) {
+        return res.status(400).json({ error: "Please specify which column contains the Phone Number for Google Sheet." });
+      }
+
+      // Map rows to contacts with all data (for variable interpolation)
+      contacts = sheetData.map(row => {
+         const number = row[phoneColumn];
+         if (!number) return null;
+         
+         return {
+           number: number.trim(),
+           variables: row // Store all row data for interpolation
+         };
+      }).filter(Boolean);
+
+    }
+    // 3. Manual Input
+    else if (numbers) {
       const lines = numbers.split('\n');
-      contacts = lines.map(line => ({ number: line.trim() })).filter(c => c.number);
+      contacts = lines.map(line => ({ number: line.trim() })).filter(c => c.number && c.number.length >= 7);
     } else {
-      return res.status(400).json({ error: 'No contacts provided' });
+      return res.status(400).json({ error: 'No contacts provided (CSV, Sheet, or Manual)' });
     }
 
     if (contacts.length === 0) {
-      return res.status(400).json({ error: 'No valid contacts provided' });
+      return res.status(400).json({ error: 'No valid contacts found.' });
     }
 
     // Handle Media Attachment
@@ -87,13 +156,13 @@ const createCampaign = async (req, res) => {
 
     // Determine if this is a scheduled campaign
     const isScheduled = scheduledAt && new Date(scheduledAt) > new Date();
-    const campaignStatus = isScheduled ? 'SCHEDULED' : 'PROCESSING';
+    const campaignStatus = isScheduled ? 'SCHEDULED' : 'PENDING'; // Initial status for new flow
 
-    // Create Campaign
+    // Create Campaign in DB
     const campaign = await prisma.campaign.create({
       data: {
         name,
-        messageTemplate: messageList[0], // Primary message
+        messageTemplate: messageList[0], // Store primary message for display/reference
         status: campaignStatus,
         totalContacts: contacts.length,
         delayMin: parseInt(delayMin),
@@ -102,9 +171,6 @@ const createCampaign = async (req, res) => {
         messageRotationCount: parseInt(messageRotationCount),
         scheduledAt: isScheduled ? new Date(scheduledAt) : null,
         endAt: endAt ? new Date(endAt) : null,
-        instanceId: instances[0].id, // Default to first instance
-        tenantId,
-        mediaUrl,
         mediaType
       }
     });
@@ -462,17 +528,29 @@ const deleteCampaign = async (req, res) => {
     res.json({ message: 'Campaign deleted' });
   } catch (error) {
     console.error('Delete Campaign Error:', error);
-    res.status(500).json({ error: 'Failed to delete campaign' });
+    res.status(500).json({ error: 'Failed to update campaign status' });
+  }
+};
+
+const previewSheet = async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+
+    const columns = await googleSheetService.fetchSheetHeaders(url);
+    res.json({ columns });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 };
 
 module.exports = {
   createCampaign,
   getCampaigns,
-  getCampaignById,
-  getActiveCampaigns,
+  getCampaignDetails,
   pauseCampaign,
   resumeCampaign,
-  stopCampaign,
-  deleteCampaign
+  deleteCampaign,
+  updateCampaignStatus,
+  previewSheet
 };

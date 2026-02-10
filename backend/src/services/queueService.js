@@ -145,7 +145,15 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
     
     // Determine which message template to use
     const templateIndex = Math.floor(i / intVal(messageRotationCount)) % templates.length;
-    const currentMessage = templates[templateIndex];
+    let currentMessage = templates[templateIndex];
+
+    // Interpolate Variables if present
+    if (contact.variables) {
+      Object.keys(contact.variables).forEach(key => {
+        const regex = new RegExp(`{{${key}}}`, 'gi');
+        currentMessage = currentMessage.replace(regex, contact.variables[key] || '');
+      });
+    }
     
     if (!currentInstance) {
       console.error(`[Queue] No instance available for message ${i}`);
