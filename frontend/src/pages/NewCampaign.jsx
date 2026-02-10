@@ -105,11 +105,7 @@ export default function NewCampaign() {
         data.append('file', file);
       }
 
-      await api.post('/campaigns', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      await api.post('/campaigns', data);
 
       navigate('/campaigns');
     } catch (error) {
