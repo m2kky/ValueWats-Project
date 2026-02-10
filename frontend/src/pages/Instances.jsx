@@ -41,8 +41,15 @@ export default function Instances() {
 
   // Close menu on outside click
   useEffect(() => {
-    const handleClick = () => setOpenMenuId(null);
-    if (openMenuId) document.addEventListener('click', handleClick);
+    const handleClick = (e) => {
+      // If clicking the menu toggle button itself, don't close here
+      // (toggleMenu will handle it)
+      if (e.target.closest('.menu-toggle-btn')) return;
+      setOpenMenuId(null);
+    };
+    if (openMenuId) {
+      document.addEventListener('click', handleClick);
+    }
     return () => document.removeEventListener('click', handleClick);
   }, [openMenuId]);
 
@@ -73,9 +80,9 @@ export default function Instances() {
   };
 
   const toggleMenu = (e, id) => {
-    e.preventDefault();
     e.stopPropagation();
-    setOpenMenuId(openMenuId === id ? null : id);
+    console.log('Toggling menu for instance:', id, 'Current open:', openMenuId);
+    setOpenMenuId(prev => prev === id ? null : id);
   };
 
   const connectedCount = instances.filter(i => i.status === 'connected').length;
@@ -113,7 +120,7 @@ export default function Instances() {
         </div>
 
         {/* Content */}
-        <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white shadow-sm rounded-xl border border-gray-200">
           {loading ? (
             <div className="text-center py-16">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -173,15 +180,15 @@ export default function Instances() {
 
                       {/* Actions */}
                       <div className="relative">
-                        <button
-                          onClick={(e) => toggleMenu(e, instance.id)}
-                          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                          <EllipsisVerticalIcon className="h-5 w-5" />
-                        </button>
+                          <button
+                            onClick={(e) => toggleMenu(e, instance.id)}
+                            className="menu-toggle-btn p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <EllipsisVerticalIcon className="h-5 w-5 pointer-events-none" />
+                          </button>
 
                         {openMenuId === instance.id && (
-                          <div className="absolute right-0 mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1">
+                          <div className="absolute right-0 mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
                             <button
                               onClick={(e) => handleRefreshStatus(e, instance)}
                               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
