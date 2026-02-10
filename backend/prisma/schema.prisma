@@ -24,21 +24,49 @@ model Tenant {
   messages          Message[]
   billing           Billing[]
   automationRules   AutomationRule[]
+  invitations       Invitation[]
 
   @@map("tenants")
 }
 
 model User {
-  id           String   @id @default(uuid())
-  tenantId     String   @map("tenant_id")
-  email        String
-  passwordHash String   @map("password_hash")
-  role         String   // 'admin', 'agent', 'viewer'
-  createdAt    DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  role          String   // 'admin', 'agent', 'viewer'
+  emailVerified Boolean  @default(false) @map("email_verified")
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("users")
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  email     String
+  code      String
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("otp_codes")
+}
+
+model Invitation {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  email     String
+  role      String   @default("agent")
+  invitedBy String   @map("invited_by")
+  status    String   @default("pending") // 'pending', 'accepted', 'expired'
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("invitations")
 }
 
 model Instance {
@@ -76,6 +104,8 @@ model Campaign {
   scheduledAt     DateTime? @map("scheduled_at")
   endAt           DateTime? @map("end_at")
   createdAt       DateTime  @default(now()) @map("created_at")
+  mediaUrl        String?   @map("media_url")
+  mediaType       String?   @map("media_type")
 
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   instance      Instance? @relation(fields: [instanceId], references: [id], onDelete: Cascade)
@@ -120,6 +150,8 @@ model Message {
   sentAt          DateTime? @map("sent_at")
   deliveredAt     DateTime? @map("delivered_at")
   wamid           String?   @unique @map("wamid") // Evolution API Message ID
+  mediaUrl        String?   @map("media_url")
+  mediaType       String?   @map("media_type")
 
   tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaign        Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)

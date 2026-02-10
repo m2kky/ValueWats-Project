@@ -8,6 +8,7 @@ import NewInstance from './pages/NewInstance';
 import Instances from './pages/Instances';
 import CampaignDetails from './pages/CampaignDetails';
 import Automations from './pages/Automations';
+import Team from './pages/Team';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -65,6 +66,12 @@ function App() {
         <Route path="/automations" element={
           <PrivateRoute>
             <Automations />
+          </PrivateRoute>
+        } />
+        
+        <Route path="/team" element={
+          <PrivateRoute>
+            <Team />
           </PrivateRoute>
         } />
         

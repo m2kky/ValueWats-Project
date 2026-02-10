@@ -48,10 +48,14 @@ const createCampaign = async (req, res) => {
 
     // Parse contacts
     let contacts = [];
-    if (req.file) {
+    if (req.files && req.files['file']) {
       try {
-        const results = await parseCsv(req.file.buffer);
+        const fileBuffer = fs.readFileSync(req.files['file'][0].path);
+        const results = await parseCsv(fileBuffer);
         contacts = results.map(row => ({ number: row.number }));
+        // Clean up temp file? Multer diskStorage keeps it. We might want to keep it or delete it.
+        // For CSVs, we probably don't need to keep them after parsing.
+        try { fs.unlinkSync(req.files['file'][0].path); } catch(e) {}
       } catch (err) {
         console.error('CSV Parse Error:', err);
         return res.status(400).json({ error: 'Failed to parse CSV file' });
@@ -65,6 +69,20 @@ const createCampaign = async (req, res) => {
 
     if (contacts.length === 0) {
       return res.status(400).json({ error: 'No valid contacts provided' });
+    }
+
+    // Handle Media Attachment
+    let mediaUrl = null;
+    let mediaType = null;
+    if (req.files && req.files['media']) {
+      const mediaFile = req.files['media'][0];
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+      mediaUrl = `${backendUrl}/uploads/${mediaFile.filename}`;
+      
+      // Determine media type
+      if (mediaFile.mimetype.startsWith('image/')) mediaType = 'image';
+      else if (mediaFile.mimetype.startsWith('video/')) mediaType = 'video';
+      else mediaType = 'document'; // default fallback
     }
 
     // Determine if this is a scheduled campaign
@@ -85,7 +103,9 @@ const createCampaign = async (req, res) => {
         scheduledAt: isScheduled ? new Date(scheduledAt) : null,
         endAt: endAt ? new Date(endAt) : null,
         instanceId: instances[0].id, // Default to first instance
-        tenantId
+        tenantId,
+        mediaUrl,
+        mediaType
       }
     });
 
@@ -133,7 +153,9 @@ const createCampaign = async (req, res) => {
             messageText: currentMessage,
             status: 'pending',
             recipientNumber: contact.number,
-            tenantId
+            tenantId,
+            mediaUrl,
+            mediaType
           }
         });
       }
@@ -156,7 +178,9 @@ const createCampaign = async (req, res) => {
         parseInt(delayMin),
         parseInt(delayMax),
         parseInt(instanceSwitchCount),
-        parseInt(messageRotationCount)
+        parseInt(messageRotationCount),
+        mediaUrl,
+        mediaType
       );
 
       res.status(201).json({ 

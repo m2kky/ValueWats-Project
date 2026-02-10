@@ -5,10 +5,10 @@ const authenticate = require('../middleware/tenantContext');
 
 router.use(authenticate);
 
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+const upload = require('../middleware/upload');
 
-router.post('/', upload.single('file'), campaignController.createCampaign);
+// Handle both CSV file (contacts) and Media file (attachment)
+router.post('/', upload.fields([{ name: 'file', maxCount: 1 }, { name: 'media', maxCount: 1 }]), campaignController.createCampaign);
 router.get('/', campaignController.getCampaigns);
 router.get('/active', campaignController.getActiveCampaigns);
 router.get('/:id', campaignController.getCampaignById);

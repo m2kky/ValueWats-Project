@@ -128,20 +128,41 @@ Stack: ${error.stack}
    * Send a single text message via Evolution API
    * Note: Message DB record should be created by the caller (queueService)
    */
-  async sendMessage(tenantId, instanceName, number, text) {
+  async sendMessage(tenantId, instanceName, number, text, mediaUrl = null, mediaType = null) {
     try {
-      console.log(`[sendMessage] Sending to ${number} via ${instanceName}`);
+      console.log(`[sendMessage] Sending to ${number} via ${instanceName} (Media: ${mediaUrl ? 'Yes' : 'No'})`);
       
-      const response = await axios.post(
-        `${this.baseURL}/message/sendText/${instanceName}`,
-        {
-          number,
-          text,
-        },
-        {
-          headers: { apikey: this.apiKey },
-        }
-      );
+      let response;
+      
+      if (mediaUrl) {
+        // Send Media Message
+        response = await axios.post(
+          `${this.baseURL}/message/sendMedia/${instanceName}`,
+          {
+            number,
+            mediatype: mediaType || 'document',
+            mimetype: mediaType === 'image' ? 'image/jpeg' : (mediaType === 'video' ? 'video/mp4' : 'application/pdf'), // Simple fallback
+            caption: text,
+            media: mediaUrl,
+            fileName: mediaUrl.split('/').pop()
+          },
+          {
+            headers: { apikey: this.apiKey },
+          }
+        );
+      } else {
+        // Send Text Message
+        response = await axios.post(
+          `${this.baseURL}/message/sendText/${instanceName}`,
+          {
+            number,
+            text,
+          },
+          {
+            headers: { apikey: this.apiKey },
+          }
+        );
+      }
 
       console.log(`[sendMessage] Success:`, JSON.stringify(response.data));
       return response.data;

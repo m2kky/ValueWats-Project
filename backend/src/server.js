@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const path = require('path');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -45,14 +46,17 @@ app.get('/health', (req, res) => {
 
 // ... (routes remain same)
 // Public routes (no authentication required)
-app.post('/api/auth/register', authRoutes.register);
-app.post('/api/auth/login', authRoutes.login);
+app.use('/api/auth', authRoutes);
+
+// Serve uploads directory statically
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Protected routes
 app.use('/api/instances', tenantContext, instanceRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/automations', require('./routes/automations'));
+app.use('/api/team', require('./routes/team'));
 
 // Public routes (Webhooks)
 app.use('/api/webhooks', webhookRoutes);

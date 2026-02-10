@@ -9,7 +9,10 @@ import {
   DocumentArrowUpIcon,
   XMarkIcon,
   CalendarDaysIcon,
-  ClockIcon
+  PaperClipIcon,
+  BoldIcon,
+  ItalicIcon,
+  CodeBracketIcon
 } from '@heroicons/react/24/outline';
 
 export default function NewCampaign() {
@@ -28,7 +31,8 @@ export default function NewCampaign() {
     scheduledAt: '',
     endAt: ''
   });
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState(null); // CSV contact file
+  const [mediaFile, setMediaFile] = useState(null); // Media attachment
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('manual'); // 'manual' or 'csv'
   const navigate = useNavigate();
@@ -80,6 +84,34 @@ export default function NewCampaign() {
     }
   };
 
+  const insertFormatting = (index, type) => {
+    const textarea = document.getElementById(`message-input-${index}`);
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = formData.messages[index];
+    const selectedText = text.substring(start, end);
+    let newText = '';
+
+    switch (type) {
+      case 'bold': newText = `*${selectedText}*`; break;
+      case 'italic': newText = `_${selectedText}_`; break;
+      case 'strike': newText = `~${selectedText}~`; break;
+      case 'code': newText = `\`\`\`${selectedText}\`\`\``; break;
+      default: return;
+    }
+
+    const updatedMessage = text.substring(0, start) + newText + text.substring(end);
+    handleMessageChange(index, updatedMessage);
+    
+    // Restore focus (timeout needed for React re-render)
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + newText.length, start + newText.length);
+    }, 0);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -115,6 +147,10 @@ export default function NewCampaign() {
         data.append('numbers', formData.numbers);
       } else if (file) {
         data.append('file', file);
+      }
+
+      if (mediaFile) {
+        data.append('media', mediaFile);
       }
 
       await api.post('/campaigns', data);
@@ -230,9 +266,17 @@ export default function NewCampaign() {
               
               <div className="space-y-4">
                 {formData.messages.map((msg, index) => (
-                  <div key={index} className="relative group">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs text-gray-500 font-medium">Template #{index + 1}</span>
+                  <div key={index} className="relative group border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500">
+                    <div className="flex justify-between items-center bg-gray-50 px-3 py-2 border-b border-gray-200">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 font-medium">Template #{index + 1}</span>
+                        {/* Formatting Toolbar */}
+                        <div className="h-4 w-px bg-gray-300 mx-1"></div>
+                        <button type="button" onClick={() => insertFormatting(index, 'bold')} className="p-1 hover:bg-gray-200 rounded text-gray-600" title="Bold"><strong className="font-bold">B</strong></button>
+                        <button type="button" onClick={() => insertFormatting(index, 'italic')} className="p-1 hover:bg-gray-200 rounded text-gray-600" title="Italic"><em className="italic">I</em></button>
+                        <button type="button" onClick={() => insertFormatting(index, 'strike')} className="p-1 hover:bg-gray-200 rounded text-gray-600 line-through" title="Strikethrough">S</button>
+                        <button type="button" onClick={() => insertFormatting(index, 'code')} className="p-1 hover:bg-gray-200 rounded text-gray-600 font-mono text-xs" title="Monospace">{'<>'}</button>
+                      </div>
                       {formData.messages.length > 1 && (
                         <button 
                           type="button" 
@@ -243,25 +287,41 @@ export default function NewCampaign() {
                         </button>
                       )}
                     </div>
-                    <div className="relative">
-                      <textarea
-                        required
-                        rows={5}
-                        className="input w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                        placeholder={index === 0 ? "Hi there! Check out our new offers..." : "Hello! Don't miss our latest deals..."}
-                        value={msg}
-                        onChange={e => handleMessageChange(index, e.target.value)}
-                      />
-                      <div className="absolute bottom-3 right-3 flex gap-2">
-                         <button type="button" className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100" title="Add Image (Coming Soon)">
-                           <PhotoIcon className="w-5 h-5" />
-                         </button>
-                      </div>
-                    </div>
+                    <textarea
+                      id={`message-input-${index}`}
+                      required
+                      rows={5}
+                      className="w-full p-3 border-none focus:ring-0 font-mono text-sm resize-y"
+                      placeholder={index === 0 ? "Hi there! Check out our new offers..." : "Hello! Don't miss our latest deals..."}
+                      value={msg}
+                      onChange={e => handleMessageChange(index, e.target.value)}
+                    />
                   </div>
                 ))}
               </div>
-              <p className="mt-2 text-xs text-gray-500">Variables like {`{name}`} coming soon. Add multiple variants to avoid spam detection.</p>
+              
+              {/* Media Attachment */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Media Attachment (Optional)</label>
+                <div className="flex items-center gap-4">
+                  <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <PaperClipIcon className="-ml-1 mr-2 h-5 w-5 text-gray-400" />
+                    {mediaFile ? 'Change File' : 'Attach Image/Video/Doc'}
+                    <input type="file" className="hidden" onChange={e => setMediaFile(e.target.files[0])} accept="image/*,video/*,application/pdf,.doc,.docx" />
+                  </label>
+                  {mediaFile && (
+                    <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-md text-sm">
+                      <span className="truncate max-w-xs">{mediaFile.name}</span>
+                      <button type="button" onClick={() => setMediaFile(null)} className="text-blue-500 hover:text-blue-900">
+                        <XMarkIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Supports Images (JPG, PNG), Videos (MP4), and Documents (PDF).</p>
+              </div>
+
+              <p className="mt-4 text-xs text-gray-500">Variables like {`{name}`} coming soon. Add multiple variants to avoid spam detection.</p>
             </div>
 
             {/* Message Rotation Settings (Only show if multiple templates) */}

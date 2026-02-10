@@ -5,7 +5,8 @@ import {
   BoltIcon,
   DevicePhoneMobileIcon,
   ChatBubbleLeftRightIcon,
-  ArrowRightOnRectangleIcon as LogoutIcon 
+  ArrowRightOnRectangleIcon as LogoutIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
@@ -50,6 +51,7 @@ export default function Layout({ children }) {
     { name: 'Instances', path: '/instances', icon: DevicePhoneMobileIcon },
     { name: 'Campaigns', path: '/campaigns', icon: MegaphoneIcon },
     { name: 'Automations', path: '/automations', icon: BoltIcon },
+    { name: 'Team', path: '/team', icon: UserGroupIcon },
   ];
 
   return (

@@ -23,12 +23,12 @@ const messageQueue = new Queue('campaign-messages', {
 
 // Process jobs
 messageQueue.process(async (job) => {
-  const { instanceName, number, message, campaignId, messageRecordId, tenantId } = job.data;
+  const { instanceName, number, message, campaignId, messageRecordId, tenantId, mediaUrl, mediaType } = job.data;
   
   try {
-    console.log(`Processing message for ${number} via ${instanceName}`);
+    console.log(`Processing message for ${number} via ${instanceName} (Media: ${mediaUrl ? 'Yes' : 'No'})`);
     
-    const result = await evolutionApi.sendMessage(tenantId, instanceName, number, message);
+    const result = await evolutionApi.sendMessage(tenantId, instanceName, number, message, mediaUrl, mediaType);
     
     // Extract wamid (message ID) from Evolution API response
     // V2 structure: result.key.id
@@ -127,7 +127,7 @@ async function checkCampaignCompletion(campaignId) {
  * @param {number} instanceSwitchCount - Switch instance every N messages
  * @param {number} messageRotationCount - Switch template every N messages
  */
-const addToQueue = async (instances, contacts, messageTemplates, campaignId, tenantId, delayMin = 5, delayMax = 15, instanceSwitchCount = 50, messageRotationCount = 1) => {
+const addToQueue = async (instances, contacts, messageTemplates, campaignId, tenantId, delayMin = 5, delayMax = 15, instanceSwitchCount = 50, messageRotationCount = 1, mediaUrl = null, mediaType = null) => {
   let cumulativeDelay = 0;
   const jobs = [];
   
@@ -140,11 +140,11 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
     const contact = contacts[i];
     
     // Determine which instance to use
-    const instanceIndex = Math.floor(i / instanceSwitchCount) % instanceList.length;
+    const instanceIndex = Math.floor(i / intVal(instanceSwitchCount)) % instanceList.length;
     const currentInstance = instanceList[instanceIndex];
     
     // Determine which message template to use
-    const templateIndex = Math.floor(i / messageRotationCount) % templates.length;
+    const templateIndex = Math.floor(i / intVal(messageRotationCount)) % templates.length;
     const currentMessage = templates[templateIndex];
     
     if (!currentInstance) {
@@ -160,13 +160,17 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
         messageText: currentMessage,
         status: 'pending',
         recipientNumber: contact.number,
-        tenantId
+        tenantId,
+        mediaUrl,
+        mediaType
       }
     });
     
-    // Random delay between delayMin and delayMax (in seconds, convert to ms)
-    const randomDelay = Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin;
-    cumulativeDelay += randomDelay * 1000; // Convert to milliseconds
+    // Random delay between delayMin and delayMax
+    const dMin = intVal(delayMin);
+    const dMax = intVal(delayMax);
+    const randomDelay = Math.floor(Math.random() * (dMax - dMin + 1)) + dMin;
+    cumulativeDelay += randomDelay * 1000;
     
     console.log(`[Queue] Scheduling message ${i + 1}/${contacts.length} to ${contact.number} via ${currentInstance.instanceName} (Template ${templateIndex + 1}) with ${cumulativeDelay}ms delay`);
     
@@ -176,9 +180,11 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
       message: currentMessage,
       campaignId,
       messageRecordId: messageRecord.id,
-      tenantId
+      tenantId,
+      mediaUrl,
+      mediaType
     }, {
-      delay: i === 0 ? 0 : cumulativeDelay, // First message immediate, rest with delay
+      delay: i === 0 ? 0 : cumulativeDelay, // First message immediate
       attempts: 3,
       backoff: {
         type: 'exponential',
@@ -191,6 +197,11 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
 
   return Promise.all(jobs);
 };
+
+// Helper for safe int parsing
+function intVal(val) {
+  return parseInt(val) || 1;
+}
 
 module.exports = {
   messageQueue,
