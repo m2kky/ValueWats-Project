@@ -12,7 +12,7 @@ const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 const createCampaign = async (req, res) => {
   try {
-    const { name, instanceIds, message, messages, numbers, delayMin = 5, delayMax = 15, instanceSwitchCount = 50, messageRotationCount = 1, scheduledAt, endAt } = req.body;
+    const { name, instanceIds, message, messages, numbers, googleSheetUrl, phoneColumn, delayMin = 5, delayMax = 15, instanceSwitchCount = 50, messageRotationCount = 1, scheduledAt, endAt } = req.body;
     const tenantId = req.user.tenantId;
 
     // Handle messages (support both single 'message' and array 'messages')
@@ -175,7 +175,9 @@ const createCampaign = async (req, res) => {
         messageRotationCount: parseInt(messageRotationCount),
         scheduledAt: isScheduled ? new Date(scheduledAt) : null,
         endAt: endAt ? new Date(endAt) : null,
-        mediaType
+        mediaUrl,
+        mediaType,
+        tenantId
       }
     });
 
