@@ -3,6 +3,7 @@ import {
   HomeIcon, 
   MegaphoneIcon, 
   BoltIcon,
+  DevicePhoneMobileIcon,
   ChatBubbleLeftRightIcon,
   ArrowRightOnRectangleIcon as LogoutIcon 
 } from '@heroicons/react/24/outline';
@@ -46,6 +47,7 @@ export default function Layout({ children }) {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: HomeIcon },
+    { name: 'Instances', path: '/instances', icon: DevicePhoneMobileIcon },
     { name: 'Campaigns', path: '/campaigns', icon: MegaphoneIcon },
     { name: 'Automations', path: '/automations', icon: BoltIcon },
   ];
