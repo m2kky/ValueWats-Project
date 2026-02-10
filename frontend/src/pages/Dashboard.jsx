@@ -37,8 +37,13 @@ const StatCard = ({ title, value, icon: Icon, color }) => (
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [instances, setInstances] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    instances: 0,
+    messages: { total: 0, sent: 0, delivered: 0, read: 0, failed: 0 },
+    campaigns: 0,
+    contacts: 0,
+    recentCampaigns: []
+  });
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -46,45 +51,23 @@ export default function Dashboard() {
     if (userData) {
       setUser(JSON.parse(userData));
     }
-    fetchInstances();
+    fetchStats();
 
-    // Auto-refresh every 10 seconds
+    // Auto-refresh every 15 seconds
     const interval = setInterval(() => {
-      fetchInstances();
-    }, 10000);
+      fetchStats();
+    }, 15000);
 
     return () => clearInterval(interval);
   }, []);
 
-  const fetchInstances = async () => {
+  const fetchStats = async () => {
     try {
-      const response = await api.get('/instances');
-      setInstances(response.data.instances);
+      const response = await api.get('/dashboard/stats');
+      setStats(response.data);
     } catch (error) {
-      console.error('Failed to fetch instances:', error);
-    } finally {
-      setLoading(false);
+      console.error('Failed to fetch stats:', error);
     }
-  };
-
-  const handleDisconnect = async (instanceId, instanceName) => {
-    if (!confirm(`Are you sure you want to disconnect "${instanceName}"?`)) {
-      return;
-    }
-
-    try {
-      await api.delete(`/instances/${instanceId}`);
-      fetchInstances(); // Refresh list
-    } catch (error) {
-      console.error('Failed to disconnect instance:', error);
-      alert('Failed to disconnect instance. Please try again.');
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
   };
 
   return (
@@ -94,101 +77,115 @@ export default function Dashboard() {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
-          <p className="text-gray-500 mt-1">Manage your WhatsApp instances and campaigns from one place.</p>
+          <p className="text-gray-500 mt-1">Welcome back, {user?.name || 'User'}! Here is your campaign performance.</p>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard 
             title="Active Instances" 
-            value={instances.filter(i => i.status === 'connected').length}
+            value={stats.instances}
             icon={SignalIcon}
             color="bg-green-500"
           />
           <StatCard 
             title="Total Messages" 
-            value="1,240"
+            value={stats.messages.total.toLocaleString()}
             icon={ChatBubbleLeftRightIcon}
             color="bg-blue-500"
           />
           <StatCard 
             title="Total Campaigns" 
-            value="3"
+            value={stats.campaigns}
             icon={MegaphoneIcon}
             color="bg-purple-500"
           />
           <StatCard 
-            title="Total Contacts" 
-            value="5,420"
+            title="Unique Contacts" 
+            value={stats.contacts.toLocaleString()}
             icon={UserGroupIcon}
             color="bg-orange-500"
           />
         </div>
 
-        {/* Instances Section */}
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">WhatsApp Instances</h2>
-              <p className="text-sm text-gray-500">Manage your connected devices</p>
-            </div>
-            <a href="/instances/new" className="btn-primary flex items-center gap-2">
-              <PlusIcon className="w-5 h-5" />
-              Connect New Instance
-            </a>
-          </div>
-
-          <div className="card-body">
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              </div>
-            ) : instances.length === 0 ? (
-              <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                <QrCodeIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No instances connected</h3>
-                <p className="text-gray-500 mb-6 max-w-sm mx-auto">Get started by connecting your first WhatsApp number to start sending messages.</p>
-                <a href="/instances/new" className="btn-primary">
-                  Connect Instance
-                </a>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {instances.map((instance) => (
-                  <div key={instance.id} className="border border-gray-200 rounded-xl p-5 hover:border-blue-300 transition-colors group bg-white shadow-sm">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="bg-green-100 p-2.5 rounded-lg group-hover:bg-green-200 transition-colors">
-                        <span className="text-2xl">📱</span>
-                      </div>
-                      <span className={`badge ${
-                        instance.status === 'connected' ? 'badge-success' : 
-                        instance.status === 'qr_pending' ? 'badge-warning' : 'badge-error'
-                      }`}>
-                        {instance.status.replace('_', ' ')}
-                      </span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Message Status Breakdown */}
+          <div className="card">
+             <div className="card-header">
+                <h2 className="text-lg font-bold text-gray-900">Message Status</h2>
+             </div>
+             <div className="card-body">
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm font-medium mb-1">
+                      <span>Sent</span>
+                      <span>{stats.messages.sent}</span>
                     </div>
-                    
-                    <h3 className="font-bold text-gray-900 text-lg mb-1">{instance.instanceName}</h3>
-                    <p className="text-gray-500 text-sm mb-4">{instance.phoneNumber || 'Waiting for connection...'}</p>
-                    
-                    <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
-                      <button 
-                        onClick={() => navigate(`/instances/${instance.id}`)}
-                        className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors"
-                      >
-                        View Details
-                      </button>
-                      <button 
-                        onClick={() => handleDisconnect(instance.id, instance.instanceName)}
-                        className="text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
-                      >
-                        Disconnect
-                      </button>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                       <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${stats.messages.total > 0 ? (stats.messages.sent / stats.messages.total * 100) : 0}%` }}></div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div>
+                    <div className="flex justify-between text-sm font-medium mb-1">
+                      <span>Delivered</span>
+                      <span>{stats.messages.delivered}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                       <div className="bg-green-500 h-2 rounded-full" style={{ width: `${stats.messages.total > 0 ? (stats.messages.delivered / stats.messages.total * 100) : 0}%` }}></div>
+                    </div>
+                  </div>
+                   <div>
+                    <div className="flex justify-between text-sm font-medium mb-1">
+                      <span>Read</span>
+                      <span>{stats.messages.read}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                       <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${stats.messages.total > 0 ? (stats.messages.read / stats.messages.total * 100) : 0}%` }}></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm font-medium mb-1">
+                      <span>Failed</span>
+                      <span>{stats.messages.failed}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                       <div className="bg-red-500 h-2 rounded-full" style={{ width: `${stats.messages.total > 0 ? (stats.messages.failed / stats.messages.total * 100) : 0}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+             </div>
+          </div>
+
+          {/* Recent Campaigns */}
+          <div className="card">
+             <div className="card-header flex justify-between items-center">
+                <h2 className="text-lg font-bold text-gray-900">Recent Campaigns</h2>
+                <a href="/campaigns" className="text-sm text-blue-600 hover:text-blue-800">View All</a>
+             </div>
+             <div className="divide-y divide-gray-200">
+                {stats.recentCampaigns.length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">No campaigns yet.</div>
+                ) : (
+                  stats.recentCampaigns.map(campaign => (
+                    <div key={campaign.id} className="p-4 hover:bg-gray-50 flex justify-between items-center cursor-pointer" onClick={() => navigate(`/campaigns/${campaign.id}`)}>
+                       <div>
+                          <p className="font-medium text-gray-900">{campaign.name}</p>
+                          <p className="text-sm text-gray-500">{new Date(campaign.createdAt).toLocaleDateString()}</p>
+                       </div>
+                       <div className="flex items-center gap-4">
+                          <span className="text-sm text-gray-600">{campaign.messageCount} msgs</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            campaign.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                            campaign.status === 'FAILED' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {campaign.status}
+                          </span>
+                       </div>
+                    </div>
+                  ))
+                )}
+             </div>
           </div>
         </div>
       </main>
