@@ -25,7 +25,8 @@ export default function NewCampaign() {
     instanceSwitchCount: 50,
     messageRotationCount: 1,
     scheduleEnabled: false,
-    scheduledAt: ''
+    scheduledAt: '',
+    endAt: ''
   });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -105,6 +106,9 @@ export default function NewCampaign() {
       
       if (formData.scheduleEnabled && formData.scheduledAt) {
         data.append('scheduledAt', new Date(formData.scheduledAt).toISOString());
+      }
+      if (formData.endAt) {
+        data.append('endAt', new Date(formData.endAt).toISOString());
       }
       
       if (activeTab === 'manual') {
@@ -423,7 +427,7 @@ export default function NewCampaign() {
                 </label>
                 <button
                   type="button"
-                  onClick={() => setFormData({...formData, scheduleEnabled: !formData.scheduleEnabled, scheduledAt: ''})}
+                  onClick={() => setFormData({...formData, scheduleEnabled: !formData.scheduleEnabled, scheduledAt: '', endAt: ''})}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     formData.scheduleEnabled ? 'bg-indigo-600' : 'bg-gray-300'
                   }`}
@@ -434,20 +438,43 @@ export default function NewCampaign() {
                 </button>
               </div>
               {formData.scheduleEnabled ? (
-                <div>
-                  <div className="flex items-center gap-2">
-                    <ClockIcon className="h-4 w-4 text-indigo-500" />
-                    <input
-                      type="datetime-local"
-                      required={formData.scheduleEnabled}
-                      min={new Date(Date.now() + 5 * 60000).toISOString().slice(0, 16)}
-                      value={formData.scheduledAt}
-                      onChange={e => setFormData({...formData, scheduledAt: e.target.value})}
-                      className="flex-1 px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                    />
+                <div className="space-y-3">
+                  {/* Start Time */}
+                  <div>
+                    <label className="text-xs font-medium text-indigo-800 mb-1 block">Start Time</label>
+                    <div className="flex items-center gap-2">
+                      <ClockIcon className="h-4 w-4 text-indigo-500" />
+                      <input
+                        type="datetime-local"
+                        required={formData.scheduleEnabled}
+                        min={new Date(Date.now() + 5 * 60000).toISOString().slice(0, 16)}
+                        value={formData.scheduledAt}
+                        onChange={e => setFormData({...formData, scheduledAt: e.target.value})}
+                        className="flex-1 px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                      />
+                    </div>
                   </div>
-                  <p className="mt-2 text-xs text-indigo-600">
-                    💡 Campaign will automatically launch at the scheduled time. Minimum 5 minutes from now.
+                  {/* End Time (optional) */}
+                  <div>
+                    <label className="text-xs font-medium text-indigo-800 mb-1 block">End Time <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <div className="flex items-center gap-2">
+                      <ClockIcon className="h-4 w-4 text-red-400" />
+                      <input
+                        type="datetime-local"
+                        min={formData.scheduledAt || new Date(Date.now() + 10 * 60000).toISOString().slice(0, 16)}
+                        value={formData.endAt}
+                        onChange={e => setFormData({...formData, endAt: e.target.value})}
+                        className="flex-1 px-3 py-2 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 text-sm"
+                      />
+                      {formData.endAt && (
+                        <button type="button" onClick={() => setFormData({...formData, endAt: ''})} className="text-gray-400 hover:text-red-500">
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-indigo-600">
+                    💡 Campaign launches at start time.{formData.endAt ? ' Unsent messages will be cancelled at end time.' : ' No end time — runs until complete.'}
                   </p>
                 </div>
               ) : (

@@ -170,7 +170,13 @@ export default function CampaignDetails() {
                 {campaign.status === 'SCHEDULED' && campaign.scheduledAt && (
                   <div className="mt-2 flex items-center text-sm text-indigo-600 font-medium">
                     <CalendarDaysIcon className="flex-shrink-0 mr-1.5 h-5 w-5 text-indigo-500" />
-                    Scheduled: {new Date(campaign.scheduledAt).toLocaleString()}
+                    Starts: {new Date(campaign.scheduledAt).toLocaleString()}
+                  </div>
+                )}
+                {campaign.endAt && (
+                  <div className="mt-2 flex items-center text-sm text-red-500 font-medium">
+                    <ClockIcon className="flex-shrink-0 mr-1.5 h-5 w-5 text-red-400" />
+                    Ends: {new Date(campaign.endAt).toLocaleString()}
                   </div>
                 )}
               </div>

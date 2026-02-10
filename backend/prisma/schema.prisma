@@ -74,6 +74,7 @@ model Campaign {
   instanceSwitchCount Int     @default(50) @map("instance_switch_count") // Switch instance every N messages
   messageRotationCount Int    @default(1) @map("message_rotation_count") // Switch template every N messages
   scheduledAt     DateTime? @map("scheduled_at")
+  endAt           DateTime? @map("end_at")
   createdAt       DateTime  @default(now()) @map("created_at")
 
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
