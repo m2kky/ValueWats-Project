@@ -227,9 +227,189 @@ const getActiveCampaigns = async (req, res) => {
   }
 };
 
+// Pause a campaign (set status to PAUSED, pending jobs stay in queue)
+const pauseCampaign = async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const { id } = req.params;
+
+    const campaign = await prisma.campaign.findFirst({ where: { id, tenantId } });
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+    if (campaign.status !== 'PROCESSING') {
+      return res.status(400).json({ error: 'Only PROCESSING campaigns can be paused' });
+    }
+
+    await prisma.campaign.update({
+      where: { id },
+      data: { status: 'PAUSED' }
+    });
+
+    // Remove pending jobs for this campaign from the queue
+    const { messageQueue } = require('../services/queueService');
+    const jobs = await messageQueue.getDelayed();
+    for (const job of jobs) {
+      if (job.data.campaignId === id) {
+        await job.remove();
+      }
+    }
+
+    res.json({ message: 'Campaign paused' });
+  } catch (error) {
+    console.error('Pause Campaign Error:', error);
+    res.status(500).json({ error: 'Failed to pause campaign' });
+  }
+};
+
+// Resume a paused campaign (re-queue pending messages)
+const resumeCampaign = async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const { id } = req.params;
+
+    const campaign = await prisma.campaign.findFirst({
+      where: { id, tenantId },
+    });
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+    if (campaign.status !== 'PAUSED') {
+      return res.status(400).json({ error: 'Only PAUSED campaigns can be resumed' });
+    }
+
+    // Get pending messages for this campaign
+    const pendingMessages = await prisma.message.findMany({
+      where: { campaignId: id, status: 'pending' },
+      include: { instance: true }
+    });
+
+    if (pendingMessages.length === 0) {
+      // No pending messages, mark as completed
+      await prisma.campaign.update({
+        where: { id },
+        data: { status: 'COMPLETED' }
+      });
+      return res.json({ message: 'No pending messages. Campaign marked as completed.' });
+    }
+
+    // Re-queue pending messages
+    const { messageQueue } = require('../services/queueService');
+    let cumulativeDelay = 0;
+
+    for (let i = 0; i < pendingMessages.length; i++) {
+      const msg = pendingMessages[i];
+      const delayMin = campaign.delayMin || 5;
+      const delayMax = campaign.delayMax || 15;
+      const randomDelay = Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin;
+      cumulativeDelay += randomDelay * 1000;
+
+      await messageQueue.add({
+        instanceName: msg.instance.instanceName,
+        number: msg.recipientNumber,
+        message: msg.messageText,
+        campaignId: id,
+        messageRecordId: msg.id,
+        tenantId
+      }, {
+        delay: i === 0 ? 0 : cumulativeDelay,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 }
+      });
+    }
+
+    await prisma.campaign.update({
+      where: { id },
+      data: { status: 'PROCESSING' }
+    });
+
+    res.json({ message: `Campaign resumed. ${pendingMessages.length} messages re-queued.` });
+  } catch (error) {
+    console.error('Resume Campaign Error:', error);
+    res.status(500).json({ error: 'Failed to resume campaign' });
+  }
+};
+
+// Stop a campaign (cancel all pending messages permanently)
+const stopCampaign = async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const { id } = req.params;
+
+    const campaign = await prisma.campaign.findFirst({ where: { id, tenantId } });
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+    if (campaign.status === 'COMPLETED' || campaign.status === 'FAILED') {
+      return res.status(400).json({ error: 'Campaign is already finished' });
+    }
+
+    // Remove pending jobs from queue
+    const { messageQueue } = require('../services/queueService');
+    const delayedJobs = await messageQueue.getDelayed();
+    const waitingJobs = await messageQueue.getWaiting();
+    const allJobs = [...delayedJobs, ...waitingJobs];
+    let removed = 0;
+    for (const job of allJobs) {
+      if (job.data.campaignId === id) {
+        await job.remove();
+        removed++;
+      }
+    }
+
+    // Mark remaining pending messages as CANCELLED
+    await prisma.message.updateMany({
+      where: { campaignId: id, status: 'pending' },
+      data: { status: 'FAILED' }
+    });
+
+    await prisma.campaign.update({
+      where: { id },
+      data: { status: 'FAILED' }
+    });
+
+    res.json({ message: `Campaign stopped. ${removed} queued jobs removed.` });
+  } catch (error) {
+    console.error('Stop Campaign Error:', error);
+    res.status(500).json({ error: 'Failed to stop campaign' });
+  }
+};
+
+// Delete a campaign and all its messages
+const deleteCampaign = async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const { id } = req.params;
+
+    const campaign = await prisma.campaign.findFirst({ where: { id, tenantId } });
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+
+    // If campaign is still processing, stop it first
+    if (campaign.status === 'PROCESSING' || campaign.status === 'PAUSED') {
+      const { messageQueue } = require('../services/queueService');
+      const delayedJobs = await messageQueue.getDelayed();
+      const waitingJobs = await messageQueue.getWaiting();
+      for (const job of [...delayedJobs, ...waitingJobs]) {
+        if (job.data.campaignId === id) {
+          await job.remove();
+        }
+      }
+    }
+
+    // Delete related records first, then campaign
+    await prisma.message.deleteMany({ where: { campaignId: id } });
+    await prisma.messageTemplate.deleteMany({ where: { campaignId: id } });
+    await prisma.campaignInstance.deleteMany({ where: { campaignId: id } });
+    await prisma.campaign.delete({ where: { id } });
+
+    res.json({ message: 'Campaign deleted' });
+  } catch (error) {
+    console.error('Delete Campaign Error:', error);
+    res.status(500).json({ error: 'Failed to delete campaign' });
+  }
+};
+
 module.exports = {
   createCampaign,
   getCampaigns,
   getCampaignById,
-  getActiveCampaigns
+  getActiveCampaigns,
+  pauseCampaign,
+  resumeCampaign,
+  stopCampaign,
+  deleteCampaign
 };

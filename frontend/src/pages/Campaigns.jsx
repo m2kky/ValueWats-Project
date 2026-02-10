@@ -6,7 +6,11 @@ import {
   MegaphoneIcon,
   ClockIcon,
   CheckCircleIcon,
-  ArrowPathIcon
+  PauseIcon,
+  PlayIcon,
+  StopIcon,
+  TrashIcon,
+  EllipsisVerticalIcon
 } from '@heroicons/react/24/outline';
 
 const CampaignStatus = ({ status }) => {
@@ -14,7 +18,8 @@ const CampaignStatus = ({ status }) => {
     PROCESSING: 'bg-blue-100 text-blue-800',
     COMPLETED: 'bg-green-100 text-green-800',
     FAILED: 'bg-red-100 text-red-800',
-    PENDING: 'bg-yellow-100 text-yellow-800'
+    PENDING: 'bg-yellow-100 text-yellow-800',
+    PAUSED: 'bg-orange-100 text-orange-800'
   };
 
   return (
@@ -27,10 +32,10 @@ const CampaignStatus = ({ status }) => {
 export default function Campaigns() {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   useEffect(() => {
     fetchCampaigns();
-    // Poll for updates every 10 seconds
     const interval = setInterval(fetchCampaigns, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -44,6 +49,29 @@ export default function Campaigns() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAction = async (e, campaignId, action, confirmMsg) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (confirmMsg && !confirm(confirmMsg)) return;
+    try {
+      if (action === 'delete') {
+        await api.delete(`/campaigns/${campaignId}`);
+      } else {
+        await api.post(`/campaigns/${campaignId}/${action}`);
+      }
+      setOpenMenuId(null);
+      fetchCampaigns();
+    } catch (error) {
+      alert(error.response?.data?.error || `Failed to ${action} campaign`);
+    }
+  };
+
+  const toggleMenu = (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpenMenuId(openMenuId === id ? null : id);
   };
 
   return (
@@ -104,12 +132,57 @@ export default function Campaigns() {
                            <div>
                               <p className="text-sm font-medium text-blue-600 truncate">{campaign.name}</p>
                               <p className="flex items-center text-sm text-gray-500 mt-0.5">
-                                <span className="truncate">{campaign.messageTemplate.substring(0, 50)}...</span>
+                                <span className="truncate">{campaign.messageTemplate?.substring(0, 50)}...</span>
                               </p>
                            </div>
                         </div>
-                        <div className="ml-2 flex-shrink-0 flex gap-2">
+                        <div className="ml-2 flex-shrink-0 flex items-center gap-2">
                           <CampaignStatus status={campaign.status} />
+
+                          {/* Actions Menu */}
+                          <div className="relative">
+                            <button
+                              onClick={(e) => toggleMenu(e, campaign.id)}
+                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                              <EllipsisVerticalIcon className="h-5 w-5" />
+                            </button>
+
+                            {openMenuId === campaign.id && (
+                              <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1">
+                                {campaign.status === 'PROCESSING' && (
+                                  <button
+                                    onClick={(e) => handleAction(e, campaign.id, 'pause')}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-orange-700 hover:bg-orange-50 transition-colors"
+                                  >
+                                    <PauseIcon className="h-4 w-4" /> Pause
+                                  </button>
+                                )}
+                                {campaign.status === 'PAUSED' && (
+                                  <button
+                                    onClick={(e) => handleAction(e, campaign.id, 'resume')}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-green-700 hover:bg-green-50 transition-colors"
+                                  >
+                                    <PlayIcon className="h-4 w-4" /> Resume
+                                  </button>
+                                )}
+                                {(campaign.status === 'PROCESSING' || campaign.status === 'PAUSED') && (
+                                  <button
+                                    onClick={(e) => handleAction(e, campaign.id, 'stop', 'Stop this campaign and cancel pending messages?')}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors"
+                                  >
+                                    <StopIcon className="h-4 w-4" /> Stop
+                                  </button>
+                                )}
+                                <button
+                                  onClick={(e) => handleAction(e, campaign.id, 'delete', 'Delete this campaign and all its messages? This cannot be undone.')}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors"
+                                >
+                                  <TrashIcon className="h-4 w-4" /> Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="mt-2 sm:flex sm:justify-between">

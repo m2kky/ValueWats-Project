@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import io from 'socket.io-client';
 import { 
   ArrowLeftIcon, 
   MegaphoneIcon, 
   ClockIcon, 
-  CheckCircleIcon, 
-  XCircleIcon,
-  ChatBubbleLeftRightIcon
+  PauseIcon,
+  PlayIcon,
+  StopIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 const CampaignStatus = ({ status }) => {
@@ -17,6 +18,7 @@ const CampaignStatus = ({ status }) => {
     COMPLETED: 'bg-green-100 text-green-800',
     FAILED: 'bg-red-100 text-red-800',
     PENDING: 'bg-yellow-100 text-yellow-800',
+    PAUSED: 'bg-orange-100 text-orange-800',
     DRAFT: 'bg-gray-100 text-gray-800'
   };
 
@@ -29,8 +31,10 @@ const CampaignStatus = ({ status }) => {
 
 export default function CampaignDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     sent: 0,
@@ -70,7 +74,6 @@ export default function CampaignDetails() {
 
     // Initialize Socket.io
     const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    // Remove /api suffix if present for socket connection
     const baseUrl = socketUrl.replace('/api', '');
     
     socketRef.current = io(baseUrl);
@@ -84,17 +87,11 @@ export default function CampaignDetails() {
       console.log('Campaign progress update:', data);
       
       if (data.type === 'MESSAGE_UPDATE') {
-         // Update stats locally
          setStats(prev => {
             const newStats = { ...prev };
-            // Simple increment based on status change logic isn't perfect without previous state,
-            // but for now let's just increment the new status count.
-            // A better way would be reload stats or have backend send full stats.
-            // For now, let's just re-fetch campaign details to get accurate stats
-            // to avoid drift, but maybe debounce it.
             return newStats;
          });
-         fetchCampaignDetails(); // Re-fetch for accuracy
+         fetchCampaignDetails();
       }
     });
 
@@ -102,6 +99,25 @@ export default function CampaignDetails() {
       if (socketRef.current) socketRef.current.disconnect();
     };
   }, [id, fetchCampaignDetails]);
+
+  // Campaign Actions
+  const handleAction = async (action, confirmMsg) => {
+    if (confirmMsg && !confirm(confirmMsg)) return;
+    setActionLoading(true);
+    try {
+      if (action === 'delete') {
+        await api.delete(`/campaigns/${id}`);
+        navigate('/campaigns');
+        return;
+      }
+      await api.post(`/campaigns/${id}/${action}`);
+      fetchCampaignDetails();
+    } catch (error) {
+      alert(error.response?.data?.error || `Failed to ${action} campaign`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -125,7 +141,6 @@ export default function CampaignDetails() {
   // Calculate percentages
   const sentPercent = stats.total > 0 ? (stats.sent / stats.total) * 100 : 0;
   const failedPercent = stats.total > 0 ? (stats.failed / stats.total) * 100 : 0;
-  // const deliveredPercent = stats.total > 0 ? (stats.delivered / stats.total) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -153,8 +168,47 @@ export default function CampaignDetails() {
                 </div>
               </div>
             </div>
-             <div className="mt-4 flex md:mt-0 md:ml-4">
-                 {/* Actions like pause/resume could go here */}
+
+             {/* Action Buttons */}
+             <div className="mt-4 flex gap-2 md:mt-0 md:ml-4 flex-wrap">
+               {campaign.status === 'PROCESSING' && (
+                 <button
+                   onClick={() => handleAction('pause')}
+                   disabled={actionLoading}
+                   className="inline-flex items-center px-3 py-2 border border-orange-300 text-sm font-medium rounded-lg text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors disabled:opacity-50 gap-1.5"
+                 >
+                   <PauseIcon className="h-4 w-4" />
+                   Pause
+                 </button>
+               )}
+               {campaign.status === 'PAUSED' && (
+                 <button
+                   onClick={() => handleAction('resume')}
+                   disabled={actionLoading}
+                   className="inline-flex items-center px-3 py-2 border border-green-300 text-sm font-medium rounded-lg text-green-700 bg-green-50 hover:bg-green-100 transition-colors disabled:opacity-50 gap-1.5"
+                 >
+                   <PlayIcon className="h-4 w-4" />
+                   Resume
+                 </button>
+               )}
+               {(campaign.status === 'PROCESSING' || campaign.status === 'PAUSED') && (
+                 <button
+                   onClick={() => handleAction('stop', 'This will stop the campaign and cancel all pending messages. Continue?')}
+                   disabled={actionLoading}
+                   className="inline-flex items-center px-3 py-2 border border-red-300 text-sm font-medium rounded-lg text-red-700 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 gap-1.5"
+                 >
+                   <StopIcon className="h-4 w-4" />
+                   Stop
+                 </button>
+               )}
+               <button
+                 onClick={() => handleAction('delete', 'Are you sure you want to DELETE this campaign and ALL its messages? This cannot be undone.')}
+                 disabled={actionLoading}
+                 className="inline-flex items-center px-3 py-2 border border-red-300 text-sm font-medium rounded-lg text-red-700 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 gap-1.5"
+               >
+                 <TrashIcon className="h-4 w-4" />
+                 Delete
+               </button>
              </div>
           </div>
         </div>
