@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, CreateBucketCommand, HeadBucketCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, CreateBucketCommand, HeadBucketCommand, PutBucketPolicyCommand } = require('@aws-sdk/client-s3');
 const { NodeHttpHandler } = require("@smithy/node-http-handler");
 const https = require("https");
 const path = require('path');
@@ -33,6 +33,29 @@ const ensureBucketExists = async () => {
         console.error('Failed to create bucket:', err);
       }
     }
+  }
+
+  // Set Public Policy
+  try {
+    const policy = {
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Sid: "PublicRead",
+          Effect: "Allow",
+          Principal: "*",
+          Action: ["s3:GetObject"],
+          Resource: [`arn:aws:s3:::${BUCKET_NAME}/*`]
+        }
+      ]
+    };
+    await s3Client.send(new PutBucketPolicyCommand({
+      Bucket: BUCKET_NAME,
+      Policy: JSON.stringify(policy)
+    }));
+    console.log(`Bucket ${BUCKET_NAME} policy set to public-read.`);
+  } catch (err) {
+    console.error('Failed to set bucket policy:', err);
   }
 };
 

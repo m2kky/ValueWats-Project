@@ -64,10 +64,10 @@ class EvolutionAPI {
 
     // ✨ Auto-configure webhook
     // Use internal service name for Docker network communication
+    // ✨ Auto-configure webhook
+    // Use public or internal URL from env
     const webhookUrl = process.env.WEBHOOK_INTERNAL_URL 
-      || (process.env.NODE_ENV === 'production' 
-        ? 'http://grumpy-gentoo-i0kwck044gc80s0osco8w0wg:3000/api/webhooks/whatsapp'
-        : `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/whatsapp`);
+      || `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/whatsapp`;
     
     console.log('Setting webhook for instance:', sanitizedInstanceName, 'URL:', webhookUrl);
     // Don't await webhook setup to speed up response
