@@ -34,6 +34,7 @@ app.use(cors({
   origin: [
     'https://missed-legend-schemes-governance.trycloudflare.com',
     'https://approximately-designing-pitch-browser.trycloudflare.com',
+    'https://lite-athletics-browse-deaths.trycloudflare.com',
     /\.trycloudflare\.com$/,
     'http://localhost:5173',
     'http://localhost:3000'
