@@ -13,5 +13,15 @@ export default defineConfig({
                 secure: false,
             }
         }
+    },
+    preview: {
+        allowedHosts: ['missed-legend-schemes-governance.trycloudflare.com'],
+        proxy: {
+            '/api': {
+                target: 'http://localhost:3000',
+                changeOrigin: true,
+                secure: false,
+            }
+        }
     }
 })
