@@ -80,6 +80,23 @@ const handleIncomingMessage = async (req, res) => {
       return res.status(200).send('OK');
     }
 
+    // Handle send message confirmations
+    if (event === 'send.message' || event === 'SEND_MESSAGE') {
+      try {
+        const wamid = data?.key?.id;
+        if (wamid) {
+          await prisma.message.updateMany({
+            where: { wamid },
+            data: { status: 'SENT', sentAt: new Date() }
+          });
+          console.log(`[Webhook] Send confirmed for wamid: ${wamid}`);
+        }
+      } catch (err) {
+        console.error('[Webhook] Error processing send confirmation:', err);
+      }
+      return res.status(200).send('OK');
+    }
+
     // Only process text messages (Upsert)
     if (event !== 'messages.upsert' && event !== 'MESSAGES_UPSERT') {
       return res.status(200).send('OK');

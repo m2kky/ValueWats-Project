@@ -67,11 +67,11 @@ class EvolutionAPI {
     // ✨ Auto-configure webhook
     // Use public or internal URL from env
     const webhookUrl = process.env.WEBHOOK_INTERNAL_URL 
-      || `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/whatsapp`;
+      || `${process.env.BACKEND_WEBHOOK_URL || process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/receive`;
     
     console.log('Setting webhook for instance:', sanitizedInstanceName, 'URL:', webhookUrl);
     // Don't await webhook setup to speed up response
-    this.setWebhook(sanitizedInstanceName, webhookUrl, true).catch(err => 
+    this.setWebhook(sanitizedInstanceName, webhookUrl, true, tenantId).catch(err => 
       console.error('Background webhook setup failed:', err.message)
     );
 
@@ -213,8 +213,13 @@ Stack: ${error.stack}
   /**
    * Set Webhook for instance
    */
-  async setWebhook(instanceName, webhookUrl, enabled = true) {
+  async setWebhook(instanceName, webhookUrl, enabled = true, tenantId = null) {
     try {
+      const webhookHeaders = {
+        'X-Instance-Name': instanceName
+      };
+      if (tenantId) webhookHeaders['X-Tenant-ID'] = tenantId;
+
       const response = await axios.post(
         `${this.baseURL}/webhook/set/${instanceName}`,
         {
@@ -225,8 +230,10 @@ Stack: ${error.stack}
               'MESSAGES_UPSERT',
               'MESSAGES_UPDATE',
               'CONNECTION_UPDATE',
-              'QRCODE_UPDATED'
+              'QRCODE_UPDATED',
+              'SEND_MESSAGE'
             ],
+            headers: webhookHeaders,
             enabled
           }
         },
@@ -235,6 +242,7 @@ Stack: ${error.stack}
         }
       );
 
+      console.log(`✅ Webhook configured for ${instanceName} → ${webhookUrl}`);
       return response.data;
     } catch (error) {
       console.error('Set webhook error:', error.response?.data || error.message);
