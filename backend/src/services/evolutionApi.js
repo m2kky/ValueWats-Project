@@ -225,8 +225,10 @@ Stack: ${error.stack}
         `${this.baseURL}/webhook/set/${instanceName}`,
         {
           webhook: {
+            enabled,
             url: webhookUrl,
-            byEvents: true,
+            webhookByEvents: false, // ✅ Important for v2 compatibility
+            webhookBase64: false,
             events: [
               'MESSAGES_UPSERT',
               'MESSAGES_UPDATE',
@@ -234,8 +236,7 @@ Stack: ${error.stack}
               'QRCODE_UPDATED',
               'SEND_MESSAGE'
             ],
-            headers: webhookHeaders,
-            enabled
+            headers: webhookHeaders
           }
         },
         {
