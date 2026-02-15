@@ -32,8 +32,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // CORS configuration
 app.use(cors({
   origin: [
-    'https://missed-legend-schemes-governance.trycloudflare.com',
-    'https://approximately-designing-pitch-browser.trycloudflare.com',
+    'https://suggest-new-minerals-metabolism.trycloudflare.com',
     'https://lite-athletics-browse-deaths.trycloudflare.com',
     'https://anthropology-love-prevent-limits.trycloudflare.com',
     /\.trycloudflare\.com$/,
