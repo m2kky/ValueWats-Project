@@ -50,6 +50,7 @@ export default function Layout({ children }) {
     { name: 'Dashboard', path: '/dashboard', icon: HomeIcon },
     { name: 'Instances', path: '/instances', icon: DevicePhoneMobileIcon },
     { name: 'Campaigns', path: '/campaigns', icon: MegaphoneIcon },
+    { name: 'Inbox', path: '/inbox', icon: ChatBubbleLeftRightIcon },
     { name: 'Automations', path: '/automations', icon: BoltIcon },
     { name: 'Team', path: '/team', icon: UserGroupIcon },
   ];

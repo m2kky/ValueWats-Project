@@ -1,5 +1,7 @@
 const aiService = require('../services/aiService');
 const evolutionApi = require('../services/evolutionApi');
+const chatService = require('../services/chat.service');
+const socketService = require('../services/socketService');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -108,15 +110,10 @@ const handleIncomingMessage = async (req, res) => {
     const text = messageData.conversation || messageData.extendedTextMessage?.text;
     const remoteJid = data.key.remoteJid;
     const fromMe = data.key.fromMe;
+    const contactNumber = remoteJid.replace('@s.whatsapp.net', '');
+    const wamid = data.key.id;
 
-    // Ignore messages sent by me
-    if (fromMe || !text) {
-      return res.status(200).send('OK');
-    }
-
-    console.log(`[Webhook] Received message from ${remoteJid}: ${text}`);
-
-    // Find instance
+    // Find instance first (needed for chat + automations)
     const instance = await prisma.instance.findUnique({
       where: { instanceName },
       include: { tenant: true }
@@ -126,6 +123,43 @@ const handleIncomingMessage = async (req, res) => {
       console.error(`[Webhook] Instance ${instanceName} not found`);
       return res.status(200).send('OK');
     }
+
+    // ====== CHAT INBOX PERSISTENCE ======
+    try {
+      const conversation = await chatService.upsertConversation(
+        instance.tenantId,
+        contactNumber,
+        { content: text, fromMe }
+      );
+
+      const chatMsg = await chatService.saveMessage(conversation.id, {
+        instanceId: instance.id,
+        fromMe,
+        senderNumber: fromMe ? instanceName : contactNumber,
+        recipientNumber: fromMe ? contactNumber : instanceName,
+        messageType: 'text',
+        content: text || null,
+        wamid,
+        status: fromMe ? 'sent' : 'delivered'
+      });
+
+      // Emit real-time event if message was saved
+      if (chatMsg) {
+        socketService.emitChatMessage(instance.tenantId, 'chat:message_received', {
+          conversation,
+          message: chatMsg
+        });
+      }
+    } catch (chatErr) {
+      console.error('[Webhook] Chat persistence error (non-fatal):', chatErr.message);
+    }
+
+    // Ignore outgoing or empty messages for automation processing
+    if (fromMe || !text) {
+      return res.status(200).send('OK');
+    }
+
+    console.log(`[Webhook] Received message from ${remoteJid}: ${text}`);
 
     // ====== AUTOMATION RULES CHECK ======
     // Find active automation rules for this instance

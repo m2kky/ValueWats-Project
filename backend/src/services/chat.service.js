@@ -1,0 +1,182 @@
+const prisma = require('../config/database');
+const evolutionApi = require('./evolutionApi');
+
+class ChatService {
+  /**
+   * Create or update a conversation
+   */
+  async upsertConversation(tenantId, contactNumber, messageData = {}) {
+    try {
+      const conversation = await prisma.conversation.upsert({
+        where: {
+          tenantId_contactNumber: { tenantId, contactNumber }
+        },
+        update: {
+          lastMessage: messageData.content?.substring(0, 100) || '[Media]',
+          lastMessageAt: new Date(),
+          unreadCount: messageData.fromMe ? { set: 0 } : { increment: 1 },
+          status: 'open'
+        },
+        create: {
+          tenantId,
+          contactNumber,
+          contactName: messageData.contactName || contactNumber,
+          lastMessage: messageData.content?.substring(0, 100) || '[Media]',
+          lastMessageAt: new Date(),
+          unreadCount: messageData.fromMe ? 0 : 1,
+          status: 'open'
+        }
+      });
+
+      return conversation;
+    } catch (error) {
+      console.error('[ChatService] Error upserting conversation:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save a chat message
+   */
+  async saveMessage(conversationId, messageData) {
+    try {
+      const message = await prisma.chatMessage.create({
+        data: {
+          conversationId,
+          instanceId: messageData.instanceId || null,
+          direction: messageData.fromMe ? 'outgoing' : 'incoming',
+          senderNumber: messageData.senderNumber,
+          recipientNumber: messageData.recipientNumber,
+          messageType: messageData.messageType || 'text',
+          content: messageData.content,
+          mediaUrl: messageData.mediaUrl || null,
+          wamid: messageData.wamid || null,
+          status: messageData.status || 'sent'
+        }
+      });
+
+      return message;
+    } catch (error) {
+      // Skip duplicate wamid errors silently
+      if (error.code === 'P2002' && error.meta?.target?.includes('wamid')) {
+        console.log(`[ChatService] Duplicate wamid skipped: ${messageData.wamid}`);
+        return null;
+      }
+      console.error('[ChatService] Error saving message:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get conversations list for a tenant
+   */
+  async getConversations(tenantId, filters = {}) {
+    const { status, search, limit = 50, offset = 0 } = filters;
+
+    const where = {
+      tenantId,
+      ...(status && { status }),
+      ...(search && {
+        OR: [
+          { contactName: { contains: search, mode: 'insensitive' } },
+          { contactNumber: { contains: search } }
+        ]
+      })
+    };
+
+    const conversations = await prisma.conversation.findMany({
+      where,
+      orderBy: { lastMessageAt: 'desc' },
+      take: limit,
+      skip: offset
+    });
+
+    return conversations;
+  }
+
+  /**
+   * Get a single conversation with its messages
+   */
+  async getConversation(conversationId, tenantId) {
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, tenantId },
+      include: {
+        messages: {
+          include: {
+            instance: {
+              select: { id: true, instanceName: true }
+            }
+          },
+          orderBy: { createdAt: 'asc' },
+          take: 200
+        }
+      }
+    });
+
+    return conversation;
+  }
+
+  /**
+   * Mark conversation as read
+   */
+  async markAsRead(conversationId, tenantId) {
+    await prisma.conversation.updateMany({
+      where: { id: conversationId, tenantId },
+      data: { unreadCount: 0 }
+    });
+  }
+
+  /**
+   * Send a message from the inbox
+   */
+  async sendMessage(tenantId, messageData) {
+    const { conversationId, instanceId, content, mediaUrl, messageType } = messageData;
+
+    // Validate conversation
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, tenantId }
+    });
+    if (!conversation) throw new Error('Conversation not found');
+
+    // Validate instance
+    const instance = await prisma.instance.findFirst({
+      where: { id: instanceId, tenantId }
+    });
+    if (!instance) throw new Error('Instance not found');
+
+    // Send via Evolution API
+    const result = await evolutionApi.sendMessage(
+      tenantId,
+      instance.instanceName,
+      conversation.contactNumber,
+      content
+    );
+
+    // Save to DB
+    const savedMessage = await this.saveMessage(conversationId, {
+      instanceId,
+      fromMe: true,
+      senderNumber: instance.instanceName,
+      recipientNumber: conversation.contactNumber,
+      messageType: messageType || 'text',
+      content,
+      mediaUrl,
+      wamid: result?.key?.id || null,
+      status: 'sent'
+    });
+
+    // Update conversation
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        lastMessage: content?.substring(0, 100) || '[Media]',
+        lastMessageAt: new Date(),
+        unreadCount: 0
+      }
+    });
+
+    return savedMessage;
+  }
+}
+
+module.exports = new ChatService();

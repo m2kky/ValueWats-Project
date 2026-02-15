@@ -25,6 +25,7 @@ model Tenant {
   billing           Billing[]
   automationRules   AutomationRule[]
   invitations       Invitation[]
+  conversations     Conversation[]
 
   @@map("tenants")
 }
@@ -83,6 +84,7 @@ model Instance {
   messages     Message[]
   campaignInstances CampaignInstance[]
   automationRules   AutomationRule[]
+  chatMessages      ChatMessage[]
 
   @@map("instances")
 }
@@ -191,6 +193,48 @@ model AutomationRule {
   instance      Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
   @@map("automation_rules")
+}
+
+model Conversation {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  contactNumber   String    @map("contact_number")
+  contactName     String?   @map("contact_name")
+  lastMessage     String?   @map("last_message") @db.Text
+  lastMessageAt   DateTime? @map("last_message_at")
+  unreadCount     Int       @default(0) @map("unread_count")
+  status          String    @default("open") // open, closed, pending
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  messages        ChatMessage[]
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([tenantId, contactNumber])
+  @@index([tenantId, lastMessageAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model ChatMessage {
+  id              String       @id @default(uuid())
+  conversationId  String       @map("conversation_id")
+  instanceId      String?      @map("instance_id")
+  direction       String       // 'incoming' or 'outgoing'
+  senderNumber    String       @map("sender_number")
+  recipientNumber String       @map("recipient_number")
+  messageType     String       @default("text") @map("message_type")
+  content         String?      @db.Text
+  mediaUrl        String?      @map("media_url")
+  wamid           String?      @unique
+  status          String       @default("pending")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  instance        Instance?    @relation(fields: [instanceId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@map("chat_messages")
 }
 
 model Link {

@@ -55,8 +55,16 @@ const emitCampaignProgress = (campaignId, tenantId, data) => {
   }
 };
 
+// Helper to emit chat message events
+const emitChatMessage = (tenantId, eventName, data) => {
+  if (io) {
+    io.to(`tenant_${tenantId}`).emit(eventName, data);
+  }
+};
+
 module.exports = {
   init,
   getIo,
-  emitCampaignProgress
+  emitCampaignProgress,
+  emitChatMessage
 };
