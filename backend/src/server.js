@@ -30,16 +30,18 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // CORS configuration
+// CORS configuration
 app.use(cors({
   origin: [
-    'https://suggest-new-minerals-metabolism.trycloudflare.com',
-    'https://lite-athletics-browse-deaths.trycloudflare.com',
-    'https://anthropology-love-prevent-limits.trycloudflare.com',
-    /\.trycloudflare\.com$/,
+    'http://j4k0g4s4kssk8g0wksg0csk8.72.62.50.238.sslip.io',
+    'http://i0kwck044gc80s0osco8w0wg.72.62.50.238.sslip.io',
+    /\.sslip\.io$/,
     'http://localhost:5173',
     'http://localhost:3000'
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Health check
