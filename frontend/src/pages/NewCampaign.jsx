@@ -14,7 +14,8 @@ import {
   ItalicIcon,
   CodeBracketIcon,
   TableCellsIcon,
-  TagIcon
+  TagIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 
 export default function NewCampaign() {
