@@ -65,9 +65,10 @@ class EvolutionAPI {
     // ✨ Auto-configure webhook
     // Use internal service name for Docker network communication
     // ✨ Auto-configure webhook
-    // Use public or internal URL from env
-    const webhookUrl = process.env.WEBHOOK_INTERNAL_URL 
-      || `${process.env.BACKEND_WEBHOOK_URL || process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/receive`;
+    // Use public URL (first choice) or internal URL
+    const webhookUrl = process.env.PUBLIC_URL 
+      ? `${process.env.PUBLIC_URL}/api/webhooks/receive`
+      : (process.env.WEBHOOK_INTERNAL_URL || `${process.env.BACKEND_WEBHOOK_URL || process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/receive`);
     
     console.log('Setting webhook for instance:', sanitizedInstanceName, 'URL:', webhookUrl);
     // Don't await webhook setup to speed up response
