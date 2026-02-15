@@ -11,6 +11,7 @@ const campaignRoutes = require('./routes/campaigns');
 const webhookRoutes = require('./routes/webhooks');
 const linkRoutes = require('./routes/links');
 const chatRoutes = require('./routes/chat');
+const agentRoutes = require('./agents/agent.routes');
 
 // Middleware
 const tenantContext = require('./middleware/tenantContext');
@@ -76,6 +77,7 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/automations', require('./routes/automations'));
 app.use('/api/team', require('./routes/team'));
 app.use('/api/chat', tenantContext, chatRoutes);
+app.use('/api/agents', agentRoutes);
 
 // Public routes (Webhooks)
 app.use('/api/webhooks', webhookRoutes);
