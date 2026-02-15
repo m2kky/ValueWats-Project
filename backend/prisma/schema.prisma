@@ -3,11 +3,13 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 model Tenant {
@@ -26,6 +28,10 @@ model Tenant {
   automationRules   AutomationRule[]
   invitations       Invitation[]
   conversations     Conversation[]
+  
+  agents          AIAgent[]
+  lifecycleStages LifecycleStage[]
+  contactFields   ContactField[]
 
   @@map("tenants")
 }
@@ -207,6 +213,22 @@ model Conversation {
 
   tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   messages        ChatMessage[]
+  
+  currentAgentId     String?
+  currentAgent       AIAgent?           @relation("CurrentAgent", fields: [currentAgentId], references: [id])
+  
+  agentHistory       ConversationAgent[]
+  
+  lifecycleStageId   String?
+  lifecycleStage     LifecycleStage?    @relation(fields: [lifecycleStageId], references: [id])
+  
+  aiEnabled          Boolean            @default(true)
+  escalated          Boolean            @default(false)
+  escalatedAt        DateTime?
+  escalationReason   String?
+  
+  failedAttempts     Int                @default(0)
+  lastBotResponseAt  DateTime?
 
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
@@ -264,4 +286,177 @@ model ClickEvent {
   link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
 
   @@map("click_events")
+}
+
+// AI Agent Configuration
+model AIAgent {
+  id                String   @id @default(uuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name              String
+  description       String?  @db.Text
+  avatar            String?
+  
+  templateType      String?  // "receptionist", "sales", "support", "custom"
+  
+  instructions      String   @db.Text
+  
+  aiProvider        String   @default("deepseek")
+  aiModel           String   @default("deepseek-chat")
+  temperature       Float    @default(0.7)
+  maxTokens         Int      @default(500)
+  
+  greeting          String?  @db.Text
+  tone              String   @default("professional")
+  responseStyle     String   @default("concise")
+  
+  useHistory        Boolean  @default(true)
+  historyLength     Int      @default(10)
+  
+  followUpEnabled   Boolean  @default(false)
+  followUpDelay     Int      @default(300)
+  followUpMessage   String?  @db.Text
+  
+  workingHoursEnabled Boolean @default(false)
+  workingHours      Json?
+  outOfHoursMessage String?  @db.Text
+  
+  isActive          Boolean  @default(true)
+  priority          Int      @default(0)
+  
+  actions           AgentAction[]
+  knowledgeSources  AgentKnowledge[]
+  routingRules      AgentRoutingRule[] @relation("FromAgent")
+  routingRulesTo    AgentRoutingRule[] @relation("ToAgent")
+  conversations     ConversationAgent[]
+  currentConversations Conversation[] @relation("CurrentAgent")
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([tenantId, isActive])
+  @@index([tenantId, templateType])
+}
+
+// Agent Actions (Close conversation, assign, update lifecycle, etc.)
+model AgentAction {
+  id            String   @id @default(uuid())
+  agentId       String
+  agent         AIAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  type          String   // "close_conversation", "assign_to_agent", "assign_to_team", "update_lifecycle", "add_tag"
+  isEnabled     Boolean  @default(true)
+  config        Json     // Action-specific configuration
+  instructions  String   @db.Text
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([agentId, type])
+}
+
+// Knowledge Base (RAG)
+model AgentKnowledge {
+  id          String   @id @default(uuid())
+  agentId     String
+  agent       AIAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  title       String
+  content     String   @db.Text
+  
+  sourceType  String   @default("text")  // "text", "url", "file"
+  sourceUrl   String?
+  
+  category    String?
+  tags        String[]
+  
+  embedding   Unsupported("vector(1536)")?  // OpenAI embeddings
+  
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([agentId, isActive])
+}
+
+// Agent Routing Rules
+model AgentRoutingRule {
+  id              String   @id @default(uuid())
+  fromAgentId     String
+  fromAgent       AIAgent  @relation("FromAgent", fields: [fromAgentId], references: [id], onDelete: Cascade)
+  
+  toAgentId       String?
+  toAgent         AIAgent? @relation("ToAgent", fields: [toAgentId], references: [id])
+  
+  toTeamId        String?
+  toUserId        String?
+  
+  triggerType     String   // "keywords", "intent", "failed_attempts", "manual"
+  keywords        String[]
+  minConfidence   Float?
+  failedAttempts  Int?
+  
+  priority        Int      @default(0)
+  isActive        Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([fromAgentId, isActive])
+}
+
+// Track which agents handled conversations
+model ConversationAgent {
+  id              String       @id @default(uuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  agentId         String
+  agent           AIAgent      @relation(fields: [agentId], references: [id])
+  
+  startedAt       DateTime     @default(now())
+  endedAt         DateTime?
+  handoffReason   String?
+  messagesCount   Int          @default(0)
+  successful      Boolean      @default(true)
+  
+  @@index([conversationId])
+  @@index([agentId])
+}
+
+// Lifecycle Stages (Lead stages)
+model LifecycleStage {
+  id            String         @id @default(uuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name          String
+  emoji         String?
+  color         String?
+  order         Int            @default(0)
+  
+  conversations Conversation[]
+  
+  createdAt     DateTime       @default(now())
+  
+  @@index([tenantId, order])
+}
+
+// Contact Custom Fields
+model ContactField {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  contactNumber String
+  fieldName     String
+  fieldValue    String   @db.Text
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([tenantId, contactNumber, fieldName])
+  @@index([tenantId, contactNumber])
 }
