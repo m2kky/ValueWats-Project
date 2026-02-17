@@ -9,6 +9,10 @@ export default function useAgents() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  // Knowledge Base state
+  const [knowledgeSources, setKnowledgeSources] = useState([]);
+  const [knowledgeLoading, setKnowledgeLoading] = useState(false);
+
   const fetchAgents = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -132,6 +136,69 @@ export default function useAgents() {
     }
   }, []);
 
+  // ─── Knowledge Base ───
+
+  const fetchKnowledge = useCallback(async (agentId) => {
+    setKnowledgeLoading(true);
+    try {
+      const res = await api.get(`/agents/${agentId}/knowledge`);
+      setKnowledgeSources(res.data);
+      return res.data;
+    } catch (err) {
+      console.error('[useAgents] fetchKnowledge error:', err);
+      setKnowledgeSources([]);
+      return [];
+    } finally {
+      setKnowledgeLoading(false);
+    }
+  }, []);
+
+  const addTextKnowledge = useCallback(async (agentId, { title, content, category, tags }) => {
+    setKnowledgeLoading(true);
+    try {
+      const res = await api.post(`/agents/${agentId}/knowledge/text`, { title, content, category, tags });
+      await fetchKnowledge(agentId);
+      return res.data;
+    } catch (err) {
+      console.error('[useAgents] addTextKnowledge error:', err);
+      setError(err.response?.data?.error || 'Failed to add knowledge');
+      return null;
+    } finally {
+      setKnowledgeLoading(false);
+    }
+  }, [fetchKnowledge]);
+
+  const uploadFileKnowledge = useCallback(async (agentId, file, category) => {
+    setKnowledgeLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (category) formData.append('category', category);
+      const res = await api.post(`/agents/${agentId}/knowledge/file`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      await fetchKnowledge(agentId);
+      return res.data;
+    } catch (err) {
+      console.error('[useAgents] uploadFileKnowledge error:', err);
+      setError(err.response?.data?.error || 'Failed to upload file');
+      return null;
+    } finally {
+      setKnowledgeLoading(false);
+    }
+  }, [fetchKnowledge]);
+
+  const deleteKnowledge = useCallback(async (agentId, knowledgeId) => {
+    try {
+      await api.delete(`/agents/${agentId}/knowledge/${knowledgeId}`);
+      setKnowledgeSources(prev => prev.filter(k => k.id !== knowledgeId));
+      return true;
+    } catch (err) {
+      console.error('[useAgents] deleteKnowledge error:', err);
+      return false;
+    }
+  }, []);
+
   return {
     agents,
     templates,
@@ -139,6 +206,8 @@ export default function useAgents() {
     loading,
     saving,
     error,
+    knowledgeSources,
+    knowledgeLoading,
     setSelectedAgent,
     fetchAgents,
     fetchAgent,
@@ -149,5 +218,10 @@ export default function useAgents() {
     createFromTemplate,
     testChat,
     toggleAgent,
+    fetchKnowledge,
+    addTextKnowledge,
+    uploadFileKnowledge,
+    deleteKnowledge,
   };
 }
+

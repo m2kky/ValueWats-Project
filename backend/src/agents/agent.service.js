@@ -48,7 +48,7 @@ class AgentService {
       const history = await this.getConversationHistory(conversationId, agent.historyLength);
 
       // 5. Build context with knowledge base (RAG)
-      const context = await this.buildContext(message, agent.knowledgeSources);
+      const context = await this.buildContext(message, agent.knowledgeSources, agent.id);
 
       // 6. Generate AI response
       const aiResponse = await deepseekService.chat({
@@ -117,7 +117,10 @@ class AgentService {
       }
     });
 
-    if (!defaultAgent) return null;
+    if (!defaultAgent) {
+    console.warn('[AgentService] No active default agent found for tenant:', tenantId);
+    return null;
+  }
 
     // Assign agent to conversation
     await prisma.conversation.update({
@@ -178,16 +181,31 @@ class AgentService {
   }
 
   /**
-   * Build context from knowledge base (simple keyword matching for now)
+   * Build context from knowledge base using vector similarity search (RAG)
+   * Falls back to keyword matching if vector search fails
    */
-  async buildContext(message, knowledgeSources) {
+  async buildContext(message, knowledgeSources, agentId) {
+    // Try vector search first (RAG)
+    if (agentId) {
+      try {
+        const knowledgeService = require('../services/knowledgeService');
+        const results = await knowledgeService.searchKnowledge(message, agentId, 5);
+        if (results.length > 0) {
+          console.log(`[AgentService] RAG: Found ${results.length} relevant knowledge chunks`);
+          return results.map(r => `${r.title}: ${r.content}`);
+        }
+      } catch (error) {
+        console.warn('[AgentService] Vector search failed, falling back to keyword matching:', error.message);
+      }
+    }
+
+    // Fallback: keyword matching on pre-loaded knowledge sources
     if (!knowledgeSources || knowledgeSources.length === 0) return [];
 
     const keywords = message.toLowerCase().split(' ').filter(w => w.length > 3);
     
     const relevantKnowledge = knowledgeSources.filter(kb => {
       const content = (kb.title + ' ' + kb.content).toLowerCase();
-      // Only include if title or content matches keywords
       return keywords.some(keyword => content.includes(keyword));
     });
 

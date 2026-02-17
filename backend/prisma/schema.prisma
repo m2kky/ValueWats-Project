@@ -367,11 +367,13 @@ model AgentKnowledge {
   
   sourceType  String   @default("text")  // "text", "url", "file"
   sourceUrl   String?
+  fileKey     String?    // MinIO storage key
   
   category    String?
   tags        String[]
+  chunkIndex  Int        @default(0)  // For multi-chunk documents
   
-  embedding   Unsupported("vector(1536)")?  // OpenAI embeddings
+  embedding   Unsupported("vector(768)")?  // nomic-embed-text embeddings
   
   isActive    Boolean  @default(true)
   

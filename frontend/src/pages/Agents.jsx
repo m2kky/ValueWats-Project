@@ -14,6 +14,8 @@ import {
   Cog6ToothIcon,
   BookOpenIcon,
   ArrowPathIcon,
+  DocumentArrowUpIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 
 // ─── Template metadata (emoji + descriptions) ───
@@ -73,6 +75,8 @@ export default function Agents() {
     fetchAgents, fetchAgent, createAgent, updateAgent,
     deleteAgent, fetchTemplates,
     testChat, toggleAgent,
+    knowledgeSources, knowledgeLoading,
+    fetchKnowledge, addTextKnowledge, uploadFileKnowledge, deleteKnowledge,
   } = useAgents();
 
   // Views: 'list' | 'templates' | 'editor'
@@ -88,6 +92,13 @@ export default function Agents() {
 
   // Active tab in editor
   const [editorTab, setEditorTab] = useState('config');
+
+  // Knowledge Base UI state
+  const [kbMode, setKbMode] = useState(null); // null | 'text' | 'file'
+  const [kbTitle, setKbTitle] = useState('');
+  const [kbContent, setKbContent] = useState('');
+  const [kbFile, setKbFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchAgents();
@@ -319,7 +330,10 @@ export default function Agents() {
               ].map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setEditorTab(tab.id)}
+                  onClick={() => {
+                    setEditorTab(tab.id);
+                    if (tab.id === 'knowledge' && editingId) fetchKnowledge(editingId);
+                  }}
                   className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
                     editorTab === tab.id
                       ? 'border-blue-600 text-blue-600'
@@ -549,16 +563,174 @@ export default function Agents() {
                 </>
               ) : (
                 /* ─── Knowledge Base Tab ─── */
-                <div className="card">
-                  <div className="card-header">
-                    <h3 className="text-sm font-semibold text-gray-700">📚 Knowledge Base</h3>
-                  </div>
-                  <div className="card-body text-center py-12">
-                    <BookOpenIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-500 mb-2">Coming Soon</h3>
-                    <p className="text-sm text-gray-400">
-                      Knowledge sources (text, files, URLs) will be available here for RAG-powered responses.
-                    </p>
+                <div className="space-y-4">
+                  {/* Add Knowledge Buttons */}
+                  {!kbMode && (
+                    <div className="card">
+                      <div className="card-header">
+                        <h3 className="text-sm font-semibold text-gray-700">📚 Add Knowledge</h3>
+                      </div>
+                      <div className="card-body">
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            onClick={() => setKbMode('text')}
+                            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-gray-200 hover:border-blue-400 hover:bg-blue-50/50 transition-all text-gray-500 hover:text-blue-600"
+                          >
+                            <DocumentTextIcon className="h-8 w-8" />
+                            <span className="text-sm font-medium">Add Text</span>
+                            <span className="text-xs text-gray-400">Paste FAQ, docs, or custom content</span>
+                          </button>
+                          <button
+                            onClick={() => { setKbMode('file'); fileInputRef.current?.click(); }}
+                            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-gray-200 hover:border-emerald-400 hover:bg-emerald-50/50 transition-all text-gray-500 hover:text-emerald-600"
+                          >
+                            <DocumentArrowUpIcon className="h-8 w-8" />
+                            <span className="text-sm font-medium">Upload File</span>
+                            <span className="text-xs text-gray-400">PDF, TXT, or Markdown files</span>
+                          </button>
+                        </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".pdf,.txt,.md"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (file && editingId) {
+                              setKbFile(file);
+                              await uploadFileKnowledge(editingId, file);
+                              setKbFile(null);
+                              setKbMode(null);
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Add Text Form */}
+                  {kbMode === 'text' && (
+                    <div className="card">
+                      <div className="card-header">
+                        <h3 className="text-sm font-semibold text-gray-700">📝 Add Text Knowledge</h3>
+                        <button onClick={() => { setKbMode(null); setKbTitle(''); setKbContent(''); }} className="text-gray-400 hover:text-gray-600">
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="card-body space-y-3">
+                        <div>
+                          <label className="input-label">Title *</label>
+                          <input
+                            type="text"
+                            value={kbTitle}
+                            onChange={e => setKbTitle(e.target.value)}
+                            className="input"
+                            placeholder="e.g. Product FAQ, Company Info"
+                          />
+                        </div>
+                        <div>
+                          <label className="input-label">Content *</label>
+                          <textarea
+                            value={kbContent}
+                            onChange={e => setKbContent(e.target.value)}
+                            rows={8}
+                            className="input font-mono text-sm"
+                            placeholder="Paste your text content here...\n\nThis will be chunked and embedded for RAG search."
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => { setKbMode(null); setKbTitle(''); setKbContent(''); }} className="btn-secondary text-sm">
+                            Cancel
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (kbTitle && kbContent && editingId) {
+                                await addTextKnowledge(editingId, { title: kbTitle, content: kbContent });
+                                setKbTitle('');
+                                setKbContent('');
+                                setKbMode(null);
+                              }
+                            }}
+                            disabled={!kbTitle || !kbContent || knowledgeLoading}
+                            className="btn-primary text-sm"
+                          >
+                            {knowledgeLoading ? 'Processing...' : 'Add Knowledge'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload Progress */}
+                  {kbMode === 'file' && kbFile && knowledgeLoading && (
+                    <div className="card">
+                      <div className="card-body text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-3" />
+                        <p className="text-sm font-medium text-gray-600">Processing {kbFile.name}...</p>
+                        <p className="text-xs text-gray-400 mt-1">Extracting text, chunking, and generating embeddings</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Knowledge Sources List */}
+                  <div className="card">
+                    <div className="card-header">
+                      <h3 className="text-sm font-semibold text-gray-700">
+                        📖 Knowledge Sources ({knowledgeSources.length})
+                      </h3>
+                      {editingId && (
+                        <button
+                          onClick={() => fetchKnowledge(editingId)}
+                          className="text-gray-400 hover:text-gray-600"
+                          title="Refresh"
+                        >
+                          <ArrowPathIcon className={`h-4 w-4 ${knowledgeLoading ? 'animate-spin' : ''}`} />
+                        </button>
+                      )}
+                    </div>
+                    <div className="card-body">
+                      {knowledgeLoading && knowledgeSources.length === 0 ? (
+                        <div className="flex justify-center py-6">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                        </div>
+                      ) : knowledgeSources.length === 0 ? (
+                        <div className="text-center py-8">
+                          <BookOpenIcon className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                          <p className="text-sm text-gray-400">No knowledge sources yet</p>
+                          <p className="text-xs text-gray-300 mt-1">Add text or upload files above</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {knowledgeSources.map(source => (
+                            <div key={source.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${
+                                  source.sourceType === 'file'
+                                    ? 'bg-emerald-100 text-emerald-600'
+                                    : 'bg-blue-100 text-blue-600'
+                                }`}>
+                                  {source.sourceType === 'file' ? '📄' : '📝'}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-gray-700 truncate">{source.title}</p>
+                                  <p className="text-xs text-gray-400">
+                                    {source.sourceType} · {Number(source.chunkCount) || 1} chunk{Number(source.chunkCount) !== 1 ? 's' : ''}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => deleteKnowledge(editingId, source.id)}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                                title="Delete"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
