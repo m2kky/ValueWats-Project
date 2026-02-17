@@ -78,6 +78,7 @@ app.use('/api/automations', require('./routes/automations'));
 app.use('/api/team', require('./routes/team'));
 app.use('/api/chat', tenantContext, chatRoutes);
 app.use('/api/agents', agentRoutes);
+app.use('/api/lifecycle', require('./routes/lifecycle.routes'));
 
 // Public routes (Webhooks)
 app.use('/api/webhooks', webhookRoutes);

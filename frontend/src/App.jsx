@@ -10,6 +10,7 @@ import CampaignDetails from './pages/CampaignDetails';
 import Automations from './pages/Automations';
 import Team from './pages/Team';
 import Inbox from './pages/Inbox';
+import Agents from './pages/Agents';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -79,6 +80,12 @@ function App() {
         <Route path="/inbox" element={
           <PrivateRoute>
             <Inbox />
+          </PrivateRoute>
+        } />
+
+        <Route path="/agents" element={
+          <PrivateRoute>
+            <Agents />
           </PrivateRoute>
         } />
         

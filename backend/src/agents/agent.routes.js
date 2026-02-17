@@ -170,6 +170,63 @@ router.delete('/:id', tenantContext, async (req, res) => {
   }
 });
 
+// Test chat with agent (for live preview in editor)
+const deepseekService = require('../ai/deepseek.service');
+
+router.post('/:id/test', tenantContext, async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    const agent = await prisma.aIAgent.findFirst({
+      where: {
+        id: req.params.id,
+        tenantId: req.user.tenantId
+      },
+      include: {
+        knowledgeSources: true
+      }
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    // Build system prompt from agent config
+    let systemPrompt = agent.instructions || 'You are a helpful assistant.';
+    systemPrompt += `\n\nTone: ${agent.tone || 'professional'}`;
+    systemPrompt += `\nResponse Style: ${agent.responseStyle || 'concise'}`;
+
+    if (agent.greeting) {
+      systemPrompt += `\n\nGreeting (use for first interaction): ${agent.greeting}`;
+    }
+
+    // Add knowledge base context
+    if (agent.knowledgeSources && agent.knowledgeSources.length > 0) {
+      const knowledge = agent.knowledgeSources.map(k => k.content).join('\n\n');
+      systemPrompt += `\n\nKnowledge Base:\n${knowledge}`;
+    }
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: message }
+    ];
+
+    const response = await deepseekService.chat({
+      messages,
+      temperature: agent.temperature ?? 0.7,
+      max_tokens: agent.maxTokens ?? 500
+    });
+
+    res.json({ response });
+  } catch (error) {
+    console.error('[Agents] Test chat error:', error);
+    res.status(500).json({ error: 'Failed to get test response', response: 'Error processing your message.' });
+  }
+});
+
 // Template Routes
 const agentTemplates = require('./templates');
 

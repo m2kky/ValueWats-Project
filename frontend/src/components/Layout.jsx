@@ -6,7 +6,8 @@ import {
   DevicePhoneMobileIcon,
   ChatBubbleLeftRightIcon,
   ArrowRightOnRectangleIcon as LogoutIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  CpuChipIcon
 } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
@@ -53,6 +54,7 @@ export default function Layout({ children }) {
     { name: 'Inbox', path: '/inbox', icon: ChatBubbleLeftRightIcon },
     { name: 'Automations', path: '/automations', icon: BoltIcon },
     { name: 'Team', path: '/team', icon: UserGroupIcon },
+    { name: 'AI Agents', path: '/agents', icon: CpuChipIcon },
   ];
 
   return (

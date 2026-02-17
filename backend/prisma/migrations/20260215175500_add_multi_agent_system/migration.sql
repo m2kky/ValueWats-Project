@@ -1,3 +1,6 @@
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- CreateTable
 CREATE TABLE "AIAgent" (
     "id" TEXT NOT NULL,
@@ -122,7 +125,7 @@ CREATE TABLE "ContactField" (
 );
 
 -- AlterTable
-ALTER TABLE "Conversation" ADD COLUMN "currentAgentId" TEXT,
+ALTER TABLE "conversations" ADD COLUMN "currentAgentId" TEXT,
 ADD COLUMN "lifecycleStageId" TEXT,
 ADD COLUMN "aiEnabled" BOOLEAN NOT NULL DEFAULT true,
 ADD COLUMN "escalated" BOOLEAN NOT NULL DEFAULT false,
@@ -144,14 +147,14 @@ CREATE INDEX "ContactField_tenantId_contactNumber_idx" ON "ContactField"("tenant
 CREATE UNIQUE INDEX "ContactField_tenantId_contactNumber_fieldName_key" ON "ContactField"("tenantId", "contactNumber", "fieldName");
 
 -- AddForeignKey
-ALTER TABLE "AIAgent" ADD CONSTRAINT "AIAgent_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "AIAgent" ADD CONSTRAINT "AIAgent_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "AgentAction" ADD CONSTRAINT "AgentAction_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "AIAgent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "AgentKnowledge" ADD CONSTRAINT "AgentKnowledge_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "AIAgent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "AgentRoutingRule" ADD CONSTRAINT "AgentRoutingRule_fromAgentId_fkey" FOREIGN KEY ("fromAgentId") REFERENCES "AIAgent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "AgentRoutingRule" ADD CONSTRAINT "AgentRoutingRule_toAgentId_fkey" FOREIGN KEY ("toAgentId") REFERENCES "AIAgent"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "ConversationAgent" ADD CONSTRAINT "ConversationAgent_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "Conversation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ConversationAgent" ADD CONSTRAINT "ConversationAgent_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "ConversationAgent" ADD CONSTRAINT "ConversationAgent_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "AIAgent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_currentAgentId_fkey" FOREIGN KEY ("currentAgentId") REFERENCES "AIAgent"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_lifecycleStageId_fkey" FOREIGN KEY ("lifecycleStageId") REFERENCES "LifecycleStage"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "conversations" ADD CONSTRAINT "Conversation_currentAgentId_fkey" FOREIGN KEY ("currentAgentId") REFERENCES "AIAgent"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "conversations" ADD CONSTRAINT "Conversation_lifecycleStageId_fkey" FOREIGN KEY ("lifecycleStageId") REFERENCES "LifecycleStage"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "LifecycleStage" ADD CONSTRAINT "LifecycleStage_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "ContactField" ADD CONSTRAINT "ContactField_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
