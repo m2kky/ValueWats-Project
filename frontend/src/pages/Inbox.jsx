@@ -155,6 +155,17 @@ export default function Inbox() {
     }
   }, []);
 
+  const handleConversationUpdate = useCallback((updatedConversation) => {
+    // Update list
+    setConversations(prev =>
+      prev.map(c => c.id === updatedConversation.id ? { ...c, ...updatedConversation } : c)
+    );
+    // Update selected
+    setSelectedConversation(prev => 
+      prev && prev.id === updatedConversation.id ? { ...prev, ...updatedConversation } : prev
+    );
+  }, []);
+
   return (
     <div className="inbox-container">
       {/* Conversation List Sidebar */}
@@ -174,6 +185,7 @@ export default function Inbox() {
             conversation={selectedConversation}
             instances={instances}
             onSendMessage={handleSendMessage}
+            onUpdate={handleConversationUpdate}
           />
         ) : (
           <div className="inbox-empty-state">
@@ -190,3 +202,4 @@ export default function Inbox() {
     </div>
   );
 }
+

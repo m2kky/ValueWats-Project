@@ -16,7 +16,11 @@ import {
   ArrowPathIcon,
   DocumentArrowUpIcon,
   DocumentTextIcon,
+  WrenchScrewdriverIcon,
+  UserGroupIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
+import ActionCard from '../components/ActionCard';
 
 // ─── Template metadata (emoji + descriptions) ───
 const templateMeta = {
@@ -67,6 +71,13 @@ const defaultForm = {
   outOfHoursMessage: '',
   isActive: true,
   priority: 0,
+  model: 'deepseek-chat',
+
+  // Phase 4: Groups & Actions
+  allowGroupResponse: false,
+  allowedGroups: [], // as array
+  allowedGroupsText: '', // for textarea input
+  actionConfig: {},
 };
 
 export default function Agents() {
@@ -163,6 +174,13 @@ export default function Agents() {
         outOfHoursMessage: full.outOfHoursMessage || '',
         isActive: full.isActive ?? true,
         priority: full.priority ?? 0,
+        model: full.model || 'deepseek-chat',
+
+        // Phase 4
+        allowGroupResponse: full.allowGroupResponse ?? false,
+        allowedGroups: full.allowedGroups || [],
+        allowedGroupsText: (full.allowedGroups || []).join('\n'),
+        actionConfig: full.actionConfig || {},
       });
       setEditingId(full.id);
       setChatMessages([]);
@@ -172,11 +190,21 @@ export default function Agents() {
   };
 
   const handleSave = async () => {
+    const data = {
+      ...form,
+      priority: Number(form.priority),
+      temperature: Number(form.temperature),
+      maxTokens: Number(form.maxTokens),
+      followUpDelay: Number(form.followUpDelay),
+      allowedGroups: form.allowedGroupsText.split('\n').map(g => g.trim()).filter(g => g),
+    };
+    delete data.allowedGroupsText; // don't send to API
+
     let result;
     if (editingId) {
-      result = await updateAgent(editingId, form);
+      result = await updateAgent(editingId, data);
     } else {
-      result = await createAgent({ ...form });
+      result = await createAgent({ ...data });
     }
     if (result) {
       await fetchAgents();
@@ -325,7 +353,8 @@ export default function Agents() {
             {/* Tabs */}
             <div className="flex border-b border-gray-200 bg-white sticky top-0 z-10">
               {[
-                { id: 'config', label: 'Configuration', icon: Cog6ToothIcon },
+                { id: 'config', label: 'Configuration', icon: CpuChipIcon },
+                { id: 'actions', label: 'Actions', icon: WrenchScrewdriverIcon }, // New Tab
                 { id: 'knowledge', label: 'Knowledge', icon: BookOpenIcon },
               ].map(tab => (
                 <button
@@ -488,6 +517,44 @@ export default function Agents() {
                     </div>
                   </div>
 
+
+
+                  {/* Group Chat Control (Phase 4) */}
+                  <div className="card">
+                    <div className="card-header">
+                      <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <UserGroupIcon className="h-4 w-4" /> Group Chats
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, allowGroupResponse: !form.allowGroupResponse })}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          form.allowGroupResponse ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          form.allowGroupResponse ? 'translate-x-6' : 'translate-x-1'
+                        }`} />
+                      </button>
+                    </div>
+                    {form.allowGroupResponse && (
+                      <div className="card-body">
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-3 text-xs text-yellow-800">
+                          ⚠️ Expect higher volume. Ensure "Allowed Groups" whitelist is configured to prevent spam.
+                        </div>
+                        <label className="input-label">Allowed Groups (Whitelist)</label>
+                        <textarea
+                          value={form.allowedGroupsText}
+                          onChange={e => setForm({ ...form, allowedGroupsText: e.target.value })}
+                          rows={3}
+                          className="input font-mono text-xs"
+                          placeholder={`123456789@g.us\n987654321@g.us\n(Leave empty to allow ALL groups - NOT RECOMMENDED)`}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Enter Group JIDs, one per line.</p>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Follow Up */}
                   <div className="card">
                     <div className="card-header">
@@ -561,6 +628,70 @@ export default function Agents() {
                     )}
                   </div>
                 </>
+
+              ) : editorTab === 'actions' ? (
+                /* ─── Actions Tab (Phase 4) ─── */
+                <div className="space-y-6">
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3">
+                    <SparklesIcon className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-semibold text-blue-800">Advanced Capabilities</h4>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Configure what actions the agent can perform. Define rules in plain English.
+                      </p>
+                    </div>
+                  </div>
+
+                  <ActionCard
+                    title="Close Conversation"
+                    description="AI Agent can close a conversation based on your guidelines."
+                    enabled={form.actionConfig?.closeConversation?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, closeConversation: { ...f.actionConfig.closeConversation, enabled: val } } }))}
+                    config={form.actionConfig?.closeConversation?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, closeConversation: { ...f.actionConfig.closeConversation, instructions: val } } }))}
+                    placeholder="Close the conversation if: - The user says goodbye - Results were satisfactory..."
+                  />
+
+                  <ActionCard
+                    title="Assign to Agent or Team"
+                    description="AI Agent can assign the conversation to a human, another agent, or team."
+                    enabled={form.actionConfig?.assignAgent?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, assignAgent: { ...f.actionConfig.assignAgent, enabled: val } } }))}
+                    config={form.actionConfig?.assignAgent?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, assignAgent: { ...f.actionConfig.assignAgent, instructions: val } } }))}
+                    placeholder="If the user asks for a human, assign to Support Team. If sales related, assign to Sales Team..."
+                  />
+
+                  <ActionCard
+                    title="Update Contact Fields"
+                    description="Automatically extract info and update contact details."
+                    enabled={form.actionConfig?.updateFields?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateFields: { ...f.actionConfig.updateFields, enabled: val } } }))}
+                    config={form.actionConfig?.updateFields?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateFields: { ...f.actionConfig.updateFields, instructions: val } } }))}
+                    placeholder="Extract email, phone, or company name and update the contact profile..."
+                  />
+
+                  <ActionCard
+                    title="Update Lifecycle Stage"
+                    description="Move contact between lifecycle stages based on intent."
+                    enabled={form.actionConfig?.updateLifecycle?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, enabled: val } } }))}
+                    config={form.actionConfig?.updateLifecycle?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, instructions: val } } }))}
+                    placeholder="If user shows high intent or asks for pricing, move to 'Hot Lead'..."
+                  />
+                  
+                  <ActionCard
+                    title="Trigger Workflow"
+                    description="Trigger automated workflows like 'Add to Google Sheet'."
+                    enabled={form.actionConfig?.triggerWorkflow?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, triggerWorkflow: { ...f.actionConfig.triggerWorkflow, enabled: val } } }))}
+                    config={form.actionConfig?.triggerWorkflow?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, triggerWorkflow: { ...f.actionConfig.triggerWorkflow, instructions: val } } }))}
+                    placeholder="Trigger 'Onboarding Workflow' when user signs up..."
+                  />
+                </div>
               ) : (
                 /* ─── Knowledge Base Tab ─── */
                 <div className="space-y-4">

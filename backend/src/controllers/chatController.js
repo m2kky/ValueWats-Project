@@ -80,5 +80,36 @@ const sendMessage = async (req, res) => {
 module.exports = {
   getConversations,
   getConversation,
-  sendMessage
+  sendMessage,
+  updateContact: async (req, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const { id } = req.params;
+      const data = req.body; // { contactName, labels, lifecycleStageId, customFields }
+
+      const updated = await chatService.updateContact(tenantId, id, data);
+      res.json({ success: true, conversation: updated });
+    } catch (error) {
+      console.error('Update contact error:', error);
+      res.status(500).json({ error: 'Failed to update contact' });
+    }
+  },
+
+  getLifecycleStages: async (req, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+      
+      const stages = await prisma.lifecycleStage.findMany({
+        where: { tenantId },
+        orderBy: { order: 'asc' }
+      });
+      
+      res.json({ stages });
+    } catch (error) {
+      console.error('Get stages error:', error);
+      res.status(500).json({ error: 'Failed to fetch stages' });
+    }
+  }
 };

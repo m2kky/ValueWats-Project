@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { formatPhoneNumber } from '../../utils/formatters';
 
 export default function ConversationList({ conversations, selectedId, onSelect, loading }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -78,7 +79,7 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
               <div className="conv-info">
                 <div className="conv-info-top">
                   <span className="conv-name">
-                    {conv.contactName || conv.contactNumber}
+                    {conv.contactName || formatPhoneNumber(conv.contactNumber)}
                   </span>
                   <span className="conv-time">
                     {conv.lastMessageAt && formatDistanceToNow(new Date(conv.lastMessageAt), { addSuffix: true })}

@@ -7,5 +7,7 @@ const chatController = require('../controllers/chatController');
 router.get('/conversations', chatController.getConversations);
 router.get('/conversations/:id', chatController.getConversation);
 router.post('/messages/send', chatController.sendMessage);
+router.put('/conversations/:id/contact', chatController.updateContact);
+router.get('/lifecycle-stages', chatController.getLifecycleStages);
 
 module.exports = router;

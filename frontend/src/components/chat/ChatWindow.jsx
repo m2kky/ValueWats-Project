@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
+import { AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
+import ContactSidebar from './ContactSidebar';
+import { formatPhoneNumber } from '../../utils/formatters';
 
-export default function ChatWindow({ conversation, instances, onSendMessage }) {
+export default function ChatWindow({ conversation, instances, onSendMessage, onUpdate }) {
   const [message, setMessage] = useState('');
   const [selectedInstance, setSelectedInstance] = useState(instances[0]?.id || '');
   const [sending, setSending] = useState(false);

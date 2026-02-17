@@ -210,6 +210,7 @@ model Conversation {
   lastMessageAt   DateTime? @map("last_message_at")
   unreadCount     Int       @default(0) @map("unread_count")
   status          String    @default("open") // open, closed, pending
+  labels          String[]  // "vip", "new", "spam", etc.
 
   tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   messages        ChatMessage[]

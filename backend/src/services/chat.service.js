@@ -86,6 +86,9 @@ class ChatService {
 
     const conversations = await prisma.conversation.findMany({
       where,
+      include: {
+        lifecycleStage: true 
+      },
       orderBy: { lastMessageAt: 'desc' },
       take: limit,
       skip: offset
@@ -101,6 +104,7 @@ class ChatService {
     const conversation = await prisma.conversation.findFirst({
       where: { id: conversationId, tenantId },
       include: {
+        lifecycleStage: true,
         messages: {
           include: {
             instance: {
@@ -112,6 +116,61 @@ class ChatService {
         }
       }
     });
+
+    if (conversation) {
+      // Fetch contact fields
+      const contactFields = await prisma.contactField.findMany({
+        where: {
+          tenantId,
+          contactNumber: conversation.contactNumber
+        }
+      });
+      conversation.contactFields = contactFields;
+    }
+
+    return conversation;
+  }
+
+  /**
+   * Update contact details (name, labels, stage, fields)
+   */
+  async updateContact(tenantId, conversationId, data) {
+    const { contactName, labels, lifecycleStageId, customFields } = data;
+
+    // 1. Update Conversation (Name, Labels, Stage)
+    const conversation = await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        ...(contactName !== undefined && { contactName }),
+        ...(labels !== undefined && { labels }),
+        ...(lifecycleStageId !== undefined && { lifecycleStageId })
+      },
+      include: { lifecycleStage: true }
+    });
+
+    // 2. Update Custom Fields
+    if (customFields && Array.isArray(customFields)) {
+      for (const field of customFields) {
+        if (!field.name || !field.value) continue;
+        
+        await prisma.contactField.upsert({
+          where: {
+            tenantId_contactNumber_fieldName: {
+              tenantId,
+              contactNumber: conversation.contactNumber,
+              fieldName: field.name
+            }
+          },
+          update: { fieldValue: field.value },
+          create: {
+            tenantId,
+            contactNumber: conversation.contactNumber,
+            fieldName: field.name,
+            fieldValue: field.value
+          }
+        });
+      }
+    }
 
     return conversation;
   }
