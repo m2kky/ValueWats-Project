@@ -6,7 +6,7 @@ import {
   AdjustmentsHorizontalIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
-import api from '../../services/api';
+import api from '../../api/client';
 
 export default function ContactSidebar({ conversation, onClose, onUpdate }) {
   const [loading, setLoading] = useState(false);
