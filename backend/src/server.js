@@ -12,7 +12,7 @@ const webhookRoutes = require('./routes/webhooks');
 const linkRoutes = require('./routes/links');
 const chatRoutes = require('./routes/chat');
 const agentRoutes = require('./agents/agent.routes');
-const knowledgeRoutes = require('./routes/knowledge.routes');
+
 const integrationRoutes = require('./routes/integrations');
 
 // Middleware
