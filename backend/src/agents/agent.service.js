@@ -488,10 +488,30 @@ Response Guidelines:
           }
         }
 
-        // TRIGGER WORKFLOW (Placeholder)
+        // TRIGGER WORKFLOW
         else if (actionString.startsWith('TRIGGER_WORKFLOW:')) {
           const workflowId = actionString.replace('TRIGGER_WORKFLOW:', '').trim();
-          console.log(`[AgentService] Action: Trigger workflow ${workflowId} (Not implemented yet)`);
+          console.log(`[AgentService] Action: Trigger workflow ${workflowId}`);
+          
+          // Lazy load to avoid circular deps if any
+          const workflowService = require('../services/workflow.service');
+          
+          // context for variable replacement
+          const context = {
+            conversation,
+            contact: {
+              name: conversation.contactName,
+              number: conversation.contactNumber,
+              ...conversation // limit fields?
+            },
+            agent: agent,
+            message: message // current user message
+          };
+          
+          // Fire and forget (don't await purely)
+          workflowService.executeWorkflow(workflowId, context).catch(err => {
+             console.error(`[AgentService] Workflow trigger failed:`, err);
+          });
         }
 
       } catch (err) {

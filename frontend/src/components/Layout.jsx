@@ -7,7 +7,8 @@ import {
   ChatBubbleLeftRightIcon,
   ArrowRightOnRectangleIcon as LogoutIcon,
   UserGroupIcon,
-  CpuChipIcon
+  CpuChipIcon,
+  AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
@@ -52,8 +53,10 @@ export default function Layout({ children }) {
     { name: 'Instances', path: '/instances', icon: DevicePhoneMobileIcon },
     { name: 'Campaigns', path: '/campaigns', icon: MegaphoneIcon },
     { name: 'Inbox', path: '/inbox', icon: ChatBubbleLeftRightIcon },
-    { name: 'Automations', path: '/automations', icon: BoltIcon },
-    { name: 'Team', path: '/team', icon: UserGroupIcon },
+    { name: 'Agents', href: '/agents', icon: CpuChipIcon },
+    { name: 'Integrations', href: '/integrations', icon: AdjustmentsHorizontalIcon },
+    { name: 'Workflows', href: '/workflows', icon: BoltIcon },
+    { name: 'Team', href: '/team', icon: UserGroupIcon },
     { name: 'AI Agents', path: '/agents', icon: CpuChipIcon },
   ];
 

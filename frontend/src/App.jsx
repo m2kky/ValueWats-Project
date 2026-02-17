@@ -11,6 +11,8 @@ import Automations from './pages/Automations';
 import Team from './pages/Team';
 import Inbox from './pages/Inbox';
 import Agents from './pages/Agents';
+import Integrations from './pages/Integrations';
+import Workflows from './pages/Workflows';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -86,6 +88,18 @@ function App() {
         <Route path="/agents" element={
           <PrivateRoute>
             <Agents />
+          </PrivateRoute>
+        } />
+
+        <Route path="/integrations" element={
+          <PrivateRoute>
+            <Integrations />
+          </PrivateRoute>
+        } />
+
+        <Route path="/workflows" element={
+          <PrivateRoute>
+            <Workflows />
           </PrivateRoute>
         } />
         

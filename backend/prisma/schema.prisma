@@ -32,6 +32,8 @@ model Tenant {
   agents          AIAgent[]
   lifecycleStages LifecycleStage[]
   contactFields   ContactField[]
+  integrations    Integration[]
+  workflows       Workflow[]
 
   @@map("tenants")
 }
@@ -462,4 +464,77 @@ model ContactField {
   
   @@unique([tenantId, contactNumber, fieldName])
   @@index([tenantId, contactNumber])
+}
+
+// Integrations (Google Sheets, SMTP, etc.)
+model Integration {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  type        String   // google_sheets, smtp, webhook
+  name        String
+  credentials String   @db.Text // Encrypted JSON
+  status      String   @default("active") // active, error, revoked
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, type])
+}
+
+// Workflows
+model Workflow {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  triggerType String   // agent_action, manual, webhook
+  triggerConfig String? @db.Text // JSON config for trigger
+  
+  steps       String   @db.Text // JSON array of steps: [{ action: "sheets.append", params: {...} }]
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  executions  WorkflowExecution[]
+
+  @@index([tenantId, isActive])
+}
+
+// Workflow Execution History
+model WorkflowExecution {
+  id          String   @id @default(uuid())
+  workflowId  String
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  
+  conversationId String? // Optional context
+  
+  status      String   // pending, success, failed
+  input       String?  @db.Text // JSON input
+  output      String?  @db.Text // JSON output result
+  error       String?  @db.Text
+  
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  
+  logs        WorkflowLog[]
+
+  @@index([workflowId, status])
+}
+
+model WorkflowLog {
+  id          String   @id @default(uuid())
+  executionId String
+  execution   WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  
+  level       String   // info, error
+  message     String
+  details     String?  @db.Text // JSON
+  timestamp   DateTime @default(now())
+
+  @@index([executionId])
 }
