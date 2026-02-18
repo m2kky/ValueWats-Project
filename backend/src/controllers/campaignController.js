@@ -670,6 +670,18 @@ const exportCampaignContacts = async (req, res) => {
   }
 };
 
+const previewSheet = async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+
+    const columns = await googleSheetService.fetchSheetHeaders(url);
+    res.json({ columns });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 // Update a campaign (Edit & Resume feature)
 const updateCampaign = async (req, res) => {
   try {
