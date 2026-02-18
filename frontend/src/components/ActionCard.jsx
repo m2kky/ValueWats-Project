@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Switch } from '@headlessui/react';
-import { SparklesIcon, CommandCommandLineIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, CommandLineIcon } from '@heroicons/react/24/outline';
 
 const VARIABLES = [
   { label: 'Contact Name', value: '{{contact.name}}' },
@@ -92,7 +92,7 @@ export default function ActionCard({
                     className="p-1.5 text-gray-400 hover:text-blue-600 bg-white border rounded shadow-sm hover:shadow transition-all"
                     title="Insert Variable"
                   >
-                    <CommandCommandLineIcon className="h-4 w-4" />
+                    <CommandLineIcon className="h-4 w-4" />
                   </button>
                   
                   {showVariables && (
