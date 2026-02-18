@@ -13,9 +13,12 @@ router.post('/preview-sheet', campaignController.previewSheet);
 router.get('/', campaignController.getCampaigns);
 router.get('/active', campaignController.getActiveCampaigns);
 router.get('/:id', campaignController.getCampaignById);
+router.get('/:id/messages', campaignController.getCampaignMessages);
+router.get('/:id/export', campaignController.exportCampaignContacts);
 router.post('/:id/pause', campaignController.pauseCampaign);
 router.post('/:id/resume', campaignController.resumeCampaign);
 router.post('/:id/stop', campaignController.stopCampaign);
+router.put('/:id', campaignController.updateCampaign);
 router.delete('/:id', campaignController.deleteCampaign);
 
 module.exports = router;

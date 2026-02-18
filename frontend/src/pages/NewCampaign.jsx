@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import { 
-  PaperAirplaneIcon, 
-  PhotoIcon, 
+import {
+  PaperAirplaneIcon,
+  PhotoIcon,
   DevicePhoneMobileIcon,
   UserGroupIcon,
   DocumentArrowUpIcon,
@@ -15,7 +15,8 @@ import {
   CodeBracketIcon,
   TableCellsIcon,
   TagIcon,
-  ClockIcon
+  ClockIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 
 export default function NewCampaign() {
@@ -84,8 +85,8 @@ export default function NewCampaign() {
   const handleMessageChange = (index, value) => {
     const newMessages = [...formData.messages];
     newMessages[index] = value;
-    setFormData({ 
-      ...formData, 
+    setFormData({
+      ...formData,
       messages: newMessages,
       message: newMessages[0] // Sync primary message
     });
@@ -98,8 +99,8 @@ export default function NewCampaign() {
   const removeMessageTemplate = (index) => {
     if (formData.messages.length > 1) {
       const newMessages = formData.messages.filter((_, i) => i !== index);
-      setFormData({ 
-        ...formData, 
+      setFormData({
+        ...formData,
         messages: newMessages,
         message: newMessages[0]
       });
@@ -126,7 +127,7 @@ export default function NewCampaign() {
 
     const updatedMessage = text.substring(0, start) + newText + text.substring(end);
     handleMessageChange(index, updatedMessage);
-    
+
     // Restore focus (timeout needed for React re-render)
     setTimeout(() => {
       textarea.focus();
@@ -142,7 +143,7 @@ export default function NewCampaign() {
     const end = textarea.selectionEnd;
     const text = formData.messages[index];
     const newText = `{{${variable}}}`;
-    
+
     const updatedMessage = text.substring(0, start) + newText + text.substring(end);
     handleMessageChange(index, updatedMessage);
 
@@ -152,6 +153,20 @@ export default function NewCampaign() {
     }, 0);
   };
 
+  const formatNumbers = () => {
+    if (!formData.numbers) return;
+
+    // Split by newlines, clean each
+    const lines = formData.numbers.split('\n');
+    const cleaned = lines.map(line => {
+      // Remove all non-digits
+      let num = line.replace(/[^0-9]/g, '');
+      return num;
+    }).filter(n => n.length > 0).join('\n'); // Join back
+
+    setFormData({ ...formData, numbers: cleaned });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -159,7 +174,7 @@ export default function NewCampaign() {
     try {
       const data = new FormData();
       data.append('name', formData.name);
-      
+
       // Append each instance ID
       formData.instanceIds.forEach(id => {
         data.append('instanceIds', id); // Express/Multer handles array of same key
@@ -169,20 +184,20 @@ export default function NewCampaign() {
       formData.messages.forEach(msg => {
         data.append('messages', msg);
       });
-      
+
       data.append('message', formData.message); // Legacy support
       data.append('delayMin', formData.delayMin);
       data.append('delayMax', formData.delayMax);
       data.append('instanceSwitchCount', formData.instanceSwitchCount);
       data.append('messageRotationCount', formData.messageRotationCount);
-      
+
       if (formData.scheduleEnabled && formData.scheduledAt) {
         data.append('scheduledAt', new Date(formData.scheduledAt).toISOString());
       }
       if (formData.endAt) {
         data.append('endAt', new Date(formData.endAt).toISOString());
       }
-      
+
       if (activeTab === 'manual') {
         data.append('numbers', formData.numbers);
       } else if (activeTab === 'csv' && file) {
@@ -214,7 +229,7 @@ export default function NewCampaign() {
             <h3 className="text-lg font-medium leading-6 text-gray-900">Create New Campaign</h3>
             <span className="text-sm text-gray-500">Step 1 of 1</span>
           </div>
-          
+
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {/* Campaign Name */}
             <div>
@@ -225,7 +240,7 @@ export default function NewCampaign() {
                 className="input w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="e.g. Summer Sale Promo"
                 value={formData.name}
-                onChange={e => setFormData({...formData, name: e.target.value})}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
 
@@ -234,23 +249,21 @@ export default function NewCampaign() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Select WhatsApp Instances ({formData.instanceIds.length} selected)</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {instances.length === 0 ? (
-                   <div className="col-span-2 p-4 bg-yellow-50 text-yellow-700 rounded-lg text-sm border border-yellow-200">
-                     No connected instances found. Please connect a WhatsApp number first.
-                   </div>
+                  <div className="col-span-2 p-4 bg-yellow-50 text-yellow-700 rounded-lg text-sm border border-yellow-200">
+                    No connected instances found. Please connect a WhatsApp number first.
+                  </div>
                 ) : (
                   instances.map(instance => (
-                    <div 
+                    <div
                       key={instance.id}
                       onClick={() => toggleInstance(instance.id)}
-                      className={`cursor-pointer border rounded-lg p-4 flex items-center gap-3 transition-all ${
-                        formData.instanceIds.includes(instance.id) 
-                          ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50' 
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      className={`cursor-pointer border rounded-lg p-4 flex items-center gap-3 transition-all ${formData.instanceIds.includes(instance.id)
+                        ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
                     >
-                      <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                         formData.instanceIds.includes(instance.id) ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'
-                      }`}>
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center ${formData.instanceIds.includes(instance.id) ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'
+                        }`}>
                         {formData.instanceIds.includes(instance.id) && (
                           <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                         )}
@@ -267,7 +280,7 @@ export default function NewCampaign() {
                 💡 Select multiple instances to distribute the load and reduce ban risk.
               </p>
             </div>
-            
+
             {/* Instance Rotation Settings (Only show if multiple instances selected) */}
             {formData.instanceIds.length > 1 && (
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
@@ -280,12 +293,12 @@ export default function NewCampaign() {
                       min="1"
                       className="input w-full rounded-lg border-blue-200 focus:ring-blue-500 focus:border-blue-500"
                       value={formData.instanceSwitchCount}
-                      onChange={e => setFormData({...formData, instanceSwitchCount: parseInt(e.target.value) || 1})}
+                      onChange={e => setFormData({ ...formData, instanceSwitchCount: parseInt(e.target.value) || 1 })}
                     />
                   </div>
                   <div className="text-xs text-blue-600 flex-1 pt-4">
                     With {formData.instanceIds.length} instances and switch count of {formData.instanceSwitchCount}:
-                    <br/>
+                    <br />
                     Instance 1 sends {formData.instanceSwitchCount} messages, then Instance 2 sends {formData.instanceSwitchCount}, etc.
                   </div>
                 </div>
@@ -295,18 +308,19 @@ export default function NewCampaign() {
             {/* Message Templates */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-700">Message Content ({formData.messages.length} Templates)</label>
-                {formData.messages.length < 5 && (
-                  <button 
-                    type="button" 
+                <label className="block text-sm font-medium text-gray-700">Message Content ({formData.messages.length} Variants)</label>
+                <div className="flex gap-2">
+                  <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">Unlimited Templates</span>
+                  <button
+                    type="button"
                     onClick={addMessageTemplate}
                     className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
                   >
                     <span>+ Add Variant</span>
                   </button>
-                )}
+                </div>
               </div>
-              
+
               <div className="space-y-4">
                 {formData.messages.map((msg, index) => (
                   <div key={index} className="relative group border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500">
@@ -321,8 +335,8 @@ export default function NewCampaign() {
                         <button type="button" onClick={() => insertFormatting(index, 'code')} className="p-1 hover:bg-gray-200 rounded text-gray-600 font-mono text-xs" title="Monospace">{'<>'}</button>
                       </div>
                       {formData.messages.length > 1 && (
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => removeMessageTemplate(index)}
                           className="text-xs text-red-500 hover:text-red-700"
                         >
@@ -342,7 +356,7 @@ export default function NewCampaign() {
                   </div>
                 ))}
               </div>
-              
+
               {/* Media Attachment */}
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Media Attachment (Optional)</label>
@@ -379,12 +393,12 @@ export default function NewCampaign() {
                       min="1"
                       className="input w-full rounded-lg border-purple-200 focus:ring-purple-500 focus:border-purple-500"
                       value={formData.messageRotationCount}
-                      onChange={e => setFormData({...formData, messageRotationCount: parseInt(e.target.value) || 1})}
+                      onChange={e => setFormData({ ...formData, messageRotationCount: parseInt(e.target.value) || 1 })}
                     />
                   </div>
                   <div className="text-xs text-purple-600 flex-1 pt-4">
                     With {formData.messages.length} templates and switch count of {formData.messageRotationCount}:
-                    <br/>
+                    <br />
                     Template 1 used for {formData.messageRotationCount} messages, then Template 2, etc. (Round Robin)
                   </div>
                 </div>
@@ -398,33 +412,30 @@ export default function NewCampaign() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('manual')}
-                  className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'manual' 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
+                  className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'manual'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
                 >
                   Manual Input
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('csv')}
-                  className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'csv' 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
+                  className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'csv'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
                 >
                   Upload CSV/Excel
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('sheet')}
-                  className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'sheet' 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
+                  className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'sheet'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
                 >
                   Google Sheet
                 </button>
@@ -439,11 +450,21 @@ export default function NewCampaign() {
                     required={activeTab === 'manual'}
                     rows={6}
                     className="input w-full pl-10 rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                    placeholder={"1234567890\n9876543210"}
+                    placeholder={"2010xxxxxxxxx\n012xxxxxxxx"}
                     value={formData.numbers}
-                    onChange={e => setFormData({...formData, numbers: e.target.value})}
+                    onChange={e => setFormData({ ...formData, numbers: e.target.value })}
                   />
-                  <p className="mt-1 text-xs text-gray-500">Enter phone numbers (one per line) with country code (e.g., 201xxxxxxxxx).</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-xs text-gray-500">Enter phone numbers (one per line).</p>
+                    <button
+                      type="button"
+                      onClick={formatNumbers}
+                      className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      <SparklesIcon className="w-3 h-3" />
+                      Smart Format (Fix Spaces)
+                    </button>
+                  </div>
                 </div>
               ) : activeTab === 'csv' ? (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
@@ -451,8 +472,8 @@ export default function NewCampaign() {
                     <div className="flex items-center justify-center gap-2 text-green-600 bg-green-50 p-2 rounded-lg inline-block">
                       <DocumentArrowUpIcon className="w-5 h-5" />
                       <span className="text-sm font-medium">{file.name}</span>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => setFile(null)}
                         className="p-1 hover:bg-green-100 rounded-full"
                       >
@@ -468,11 +489,11 @@ export default function NewCampaign() {
                           className="relative cursor-pointer rounded-md bg-white font-semibold text-blue-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 hover:text-blue-500"
                         >
                           <span>Upload a file</span>
-                          <input 
-                            id="file-upload" 
-                            name="file-upload" 
-                            type="file" 
-                            className="sr-only" 
+                          <input
+                            id="file-upload"
+                            name="file-upload"
+                            type="file"
+                            className="sr-only"
                             accept=".csv, .xlsx, .xls"
                             onChange={(e) => setFile(e.target.files[0])}
                           />
@@ -488,29 +509,29 @@ export default function NewCampaign() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Google Sheet Public URL</label>
                     <div className="flex gap-2">
-                       <input 
-                         type="url"
-                         className="flex-1 input rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                         placeholder="https://docs.google.com/spreadsheets/d/..."
-                         value={sheetUrl}
-                         onChange={e => setSheetUrl(e.target.value)}
-                       />
-                       <button
-                         type="button"
-                         onClick={fetchSheetColumns}
-                         disabled={fetchingColumns || !sheetUrl}
-                         className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                       >
-                         {fetchingColumns ? 'Fetching...' : 'Fetch Columns'}
-                       </button>
+                      <input
+                        type="url"
+                        className="flex-1 input rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="https://docs.google.com/spreadsheets/d/..."
+                        value={sheetUrl}
+                        onChange={e => setSheetUrl(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={fetchSheetColumns}
+                        disabled={fetchingColumns || !sheetUrl}
+                        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {fetchingColumns ? 'Fetching...' : 'Fetch Columns'}
+                      </button>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">Make sure the sheet is "Everyone with the link"</p>
                   </div>
-                  
+
                   {sheetColumns.length > 0 && (
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Select Phone Number Column</label>
-                      <select 
+                      <select
                         className="input w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                         value={phoneColumn}
                         onChange={e => setPhoneColumn(e.target.value)}
@@ -521,22 +542,22 @@ export default function NewCampaign() {
                           <option key={col} value={col}>{col}</option>
                         ))}
                       </select>
-                      
+
                       <div className="mt-4">
                         <label className="block text-xs font-medium text-gray-500 mb-2">Available Variables (Click to insert)</label>
                         <div className="flex flex-wrap gap-2">
                           {sheetColumns.map(col => (
-                             <button
-                               key={col}
-                               type="button"
-                               onClick={() => {
-                                 const focusedIndex = 0; // Default to first for now, or track focused input
-                                 insertVariable(focusedIndex, col); 
-                               }} 
-                               className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer border border-blue-200"
-                             >
-                               {`{{${col}}}`}
-                             </button>
+                            <button
+                              key={col}
+                              type="button"
+                              onClick={() => {
+                                const focusedIndex = 0; // Default to first for now, or track focused input
+                                insertVariable(focusedIndex, col);
+                              }}
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer border border-blue-200"
+                            >
+                              {`{{${col}}}`}
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -561,7 +582,7 @@ export default function NewCampaign() {
                     min="1"
                     max="60"
                     value={formData.delayMin}
-                    onChange={e => setFormData({...formData, delayMin: parseInt(e.target.value)})}
+                    onChange={e => setFormData({ ...formData, delayMin: parseInt(e.target.value) })}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   />
                   <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -578,7 +599,7 @@ export default function NewCampaign() {
                     min="1"
                     max="120"
                     value={formData.delayMax}
-                    onChange={e => setFormData({...formData, delayMax: parseInt(e.target.value)})}
+                    onChange={e => setFormData({ ...formData, delayMax: parseInt(e.target.value) })}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   />
                   <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -591,7 +612,7 @@ export default function NewCampaign() {
                 💡 Random delay between {formData.delayMin}-{formData.delayMax} seconds to avoid WhatsApp spam detection.
               </p>
             </div>
-            
+
             {/* Schedule Campaign */}
             <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
               <div className="flex items-center justify-between mb-2">
@@ -601,14 +622,12 @@ export default function NewCampaign() {
                 </label>
                 <button
                   type="button"
-                  onClick={() => setFormData({...formData, scheduleEnabled: !formData.scheduleEnabled, scheduledAt: '', endAt: ''})}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    formData.scheduleEnabled ? 'bg-indigo-600' : 'bg-gray-300'
-                  }`}
+                  onClick={() => setFormData({ ...formData, scheduleEnabled: !formData.scheduleEnabled, scheduledAt: '', endAt: '' })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.scheduleEnabled ? 'bg-indigo-600' : 'bg-gray-300'
+                    }`}
                 >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    formData.scheduleEnabled ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.scheduleEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
                 </button>
               </div>
               {formData.scheduleEnabled ? (
@@ -623,7 +642,7 @@ export default function NewCampaign() {
                         required={formData.scheduleEnabled}
                         min={new Date(Date.now() + 5 * 60000).toISOString().slice(0, 16)}
                         value={formData.scheduledAt}
-                        onChange={e => setFormData({...formData, scheduledAt: e.target.value})}
+                        onChange={e => setFormData({ ...formData, scheduledAt: e.target.value })}
                         className="flex-1 px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                       />
                     </div>
@@ -637,11 +656,11 @@ export default function NewCampaign() {
                         type="datetime-local"
                         min={formData.scheduledAt || new Date(Date.now() + 10 * 60000).toISOString().slice(0, 16)}
                         value={formData.endAt}
-                        onChange={e => setFormData({...formData, endAt: e.target.value})}
+                        onChange={e => setFormData({ ...formData, endAt: e.target.value })}
                         className="flex-1 px-3 py-2 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 text-sm"
                       />
                       {formData.endAt && (
-                        <button type="button" onClick={() => setFormData({...formData, endAt: ''})} className="text-gray-400 hover:text-red-500">
+                        <button type="button" onClick={() => setFormData({ ...formData, endAt: '' })} className="text-gray-400 hover:text-red-500">
                           <XMarkIcon className="h-4 w-4" />
                         </button>
                       )}

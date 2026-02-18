@@ -38,7 +38,7 @@ const createCampaign = async (req, res) => {
     } else {
       return res.status(400).json({ error: 'At least one instance is required' });
     }
-    
+
     // Verify instances exist and are connected
     const instances = await prisma.instance.findMany({
       where: {
@@ -59,29 +59,29 @@ const createCampaign = async (req, res) => {
     // 1. File Upload (CSV or Excel)
     if (req.files && req.files['file']) {
       const filePath = req.files['file'][0].path;
-      
+
       try {
         // Read file using xlsx (supports CSV, XLS, XLSX)
         const workbook = xlsx.readFile(filePath);
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        
+
         // Convert to JSON array
         const jsonData = xlsx.utils.sheet_to_json(worksheet, { defval: "" }); // defval ensures empty cells are empty strings
-        
+
         if (jsonData.length === 0) {
-           try { fs.unlinkSync(filePath); } catch(e) {}
-           return res.status(400).json({ error: 'File is empty.' });
+          try { fs.unlinkSync(filePath); } catch (e) { }
+          return res.status(400).json({ error: 'File is empty.' });
         }
 
         // Detect phone column
         const headers = Object.keys(jsonData[0]).map(h => h.trim().toLowerCase());
         const originalHeaders = Object.keys(jsonData[0]); // Keep original case for data extraction
-        
+
         const numberIndex = headers.indexOf('number');
         const phoneIndex = headers.indexOf('phone');
         const mobileIndex = headers.indexOf('mobile');
-        
+
         // Find the matching key in original headers
         let targetKey = null;
         if (numberIndex !== -1) targetKey = originalHeaders[numberIndex];
@@ -89,14 +89,14 @@ const createCampaign = async (req, res) => {
         else if (mobileIndex !== -1) targetKey = originalHeaders[mobileIndex];
 
         if (!targetKey) {
-           try { fs.unlinkSync(filePath); } catch(e) {}
-           return res.status(400).json({ error: "File must contain a 'number', 'phone', or 'mobile' column header." });
+          try { fs.unlinkSync(filePath); } catch (e) { }
+          return res.status(400).json({ error: "File must contain a 'number', 'phone', or 'mobile' column header." });
         }
 
         contacts = jsonData.map(row => {
           const number = String(row[targetKey]).trim();
           if (number && number.length >= 7) {
-             return { number, variables: row };
+            return { number, variables: row };
           }
           return null;
         }).filter(Boolean);
@@ -105,13 +105,13 @@ const createCampaign = async (req, res) => {
         console.error('File Parse Error:', err);
         return res.status(400).json({ error: 'Failed to parse file. Ensure it is a valid CSV or Excel file.' });
       } finally {
-        try { fs.unlinkSync(filePath); } catch(e) {} // Clean up
+        try { fs.unlinkSync(filePath); } catch (e) { } // Clean up
       }
-    } 
+    }
     // 2. Google Sheet Import
     else if (googleSheetUrl) {
       const sheetData = await googleSheetService.fetchSheetData(googleSheetUrl);
-      
+
       if (sheetData.length === 0) {
         return res.status(400).json({ error: "Google Sheet is empty or could not be read." });
       }
@@ -123,13 +123,13 @@ const createCampaign = async (req, res) => {
 
       // Map rows to contacts with all data (for variable interpolation)
       contacts = sheetData.map(row => {
-         const number = row[phoneColumn];
-         if (!number) return null;
-         
-         return {
-           number: number.trim(),
-           variables: row // Store all row data for interpolation
-         };
+        const number = row[phoneColumn];
+        if (!number) return null;
+
+        return {
+          number: number.trim(),
+          variables: row // Store all row data for interpolation
+        };
       }).filter(Boolean);
 
     }
@@ -160,10 +160,10 @@ const createCampaign = async (req, res) => {
     let mediaType = null;
     if (req.files && req.files['media']) {
       const mediaFile = req.files['media'][0];
-      
+
       // Upload to S3/MinIO
       mediaUrl = await storageService.uploadFile(mediaFile);
-      
+
       // Determine media type
       if (mediaFile.mimetype.startsWith('image/')) mediaType = 'image';
       else if (mediaFile.mimetype.startsWith('video/')) mediaType = 'video';
@@ -231,22 +231,22 @@ const createCampaign = async (req, res) => {
         const currentMessage = templates[templateIndex];
 
         let finalMessage = currentMessage;
-        
+
         // Shorten Links if present
         if (urlRegex.test(finalMessage)) {
-           const urls = finalMessage.match(urlRegex) || [];
-           for (const url of urls) {
-             // Create unique short link per message for tracking
-             // We pass null for messageId initially, will update after creation if needed, 
-             // OR we can't link to messageId before message creation. 
-             // Strategy: Create link, get short URL, then create Message. 
-             // To link Link->Message, we might need to update Link after Message creation or use a different flow.
-             // Simpler: Just link to CampaignId for now, or use a UUID for message that we generate.
-             
-             // Better: Generate Short Link -> Replace in Text -> Create Message -> Update Link with MessageID
-             const shortUrl = await linkShortener.generateShortUrl(url, campaign.id, null);
-             finalMessage = finalMessage.replace(url, shortUrl);
-           }
+          const urls = finalMessage.match(urlRegex) || [];
+          for (const url of urls) {
+            // Create unique short link per message for tracking
+            // We pass null for messageId initially, will update after creation if needed, 
+            // OR we can't link to messageId before message creation. 
+            // Strategy: Create link, get short URL, then create Message. 
+            // To link Link->Message, we might need to update Link after Message creation or use a different flow.
+            // Simpler: Just link to CampaignId for now, or use a UUID for message that we generate.
+
+            // Better: Generate Short Link -> Replace in Text -> Create Message -> Update Link with MessageID
+            const shortUrl = await linkShortener.generateShortUrl(url, campaign.id, null);
+            finalMessage = finalMessage.replace(url, shortUrl);
+          }
         }
 
         const messageRecord = await prisma.message.create({
@@ -261,7 +261,7 @@ const createCampaign = async (req, res) => {
             mediaType
           }
         });
-        
+
         // If we want per-user tracking to be traceable to the specific message, we'd need to update the links created above
         // with the messageRecord.id. This adds N updates. 
         // For V1, let's stick to campaign-level tracking or efficient batching if needed.
@@ -273,7 +273,7 @@ const createCampaign = async (req, res) => {
         // 1. Generate shortCode/Link (messageId: null)
         // 2. Create Message (messageText: ...shortUrl...)
         // 3. Update Link (messageId: messageRecord.id)
-        
+
         // Re-parsing to find the short codes we just inserted might be complex.
         // Let's rely on the previous loop. We need to track which links belong to this message.
         // Ideally linkShortener returns the Link object, not just URL.
@@ -281,8 +281,8 @@ const createCampaign = async (req, res) => {
         // Refined Logic below in next chunk for addToQueue
       }
 
-      res.status(201).json({ 
-        message: `Campaign scheduled for ${new Date(scheduledAt).toLocaleString()}`, 
+      res.status(201).json({
+        message: `Campaign scheduled for ${new Date(scheduledAt).toLocaleString()}`,
         campaignId: campaign.id,
         totalContacts: contacts.length,
         status: 'SCHEDULED',
@@ -298,11 +298,11 @@ const createCampaign = async (req, res) => {
       // But `addToQueue` might be designed to create records. Let's check `addToQueue` implementation.
       // If `addToQueue` creates records, we should move that logic here or update `addToQueue`.
       // Given `addToQueue` handles rotation/delay logic, updating it to handle Link Shortening is better.
-      
+
       // Update: Passing full contact objects with variables to addToQueue. 
       // Link shortening should ideally happen INSIDE the worker or just before queuing.
       // If we do it before queuing, we can track who clicked.
-      
+
       await queueService.addToQueue(
         instances,
         contacts,
@@ -323,8 +323,8 @@ const createCampaign = async (req, res) => {
         data: { status: 'PROCESSING' }
       });
 
-      res.status(201).json({ 
-        message: 'Campaign created and processing started', 
+      res.status(201).json({
+        message: 'Campaign created and processing started',
         campaignId: campaign.id,
         totalContacts: contacts.length,
         instanceCount: instances.length,
@@ -613,15 +613,161 @@ const deleteCampaign = async (req, res) => {
   }
 };
 
-const previewSheet = async (req, res) => {
+// Get messages for a campaign (with optional status filter)
+const getCampaignMessages = async (req, res) => {
   try {
-    const { url } = req.body;
-    if (!url) return res.status(400).json({ error: 'URL is required' });
+    const tenantId = req.user.tenantId;
+    const { id } = req.params;
+    const { status, limit = 100 } = req.query;
 
-    const columns = await googleSheetService.fetchSheetHeaders(url);
-    res.json({ columns });
+    const campaign = await prisma.campaign.findFirst({ where: { id, tenantId } });
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+
+    const where = { campaignId: id };
+    if (status) where.status = status.toUpperCase();
+
+    const messages = await prisma.message.findMany({
+      where,
+      select: { recipientNumber: true, status: true, failReason: true, sentAt: true },
+      take: parseInt(limit),
+      orderBy: { sentAt: 'desc' }
+    });
+
+    res.json({ messages });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+};
+
+const exportCampaignContacts = async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const { id } = req.params;
+    const { status } = req.query; // 'SENT', 'FAILED', 'CANCELLED'
+
+    const campaign = await prisma.campaign.findFirst({ where: { id, tenantId } });
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+
+    const where = { campaignId: id };
+    if (status) where.status = status.toUpperCase();
+
+    const messages = await prisma.message.findMany({
+      where,
+      select: { recipientNumber: true, status: true, failReason: true, sentAt: true }
+    });
+
+    const lines = ['number,status,failReason,sentAt'];
+    messages.forEach(m => {
+      lines.push(`${m.recipientNumber},${m.status},"${m.failReason || ''}",${m.sentAt || ''}`);
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="campaign_${id}_${status || 'all'}.csv"`);
+    res.send(lines.join('\n'));
+  } catch (error) {
+    console.error('Export Campaign Error:', error);
+    res.status(500).json({ error: 'Failed to export contacts' });
+  }
+};
+
+// Update a campaign (Edit & Resume feature)
+const updateCampaign = async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const { id } = req.params;
+    const { message, messages } = req.body;
+
+    const campaign = await prisma.campaign.findFirst({ where: { id, tenantId } });
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+
+    // Only allow editing if PAUSED or PENDING (Scheduled)
+    if (campaign.status !== 'PAUSED' && campaign.status !== 'PENDING' && campaign.status !== 'SCHEDULED') {
+      return res.status(400).json({ error: 'Campaign can only be edited when PAUSED, PENDING or SCHEDULED.' });
+    }
+
+    // Handle messages list similar to create
+    let messageList = [];
+    if (messages && Array.isArray(messages)) {
+      messageList = messages.filter(m => m.trim().length > 0);
+    } else if (message) {
+      messageList = [message];
+    }
+
+    if (messageList.length === 0) {
+      return res.status(400).json({ error: 'At least one message template is required' });
+    }
+
+    // 1. Update Campaign Record
+    await prisma.campaign.update({
+      where: { id },
+      data: {
+        messageTemplate: messageList[0] // Update primary display
+      }
+    });
+
+    // 2. Update Message Templates
+    // First delete old ones, then create new ones
+    await prisma.messageTemplate.deleteMany({ where: { campaignId: id } });
+    await prisma.messageTemplate.createMany({
+      data: messageList.map((content, index) => ({
+        campaignId: id,
+        content,
+        orderIndex: index
+      }))
+    });
+
+    // 3. Regenerate Pending Messages
+    // Fetch all pending messages for this campaign
+    const pendingMessages = await prisma.message.findMany({
+      where: { campaignId: id, status: 'pending' }
+    });
+
+    console.log(`[Campaign] Regenerating ${pendingMessages.length} pending messages for campaign ${id}`);
+
+    // Update each message with new template (Round Robin)
+    // We use a transaction or parallel promises
+    const updatePromises = pendingMessages.map(async (msg, index) => {
+      // Determine new template
+      const templateIndex = index % messageList.length;
+      let newText = messageList[templateIndex];
+
+      // Re-interpolate variables if they exist
+      if (msg.variables) {
+        // msg.variables is Json type
+        const vars = msg.variables;
+        Object.keys(vars).forEach(key => {
+          const regex = new RegExp(`{{${key}}}`, 'gi');
+          newText = newText.replace(regex, vars[key] || '');
+        });
+      }
+
+      // Re-shorten links
+      if (urlRegex.test(newText)) {
+        const urls = newText.match(urlRegex) || [];
+        for (const url of urls) {
+          // We reuse the existing link tracking mechanism. 
+          // Note: This might generate NEW short links for every update. 
+          // Ideally we should cache or reuse, but for now generating new ones ensures correctness.
+          const shortUrl = await linkShortener.generateShortUrl(url, id, null);
+          newText = newText.replace(url, shortUrl);
+        }
+      }
+
+      return prisma.message.update({
+        where: { id: msg.id },
+        data: { messageText: newText }
+      });
+    });
+
+    await Promise.all(updatePromises);
+
+    res.json({
+      message: `Campaign updated. ${pendingMessages.length} pending messages regenerated.`
+    });
+
+  } catch (error) {
+    console.error('Update Campaign Error:', error);
+    res.status(500).json({ error: 'Failed to update campaign' });
   }
 };
 
@@ -629,10 +775,13 @@ module.exports = {
   createCampaign,
   getCampaigns,
   getCampaignById,
+  getCampaignMessages,
   pauseCampaign,
   resumeCampaign,
   stopCampaign,
   deleteCampaign,
   getActiveCampaigns,
-  previewSheet
+  exportCampaignContacts,
+  previewSheet,
+  updateCampaign
 };

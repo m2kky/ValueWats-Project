@@ -28,20 +28,20 @@ const messageQueue = new Queue('campaign-messages', {
 // Process jobs
 messageQueue.process(async (job) => {
   const { instanceName, number, message, campaignId, messageRecordId, tenantId, mediaUrl, mediaType } = job.data;
-  
+
   try {
     console.log(`Processing message for ${number} via ${instanceName} (Media: ${mediaUrl ? 'Yes' : 'No'})`);
-    
+
     const result = await evolutionApi.sendMessage(tenantId, instanceName, number, message, mediaUrl, mediaType);
-    
+
     // Extract wamid (message ID) from Evolution API response
     // V2 structure: result.key.id
     const wamid = result.key?.id || result.id;
-    
+
     // Update message status in database
     await prisma.message.update({
       where: { id: messageRecordId },
-      data: { 
+      data: {
         status: 'SENT',
         sentAt: new Date(),
         wamid
@@ -51,12 +51,15 @@ messageQueue.process(async (job) => {
     return result;
   } catch (error) {
     console.error(`Failed to send message to ${number}:`, error.message);
-    
+
     await prisma.message.update({
       where: { id: messageRecordId },
-      data: { status: 'FAILED' }
+      data: {
+        status: 'FAILED',
+        failReason: error.response?.data?.message || error.message || 'Unknown error'
+      }
     });
-    
+
     throw error;
   }
 });
@@ -64,7 +67,7 @@ messageQueue.process(async (job) => {
 // Queue events logging
 messageQueue.on('completed', async (job) => {
   console.log(`Job ${job.id} completed!`);
-  
+
   // Update campaign sent count
   try {
     const { campaignId } = job.data;
@@ -72,7 +75,7 @@ messageQueue.on('completed', async (job) => {
       where: { id: campaignId },
       data: { sentCount: { increment: 1 } }
     });
-    
+
     // Check if all messages for this campaign are processed
     await checkCampaignCompletion(campaignId);
   } catch (err) {
@@ -82,7 +85,7 @@ messageQueue.on('completed', async (job) => {
 
 messageQueue.on('failed', async (job, err) => {
   console.error(`Job ${job.id} failed: ${err.message}`);
-  
+
   // Update campaign failed count
   try {
     const { campaignId } = job.data;
@@ -90,7 +93,7 @@ messageQueue.on('failed', async (job, err) => {
       where: { id: campaignId },
       data: { failedCount: { increment: 1 } }
     });
-    
+
     // Check if all messages for this campaign are processed
     await checkCampaignCompletion(campaignId);
   } catch (err) {
@@ -105,11 +108,11 @@ async function checkCampaignCompletion(campaignId) {
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId }
   });
-  
+
   if (!campaign) return;
-  
+
   const totalProcessed = campaign.sentCount + campaign.failedCount;
-  
+
   if (totalProcessed >= campaign.totalContacts && ['PROCESSING', 'PENDING'].includes(campaign.status)) {
     await prisma.campaign.update({
       where: { id: campaignId },
@@ -134,19 +137,19 @@ async function checkCampaignCompletion(campaignId) {
 const addToQueue = async (instances, contacts, messageTemplates, campaignId, tenantId, delayMin = 5, delayMax = 15, instanceSwitchCount = 50, messageRotationCount = 1, mediaUrl = null, mediaType = null) => {
   let cumulativeDelay = 0;
   const jobs = [];
-  
+
   // Ensure inputs are arrays
   const instanceList = Array.isArray(instances) ? instances : [instances];
   // Backwards compatibility: if messageTemplates is a string, wrap in array
   const templates = Array.isArray(messageTemplates) ? messageTemplates : [messageTemplates];
-  
+
   for (let i = 0; i < contacts.length; i++) {
     const contact = contacts[i];
-    
+
     // Determine which instance to use
     const instanceIndex = Math.floor(i / intVal(instanceSwitchCount)) % instanceList.length;
     const currentInstance = instanceList[instanceIndex];
-    
+
     // Determine which message template to use
     const templateIndex = Math.floor(i / intVal(messageRotationCount)) % templates.length;
     let currentMessage = templates[templateIndex];
@@ -161,14 +164,14 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
 
     // Shorten Links if present
     if (urlRegex.test(currentMessage)) {
-        const urls = currentMessage.match(urlRegex) || [];
-        for (const url of urls) {
-            // Generate short link linked to campaign (messageId null initially)
-            const shortUrl = await linkShortener.generateShortUrl(url, campaignId, null);
-            currentMessage = currentMessage.replace(url, shortUrl);
-        }
+      const urls = currentMessage.match(urlRegex) || [];
+      for (const url of urls) {
+        // Generate short link linked to campaign (messageId null initially)
+        const shortUrl = await linkShortener.generateShortUrl(url, campaignId, null);
+        currentMessage = currentMessage.replace(url, shortUrl);
+      }
     }
-    
+
     if (!currentInstance) {
       console.error(`[Queue] No instance available for message ${i}`);
       continue;
@@ -184,18 +187,19 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
         recipientNumber: contact.number,
         tenantId,
         mediaUrl,
-        mediaType
+        mediaType,
+        variables: contact.variables || null
       }
     });
-    
+
     // Random delay between delayMin and delayMax
     const dMin = intVal(delayMin);
     const dMax = intVal(delayMax);
     const randomDelay = Math.floor(Math.random() * (dMax - dMin + 1)) + dMin;
     cumulativeDelay += randomDelay * 1000;
-    
+
     console.log(`[Queue] Scheduling message ${i + 1}/${contacts.length} to ${contact.number} via ${currentInstance.instanceName} (Template ${templateIndex + 1}) with ${cumulativeDelay}ms delay`);
-    
+
     const job = messageQueue.add({
       instanceName: currentInstance.instanceName,
       number: contact.number,
@@ -213,7 +217,7 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
         delay: 2000
       }
     });
-    
+
     jobs.push(job);
   }
 
