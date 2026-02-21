@@ -67,6 +67,7 @@ app.get('/health', (req, res) => {
 // ... (routes remain same)
 // Public routes (no authentication required)
 app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes); // Fallback for stripped /api prefix
 app.use('/l', linkRoutes); // Short links (root level or /l)
 
 // Serve uploads directory statically
@@ -107,9 +108,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+// 404 handler for API
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'API Route not found' });
 });
 
 // Start server
