@@ -680,8 +680,8 @@ export default function Agents() {
                       enabled={form.actionConfig?.closeConversation?.enabled || false}
                       setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, closeConversation: { ...f.actionConfig.closeConversation, enabled: val } } }))}
                       config={form.actionConfig?.closeConversation?.instructions || ''}
-                      setConfig={(val) => setForm(f => ({ ...f.actionConfig, closeConversation: { ...f.actionConfig.closeConversation, instructions: val } } }))}
-                    placeholder="CRITERIA: USER SIGN-OFF, RESOLVED QUERY, OR END-OF-FLOW..."
+                      setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, closeConversation: { ...f.actionConfig.closeConversation, instructions: val } } }))}
+                      placeholder="CRITERIA: USER SIGN-OFF, RESOLVED QUERY, OR END-OF-FLOW..."
                     />
 
                     <ActionCard
@@ -690,7 +690,7 @@ export default function Agents() {
                       enabled={form.actionConfig?.assignAgent?.enabled || false}
                       setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, assignAgent: { ...f.actionConfig.assignAgent, enabled: val } } }))}
                       config={form.actionConfig?.assignAgent?.instructions || ''}
-                      setConfig={(val) => setForm(f => ({ ...f.actionConfig, assignAgent: { ...f.actionConfig.assignAgent, instructions: val } } }))}
+                      setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, assignAgent: { ...f.actionConfig.assignAgent, instructions: val } } }))}
                       placeholder="IF: TECHNICAL ANOMALY DETECTED -> ROUTE TO SUPPORT_TIER_2..."
                     />
 
@@ -698,19 +698,19 @@ export default function Agents() {
                       title="IDENTITY INDEXING"
                       description="EXTRACT ENTITIES AND UPDATE CONTACT METADATA IN REAL-TIME."
                       enabled={form.actionConfig?.updateFields?.enabled || false}
-                      setEnabled={(val) => setForm(f => ({ ...f.actionConfig, updateFields: { ...f.actionConfig.updateFields, enabled: val } } }))}
-                    config={form.actionConfig?.updateFields?.instructions || ''}
-                    setConfig={(val) => setForm(f => ({ ...f.actionConfig, updateFields: { ...f.actionConfig.updateFields, instructions: val } } }))}
-                    placeholder="FIELDS TO SYNC: EMAIL, PHONE_ORIGIN, CORPORATE_ID..."
+                      setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateFields: { ...f.actionConfig.updateFields, enabled: val } } }))}
+                      config={form.actionConfig?.updateFields?.instructions || ''}
+                      setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateFields: { ...f.actionConfig.updateFields, instructions: val } } }))}
+                      placeholder="FIELDS TO SYNC: EMAIL, PHONE_ORIGIN, CORPORATE_ID..."
                     />
 
                     <ActionCard
                       title="STAGE TRANSITION"
                       description="AUTONOMOUSLY SHIFT CONTACTS THROUGH THE CONVERSION PIPELINE."
                       enabled={form.actionConfig?.updateLifecycle?.enabled || false}
-                      setEnabled={(val) => setForm(f => ({ ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, enabled: val } } }))}
-                    config={form.actionConfig?.updateLifecycle?.instructions || ''}
-                    setConfig={(val) => setForm(f => ({ ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, instructions: val } } }))}
+                      setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, enabled: val } } }))}
+                      config={form.actionConfig?.updateLifecycle?.instructions || ''}
+                      setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, instructions: val } } }))}
                       placeholder="UPON HIGH_INTENT DETECTION -> TRIGGER STAGE: QUALIFIED_LEAD..."
                     />
 
@@ -718,15 +718,14 @@ export default function Agents() {
                       title="WORKFLOW INJECTION"
                       description="TRIGGER EXTERNAL AUTOMATION CHAINS (WEBHOOKS/ZAPIER)."
                       enabled={form.actionConfig?.triggerWorkflow?.enabled || false}
-                      setEnabled={(val) => setForm(f => ({ ...f.actionConfig, triggerWorkflow: { ...f.actionConfig.triggerWorkflow, enabled: val } } }))}
-                    config={form.actionConfig?.triggerWorkflow?.instructions || ''}
-                    setConfig={(val) => setForm(f => ({ ...f.actionConfig, triggerWorkflow: { ...f.actionConfig.triggerWorkflow, instructions: val } } }))}
-                    placeholder="POST-ONBOARDING: TRIGGER GOOGLE_SHEET_APPEND..."
+                      setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, triggerWorkflow: { ...f.actionConfig.triggerWorkflow, enabled: val } } }))}
+                      config={form.actionConfig?.triggerWorkflow?.instructions || ''}
+                      setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, triggerWorkflow: { ...f.actionConfig.triggerWorkflow, instructions: val } } }))}
+                      placeholder="POST-ONBOARDING: TRIGGER GOOGLE_SHEET_APPEND..."
                     />
                   </div>
                 </div>
               ) : (
-                /* ─── Knowledge Base Tab ─── */
                 <div className="space-y-8">
                   {/* Add Knowledge Buttons */}
                   {!kbMode && (
@@ -750,275 +749,266 @@ export default function Agents() {
                           </div>
                         </button>
 
-                        <button
-                          onClick={() => { setKbMode('file'); fileInputRef.current?.click(); }}
-                          className="flex flex-col items-center gap-4 p-8 rounded-2xl border border-white/5 bg-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all group active:scale-95"
-                        >
+                        <label className="flex flex-col items-center gap-4 p-8 rounded-2xl border border-white/5 bg-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all group cursor-pointer active:scale-95">
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.txt,.doc,.docx"
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (file) setKbFile(file);
+                              setKbMode('file');
+                            }}
+                          />
                           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.1)]">
-                            <DocumentArrowUpIcon className="h-6 w-6 text-emerald-400" />
+                            <CloudArrowUpIcon className="h-6 w-6 text-emerald-400" />
                           </div>
                           <div className="text-center">
-                            <span className="block text-xs font-black text-white uppercase tracking-widest mb-1">BINARY UPLOAD</span>
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">PDF, TXT, OR MARKDOWN SOURCE</span>
+                            <span className="block text-xs font-black text-white uppercase tracking-widest mb-1">DATA INJECTION</span>
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">UPLOAD PDF OR TEXT CORPUS</span>
                           </div>
-                        </button>
+                        </label>
                       </div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".pdf,.txt,.md"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files[0];
-                          if (file && editingId) {
-                            setKbFile(file);
-                            await uploadFileKnowledge(editingId, file);
-                            setKbFile(null);
-                            setKbMode(null);
-                            e.target.value = '';
-                          }
-                        }}
-                      />
                     </div>
                   )}
 
-                  {/* Add Text Form */}
+                  {/* Knowledge Form: Text */}
                   {kbMode === 'text' && (
-                    <div className="glass-card p-6 border border-indigo-500/30 bg-zinc-900/40 animate-in zoom-in-95 duration-300">
-                      <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1 h-4 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(71,37,244,0.5)]"></div>
-                          <h3 className="text-xs font-black text-white uppercase tracking-widest italic">APPEND TEXT KERNEL</h3>
+                    <div className="glass-card p-6 border border-white/5 bg-zinc-900/40 animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div className="flex items-center justify-between mb-6">
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">STRING BUFFER</h4>
+                        <button onClick={() => setKbMode(null)} className="text-[9px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors">ABORT_STREAM</button>
+                      </div>
+                      <div className="space-y-4">
+                        <input
+                          type="text"
+                          placeholder="DATA_TITLE"
+                          className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-indigo-500/40"
+                          value={kbTextTitle}
+                          onChange={e => setKbTextTitle(e.target.value)}
+                        />
+                        <textarea
+                          placeholder="RAW_CONTENT_STREAM..."
+                          rows={6}
+                          className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-xs font-medium text-white outline-none focus:border-indigo-500/40 custom-scrollbar"
+                          value={kbTextContent}
+                          onChange={e => setKbTextContent(e.target.value)}
+                        />
+                        <button
+                          onClick={() => {
+                            addTextKnowledge(editingId, { title: kbTextTitle, content: kbTextContent });
+                            setKbMode(null);
+                            setKbTextTitle('');
+                            setKbTextContent('');
+                          }}
+                          disabled={!kbTextTitle || !kbTextContent || knowledgeLoading}
+                          className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest shadow-lg shadow-indigo-500/20 transition-all"
+                        >
+                          {knowledgeLoading ? 'VECTORIZING...' : 'INJECT KERNEL'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Knowledge Form: File */}
+                  {kbMode === 'file' && (
+                    <div className="glass-card p-6 border border-white/5 bg-zinc-900/40 animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div className="flex items-center justify-between mb-6">
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">DATA PACKET READY</h4>
+                        <button onClick={() => { setKbMode(null); setKbFile(null); }} className="text-[9px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors">ABORT_UPLOAD</button>
+                      </div>
+                      <div className="p-8 border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center gap-4 bg-white/5">
+                        <DocumentIcon className="h-10 w-10 text-emerald-400/40" />
+                        <div className="text-center">
+                          <p className="text-xs font-black text-white uppercase tracking-tight mb-1">{kbFile?.name}</p>
+                          <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{(kbFile?.size / 1024).toFixed(1)} KB READY FOR INJECTION</p>
                         </div>
                         <button
-                          onClick={() => { setKbMode(null); setKbTitle(''); setKbContent(''); }}
-                          className="p-1.5 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                          onClick={() => {
+                            uploadFileKnowledge(editingId, kbFile);
+                            setKbMode(null);
+                            setKbFile(null);
+                          }}
+                          disabled={knowledgeLoading}
+                          className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all mt-4"
                         >
-                          <XMarkIcon className="h-4 w-4" />
+                          {knowledgeLoading ? 'VECTORIZING...' : 'INJECT KERNEL'}
                         </button>
                       </div>
-
-                      <div className="space-y-6">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block">KERNEL TITLE *</label>
-                          <input
-                            type="text"
-                            value={kbTitle}
-                            onChange={e => setKbTitle(e.target.value)}
-                            className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/30 transition-all font-bold"
-                            placeholder="e.g. CORPORATE_POLICY_V2"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block">RAW CONTENT *</label>
-                          <textarea
-                            value={kbContent}
-                            onChange={e => setKbContent(e.target.value)}
-                            rows={8}
-                            className="w-full bg-zinc-950 border border-white/5 rounded-xl p-5 text-sm text-zinc-300 outline-none focus:border-indigo-500/30 transition-all font-mono leading-relaxed custom-scrollbar"
-                            placeholder="INPUT SOURCE MATERIAL FOR RAG VECTORIZATION..."
-                          />
-                        </div>
-                        <div className="flex justify-end gap-3 pt-4">
-                          <button
-                            onClick={() => { setKbMode(null); setKbTitle(''); setKbContent(''); }}
-                            className="px-6 py-2.5 text-xs font-black text-zinc-500 hover:text-white uppercase tracking-widest transition-colors"
-                          >
-                            ABORT
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (kbTitle && kbContent && editingId) {
-                                await addTextKnowledge(editingId, { title: kbTitle, content: kbContent });
-                                setKbTitle('');
-                                setKbContent('');
-                                setKbMode(null);
-                              }
-                            }}
-                            disabled={!kbTitle || !kbContent || knowledgeLoading}
-                            className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-lg shadow-indigo-500/10 transition-all active:scale-95"
-                          >
-                            {knowledgeLoading ? 'VECTORIZING...' : 'INJECT KERNEL'}
-                          </button>
-                        </div>
-                      </div>
                     </div>
                   )}
 
-                  {/* Upload Progress */}
-                  {kbMode === 'file' && kbFile && knowledgeLoading && (
-
-                    {/* Knowledge Sources List */ }
-                    < div className="glass-card border border-white/5 bg-zinc-900/40 divide-y divide-white/5">
-                  <div className="px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1 h-3 bg-zinc-500 rounded-full"></div>
-                      <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] italic">
-                        NEURAL KERNELS ({knowledgeSources.length})
-                      </h3>
+                  {/* Knowledge Sources List */}
+                  <div className="glass-card border border-white/5 bg-zinc-900/40 divide-y divide-white/5">
+                    <div className="px-6 py-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-3 bg-zinc-500 rounded-full"></div>
+                        <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] italic">
+                          NEURAL KERNELS ({knowledgeSources.length})
+                        </h3>
+                      </div>
+                      {editingId && (
+                        <button
+                          onClick={() => fetchKnowledge(editingId)}
+                          className="p-1 text-zinc-500 hover:text-white transition-colors"
+                          title="Refresh"
+                        >
+                          <ArrowPathIcon className={`h-4 w-4 ${knowledgeLoading ? 'animate-spin' : ''}`} />
+                        </button>
+                      )}
                     </div>
-                    {editingId && (
-                      <button
-                        onClick={() => fetchKnowledge(editingId)}
-                        className="p-1 text-zinc-500 hover:text-white transition-colors"
-                        title="Refresh"
-                      >
-                        <ArrowPathIcon className={`h-4 w-4 ${knowledgeLoading ? 'animate-spin' : ''}`} />
-                      </button>
-                    )}
-                  </div>
 
-                  <div className="p-4">
-                    {knowledgeLoading && knowledgeSources.length === 0 ? (
-                      <div className="flex justify-center py-12">
-                        <div className="w-8 h-8 rounded-full border-t-2 border-indigo-500 animate-spin" />
-                      </div>
-                    ) : knowledgeSources.length === 0 ? (
-                      <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-2xl">
-                        <BookOpenIcon className="h-10 w-10 text-zinc-800 mx-auto mb-3" />
-                        <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">ZERO KERNELS DETECTED</p>
-                        <p className="text-[8px] font-bold text-zinc-700 mt-1 uppercase tracking-tighter">INJECT DATA SOURCES TO ENABLE RAG CAPABILITIES</p>
-                      </div>
-                    ) : (
-                      <div className="grid gap-3">
-                        {knowledgeSources.map(source => (
-                          <div key={source.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all group">
-                            <div className="flex items-center gap-4 min-w-0">
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${source.sourceType === 'file'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                                }`}>
-                                {source.sourceType === 'file' ? '📄' : '📝'}
+                    <div className="p-4">
+                      {knowledgeLoading && knowledgeSources.length === 0 ? (
+                        <div className="flex justify-center py-12">
+                          <div className="w-8 h-8 rounded-full border-t-2 border-indigo-500 animate-spin" />
+                        </div>
+                      ) : knowledgeSources.length === 0 ? (
+                        <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-2xl">
+                          <BookOpenIcon className="h-10 w-10 text-zinc-800 mx-auto mb-3" />
+                          <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">ZERO KERNELS DETECTED</p>
+                          <p className="text-[8px] font-bold text-zinc-700 mt-1 uppercase tracking-tighter">INJECT DATA SOURCES TO ENABLE RAG CAPABILITIES</p>
+                        </div>
+                      ) : (
+                        <div className="grid gap-3">
+                          {knowledgeSources.map(source => (
+                            <div key={source.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-all group">
+                              <div className="flex items-center gap-4 min-w-0">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${source.sourceType === 'file'
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                  : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                                  }`}>
+                                  {source.sourceType === 'file' ? '📄' : '📝'}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-black text-white truncate uppercase tracking-tight">{source.title}</p>
+                                  <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">
+                                    {source.sourceType} • {Number(source.chunkCount) || 1} SECTORS
+                                  </p>
+                                </div>
                               </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-black text-white truncate uppercase tracking-tight">{source.title}</p>
-                                <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">
-                                  {source.sourceType} • {Number(source.chunkCount) || 1} SECTORS
-                                </p>
-                              </div>
+                              <button
+                                onClick={() => deleteKnowledge(editingId, source.id)}
+                                className="p-2 text-zinc-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                title="Purge"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
                             </div>
-                            <button
-                              onClick={() => deleteKnowledge(editingId, source.id)}
-                              className="p-2 text-zinc-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                              title="Purge"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
                 </div>
               )}
-          </div>
-        </div>
-
-        {/* ─── RIGHT PANEL: Live Test Chat ─── */}
-        <div className="w-2/5 flex flex-col bg-[#08080a]">
-          {/* Chat Header */}
-          <div className="h-20 flex items-center justify-between px-8 border-b border-white/5 bg-zinc-950/40 backdrop-blur-xl">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-0.5">
-                  <div className="w-full h-full rounded-[10px] bg-[#0c0c0e] flex items-center justify-center">
-                    <CpuChipIcon className="h-5 w-5 text-indigo-400" />
-                  </div>
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0c0c0e] shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-              </div>
-              <div>
-                <h3 className="text-xs font-black text-white uppercase tracking-widest italic truncate max-w-[150px]">
-                  {form.name || 'UNNAMED_ENTITY'}
-                </h3>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-tighter bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">PREVIEW_MODE</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse border border-red-500/50"></div>
-              <span className="text-[10px] font-black text-zinc-500 tracking-widest uppercase">STAGING</span>
             </div>
           </div>
 
-          {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-[radial-gradient(circle_at_50%_50%,rgba(71,37,244,0.03),transparent)]">
-            {chatMessages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-center max-w-xs mx-auto">
-                <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center mb-6 shadow-2xl">
-                  <ChatBubbleLeftRightIcon className="h-8 w-8 text-indigo-500/40" />
-                </div>
-                <h4 className="text-xs font-black text-white uppercase tracking-widest mb-2">NEURAL LINK STANDBY</h4>
-                <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter leading-relaxed">
-                  DEPLOY MODULE OR SAVE ASSETS TO INITIALIZE LIVE INTERFACING PROTOCOL.
-                </p>
-              </div>
-            )}
-            {chatMessages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                <div className={`relative max-w-[85%] px-5 py-3.5 text-xs font-medium leading-relaxed
-                    ${msg.role === 'user'
-                    ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-none shadow-lg shadow-indigo-500/10 border border-indigo-400/20'
-                    : 'bg-[#121215] border border-white/5 text-zinc-300 rounded-2xl rounded-tl-none'
-                  }`}>
-                  {msg.role === 'assistant' && (
-                    <div className="absolute -left-2 -top-2 w-4 h-4 rounded-full bg-[#121215] border border-white/10 flex items-center justify-center">
-                      <CpuChipIcon className="w-2 h-2 text-indigo-400" />
+          {/* ─── RIGHT PANEL: Live Test Chat ─── */}
+          <div className="w-2/5 flex flex-col bg-[#08080a]">
+            {/* Chat Header */}
+            <div className="h-20 flex items-center justify-between px-8 border-b border-white/5 bg-zinc-950/40 backdrop-blur-xl">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-0.5">
+                    <div className="w-full h-full rounded-[10px] bg-[#0c0c0e] flex items-center justify-center">
+                      <CpuChipIcon className="h-5 w-5 text-indigo-400" />
                     </div>
-                  )}
-                  {msg.content}
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0c0c0e] shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
                 </div>
-              </div>
-            ))}
-            {chatLoading && (
-              <div className="flex justify-start">
-                <div className="bg-[#121215] border border-white/5 rounded-2xl rounded-tl-none px-5 py-4">
-                  <div className="flex gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-300 animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div>
+                  <h3 className="text-xs font-black text-white uppercase tracking-widest italic truncate max-w-[150px]">
+                    {form.name || 'UNNAMED_ENTITY'}
+                  </h3>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-tighter bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">PREVIEW_MODE</span>
                   </div>
                 </div>
               </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Chat Input */}
-          <div className="p-6 border-t border-white/5 bg-zinc-950/40 backdrop-blur-xl">
-            <div className="relative group">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendTest()}
-                disabled={!editingId || chatLoading}
-                placeholder={editingId ? 'SEND COMMAND...' : 'SAVE MODULE TO TEST'}
-                className="w-full bg-[#0c0c0e] border border-white/10 rounded-2xl pl-6 pr-14 py-4 text-xs font-bold text-white outline-none focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all placeholder:text-zinc-700"
-              />
-              <button
-                onClick={handleSendTest}
-                disabled={!editingId || chatLoading || !chatInput.trim()}
-                className="absolute right-2 top-2 bottom-2 w-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 transition-all flex items-center justify-center shadow-lg shadow-indigo-500/20 active:scale-95"
-              >
-                <PaperAirplaneIcon className="h-4 w-4 text-white" />
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse border border-red-500/50"></div>
+                <span className="text-[10px] font-black text-zinc-500 tracking-widest uppercase">STAGING</span>
+              </div>
             </div>
-            {chatMessages.length > 0 && (
-              <button
-                onClick={() => setChatMessages([])}
-                className="mt-4 px-3 py-1.5 rounded-lg text-[9px] font-black text-zinc-600 hover:text-white hover:bg-white/5 uppercase tracking-[0.2em] transition-all flex items-center gap-2 mx-auto"
-              >
-                <ArrowPathIcon className="h-3 w-3" />
-                Flush Neural Link
-              </button>
-            )}
+
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-[radial-gradient(circle_at_50%_50%,rgba(71,37,244,0.03),transparent)]">
+              {chatMessages.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-center max-w-xs mx-auto">
+                  <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center mb-6 shadow-2xl">
+                    <ChatBubbleLeftRightIcon className="h-8 w-8 text-indigo-500/40" />
+                  </div>
+                  <h4 className="text-xs font-black text-white uppercase tracking-widest mb-2">NEURAL LINK STANDBY</h4>
+                  <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter leading-relaxed">
+                    DEPLOY MODULE OR SAVE ASSETS TO INITIALIZE LIVE INTERFACING PROTOCOL.
+                  </p>
+                </div>
+              )}
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                  <div className={`relative max-w-[85%] px-5 py-3.5 text-xs font-medium leading-relaxed
+                    ${msg.role === 'user'
+                      ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-none shadow-lg shadow-indigo-500/10 border border-indigo-400/20'
+                      : 'bg-[#121215] border border-white/5 text-zinc-300 rounded-2xl rounded-tl-none'
+                    }`}>
+                    {msg.role === 'assistant' && (
+                      <div className="absolute -left-2 -top-2 w-4 h-4 rounded-full bg-[#121215] border border-white/10 flex items-center justify-center">
+                        <CpuChipIcon className="w-2 h-2 text-indigo-400" />
+                      </div>
+                    )}
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-[#121215] border border-white/5 rounded-2xl rounded-tl-none px-5 py-4">
+                    <div className="flex gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-300 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Chat Input */}
+            <div className="p-6 border-t border-white/5 bg-zinc-950/40 backdrop-blur-xl">
+              <div className="relative group">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendTest()}
+                  disabled={!editingId || chatLoading}
+                  placeholder={editingId ? 'SEND COMMAND...' : 'SAVE MODULE TO TEST'}
+                  className="w-full bg-[#0c0c0e] border border-white/10 rounded-2xl pl-6 pr-14 py-4 text-xs font-bold text-white outline-none focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all placeholder:text-zinc-700"
+                />
+                <button
+                  onClick={handleSendTest}
+                  disabled={!editingId || chatLoading || !chatInput.trim()}
+                  className="absolute right-2 top-2 bottom-2 w-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 transition-all flex items-center justify-center shadow-lg shadow-indigo-500/20 active:scale-95"
+                >
+                  <PaperAirplaneIcon className="h-4 w-4 text-white" />
+                </button>
+              </div>
+              {chatMessages.length > 0 && (
+                <button
+                  onClick={() => setChatMessages([])}
+                  className="mt-4 px-3 py-1.5 rounded-lg text-[9px] font-black text-zinc-600 hover:text-white hover:bg-white/5 uppercase tracking-[0.2em] transition-all flex items-center gap-2 mx-auto"
+                >
+                  <ArrowPathIcon className="h-3 w-3" />
+                  Flush Neural Link
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
-      </div >
     );
   }
 
