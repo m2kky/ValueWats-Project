@@ -86,6 +86,19 @@ app.use('/api/lifecycle', require('./routes/lifecycle.routes'));
 // Public routes (Webhooks)
 app.use('/api/webhooks', webhookRoutes);
 
+// Serve frontend static files in production
+const frontendPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendPath));
+
+// Catch-all route to serve index.html for client-side routing
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  } else {
+    res.status(404).json({ error: 'Route not found' });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -103,7 +116,7 @@ app.use((req, res) => {
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  
+
   // Start campaign scheduler
   const { startScheduler } = require('./services/schedulerService');
   startScheduler();

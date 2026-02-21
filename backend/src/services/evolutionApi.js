@@ -15,7 +15,7 @@ class EvolutionAPI {
       // Sanitize instance name (remove spaces)
       const sanitizedInstanceName = instanceName.replace(/\s+/g, '');
       console.log('Creating instance:', sanitizedInstanceName, 'at', this.baseURL);
-      
+
       const response = await axios.post(
         `${this.baseURL}/instance/create`,
         {
@@ -33,6 +33,11 @@ class EvolutionAPI {
       console.log('Instance created at Evolution API:', JSON.stringify(response.data));
 
       let qrCode = response.data.qrcode?.base64 || response.data.qrcode;
+
+      // Ensure qrCode is a string, not an object, to prevent Prisma validation errors
+      if (qrCode && typeof qrCode === 'object') {
+        qrCode = qrCode.base64 || JSON.stringify(qrCode);
+      }
 
       // Fallback: If no QR code returned, try to fetch it via connect endpoint
       if (!qrCode) {
@@ -62,19 +67,19 @@ class EvolutionAPI {
         },
       });
 
-    // ✨ Auto-configure webhook
-    // Use internal service name for Docker network communication
-    // ✨ Auto-configure webhook
-    // Use public URL (first choice) or internal URL
-    const webhookUrl = process.env.PUBLIC_URL 
-      ? `${process.env.PUBLIC_URL}/api/webhooks/receive`
-      : (process.env.WEBHOOK_INTERNAL_URL || `${process.env.BACKEND_WEBHOOK_URL || process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/receive`);
-    
-    console.log('Setting webhook for instance:', sanitizedInstanceName, 'URL:', webhookUrl);
-    // Don't await webhook setup to speed up response
-    this.setWebhook(sanitizedInstanceName, webhookUrl, true, tenantId).catch(err => 
-      console.error('Background webhook setup failed:', err.message)
-    );
+      // ✨ Auto-configure webhook
+      // Use internal service name for Docker network communication
+      // ✨ Auto-configure webhook
+      // Use public URL (first choice) or internal URL
+      const webhookUrl = process.env.PUBLIC_URL
+        ? `${process.env.PUBLIC_URL}/api/webhooks/receive`
+        : (process.env.WEBHOOK_INTERNAL_URL || `${process.env.BACKEND_WEBHOOK_URL || process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/receive`);
+
+      console.log('Setting webhook for instance:', sanitizedInstanceName, 'URL:', webhookUrl);
+      // Don't await webhook setup to speed up response
+      this.setWebhook(sanitizedInstanceName, webhookUrl, true, tenantId).catch(err =>
+        console.error('Background webhook setup failed:', err.message)
+      );
 
       return {
         ...instance,
@@ -98,7 +103,7 @@ Stack: ${error.stack}
         response: errorResponse,
         status: error.response?.status
       });
-      
+
       // Extract specific validation message if available
       const specificMessage = errorResponse?.response?.message || errorResponse?.message || error.message;
       throw new Error('Failed to create instance: ' + (Array.isArray(specificMessage) ? specificMessage.join(', ') : specificMessage));
@@ -132,9 +137,9 @@ Stack: ${error.stack}
   async sendMessage(tenantId, instanceName, number, text, mediaUrl = null, mediaType = null) {
     try {
       console.log(`[sendMessage] Sending to ${number} via ${instanceName} (Media: ${mediaUrl ? 'Yes' : 'No'})`);
-      
+
       let response;
-      
+
       if (mediaUrl) {
         // Send Media Message
         response = await axios.post(
@@ -249,7 +254,7 @@ Stack: ${error.stack}
     } catch (error) {
       console.error('Set webhook error:', error.response?.data || error.message);
       // Don't throw, just log. Webhook might already be set or API might vary.
-      return null; 
+      return null;
     }
   }
 }

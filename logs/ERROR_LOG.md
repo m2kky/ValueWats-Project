@@ -313,3 +313,46 @@ Cleaned up the `Agents.jsx` component structure, ensuring all `div` tags and con
 
 ### Lesson Learned
 > When performing massive UI overhauls involving deeply nested state updates, always verify closing braces and object structures meticulously. Run `npm run build` locally before pushing to catch these errors early.
+
+---
+
+## ERR-012: Frontend Build Failed — @apply group Not Allowed
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-02-21 |
+| **Severity** | 🔴 Critical |
+| **Error** | `[vite:css] [postcss] @apply should not be used with the 'group' utility` |
+| **Impact** | Frontend build failed during `vite build`, deployment blocked |
+
+### Root Cause
+`frontend/src/index.css` had `group` inside an `@apply` directive. Tailwind's `group` is a variant modifier, not a utility class, and cannot be used with `@apply`.
+
+### Fix
+Removed `group` from the `@apply` in `.nav-item`.
+
+### Lesson Learned
+> Tailwind variant modifiers (`group`, `peer`, `dark`) cannot be used inside `@apply`. They must be applied directly in HTML/JSX as class names.
+
+---
+
+## ERR-013: Production "Route not found" After Custom Domain Update
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-02-21 |
+| **Severity** | 🔴 Critical |
+| **Error** | `{"error": "Route not found"}` when accessing the custom domain |
+| **Impact** | Users unable to access the application via the new domain |
+
+### Root Cause
+1. **Old Proxy Pass**: `nginx.conf` was hardcoded to proxy `/api` requests to an old `sslip.io` URL instead of `localhost:3000`.
+2. **Backend Entry Point**: The custom domain was hitting the backend server (port 3000), which did not have static file serving enabled for the frontend.
+
+### Fix
+1. **Nginx**: Updated `proxy_pass` to `http://localhost:3000` in `frontend/nginx.conf`.
+2. **Backend**: Added `express.static` and a catch-all route to `backend/src/server.js` to serve the React frontend as a fallback.
+3. **Consolidation**: Removed redundant root `logs/` folder and unified all documentation in `valuewats/logs/`.
+
+### Lesson Learned
+> Use `localhost` for inter-container proxying to avoid DNS resolution issues. Always ensure the backend serves the frontend as a fallback in single-container deployments to handle direct terminal/proxy access gracefully.

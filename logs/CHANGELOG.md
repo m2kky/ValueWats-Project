@@ -15,6 +15,9 @@ All notable changes to the ValueWats project, tracked by date.
 - **AI Agents**: Transformed the config page into a "Neural Lab" environment with custom gradients, interactive capability cards, and a sophisticated RAG monitoring interface.
 - **Components**: Added `SkeletonLoader` for various data-fetching states to improve perceived performance.
 
+### Changed
+- **DevOps**: Connected custom domain `app.muhammedmekky.com` to Coolify service. SSL enabled via Let's Encrypt.
+
 ### Fixed
 - **Agents Page**: Repaired structural JSX corruption in `Agents.jsx` and standardized styling across all tabs (Identity, Settings, Skills, Knowledge).
 - **Global**: Standardized scrollbars and backdrop-blur effects throughout the application for a cohesive enterprise feel.
