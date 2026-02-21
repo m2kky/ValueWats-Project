@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
-import { 
-  PlusIcon, 
-  TrashIcon, 
+import {
+  PlusIcon,
+  TrashIcon,
   ArrowPathIcon,
   SignalIcon,
   SignalSlashIcon,
@@ -13,9 +13,9 @@ import {
 } from '@heroicons/react/24/outline';
 
 const statusConfig = {
-  connected: { label: 'Connected', color: 'bg-green-100 text-green-800', dot: 'bg-green-500' },
-  qr_pending: { label: 'Awaiting QR', color: 'bg-yellow-100 text-yellow-800', dot: 'bg-yellow-500' },
-  disconnected: { label: 'Disconnected', color: 'bg-red-100 text-red-800', dot: 'bg-red-500' },
+  connected: { label: 'Connected', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]', dot: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' },
+  qr_pending: { label: 'Awaiting QR', color: 'bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]', dot: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' },
+  disconnected: { label: 'Disconnected', color: 'bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.2)]', dot: 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' },
 };
 
 export default function Instances() {
@@ -42,8 +42,6 @@ export default function Instances() {
   // Close menu on outside click
   useEffect(() => {
     const handleClick = (e) => {
-      // If clicking the menu toggle button itself, don't close here
-      // (toggleMenu will handle it)
       if (e.target.closest('.menu-toggle-btn')) return;
       setOpenMenuId(null);
     };
@@ -81,7 +79,6 @@ export default function Instances() {
 
   const toggleMenu = (e, id) => {
     e.stopPropagation();
-    console.log('Toggling menu for instance:', id, 'Current open:', openMenuId);
     setOpenMenuId(prev => prev === id ? null : id);
   };
 
@@ -89,137 +86,145 @@ export default function Instances() {
   const totalCount = instances.length;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="md:flex md:items-center md:justify-between mb-8">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-              WhatsApp Instances
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              {connectedCount}/{totalCount} connected
-            </p>
+    <div className="font-sans">
+      {/* Header */}
+      <div className="md:flex md:items-center md:justify-between mb-8">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-2xl font-black text-white sm:text-3xl sm:truncate tracking-tight uppercase italic">
+            WhatsApp Instances
+          </h2>
+          <p className="mt-1 flex items-center gap-2 text-sm text-zinc-400 font-medium tracking-wide">
+            <span className="flex h-2 w-2 relative">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${connectedCount > 0 ? 'bg-emerald-400' : 'bg-rose-400'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${connectedCount > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+            </span>
+            {connectedCount}/{totalCount} connected instances
+          </p>
+        </div>
+        <div className="mt-4 flex md:mt-0 md:ml-4 gap-3">
+          <button
+            onClick={fetchInstances}
+            className="btn-glass flex items-center"
+          >
+            <ArrowPathIcon className={`-ml-1 mr-2 h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh All
+          </button>
+          <Link
+            to="/instances/new"
+            className="btn-premium flex items-center"
+          >
+            <PlusIcon className="-ml-1 mr-2 h-5 w-5 border-2 border-white/20 rounded-full p-0.5" />
+            Connect New
+          </Link>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="glass-card overflow-hidden">
+        {loading ? (
+          <div className="text-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)] mx-auto mb-4"></div>
+            <p className="text-zinc-500 font-medium">Loading instances...</p>
           </div>
-          <div className="mt-4 flex md:mt-0 md:ml-4 gap-3">
-            <button
-              onClick={fetchInstances}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors"
-            >
-              <ArrowPathIcon className={`-ml-1 mr-2 h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh All
-            </button>
+        ) : instances.length === 0 ? (
+          <div className="text-center py-20 px-6">
+            <div className="w-16 h-16 mx-auto bg-white/5 rounded-2xl flex items-center justify-center mb-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
+              <DevicePhoneMobileIcon className="h-8 w-8 text-zinc-500" />
+            </div>
+            <h3 className="mt-4 text-sm font-black text-white uppercase tracking-widest italic">No instances</h3>
+            <p className="mt-2 mb-8 text-sm text-zinc-400">Connect a WhatsApp number to start automating messages.</p>
             <Link
               to="/instances/new"
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition-colors"
+              className="btn-glass inline-flex items-center"
             >
               <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-              Connect New
+              Connect Instance
             </Link>
           </div>
-        </div>
-
-        {/* Content */}
-        <div className="bg-white shadow-sm rounded-xl border border-gray-200">
-          {loading ? (
-            <div className="text-center py-16">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-500">Loading instances...</p>
-            </div>
-          ) : instances.length === 0 ? (
-            <div className="text-center py-16">
-              <DevicePhoneMobileIcon className="mx-auto h-12 w-12 text-gray-300" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900">No instances</h3>
-              <p className="mt-2 text-sm text-gray-500">Connect a WhatsApp number to get started.</p>
-              <div className="mt-6">
-                <Link
-                  to="/instances/new"
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-                  Connect Instance
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {instances.map(instance => {
-                const cfg = statusConfig[instance.status] || statusConfig.disconnected;
-                return (
-                  <div key={instance.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className={`p-2.5 rounded-lg ${instance.status === 'connected' ? 'bg-green-50' : 'bg-gray-100'}`}>
-                        {instance.status === 'connected' ? (
-                          <SignalIcon className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <SignalSlashIcon className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{instance.instanceName}</p>
-                        <div className="flex items-center gap-3 mt-0.5">
-                          {instance.phoneNumber && (
-                            <span className="text-xs text-gray-500">{instance.phoneNumber}</span>
-                          )}
-                          <span className="text-xs text-gray-400">Created {new Date(instance.createdAt).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {/* Status badge */}
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${cfg.color}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`}></span>
-                        {cfg.label}
-                      </span>
-
-                      {/* Refreshing spinner */}
-                      {refreshing === instance.id && (
-                        <ArrowPathIcon className="h-4 w-4 text-blue-500 animate-spin" />
+        ) : (
+          <div className="divide-y divide-white/5">
+            {instances.map(instance => {
+              const cfg = statusConfig[instance.status] || statusConfig.disconnected;
+              return (
+                <div key={instance.id} className="px-5 py-5 flex items-center justify-between group hover:bg-white/[0.02] transition-colors rounded-xl m-2">
+                  <div className="flex items-center gap-5 min-w-0 pr-4">
+                    <div className={`p-3 rounded-xl border transition-all duration-300 shadow-lg group-hover:scale-110 shrink-0
+                      ${instance.status === 'connected'
+                        ? 'bg-emerald-500/20 border-emerald-500/20 shadow-emerald-500/10'
+                        : 'bg-zinc-800/50 border-white/5 shadow-black/20'}`}>
+                      {instance.status === 'connected' ? (
+                        <SignalIcon className="h-6 w-6 text-emerald-400" />
+                      ) : (
+                        <SignalSlashIcon className="h-6 w-6 text-zinc-500" />
                       )}
-
-                      {/* Actions */}
-                      <div className="relative">
-                          <button
-                            onClick={(e) => toggleMenu(e, instance.id)}
-                            className="menu-toggle-btn p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                          >
-                            <EllipsisVerticalIcon className="h-5 w-5 pointer-events-none" />
-                          </button>
-
-                        {openMenuId === instance.id && (
-                          <div className="absolute right-0 mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
-                            <button
-                              onClick={(e) => handleRefreshStatus(e, instance)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
-                              <ArrowPathIcon className="h-4 w-4" /> Refresh Status
-                            </button>
-                            {instance.status !== 'connected' && (
-                              <Link
-                                to={`/instances/new?instanceId=${instance.id}&name=${encodeURIComponent(instance.instanceName)}`}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors"
-                              >
-                                <QrCodeIcon className="h-4 w-4" /> Reconnect
-                              </Link>
-                            )}
-                            <button
-                              onClick={(e) => handleDelete(e, instance)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors"
-                            >
-                              <TrashIcon className="h-4 w-4" /> Delete
-                            </button>
-                          </div>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-base font-bold text-white truncate tracking-tight mb-1">{instance.instanceName}</p>
+                      <div className="flex items-center gap-4">
+                        {instance.phoneNumber && (
+                          <span className="text-xs font-bold text-zinc-300 tracking-wider font-mono bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+                            {instance.phoneNumber}
+                          </span>
                         )}
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                          Created <time>{new Date(instance.createdAt).toLocaleDateString()}</time>
+                        </span>
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </main>
+
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${cfg.color}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`}></span>
+                      {cfg.label}
+                    </span>
+
+                    {refreshing === instance.id && (
+                      <ArrowPathIcon className="h-5 w-5 text-indigo-400 animate-spin" />
+                    )}
+
+                    {/* Actions */}
+                    <div className="relative">
+                      <button
+                        onClick={(e) => toggleMenu(e, instance.id)}
+                        className="menu-toggle-btn p-2 text-zinc-500 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                      >
+                        <EllipsisVerticalIcon className="h-5 w-5 pointer-events-none" />
+                      </button>
+
+                      {openMenuId === instance.id && (
+                        <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-20 py-1 backdrop-blur-xl">
+                          <button
+                            onClick={(e) => handleRefreshStatus(e, instance)}
+                            className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <ArrowPathIcon className="h-4 w-4" /> Refresh Status
+                          </button>
+                          {instance.status !== 'connected' && (
+                            <Link
+                              to={`/instances/new?instanceId=${instance.id}&name=${encodeURIComponent(instance.instanceName)}`}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-400 hover:bg-white/5 transition-colors"
+                            >
+                              <QrCodeIcon className="h-4 w-4" /> Reconnect
+                            </Link>
+                          )}
+                          <div className="h-px bg-white/5 my-1" />
+                          <button
+                            onClick={(e) => handleDelete(e, instance)}
+                            className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-500 hover:bg-white/5 transition-colors"
+                          >
+                            <TrashIcon className="h-4 w-4" /> Delete Instance
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

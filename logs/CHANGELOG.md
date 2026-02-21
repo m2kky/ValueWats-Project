@@ -12,6 +12,7 @@ All notable changes to the ValueWats project, tracked by date.
 - **Layout**: Transitioned to a sidebar-first architecture with a sleek, persistent glassmorphic navigation (`Layout.jsx`).
 - **Dashboard**: Redesigned analytics suite with high-fidelity `StatCard` components, interactive hover effects, and sophisticated data visualization.
 - **Inbox**: Comprehensive overhaul of the chat interface featuring a unified conversation list, date-based grouping, and premium message bubble aesthetics.
+- **Campaigns, Instances, Automations, Team**: Converted all remaining core pages from light theme backgrounds to the premium glassmorphism dark theme, resolving the "white square" effect and ensuring visual consistency.
 - **AI Agents**: Transformed the config page into a "Neural Lab" environment with custom gradients, interactive capability cards, and a sophisticated RAG monitoring interface.
 - **Components**: Added `SkeletonLoader` for various data-fetching states to improve perceived performance.
 

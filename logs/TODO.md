@@ -9,8 +9,7 @@
 - [ ] Verify campaign 500 error is resolved after webhook + nginx fixes
 - [ ] Test full campaign flow end-to-end on production (create → send → track delivery)
 - [x] **Frontend**: Build Agent Management UI (List, Create, Edit, Templates) — 2026-02-17
-- [x] **Frontend**: Premium UI Overhaul (Dashboard, Inbox, Agents) — 2026-02-21
-- [x] **Frontend**: Sidebar-first navigation implementation — 2026-02-21
+- [x] **Frontend**: Premium UI Overhaul (Dashboard, Inbox, Agents, Campaigns, Instances, Automations, Team) — 2026-02-21
 - [ ] **Frontend**: Build Lifecycle Stage Management UI
 - [ ] **Frontend**: Update Chat Interface to show current Agent & Status
 
