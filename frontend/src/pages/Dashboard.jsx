@@ -49,7 +49,20 @@ export default function Dashboard() {
   const fetchStats = async () => {
     try {
       const response = await api.get('/dashboard/stats');
-      setStats(response.data);
+      const data = response.data || {};
+      setStats(prev => ({
+        instances: data.instances ?? prev.instances,
+        messages: {
+          total: data.messages?.total ?? prev.messages.total,
+          sent: data.messages?.sent ?? prev.messages.sent,
+          delivered: data.messages?.delivered ?? prev.messages.delivered,
+          read: data.messages?.read ?? prev.messages.read,
+          failed: data.messages?.failed ?? prev.messages.failed
+        },
+        campaigns: data.campaigns ?? prev.campaigns,
+        contacts: data.contacts ?? prev.contacts,
+        recentCampaigns: data.recentCampaigns ?? prev.recentCampaigns
+      }));
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
@@ -187,8 +200,8 @@ export default function Dashboard() {
                           </p>
                         </div>
                         <span className={`status-badge ${campaign.status === 'COMPLETED' ? 'status-online' :
-                            campaign.status === 'FAILED' ? 'status-offline' :
-                              'status-learning'
+                          campaign.status === 'FAILED' ? 'status-offline' :
+                            'status-learning'
                           }`}>
                           {campaign.status}
                         </span>

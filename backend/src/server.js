@@ -37,6 +37,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // CORS configuration
 app.use(cors({
   origin: [
+    'https://app.muhammedmekky.com',
+    'http://app.muhammedmekky.com',
     'http://j4k0g4s4kssk8g0wksg0csk8.72.62.50.238.sslip.io',
     'http://i0kwck044gc80s0osco8w0wg.72.62.50.238.sslip.io',
     /\.sslip\.io$/,
