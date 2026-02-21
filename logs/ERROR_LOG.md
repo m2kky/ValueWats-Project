@@ -378,3 +378,27 @@ Nginx was configured to proxy `/api`, but was stripping the `/api` prefix when p
 
 ### Lesson Learned
 > Be extremely careful with trailing slashes in Nginx `proxy_pass`. Always implement fallback route mounting for critical endpoints (like Auth) in production to handle proxy inconsistencies.
+
+---
+
+## ERR-015: Express 5 PathError with Wildcard Route
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-02-21 |
+| **Severity** | 🔴 Critical |
+| **Error** | `PathError [TypeError]: Missing parameter name at index 1: *` |
+| **Impact** | Backend container crashes on startup |
+
+### Root Cause
+Express 5 uses `path-to-regexp` v8, which no longer supports unnamed wildcard parameters like `app.get('*')`. It requires naming the parameter or using a regular expression. The wildcard `*` throws an initialization error.
+
+### Fix
+Replaced the string-based wildcard with a Regular Expression in `backend/src/server.js`:
+```javascript
+- app.get('*', (req, res) => {
++ app.get(/.*/, (req, res) => {
+```
+
+### Lesson Learned
+> When upgrading to Express 5, string wildcards (`*`) must be converted to Regular Expressions (`/.*/`) or named parameters (`/*path`) because of strict parsing in `path-to-regexp` v8.

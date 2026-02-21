@@ -36,6 +36,7 @@
 
 ## ✅ Done
 
+- [x] Fix Backend Startup Express 5 wildcard `PathError` crash — 2026-02-21
 - [x] Fix Backend Startup crash (fixed invalid `knowledge.routes` import) — 2026-02-17
 - [x] Fix Frontend Build failure (added `@headlessui/react`) — 2026-02-17
 - [x] Fix 405 webhook routing (Evolution API v2 event appending) — 2026-02-17
