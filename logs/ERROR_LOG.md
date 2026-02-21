@@ -402,3 +402,58 @@ Replaced the string-based wildcard with a Regular Expression in `backend/src/ser
 
 ### Lesson Learned
 > When upgrading to Express 5, string wildcards (`*`) must be converted to Regular Expressions (`/.*/`) or named parameters (`/*path`) because of strict parsing in `path-to-regexp` v8.
+
+---
+
+## ERR-016: Campaign Creation Fails — Missing `variables` Column
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-02-21 |
+| **Severity** | 🔴 Critical |
+| **Error** | `PrismaClientKnownRequestError P2022: The column 'variables' does not exist in the current database` |
+| **Impact** | Cannot create any campaigns |
+
+### Root Cause
+The `variables Json?` field was added to the `Message` model in `schema.prisma`, but no corresponding Prisma migration was ever created or applied to add the `variables` column to the production `messages` table. The `queueService.js` writes `variables: contact.variables || null` when creating a message row, which fails because the column doesn't exist.
+
+### Fix
+Created migration `20260221203300_add_variables_to_message`:
+```sql
+ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "variables" JSONB;
+```
+This migration will auto-run on next deploy via `prisma migrate deploy`.
+
+### Lesson Learned
+> After adding a field to `schema.prisma`, ALWAYS create and test the migration. Use `npx prisma migrate dev --name <name>` locally, then verify with `prisma migrate deploy` in production.
+
+---
+
+## ERR-017: Dashboard TypeError — Cannot Read 'sent' of Undefined
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-02-21 |
+| **Severity** | 🟡 Medium |
+| **Error** | `TypeError: Cannot read properties of undefined (reading 'sent')` |
+| **Impact** | Dashboard page crashes after navigating to it |
+
+### Root Cause
+In `Dashboard.jsx`, `setStats(response.data)` replaces the entire state with the API response. If the API response doesn't include a `messages` sub-object (e.g. it returns `{}` on error, or the shape changes), then `stats.messages` becomes `undefined`, and `stats.messages.sent.toLocaleString()` on line 98 throws a TypeError.
+
+### Fix
+Changed `setStats(response.data)` to a defensive merge that uses the previous state as fallback for any missing keys:
+```javascript
+setStats(prev => ({
+  instances: data.instances ?? prev.instances,
+  messages: {
+    sent: data.messages?.sent ?? prev.messages.sent,
+    // ... same for delivered, read, failed, total
+  },
+  // ...
+}));
+```
+
+### Lesson Learned
+> Never blindly replace component state with API response data. Always merge with defaults to prevent crashes from unexpected response shapes.
+
