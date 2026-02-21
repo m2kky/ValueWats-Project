@@ -45,7 +45,7 @@ export default function Campaigns() {
   const fetchCampaigns = async () => {
     try {
       const response = await api.get('/campaigns');
-      setCampaigns(response.data.campaigns);
+      setCampaigns(response.data.campaigns || response.data || []);
     } catch (error) {
       console.error('Failed to fetch campaigns:', error);
     } finally {
