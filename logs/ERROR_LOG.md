@@ -356,3 +356,25 @@ Removed `group` from the `@apply` in `.nav-item`.
 
 ### Lesson Learned
 > Use `localhost` for inter-container proxying to avoid DNS resolution issues. Always ensure the backend serves the frontend as a fallback in single-container deployments to handle direct terminal/proxy access gracefully.
+
+---
+
+## ERR-014: 405 Method Not Allowed on Auth Routes
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-02-21 |
+| **Severity** | 🔴 Critical |
+| **Error** | `POST /api/auth/login → 405 Method Not Allowed` |
+| **Impact** | Users unable to register or log in after custom domain update |
+
+### Root Cause
+Nginx was configured to proxy `/api`, but was stripping the `/api` prefix when passing to the backend. The backend received `POST /auth/login`, which didn't match any explicitly mounted routes, so it fell through to the `express.static` middleware. Express returns 405 for POST requests to static assets.
+
+### Fix
+1. **Nginx**: Corrected the proxy location to preserve the `/api` prefix.
+2. **Backend**: Dual-mounted the auth routes at both `/api/auth` and `/auth` in `server.js` for redundancy and better production resilience.
+3. **API 404**: Restricted the API 404 handler to `/api` prefix to prevent collisions with the frontend catch-all.
+
+### Lesson Learned
+> Be extremely careful with trailing slashes in Nginx `proxy_pass`. Always implement fallback route mounting for critical endpoints (like Auth) in production to handle proxy inconsistencies.

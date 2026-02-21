@@ -21,6 +21,8 @@ All notable changes to the ValueWats project, tracked by date.
 ### Fixed
 - **Agents Page**: Repaired structural JSX corruption in `Agents.jsx` and standardized styling across all tabs (Identity, Settings, Skills, Knowledge).
 - **Global**: Standardized scrollbars and backdrop-blur effects throughout the application for a cohesive enterprise feel.
+- **Auth**: Resolved `405 Method Not Allowed` errors on Login/Register by fixing Nginx prefix stripping and implementing dual-mount route fallback in the backend.
+- **Infrastructure**: Fixed production "Route not found" error by implementing static serving in `server.js` and correcting Nginx proxy paths.
 
 ---
 
