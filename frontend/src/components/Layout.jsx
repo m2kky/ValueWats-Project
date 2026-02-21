@@ -1,14 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  HomeIcon, 
-  MegaphoneIcon, 
+import {
+  HomeIcon,
+  MegaphoneIcon,
   BoltIcon,
   DevicePhoneMobileIcon,
   ChatBubbleLeftRightIcon,
   ArrowRightOnRectangleIcon as LogoutIcon,
   UserGroupIcon,
   CpuChipIcon,
-  AdjustmentsHorizontalIcon
+  AdjustmentsHorizontalIcon,
+  MagnifyingGlassIcon,
+  BellIcon
 } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
@@ -26,19 +28,14 @@ export default function Layout({ children }) {
     if (user && user.tenantId) {
       const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       const baseUrl = socketUrl.replace('/api', '');
-      
       const newSocket = io(baseUrl);
 
       newSocket.on('connect', () => {
-        // console.log('Layout socket connected, joining tenant:', user.tenantId);
         newSocket.emit('join_tenant', user.tenantId);
       });
 
       setSocket(newSocket);
-
-      return () => {
-        newSocket.disconnect();
-      };
+      return () => newSocket.disconnect();
     }
   }, [user]);
 
@@ -50,68 +47,99 @@ export default function Layout({ children }) {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: HomeIcon },
-    { name: 'Instances', path: '/instances', icon: DevicePhoneMobileIcon },
-    { name: 'Campaigns', path: '/campaigns', icon: MegaphoneIcon },
     { name: 'Inbox', path: '/inbox', icon: ChatBubbleLeftRightIcon },
-    { name: 'Agents', href: '/agents', icon: CpuChipIcon },
-    { name: 'Integrations', href: '/integrations', icon: AdjustmentsHorizontalIcon },
-    { name: 'Workflows', href: '/workflows', icon: BoltIcon },
-    { name: 'Team', href: '/team', icon: UserGroupIcon },
+    { name: 'Campaigns', path: '/campaigns', icon: MegaphoneIcon },
     { name: 'AI Agents', path: '/agents', icon: CpuChipIcon },
+    { name: 'Instances', path: '/instances', icon: DevicePhoneMobileIcon },
+    { name: 'Automations', path: '/automations', icon: BoltIcon },
+    { name: 'Integrations', path: '/integrations', icon: AdjustmentsHorizontalIcon },
+    { name: 'Team', path: '/team', icon: UserGroupIcon },
   ];
 
-  return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-600 p-2 rounded-lg">
-                  <ChatBubbleLeftRightIcon className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  ValueWats
-                </span>
-              </div>
-              
-              <div className="hidden md:flex items-center gap-1">
-                {navItems.map(item => (
-                  <Link
-                    key={item.name}
-                    to={item.path}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
-                      location.pathname.startsWith(item.path)
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    {item.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
+  const isActive = (path) => location.pathname.startsWith(path);
 
-            <div className="flex items-center gap-4">
-              <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-200">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
-                  {user?.email?.[0].toUpperCase()}
-                </div>
-                <span className="text-sm font-medium text-gray-700 pr-2 max-w-[150px] truncate">{user?.email}</span>
-              </div>
-              <button 
-                onClick={handleLogout} 
-                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Logout"
-              >
-                <LogoutIcon className="w-6 h-6" />
-              </button>
+  return (
+    <div className="flex min-h-screen bg-[#09090b] text-zinc-100">
+      {/* Premium Sidebar */}
+      <aside className="w-64 border-r border-white/5 bg-zinc-950/50 backdrop-blur-xl flex flex-col sticky top-0 h-screen">
+        <div className="p-6">
+          <Link to="/dashboard" className="flex items-center gap-3">
+            <div className="bg-indigo-600 p-2 rounded-xl shadow-[0_0_15px_rgba(71,37,244,0.4)]">
+              <ChatBubbleLeftRightIcon className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xl font-black tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+              ValueWats
+            </span>
+          </Link>
+        </div>
+
+        <nav className="flex-1 px-4 space-y-1">
+          {navItems.map((item) => (
+            <Link
+              key={item.name}
+              to={item.path}
+              className={`nav-item ${isActive(item.path) ? 'nav-item-active' : ''}`}
+            >
+              <item.icon className={`w-5 h-5 transition-colors ${isActive(item.path) ? 'text-indigo-400' : 'group-hover:text-white'}`} />
+              <span className="font-medium">{item.name}</span>
+            </Link>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-white/5">
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg">
+              {user?.email?.[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate">{user?.email?.split('@')[0]}</p>
+              <p className="text-xs text-zinc-500 truncate">Enterprise Plan</p>
             </div>
           </div>
+          <button
+            onClick={handleLogout}
+            className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all border border-transparent hover:border-rose-500/20"
+          >
+            <LogoutIcon className="w-4 h-4" />
+            Sign Out
+          </button>
         </div>
-      </nav>
-      {children}
+      </aside>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Top bar */}
+        <header className="h-16 border-b border-white/5 bg-zinc-950/30 backdrop-blur-md flex items-center justify-between px-8 sticky top-0 z-40">
+          <div className="flex-1 max-w-xl">
+            <div className="relative group">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-indigo-400 transition-colors" />
+              <input
+                type="text"
+                placeholder="Search anything..."
+                className="w-full bg-white/5 border border-white/5 rounded-full pl-10 pr-4 py-2 text-sm outline-none focus:border-indigo-500/30 focus:ring-4 focus:ring-indigo-500/5 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button className="p-2 rounded-full hover:bg-white/5 text-zinc-400 hover:text-white transition-all relative">
+              <BellIcon className="w-5 h-5" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full ring-2 ring-[#09090b]"></span>
+            </button>
+            <div className="h-6 w-[1px] bg-white/10 mx-2"></div>
+            <button className="btn-premium py-2">
+              Upgrade
+            </button>
+          </div>
+        </header>
+
+        <main className="flex-1 p-8 overflow-y-auto">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
+        </main>
+      </div>
+
       <GlobalProgressBar socket={socket} />
     </div>
   );

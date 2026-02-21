@@ -1,0 +1,68 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: vw-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: valuewats
+      POSTGRES_PASSWORD: valuewats_local
+      POSTGRES_DB: valuewats
+    volumes:
+      - vw_postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: vw-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - vw_redis_data:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: vw-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: server /data --console-address ":9001"
+    volumes:
+      - vw_minio_data:/data
+
+  evolution:
+    image: atendai/evolution-api:v2.2.3
+    container_name: vw-evolution
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_URL: http://localhost:8080
+      AUTHENTICATION_API_KEY: local_evo_key_change_me
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://valuewats:valuewats_local@postgres:5432/evolution
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/1
+      STORAGE_ENABLED: "true"
+      STORAGE_PROVIDER: minio
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_ACCESS_KEY: minioadmin
+      STORAGE_SECRET_KEY: minioadmin123
+      STORAGE_BUCKET: evolution
+    depends_on:
+      - postgres
+      - redis
+      - minio
+
+volumes:
+  vw_postgres_data:
+  vw_redis_data:
+  vw_minio_data:
