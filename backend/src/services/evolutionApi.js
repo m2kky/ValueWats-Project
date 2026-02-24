@@ -136,7 +136,7 @@ Stack: ${error.stack}
    */
   async sendMessage(tenantId, instanceName, number, text, mediaUrl = null, mediaType = null) {
     try {
-      console.log(`[sendMessage] Sending to ${number} via ${instanceName} (Media: ${mediaUrl ? 'Yes' : 'No'})`);
+      console.log(`[sendMessage] Sending to ${number} via ${instanceName} (Media: ${mediaUrl ? 'Yes' : 'No'}) | API: ${this.baseURL}`);
 
       let response;
 
@@ -147,13 +147,14 @@ Stack: ${error.stack}
           {
             number,
             mediatype: mediaType || 'document',
-            mimetype: mediaType === 'image' ? 'image/jpeg' : (mediaType === 'video' ? 'video/mp4' : 'application/pdf'), // Simple fallback
+            mimetype: mediaType === 'image' ? 'image/jpeg' : (mediaType === 'video' ? 'video/mp4' : 'application/pdf'),
             caption: text,
             media: mediaUrl,
             fileName: mediaUrl.split('/').pop()
           },
           {
             headers: { apikey: this.apiKey },
+            timeout: 30000  // 30 second timeout
           }
         );
       } else {
@@ -166,6 +167,7 @@ Stack: ${error.stack}
           },
           {
             headers: { apikey: this.apiKey },
+            timeout: 30000  // 30 second timeout
           }
         );
       }
@@ -173,8 +175,11 @@ Stack: ${error.stack}
       console.log(`[sendMessage] Success:`, JSON.stringify(response.data));
       return response.data;
     } catch (error) {
-      console.error('[sendMessage] Error:', error.response?.data || error.message);
-      throw new Error('Failed to send message');
+      const errMsg = error.code === 'ECONNABORTED'
+        ? `Timeout after 30s calling ${this.baseURL}`
+        : (error.response?.data?.message || error.message);
+      console.error(`[sendMessage] Error sending to ${number} via ${instanceName}:`, errMsg, '| Status:', error.response?.status || 'N/A');
+      throw new Error('Failed to send message: ' + errMsg);
     }
   }
 
