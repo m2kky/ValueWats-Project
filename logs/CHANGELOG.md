@@ -5,6 +5,20 @@ All notable changes to the ValueWats project, tracked by date.
 ---
 
 
+## [2026-02-24] — Deployment Fixes & Architecture Consolidation
+
+### Changed
+- **Architecture**: Merged Frontend and Backend into a single unified Coolify service. Backend now serves built frontend assets via `express.static`. This architectural shift eliminates Nginx proxying issues and "Cross-Container Communication" failures.
+- **DevOps**: Updated root `package.json` with scripts to build frontend and start backend concurrently (`install:all`, `build:frontend`, `deploy`).
+
+### Fixed
+- **Infrastructure**: Resolved `405 Method Not Allowed` by bypassing the failing Nginx proxy.
+- **Database**: Fixed `PrismaClientKnownRequestError (P2022)` by adding the missing `variables` JSONB column to the `Message` table via migration.
+- **Dashboard**: Fixed `TypeError` crash by implementing defensive fallback guards when fetching stats data.
+- **Campaigns**: Added safety guards to prevent page crashes when the API returns malformed responses.
+
+---
+
 ## [2026-02-21] — Premium UI Overhaul (Visual Excellence)
 
 ### Added
