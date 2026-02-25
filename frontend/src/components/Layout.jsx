@@ -10,7 +10,8 @@ import {
   CpuChipIcon,
   AdjustmentsHorizontalIcon,
   MagnifyingGlassIcon,
-  BellIcon
+  BellIcon,
+  UsersIcon,
 } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
@@ -48,6 +49,7 @@ export default function Layout({ children }) {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: HomeIcon },
     { name: 'Inbox', path: '/inbox', icon: ChatBubbleLeftRightIcon },
+    { name: 'Contacts', path: '/contacts', icon: UsersIcon },
     { name: 'Campaigns', path: '/campaigns', icon: MegaphoneIcon },
     { name: 'AI Agents', path: '/agents', icon: CpuChipIcon },
     { name: 'Instances', path: '/instances', icon: DevicePhoneMobileIcon },

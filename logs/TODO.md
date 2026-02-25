@@ -5,28 +5,28 @@
 
 ## 🔴 High Priority
 
-- [x] Set up HTTPS/SSL on Coolify — fixes `crypto.randomUUID` needing a polyfill
-- [x] Verify campaign 500 error is resolved after database migration (variables column)
-- [x] Test full campaign flow end-to-end on production (Resolved 405 proxy issues via merger)
-- [x] **Frontend**: Build Agent Management UI (List, Create, Edit, Templates) — 2026-02-17
-- [x] **Frontend**: Premium UI Overhaul (Dashboard, Inbox, Agents, Campaigns, Instances, Automations, Team) — 2026-02-21
-- [ ] **Frontend**: Build Lifecycle Stage Management UI
-- [ ] **Frontend**: Update Chat Interface to show current Agent & Status
+- [ ] 1. **Resolve Evolution API Issue** (Redeploy Service Stack)
+- [/] 2. **Implement CRM System** (Contacts, Labels, Notes, Lifecycle Stages) — Schema + Backend + Frontend DONE, needs `prisma migrate deploy` on Coolify
+- [ ] 3. **Implement Agent Actions** (8 distinct actions like respond.io)
+- [ ] 4. **Implement Agent Tools** (Email, Google Calendar, WhatsApp Notifications)
+- [ ] 5. **Implement Activity Feed** (Chat Banner & CRM Timeline)
+- [ ] 6. **Implement Saved Segments & Retargeting** (Smart filtering)
+- [ ] 7. **Implement Analytics Dashboard** (Campaigns, Agents, Funnel)
+- [ ] 8. **Implement Quick Replies & Auto-Contact Creation**
+- [ ] 9. **Implement Anti-Ban Smart Sending** (Warm-up, delays, rotation)
+- [ ] 10. **Implement Webhook API** (For business external integrations)
 
 ## 🟡 Medium Priority
 
 - [ ] Add Smart Scheduling (send at optimal times per recipient timezone)
 - [ ] Add Auto-Retry for failed messages with configurable backoff
 - [ ] Add Blacklist system (auto opt-out on reply keywords like STOP, UNSUBSCRIBE)
-- [ ] Build drag-and-drop Chatbot Builder UI
-- [ ] Add WhatsApp-style message preview before sending
 
 ## 🟢 Low Priority
 
 - [ ] Build Billing Dashboard (usage tracking, invoices, plan management)
-- [ ] Add Advanced Analytics (charts, ROI tracking, A/B testing)
-- [ ] Add Contact Groups (import/export, tagging, segmentation)
-- [ ] Add Template Library (saved message templates with categories)
+- [ ] Build advanced User Roles & Permissions system
+- [ ] Add In-app notifications system (bell icon)
 
 ## 🐛 Known Issues
 

@@ -35,6 +35,10 @@ model Tenant {
   integrations    Integration[]
   workflows       Workflow[]
 
+  contacts        Contact[]
+  contactLabels   ContactLabel[]
+  activityLogs    ActivityLog[]
+
   @@map("tenants")
 }
 
@@ -433,6 +437,108 @@ model ConversationAgent {
   @@index([agentId])
 }
 
+// CRM: Contact
+model Contact {
+  id       String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  phoneNumber  String  @map("phone_number")
+  name         String?
+  email        String?
+  gender       String? // 'male', 'female'
+  birthDate    DateTime? @map("birth_date") @db.Date
+  governorate  String?
+  district     String?
+  address      String? @db.Text
+  source       String  @default("manual") // 'whatsapp', 'manual', 'import', 'website'
+  customFields Json?   @map("custom_fields")
+
+  lifecycleStageId String?         @map("lifecycle_stage_id")
+  lifecycleStage   LifecycleStage? @relation(fields: [lifecycleStageId], references: [id])
+
+  labels ContactLabelAssignment[]
+  notes  ContactNote[]
+  activityLogs ActivityLog[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, phoneNumber])
+  @@index([tenantId, lifecycleStageId])
+  @@map("contacts")
+}
+
+// CRM: Label definitions per tenant
+model ContactLabel {
+  id       String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name  String
+  color String @default("#6366f1")
+
+  assignments ContactLabelAssignment[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, name])
+  @@map("contact_labels")
+}
+
+// CRM: Many-to-many Contact <-> Label
+model ContactLabelAssignment {
+  contactId String  @map("contact_id")
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  labelId String       @map("label_id")
+  label   ContactLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  @@id([contactId, labelId])
+  @@map("contact_label_assignments")
+}
+
+// CRM: Notes per contact
+model ContactNote {
+  id        String  @id @default(uuid())
+  contactId String  @map("contact_id")
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  userId  String  @map("user_id")
+  content String  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([contactId])
+  @@map("contact_notes")
+}
+
+// Activity Log (for CRM timeline + chat banners)
+model ActivityLog {
+  id       String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  contactId String?  @map("contact_id")
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  conversationId String? @map("conversation_id")
+  userId         String? @map("user_id") // null = AI agent
+  agentId        String? @map("agent_id")
+
+  actionType  String  @map("action_type") // 'lifecycle_change', 'label_added', 'label_removed', 'note_added', 'assigned', 'closed', 'tool_email', 'tool_calendar', 'tool_whatsapp'
+  description String  @db.Text
+  metadata    Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, contactId, createdAt(sort: Desc)])
+  @@index([tenantId, conversationId, createdAt(sort: Desc)])
+  @@map("activity_logs")
+}
+
 // Lifecycle Stages (Lead stages)
 model LifecycleStage {
   id       String @id @default(uuid())
@@ -445,6 +551,7 @@ model LifecycleStage {
   order Int     @default(0)
 
   conversations Conversation[]
+  contacts      Contact[]
 
   createdAt DateTime @default(now())
 

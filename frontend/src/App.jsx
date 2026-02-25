@@ -13,6 +13,8 @@ import Inbox from './pages/Inbox';
 import Agents from './pages/Agents';
 import Integrations from './pages/Integrations';
 import Workflows from './pages/Workflows';
+import Contacts from './pages/Contacts';
+import ContactProfile from './pages/ContactProfile';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -100,6 +102,18 @@ function App() {
         <Route path="/workflows" element={
           <PrivateRoute>
             <Workflows />
+          </PrivateRoute>
+        } />
+
+        <Route path="/contacts" element={
+          <PrivateRoute>
+            <Contacts />
+          </PrivateRoute>
+        } />
+
+        <Route path="/contacts/:id" element={
+          <PrivateRoute>
+            <ContactProfile />
           </PrivateRoute>
         } />
         

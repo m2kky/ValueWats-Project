@@ -5,6 +5,45 @@ All notable changes to the ValueWats project, tracked by date.
 ---
 
 
+## [2026-07-24] — Step 2: CRM System Implementation
+
+### Added
+- **Schema**: Added `Contact`, `ContactLabel`, `ContactLabelAssignment`, `ContactNote`, `ActivityLog` models to `schema.prisma`
+- **Migration**: `20260724000000_add_crm_system` — creates all 5 CRM tables with indexes and foreign keys
+- **Backend**: `crmService.js` — full CRUD, bulk import, label management, activity logging, upsertByPhone
+- **Backend**: `contactController.js` — HTTP handlers for all CRM operations
+- **Backend**: `contacts.js` route file mounted at `/api/contacts`
+- **Frontend**: `Contacts.jsx` — DataTable with search, filters (stage/source), bulk delete, CSV/Excel import, label management modal
+- **Frontend**: `ContactProfile.jsx` — full profile editor with notes timeline, activity log, label picker, lifecycle stage selector, chat link
+- **Frontend**: Added `/contacts` and `/contacts/:id` routes to `App.jsx`
+- **Frontend**: Added "Contacts" nav item with `UsersIcon` to `Layout.jsx`
+
+### Changed
+- `csvService.js` — added `parseFile()` unified entry point supporting both CSV and Excel
+- `upload.js` middleware — added xlsx/xls to allowed file types
+- `LifecycleStage` model — added `contacts Contact[]` relation
+- `Tenant` model — added `contacts`, `contactLabels`, `activityLogs` relations
+
+---
+
+
+
+### Added
+- **Documentation**: Completely overhauled `walkthrough.md` with detailed schemas, diagrams, and a 10-step roadmap.
+- **Agent Actions**: Documented 8 respond.io-style actions (Close, Assign, Update CRM, Trigger Workflow, Add Comment, Use Tools).
+- **Agent Tools**: Documented external tools (Email, Google Calendar, internal WhatsApp Notifications) with variables and auto-mentions.
+- **CRM Integration**: Specified `Contact`, `ContactLabel`, `ContactNote`, and `ActivityLog` (unified feed) models in `DATABASE_SCHEMA.md`.
+- **Analytics & Marketing**: Documented Analytics Dashboard (Funnel tracking), Saved Segments, Quick Replies, Auto-Create Contact, and Anti-Ban Smart Sending.
+- **Webhook API**: Added specs for exposing an external Webhook API for business integrations (e.g., Shopify triggers).
+
+### Changed
+- **Docs**: Updated `API_REFERENCE.md` with the new `/api/contacts` routes and expanded `/api/agents` routes for tools/actions.
+- **Docs**: Updated `FRONTEND_GUIDE.md` with the new `/contacts` and `/contacts/:id` CRM pages.
+- **Docs**: Updated `PROJECT_OVERVIEW.md` and `BACKEND_GUIDE.md` to reflect the expanded scope (26 DB models, new CRM services).
+- **Roadmap**: Reorganized `logs/TODO.md` into a structured 10-step execution plan prioritizing the Evolution API fix, CRM, and Agent Tools.
+
+---
+
 ## [2026-02-24] — Deployment Fixes & Architecture Consolidation
 
 ### Changed
