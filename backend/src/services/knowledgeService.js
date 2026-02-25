@@ -2,7 +2,6 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const embeddingService = require('./embeddingService');
 const { uploadFile } = require('./storageService');
-const pdfParse = require('pdf-parse');
 const fs = require('fs');
 
 class KnowledgeService {
@@ -47,6 +46,7 @@ class KnowledgeService {
 
     switch (ext) {
       case 'pdf': {
+        const pdfParse = require('pdf-parse');
         const buffer = fs.readFileSync(file.path);
         const data = await pdfParse(buffer);
         return data.text;
