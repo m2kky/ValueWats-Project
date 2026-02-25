@@ -12,8 +12,11 @@ class EvolutionAPI {
    */
   async createInstance(tenantId, instanceName) {
     try {
-      // Sanitize instance name (remove spaces)
-      const sanitizedInstanceName = instanceName.replace(/\s+/g, '');
+      // Sanitize instance name: only ASCII alphanumeric, hyphens, underscores
+      // Arabic/Unicode chars crash Evolution API webhook headers (ERR_INVALID_CHAR)
+      const sanitizedInstanceName = instanceName
+        .replace(/[^a-zA-Z0-9_-]/g, '')
+        .substring(0, 50) || `instance_${Date.now()}`;
       console.log('Creating instance:', sanitizedInstanceName, 'at', this.baseURL);
 
       const response = await axios.post(
@@ -227,7 +230,7 @@ Stack: ${error.stack}
   async setWebhook(instanceName, webhookUrl, enabled = true, tenantId = null) {
     try {
       const webhookHeaders = {
-        'X-Instance-Name': instanceName
+        'X-Instance-Name': encodeURIComponent(instanceName)
       };
       if (tenantId) webhookHeaders['X-Tenant-ID'] = tenantId;
 
