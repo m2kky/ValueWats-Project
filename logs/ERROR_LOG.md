@@ -176,7 +176,57 @@ Then restart the backend service.
 
 ---
 
-## Template for New Errors
+## ERR-019: Backend Startup Crash — pdf-parse Loads PDF.js at Require Time
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-02-25 |
+| **Severity** | 🔴 Critical |
+| **Error** | `Warning: Cannot access the 'require' function: TypeError: process.getBuiltinModule is not a function` then container restarts |
+| **Impact** | Backend container crashes on every startup, entire app down |
+
+### Root Cause
+`pdf-parse` bundles PDF.js which runs browser environment detection code at `require()` time. On Node.js v22, `process.getBuiltinModule` doesn't exist, causing the polyfill code to throw. Since `knowledgeService.js` had `const pdfParse = require('pdf-parse')` at the top level, it crashed the server on startup even when no PDF was being processed.
+
+### Fix
+Moved `require('pdf-parse')` inside the `case 'pdf'` block in `knowledgeService.js`:
+```javascript
+case 'pdf': {
+  const pdfParse = require('pdf-parse'); // lazy load
+  const buffer = fs.readFileSync(file.path);
+  const data = await pdfParse(buffer);
+  return data.text;
+}
+```
+
+### Lesson Learned
+> Libraries that run environment detection code at import time (like `pdf-parse`) must be lazy-loaded inside the function that uses them, not at the module top level. This is especially important for Node.js v22+ compatibility.
+
+---
+
+## ERR-020: Instance Creation 500 — Wrong Evolution API Container Hostname
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-02-25 |
+| **Severity** | 🔴 Critical |
+| **Error** | `getaddrinfo EAI_AGAIN evo-sgwcco4kw80sckwg4c08sgk4` |
+| **Impact** | Cannot create any WhatsApp instances |
+
+### Root Cause
+`EVOLUTION_API_URL` was set to `http://evo-sgwcco4kw80sckwg4c08sgk4:8080` but the actual Docker container name (as shown by `docker ps`) is `api-sgwcco4kw80sckwg4c08sgk4`. The hostname mismatch caused DNS resolution failure.
+
+### Fix
+Updated `EVOLUTION_API_URL` in Coolify grumpy-gentoo environment variables:
+```
+EVOLUTION_API_URL=http://api-sgwcco4kw80sckwg4c08sgk4:8080
+```
+
+### Lesson Learned
+> Always verify the actual Docker container name with `docker ps` before setting internal hostnames in env vars. Coolify may use a different prefix (`api-` vs `evo-`) than expected.
+
+---
+
 
 Copy this template when logging a new error:
 
