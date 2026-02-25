@@ -10,7 +10,8 @@ All notable changes to the ValueWats project, tracked by date.
 - **Backend Startup Crash**: `pdf-parse` was loaded at module level via `require('pdf-parse')` in `knowledgeService.js`. On Node.js v22, this triggers PDF.js browser polyfill code at startup which crashes the server. Fixed by moving `require('pdf-parse')` inside the `case 'pdf'` block (lazy load — only loads when a PDF is actually uploaded).
 - **Evolution API Down**: Container was stopped. Restarted via Coolify dashboard.
 - **Evolution API DB Auth Failure**: Evolution API was using wrong PostgreSQL credentials (`N2L1pFu2Qh4x1dYQ`) against the wrong host (`postgres:5432`). Fixed `DB_POSTGRESDB_HOST` to point to the correct Coolify internal hostname.
-- **Message Dispatch Freeze (Timeout)**: Sending text messages and connecting Evolution API instances would inexplicably freeze, causing 60-second timeouts. This occurred because `evolutionApi.js` supplied an `https://` webhook URL (`process.env.BACKEND_URL`) which timed out trying to reach the Nginx proxy through internal Docker boundaries. Fixed by assigning a direct HTTP alias path to speed up `undici` socket webhooks.
+- **Message Dispatch Freeze (Timeout)**: Sending messages via Evolution API would time out after 30s. Increased backend axios timeout to 60s and added a retry loop in `evolutionApi.js` to handle transient WhatsApp/Baileys glitches.
+- **CTR Tracking Removal**: Completely removed the URL shortening and click tracking system. Deleted `linkShortener.js`, `links.js`, and removed associated routes from `server.js` and UI from `CampaignDetails.jsx`.
 
 ### Notes
 - Node.js v22 is confirmed working via nixpacks (`nodejs_22` in build plan)

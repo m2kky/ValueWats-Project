@@ -162,15 +162,7 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
       });
     }
 
-    // Shorten Links if present
-    if (urlRegex.test(currentMessage)) {
-      const urls = currentMessage.match(urlRegex) || [];
-      for (const url of urls) {
-        // Generate short link linked to campaign (messageId null initially)
-        const shortUrl = await linkShortener.generateShortUrl(url, campaignId, null);
-        currentMessage = currentMessage.replace(url, shortUrl);
-      }
-    }
+    // Links are preserved entirely in modern configurations (CTR disabled)
 
     if (!currentInstance) {
       console.error(`[Queue] No instance available for message ${i}`);

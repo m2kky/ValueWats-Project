@@ -520,3 +520,24 @@ setStats(prev => ({
 ### Lesson Learned
 > Never blindly replace component state with API response data. Always merge with defaults to prevent crashes from unexpected response shapes.
 
+---
+
+## ERR-021: Campaign Message Timeout (30s)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-02-25 |
+| **Severity** | 🟡 High |
+| **Error** | `Timeout after 30s calling http://api-sgwcco4kw...:8080` |
+| **Impact** | Campaign messages fail to send during peak or slow WhatsApp connection times |
+
+### Root Cause
+The default axios timeout for sending messages was set to 30 seconds. In some cases, the Evolution API (using Baileys) takes longer to establish a WhatsApp session or push the message to the phone, causing the request to hang and then be aborted by the backend.
+
+### Fix
+1. Increased timeout to **60 seconds** in `evolutionApi.js`.
+2. Implemented a **retry loop** (2 attempts) with a 2-second delay between retries to recover from transient connection errors.
+
+### Lesson Learned
+> WhatsApp messaging can be high-latency. Use generous timeouts (60s+) and robust retry mechanisms in the message dispatch pipeline to ensure campaign reliability. 
+

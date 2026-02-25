@@ -9,7 +9,6 @@ const authRoutes = require('./routes/auth');
 const instanceRoutes = require('./routes/instances');
 const campaignRoutes = require('./routes/campaigns');
 const webhookRoutes = require('./routes/webhooks');
-const linkRoutes = require('./routes/links');
 const chatRoutes = require('./routes/chat');
 const agentRoutes = require('./agents/agent.routes');
 
@@ -73,7 +72,6 @@ app.get('/health', (req, res) => {
 // Public routes (no authentication required)
 app.use('/api/auth', authRoutes);
 app.use('/auth', authRoutes); // Fallback for stripped /api prefix
-app.use('/l', linkRoutes); // Short links (root level or /l)
 
 // Serve uploads directory statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

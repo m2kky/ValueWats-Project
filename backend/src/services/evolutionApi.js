@@ -132,56 +132,64 @@ Stack: ${error.stack}
     }
   }
 
-  /**
-   * Send a single text message via Evolution API
-   * Note: Message DB record should be created by the caller (queueService)
-   */
   async sendMessage(tenantId, instanceName, number, text, mediaUrl = null, mediaType = null) {
-    try {
-      console.log(`[sendMessage] Sending to ${number} via ${instanceName} (Media: ${mediaUrl ? 'Yes' : 'No'}) | API: ${this.baseURL}`);
+    let response;
+    let attempts = 0;
+    const maxAttempts = 2;
+    const sendTimeout = 60000; // Increase to 60 seconds for higher reliability
 
-      let response;
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        if (mediaUrl) {
+          // Send Media Message
+          response = await axios.post(
+            `${this.baseURL}/message/sendMedia/${instanceName}`,
+            {
+              number,
+              mediatype: mediaType || 'document',
+              mimetype: mediaType === 'image' ? 'image/jpeg' : (mediaType === 'video' ? 'video/mp4' : 'application/pdf'),
+              caption: text,
+              media: mediaUrl,
+              fileName: mediaUrl.split('/').pop()
+            },
+            {
+              headers: { apikey: this.apiKey },
+              timeout: sendTimeout
+            }
+          );
+        } else {
+          // Send Text Message
+          response = await axios.post(
+            `${this.baseURL}/message/sendText/${instanceName}`,
+            {
+              number,
+              text,
+            },
+            {
+              headers: { apikey: this.apiKey },
+              timeout: sendTimeout
+            }
+          );
+        }
 
-      if (mediaUrl) {
-        // Send Media Message
-        response = await axios.post(
-          `${this.baseURL}/message/sendMedia/${instanceName}`,
-          {
-            number,
-            mediatype: mediaType || 'document',
-            mimetype: mediaType === 'image' ? 'image/jpeg' : (mediaType === 'video' ? 'video/mp4' : 'application/pdf'),
-            caption: text,
-            media: mediaUrl,
-            fileName: mediaUrl.split('/').pop()
-          },
-          {
-            headers: { apikey: this.apiKey },
-            timeout: 30000  // 30 second timeout
-          }
-        );
-      } else {
-        // Send Text Message
-        response = await axios.post(
-          `${this.baseURL}/message/sendText/${instanceName}`,
-          {
-            number,
-            text,
-          },
-          {
-            headers: { apikey: this.apiKey },
-            timeout: 30000  // 30 second timeout
-          }
-        );
+        console.log(`[sendMessage] Success (Attempt ${attempts}):`, JSON.stringify(response.data));
+        return response.data;
+      } catch (error) {
+        const isTimeout = error.code === 'ECONNABORTED' || error.message.includes('timeout');
+        const errMsg = isTimeout
+          ? `Timeout after ${sendTimeout / 1000}s calling ${this.baseURL}`
+          : (error.response?.data?.message || error.message);
+
+        console.error(`[sendMessage] Error (Attempt ${attempts}/${maxAttempts}) sending to ${number} via ${instanceName}:`, errMsg);
+
+        if (attempts >= maxAttempts) {
+          throw new Error('Failed to send message: ' + errMsg);
+        }
+
+        // Wait 2 seconds before retry
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
-
-      console.log(`[sendMessage] Success:`, JSON.stringify(response.data));
-      return response.data;
-    } catch (error) {
-      const errMsg = error.code === 'ECONNABORTED'
-        ? `Timeout after 30s calling ${this.baseURL}`
-        : (error.response?.data?.message || error.message);
-      console.error(`[sendMessage] Error sending to ${number} via ${instanceName}:`, errMsg, '| Status:', error.response?.status || 'N/A');
-      throw new Error('Failed to send message: ' + errMsg);
     }
   }
 

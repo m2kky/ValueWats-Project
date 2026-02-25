@@ -5,7 +5,6 @@ const googleSheetService = require('../services/googleSheetService');
 
 const fs = require('fs');
 const xlsx = require('xlsx');
-const linkShortener = require('../services/linkShortener');
 const storageService = require('../services/storageService');
 
 // Helper to extract IPs from text
@@ -230,24 +229,8 @@ const createCampaign = async (req, res) => {
         const templateIndex = Math.floor(i / parseInt(messageRotationCount)) % templates.length;
         const currentMessage = templates[templateIndex];
 
-        let finalMessage = currentMessage;
+        const finalMessage = currentMessage;
 
-        // Shorten Links if present
-        if (urlRegex.test(finalMessage)) {
-          const urls = finalMessage.match(urlRegex) || [];
-          for (const url of urls) {
-            // Create unique short link per message for tracking
-            // We pass null for messageId initially, will update after creation if needed, 
-            // OR we can't link to messageId before message creation. 
-            // Strategy: Create link, get short URL, then create Message. 
-            // To link Link->Message, we might need to update Link after Message creation or use a different flow.
-            // Simpler: Just link to CampaignId for now, or use a UUID for message that we generate.
-
-            // Better: Generate Short Link -> Replace in Text -> Create Message -> Update Link with MessageID
-            const shortUrl = await linkShortener.generateShortUrl(url, campaign.id, null);
-            finalMessage = finalMessage.replace(url, shortUrl);
-          }
-        }
 
         const messageRecord = await prisma.message.create({
           data: {
@@ -393,16 +376,9 @@ const getCampaignById = async (req, res) => {
       }
     });
 
-    // Calculate total clicks
-    const totalClicks = await prisma.link.aggregate({
-      where: { campaignId: id },
-      _sum: { clicks: true }
-    });
-
     res.json({
       ...campaign,
-      stats,
-      clicks: totalClicks._sum.clicks || 0
+      stats
     });
 
   } catch (error) {
@@ -753,17 +729,7 @@ const updateCampaign = async (req, res) => {
         });
       }
 
-      // Re-shorten links
-      if (urlRegex.test(newText)) {
-        const urls = newText.match(urlRegex) || [];
-        for (const url of urls) {
-          // We reuse the existing link tracking mechanism. 
-          // Note: This might generate NEW short links for every update. 
-          // Ideally we should cache or reuse, but for now generating new ones ensures correctness.
-          const shortUrl = await linkShortener.generateShortUrl(url, id, null);
-          newText = newText.replace(url, shortUrl);
-        }
-      }
+      // Return the update query preserving the original newText
 
       return prisma.message.update({
         where: { id: msg.id },
