@@ -100,16 +100,27 @@ module.exports = {
       const tenantId = req.user.tenantId;
       const { PrismaClient } = require('@prisma/client');
       const prisma = new PrismaClient();
-      
+
       const stages = await prisma.lifecycleStage.findMany({
         where: { tenantId },
         orderBy: { order: 'asc' }
       });
-      
+
       res.json({ stages });
     } catch (error) {
       console.error('Get stages error:', error);
       res.status(500).json({ error: 'Failed to fetch stages' });
+    }
+  },
+
+  syncConversations: async (req, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const result = await chatService.syncConversations(tenantId);
+      res.json(result);
+    } catch (error) {
+      console.error('Sync conversations error:', error);
+      res.status(500).json({ error: 'Failed to sync conversations' });
     }
   }
 };

@@ -9,5 +9,6 @@ router.get('/conversations/:id', chatController.getConversation);
 router.post('/messages/send', chatController.sendMessage);
 router.put('/conversations/:id/contact', chatController.updateContact);
 router.get('/lifecycle-stages', chatController.getLifecycleStages);
+router.post('/sync', chatController.syncConversations);
 
 module.exports = router;

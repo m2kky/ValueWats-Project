@@ -87,7 +87,7 @@ class ChatService {
     const conversations = await prisma.conversation.findMany({
       where,
       include: {
-        lifecycleStage: true 
+        lifecycleStage: true
       },
       orderBy: { lastMessageAt: 'desc' },
       take: limit,
@@ -152,7 +152,7 @@ class ChatService {
     if (customFields && Array.isArray(customFields)) {
       for (const field of customFields) {
         if (!field.name || !field.value) continue;
-        
+
         await prisma.contactField.upsert({
           where: {
             tenantId_contactNumber_fieldName: {
@@ -235,6 +235,74 @@ class ChatService {
     });
 
     return savedMessage;
+  }
+
+  /**
+   * Sync all conversations and recent messages from Evolution API
+   */
+  async syncConversations(tenantId) {
+    try {
+      // 1. Get all connected instances for the tenant
+      const instances = await prisma.instance.findMany({
+        where: { tenantId, status: 'connected' }
+      });
+
+      if (instances.length === 0) return { success: true, count: 0, message: 'No connected instances' };
+
+      let syncCount = 0;
+
+      for (const instance of instances) {
+        console.log(`[ChatSync] Syncing for instance: ${instance.instanceName}`);
+
+        // 2. Fetch conversations from Evolution API
+        const remoteChats = await evolutionApi.fetchConversations(instance.instanceName);
+
+        if (!Array.isArray(remoteChats)) continue;
+
+        for (const chat of remoteChats) {
+          const contactNumber = chat.id.replace('@s.whatsapp.net', '');
+          if (contactNumber.includes('@g.us')) continue; // Skip groups for now if needed
+
+          // 3. Upsert conversation
+          const conversation = await this.upsertConversation(tenantId, contactNumber, {
+            content: chat.message || chat.lastMessage?.message?.conversation || '',
+            contactName: chat.pushName || contactNumber,
+            fromMe: false // Default to false for sync
+          });
+
+          syncCount++;
+
+          // 4. (Optional) Fetch last few messages
+          // NOTE: We do this sparingly to avoid rate limits
+          const messages = await evolutionApi.fetchMessages(instance.instanceName, contactNumber, 10);
+
+          if (Array.isArray(messages)) {
+            for (const msg of messages) {
+              const msgData = {
+                instanceId: instance.id,
+                fromMe: msg.key?.fromMe || false,
+                senderNumber: msg.key?.fromMe ? instance.instanceName : contactNumber,
+                recipientNumber: msg.key?.fromMe ? contactNumber : instance.instanceName,
+                messageType: msg.messageType || 'text',
+                content: msg.message?.conversation || msg.message?.extendedTextMessage?.text || null,
+                wamid: msg.key?.id,
+                status: 'delivered',
+                createdAt: new Date(msg.messageTimestamp * 1000)
+              };
+
+              if (msgData.content) {
+                await this.saveMessage(conversation.id, msgData).catch(() => { });
+              }
+            }
+          }
+        }
+      }
+
+      return { success: true, count: syncCount };
+    } catch (error) {
+      console.error('[ChatService] Sync error:', error);
+      throw error;
+    }
   }
 }
 

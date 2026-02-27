@@ -232,6 +232,45 @@ Stack: ${error.stack}
     }
   }
   /**
+   * Fetch all conversations for an instance
+   */
+  async fetchConversations(instanceName) {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/chat/findChat/${instanceName}`,
+        {
+          headers: { apikey: this.apiKey },
+          timeout: 20000
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`[fetchConversations] Error for ${instanceName}:`, error.response?.data || error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch messages for a specific conversation
+   */
+  async fetchMessages(instanceName, number, count = 50) {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/chat/findMessages/${instanceName}`,
+        {
+          params: { number, count },
+          headers: { apikey: this.apiKey },
+          timeout: 20000
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`[fetchMessages] Error for ${number} in ${instanceName}:`, error.response?.data || error.message);
+      return [];
+    }
+  }
+
+  /**
    * Set Webhook for instance
    */
   async setWebhook(instanceName, webhookUrl, enabled = true, tenantId = null) {

@@ -138,12 +138,29 @@ router.put('/:id', tenantContext, async (req, res) => {
       delete updateData.model;
     }
 
+    // Filter only valid Prisma fields to prevent validation errors
+    const validFields = [
+      'name', 'description', 'avatar', 'templateType', 'instructions',
+      'aiProvider', 'aiModel', 'temperature', 'maxTokens', 'greeting',
+      'tone', 'responseStyle', 'useHistory', 'historyLength',
+      'followUpEnabled', 'followUpDelay', 'followUpMessage',
+      'workingHoursEnabled', 'workingHours', 'outOfHoursMessage',
+      'isActive', 'priority', 'allowGroupResponse', 'allowedGroups'
+    ];
+
+    const finalData = {};
+    validFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        finalData[field] = updateData[field];
+      }
+    });
+
     const agent = await prisma.aIAgent.updateMany({
       where: {
         id: req.params.id,
         tenantId: req.user.tenantId
       },
-      data: updateData
+      data: finalData
     });
 
     if (agent.count === 0) {

@@ -7,9 +7,13 @@ All notable changes to the ValueWats project, tracked by date.
 ## [2026-02-27] — Bug Fixes
 
 ### Fixed
-- **AI Agent Field Mismatch**: Harmonized `model` vs `aiModel` field names across the stack. Added a mapping in `agent.routes.js` and updated `Agents.jsx` to use `aiModel`, resolving `PrismaClientValidationError` during agent updates.
+- **AI Agent Field Mismatch**: Harmonized `model` vs `aiModel` field names across the stack. Added a mapping in `agent.routes.js` and updated `Agents.jsx` to use `aiModel`, resolving `PrismaClientValidationError`.
+- **AIAgent Update 500 Error**: Implemented strict field filtering in `agent.routes.js` to prevent non-schema fields (like `actionConfig`) from crashing Prisma.
 - **AI Agent Routing**: Updated `agent.service.js` and `deepseek.service.js` to correctly pass and use the configured agent model.
-- **Backend Startup Crash**: Fixed `MODULE_NOT_FOUND` error caused by a leftover `linkShortener` import in `queueService.js` after the CTR feature was removed.
+- **Backend Startup Crash**: Fixed `MODULE_NOT_FOUND` error caused by a leftover `linkShortener` import in `queueService.js`.
+
+### Added
+- **Inbox Sync Feature**: Added a "Sync" button to the Inbox to fetch historical chats and recent messages from Evolution API, resolving the "empty inbox" issue for newly connected instances.
 
 ---
 

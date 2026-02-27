@@ -10,6 +10,7 @@ export default function Inbox() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [socket, setSocket] = useState(null);
 
   // Setup socket connection
@@ -88,6 +89,20 @@ export default function Inbox() {
     fetchInstances();
   }, []);
 
+  const handleSync = async () => {
+    try {
+      setSyncing(true);
+      await api.post('/chat/sync');
+      await fetchConversations();
+      alert('Chats synchronized successfully!');
+    } catch (error) {
+      console.error('Failed to sync chats:', error);
+      alert('Failed to sync chats. Check logs.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const fetchConversations = async () => {
     try {
       setLoading(true);
@@ -161,7 +176,7 @@ export default function Inbox() {
       prev.map(c => c.id === updatedConversation.id ? { ...c, ...updatedConversation } : c)
     );
     // Update selected
-    setSelectedConversation(prev => 
+    setSelectedConversation(prev =>
       prev && prev.id === updatedConversation.id ? { ...prev, ...updatedConversation } : prev
     );
   }, []);
@@ -175,6 +190,8 @@ export default function Inbox() {
           selectedId={selectedConversation?.id}
           onSelect={handleSelectConversation}
           loading={loading}
+          onSync={handleSync}
+          syncing={syncing}
         />
       </aside>
 

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { formatPhoneNumber } from '../../utils/formatters';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
-export default function ConversationList({ conversations, selectedId, onSelect, loading }) {
+export default function ConversationList({ conversations, selectedId, onSelect, loading, onSync, syncing }) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filtered = conversations.filter(conv =>
@@ -11,7 +11,7 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
     conv.contactNumber.includes(searchTerm)
   );
 
-  if (loading) {
+  if (loading && conversations.length === 0) {
     return (
       <div className="flex flex-col h-full bg-zinc-950/20">
         <div className="p-6 border-b border-white/5">
@@ -38,9 +38,19 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
       <div className="p-6 border-b border-white/5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-black text-white tracking-tight italic">INBOX</h2>
-          <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 text-[10px] font-bold border border-indigo-500/20">
-            {conversations.length} TOTAL
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onSync}
+              disabled={syncing}
+              title="Sync Chats from WhatsApp"
+              className={`p-1.5 rounded-lg border border-white/5 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 transition-all ${syncing ? 'animate-spin cursor-not-allowed opacity-50' : ''}`}
+            >
+              <ArrowPathIcon className="w-4 h-4" />
+            </button>
+            <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 text-[10px] font-bold border border-indigo-500/20">
+              {conversations.length} TOTAL
+            </span>
+          </div>
         </div>
 
         <div className="relative group">
