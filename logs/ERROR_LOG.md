@@ -541,3 +541,22 @@ The default axios timeout for sending messages was set to 30 seconds. In some ca
 ### Lesson Learned
 > WhatsApp messaging can be high-latency. Use generous timeouts (60s+) and robust retry mechanisms in the message dispatch pipeline to ensure campaign reliability. 
 
+---
+
+## ERR-022: Backend Startup Crash — Missing linkShortener module
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-02-27 |
+| **Severity** | 🔴 Critical |
+| **Error** | `Error: Cannot find module './linkShortener'` |
+| **Impact** | Backend container crashes on startup |
+
+### Root Cause
+In the previous update, the CTR tracking feature was removed, including deleting the `linkShortener.js` file. However, `queueService.js` was still requiring it at the top level, causing the backend to crash on startup.
+
+### Fix
+Removed the leftover `require('./linkShortener')` from `backend/src/services/queueService.js`.
+
+### Lesson Learned
+> When deleting a file/module to remove a feature, always perform a project-wide search for its imports to ensure all usages are completely removed.

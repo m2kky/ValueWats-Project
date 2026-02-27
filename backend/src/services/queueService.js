@@ -3,7 +3,8 @@ const { redisConfig } = require('../config/redis');
 const evolutionApi = require('./evolutionApi');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const linkShortener = require('./linkShortener');
+
+
 
 // Helper to extract IPs from text
 const urlRegex = /(https?:\/\/[^\s]+)/g;

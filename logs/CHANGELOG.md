@@ -4,6 +4,13 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-02-27] — Bug Fixes
+
+### Fixed
+- **Backend Startup Crash**: Fixed `MODULE_NOT_FOUND` error caused by a leftover `linkShortener` import in `queueService.js` after the CTR feature was removed.
+
+---
+
 ## [2026-02-25] — Production Crash Fix & Infrastructure Recovery
 
 ### Fixed
