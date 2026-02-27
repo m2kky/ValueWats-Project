@@ -27,24 +27,27 @@ const handleIncomingMessage = async (req, res) => {
 
     // Handle connection status updates
     if (event === 'CONNECTION_UPDATE' || event === 'connection.update') {
-      console.log(`[Webhook] Connection update for ${instanceName}:`, data?.state);
-      
       const state = data?.state || data?.status;
+      const reason = data?.reason || 'none';
+      console.log(`[Webhook] 🔌 Connection update for ${instanceName}: State=${state}, Reason=${reason}`);
+
       if (state === 'open') {
         try {
           await prisma.instance.update({
             where: { instanceName },
-            data: { 
+            data: {
               status: 'connected',
               phoneNumber: data.phoneNumber || null
             }
           });
-          console.log(`[Webhook] ✅ Instance ${instanceName} marked as connected`);
+          console.log(`[Webhook] ✅ Instance ${instanceName} marked as connected manually`);
         } catch (e) {
-          console.error(`[Webhook] Failed to update instance ${instanceName}:`, e.message);
+          console.error(`[Webhook] ❌ Failed to update instance ${instanceName}:`, e.message);
         }
+      } else if (state === 'close' || state === 'refused') {
+        console.warn(`[Webhook] ⚠️ Instance ${instanceName} connection ${state}. Reason: ${reason}`);
       }
-      
+
       return res.status(200).send('OK');
     }
 
@@ -58,7 +61,7 @@ const handleIncomingMessage = async (req, res) => {
       if (!key || !update) return res.status(200).send('OK');
 
       const remoteJid = key.remoteJid;
-      const status = update.status; 
+      const status = update.status;
       const wamid = key.id;
 
       let statusString = null;
@@ -68,7 +71,7 @@ const handleIncomingMessage = async (req, res) => {
 
       if (statusString && wamid) {
         console.log(`[Webhook] Message update for ${remoteJid}: status ${status} (${statusString})`);
-        
+
         try {
           // Update campaign messages
           const message = await prisma.message.findUnique({
@@ -77,30 +80,30 @@ const handleIncomingMessage = async (req, res) => {
           });
 
           if (message) {
-             const updateData = { status: statusString };
-             if (statusString === 'DELIVERED') updateData.deliveredAt = new Date();
-             
-             await prisma.message.update({
-               where: { id: message.id },
-               data: updateData
-             });
+            const updateData = { status: statusString };
+            if (statusString === 'DELIVERED') updateData.deliveredAt = new Date();
 
-             if (message.campaignId) {
-                socketService.emitCampaignProgress(message.campaignId, message.campaign.tenantId, {
-                  type: 'MESSAGE_UPDATE',
-                  messageId: message.id,
-                  status: statusString,
-                  campaignName: message.campaign.name,
-                  totalContacts: message.campaign.totalContacts,
-                });
-             }
+            await prisma.message.update({
+              where: { id: message.id },
+              data: updateData
+            });
+
+            if (message.campaignId) {
+              socketService.emitCampaignProgress(message.campaignId, message.campaign.tenantId, {
+                type: 'MESSAGE_UPDATE',
+                messageId: message.id,
+                status: statusString,
+                campaignName: message.campaign.name,
+                totalContacts: message.campaign.totalContacts,
+              });
+            }
           }
 
           // Also update ChatMessage status
           await prisma.chatMessage.updateMany({
             where: { wamid },
             data: { status: statusString.toLowerCase() }
-          }).catch(() => {}); // Ignore if not found
+          }).catch(() => { }); // Ignore if not found
 
         } catch (err) {
           console.error('[Webhook] Error updating message status:', err.message);
@@ -152,18 +155,18 @@ const handleIncomingMessage = async (req, res) => {
     }
 
     const messageContent = msgObj.message;
-    const text = messageContent?.conversation || 
-                 messageContent?.extendedTextMessage?.text ||
-                 messageContent?.imageMessage?.caption ||
-                 '';
+    const text = messageContent?.conversation ||
+      messageContent?.extendedTextMessage?.text ||
+      messageContent?.imageMessage?.caption ||
+      '';
     const remoteJid = msgObj.key.remoteJid;
     const fromMe = msgObj.key.fromMe;
     const contactNumber = remoteJid.replace('@s.whatsapp.net', '');
     const wamid = msgObj.key.id;
     const messageType = messageContent?.imageMessage ? 'image' :
-                       messageContent?.videoMessage ? 'video' :
-                       messageContent?.audioMessage ? 'audio' :
-                       messageContent?.documentMessage ? 'document' : 'text';
+      messageContent?.videoMessage ? 'video' :
+        messageContent?.audioMessage ? 'audio' :
+          messageContent?.documentMessage ? 'document' : 'text';
 
     console.log(`[Webhook] 📩 Message from ${contactNumber}, fromMe: ${fromMe}, type: ${messageType}`);
     console.log(`[Webhook] 💬 Text: ${text?.substring(0, 100) || '[no text]'}`);
@@ -184,7 +187,7 @@ const handleIncomingMessage = async (req, res) => {
     let conversation;
     try {
       console.log('[Webhook] 💾 Saving to chat inbox...');
-      
+
       conversation = await chatService.upsertConversation(
         instance.tenantId,
         contactNumber,
@@ -268,7 +271,7 @@ const handleIncomingMessage = async (req, res) => {
 
       if (shouldTrigger) {
         console.log(`[Webhook] ✅ Automation matched: "${rule.name}" (${rule.triggerType})`);
-        
+
         await evolutionApi.sendMessage(
           instance.tenantId,
           instanceName,
@@ -294,7 +297,7 @@ const handleIncomingMessage = async (req, res) => {
 
         if (aiResult && aiResult.response) {
           console.log(`[Webhook] 🤖 AI Response: ${aiResult.response.substring(0, 50)}...`);
-          
+
           // Send AI response via Evolution API
           await evolutionApi.sendMessage(
             instance.tenantId,
@@ -316,11 +319,11 @@ const handleIncomingMessage = async (req, res) => {
               status: 'sent'
             }
           });
-          
+
           // Emit socket event for the AI response
           const aiMessage = await prisma.chatMessage.findFirst({
-             where: { wamid: `ai-${Date.now()}` }, // This might be racy, better to use the return of create
-             orderBy: { createdAt: 'desc' }
+            where: { wamid: `ai-${Date.now()}` }, // This might be racy, better to use the return of create
+            orderBy: { createdAt: 'desc' }
           });
           // actually create returns the object
           // But I can't assign it in the snippet easily without valid return

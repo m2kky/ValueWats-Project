@@ -23,9 +23,13 @@ class EvolutionAPI {
         `${this.baseURL}/instance/create`,
         {
           instanceName: sanitizedInstanceName,
-          token: sanitizedInstanceName, // Often used as token too
+          token: sanitizedInstanceName,
           qrcode: true,
-          integration: 'WHATSAPP-BAILEYS', // Required for v2
+          integration: 'WHATSAPP-BAILEYS',
+          // ✨ Stabilization flags for v2
+          reject_call: false,
+          always_online: true,
+          groups_ignore: true,
         },
         {
           headers: { apikey: this.apiKey },
