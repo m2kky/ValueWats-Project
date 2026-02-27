@@ -7,6 +7,8 @@ All notable changes to the ValueWats project, tracked by date.
 ## [2026-02-27] — Bug Fixes
 
 ### Fixed
+- **AI Agent Field Mismatch**: Harmonized `model` vs `aiModel` field names across the stack. Added a mapping in `agent.routes.js` and updated `Agents.jsx` to use `aiModel`, resolving `PrismaClientValidationError` during agent updates.
+- **AI Agent Routing**: Updated `agent.service.js` and `deepseek.service.js` to correctly pass and use the configured agent model.
 - **Backend Startup Crash**: Fixed `MODULE_NOT_FOUND` error caused by a leftover `linkShortener` import in `queueService.js` after the CTR feature was removed.
 
 ---

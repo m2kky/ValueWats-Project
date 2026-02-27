@@ -5,13 +5,13 @@ class DeepseekService {
     this.apiKey = process.env.DEEPSEEK_API_KEY;
     this.baseURL = 'https://api.deepseek.com'; // v1 is usually implicit or part of path, OpenAI uses /v1
     // User snippet used 'https://api.deepseek.com/v1', I will respect that.
-    this.baseURL = 'https://api.deepseek.com'; 
+    this.baseURL = 'https://api.deepseek.com';
     // Wait, user said `baseURL = 'https://api.deepseek.com/v1'`.
     // And axios.post(`${this.baseURL}/chat/completions`)
     // If base is .../v1, then url is .../v1/chat/completions. This is correct for OpenAI style.
   }
 
-  async chat({ messages, temperature = 0.7, max_tokens = 500 }) {
+  async chat({ messages, temperature = 0.7, max_tokens = 500, model = 'deepseek-chat' }) {
     try {
       // Ensure API key is present
       if (!this.apiKey) {
@@ -23,7 +23,7 @@ class DeepseekService {
         // User code: `${this.baseURL}/chat/completions` where baseURL='https://api.deepseek.com/v1'
         // Let's use user's logic exactly but correct the response parsing.
         {
-          model: 'deepseek-chat',
+          model: model,
           messages: messages,
           temperature: temperature,
           max_tokens: max_tokens

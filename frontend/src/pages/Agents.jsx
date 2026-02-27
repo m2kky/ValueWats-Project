@@ -71,7 +71,7 @@ const defaultForm = {
   outOfHoursMessage: '',
   isActive: true,
   priority: 0,
-  model: 'deepseek-chat',
+  aiModel: 'deepseek-chat',
 
   // Phase 4: Groups & Actions
   allowGroupResponse: false,
@@ -174,7 +174,7 @@ export default function Agents() {
         outOfHoursMessage: full.outOfHoursMessage || '',
         isActive: full.isActive ?? true,
         priority: full.priority ?? 0,
-        model: full.model || 'deepseek-chat',
+        aiModel: full.aiModel || full.model || 'deepseek-chat',
 
         // Phase 4
         allowGroupResponse: full.allowGroupResponse ?? false,

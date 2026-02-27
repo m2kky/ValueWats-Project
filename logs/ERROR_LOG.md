@@ -560,3 +560,25 @@ Removed the leftover `require('./linkShortener')` from `backend/src/services/que
 
 ### Lesson Learned
 > When deleting a file/module to remove a feature, always perform a project-wide search for its imports to ensure all usages are completely removed.
+
+---
+
+## ERR-023: AIAgent Update Failure — Field Name Mismatch
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-02-27 |
+| **Severity** | 🔴 Critical |
+| **Error** | `PrismaClientValidationError: Unknown field 'model' on model 'AIAgent'` |
+| **Impact** | AI Agents cannot be updated or configured; settings are not saved. |
+
+### Root Cause
+The frontend `Agents.jsx` was sending a `model` field in the update request, but the Prisma schema defines the field as `aiModel`. Since the backend `agent.routes.js` passed `req.body` directly to `prisma.aIAgent.updateMany`, Prisma threw a validation error.
+
+### Fix
+1.  **Backend Mapping**: Added a mapper in `agent.routes.js` to translate `model` to `aiModel` if present in the request body.
+2.  **Frontend Sync**: Renamed `model` to `aiModel` in `Agents.jsx` (defaultForm and handleEdit).
+3.  **Service Update**: Updated `agent.service.js` and `deepseek.service.js` to use the dynamic `aiModel` from the configuration.
+
+### Lesson Learned
+> Always synchronize frontend form fields with Prisma schema names exactly. When passing `req.body` directly to Prisma `update/create`, sanitize or map incoming fields to ensure they match the schema to avoid validation crashes.

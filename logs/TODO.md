@@ -5,8 +5,9 @@
 
 ## 🔴 High Priority
 
-- [ ] 1. **Resolve Evolution API Issue** (Redeploy Service Stack)
-- [/] 2. **Implement CRM System** (Contacts, Labels, Notes, Lifecycle Stages) — Schema + Backend + Frontend DONE, needs `prisma migrate deploy` on Coolify
+- [x] 1. **Resolve AI Agent Response Issues** (Harmonized field names and fixed Prisma validation) - 2026-02-27
+- [ ] 2. **Resolve Evolution API DNS/Instance Issues** (Monitoring needed)
+- [/] 3. **Implement CRM System** (Contacts, Labels, Notes, Lifecycle Stages) — Schema + Backend + Frontend DONE, needs `prisma migrate deploy` on Coolify
 - [ ] 3. **Implement Agent Actions** (8 distinct actions like respond.io)
 - [ ] 4. **Implement Agent Tools** (Email, Google Calendar, WhatsApp Notifications)
 - [ ] 5. **Implement Activity Feed** (Chat Banner & CRM Timeline)

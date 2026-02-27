@@ -130,12 +130,20 @@ router.post('/', tenantContext, async (req, res) => {
 // Update agent
 router.put('/:id', tenantContext, async (req, res) => {
   try {
+    const updateData = { ...req.body };
+
+    // Map 'model' to 'aiModel' if present to satisfy Prisma schema
+    if (updateData.model) {
+      updateData.aiModel = updateData.model;
+      delete updateData.model;
+    }
+
     const agent = await prisma.aIAgent.updateMany({
       where: {
         id: req.params.id,
         tenantId: req.user.tenantId
       },
-      data: req.body
+      data: updateData
     });
 
     if (agent.count === 0) {
