@@ -3,31 +3,28 @@ const axios = require('axios');
 class DeepseekService {
   constructor() {
     this.apiKey = process.env.DEEPSEEK_API_KEY;
-    this.baseURL = 'https://api.deepseek.com'; // v1 is usually implicit or part of path, OpenAI uses /v1
-    // User snippet used 'https://api.deepseek.com/v1', I will respect that.
-    this.baseURL = 'https://api.deepseek.com';
-    // Wait, user said `baseURL = 'https://api.deepseek.com/v1'`.
-    // And axios.post(`${this.baseURL}/chat/completions`)
-    // If base is .../v1, then url is .../v1/chat/completions. This is correct for OpenAI style.
+    this.baseURL = 'https://api.deepseek.com/v1';
   }
 
-  async chat({ messages, temperature = 0.7, max_tokens = 500, model = 'deepseek-chat' }) {
+  async chat({ messages, temperature = 0.7, max_tokens = 500, model = 'deepseek-chat', tools = null, tool_choice = null }) {
     try {
-      // Ensure API key is present
       if (!this.apiKey) {
         throw new Error('DEEPSEEK_API_KEY is not set in environment variables');
       }
 
+      const body = {
+        model,
+        messages,
+        temperature,
+        max_tokens
+      };
+
+      if (tools) body.tools = tools;
+      if (tool_choice) body.tool_choice = tool_choice;
+
       const response = await axios.post(
-        'https://api.deepseek.com/chat/completions', // Using full URL to be safe or use baseURL logic
-        // User code: `${this.baseURL}/chat/completions` where baseURL='https://api.deepseek.com/v1'
-        // Let's use user's logic exactly but correct the response parsing.
-        {
-          model: model,
-          messages: messages,
-          temperature: temperature,
-          max_tokens: max_tokens
-        },
+        `${this.baseURL}/chat/completions`,
+        body,
         {
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
@@ -36,8 +33,7 @@ class DeepseekService {
         }
       );
 
-      // Correcting choices access: choices is an array
-      return response.data.choices[0].message.content;
+      return response.data.choices[0].message;
     } catch (error) {
       console.error('[DeepseekService] Error:', error.response?.data || error.message);
       throw error;

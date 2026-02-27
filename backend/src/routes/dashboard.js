@@ -7,5 +7,6 @@ const tenantContext = require('../middleware/tenantContext');
 router.use(tenantContext);
 
 router.get('/stats', dashboardController.getStats);
+router.get('/activity', dashboardController.getActivityFeed);
 
 module.exports = router;

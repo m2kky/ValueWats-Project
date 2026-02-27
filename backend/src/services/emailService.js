@@ -103,6 +103,28 @@ class EmailService {
       throw new Error('Failed to send invitation email');
     }
   }
+
+  /**
+   * Send a generic email
+   */
+  async sendEmail({ to, subject, html, text }) {
+    const mailOptions = {
+      from: process.env.SMTP_FROM || `ValueWats <${process.env.SMTP_USER}>`,
+      to,
+      subject,
+      html: html || text,
+      text: text || ''
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(`Email sent: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('Email send error:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = new EmailService();

@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const deepseekService = require('../ai/deepseek.service');
+const toolService = require('../services/toolService');
 
 class AgentService {
   /**
@@ -65,7 +66,7 @@ class AgentService {
       // 2. Build Context (RAG + Conversation History)
       const contextLines = await this.buildContext(message, agent.knowledgeSources, agent.id);
 
-      // 3. System Prompt Construction with Security Directive
+      // 3. System Prompt Construction
       const CORE_DIRECTIVE = `
 !!! CRITICAL SECURITY INSTRUCTIONS !!!
 You are a specialized AI agent acting on behalf of ${agent.name}.
@@ -93,28 +94,58 @@ Response Guidelines:
 - Keep responses concise and natural for WhatsApp.
 - ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with the user.'}
 `;
-      // 6. Generate AI response
-      const aiResponse = await deepseekService.chat({
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          ...history,
-          {
-            role: 'user',
-            content: message
+
+      const chatMessages = [
+        { role: 'system', content: systemPrompt },
+        ...history,
+        { role: 'user', content: message }
+      ];
+
+      let finalContent = '';
+      let loopCount = 0;
+      const MAX_LOOPS = 5;
+
+      while (loopCount < MAX_LOOPS) {
+        const responseMessage = await deepseekService.chat({
+          messages: chatMessages,
+          temperature: agent.temperature,
+          max_tokens: agent.maxTokens,
+          model: agent.aiModel || 'deepseek-chat',
+          tools: toolService.getToolDefinitions()
+        });
+
+        chatMessages.push(responseMessage);
+
+        if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+          console.log(`[AgentService] AI requested ${responseMessage.tool_calls.length} tool calls`);
+
+          for (const toolCall of responseMessage.tool_calls) {
+            const result = await toolService.execute(
+              toolCall.function.name,
+              JSON.parse(toolCall.function.arguments),
+              { tenantId, conversationId }
+            );
+
+            chatMessages.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              name: toolCall.function.name,
+              content: JSON.stringify(result)
+            });
           }
-        ],
-        temperature: agent.temperature,
-        max_tokens: agent.maxTokens,
-        model: agent.aiModel || 'deepseek-chat'
-      });
+          loopCount++;
+        } else {
+          finalContent = responseMessage.content;
+          break;
+        }
+      }
+
+      const aiResponse = finalContent || '';
 
       // 7. Check for routing triggers
       await this.checkRoutingRules(conversation, agent, message, aiResponse);
 
-      // 8. Execute agent actions
+      // 8. Execute agent actions (legacy tag-based support)
       await this.executeActions(agent, conversation, message, aiResponse);
 
       // 9. Update conversation tracking
