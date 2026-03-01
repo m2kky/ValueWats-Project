@@ -11,6 +11,8 @@ All notable changes to the ValueWats project, tracked by date.
 - **Team Insights Dashboard**: Introduced a new "Team Insights" section ranking team members by their number of replies.
 
 ### Fixed
+- **Group Chat Names Overriden**: Fixed `webhookController.js` pulling the `pushName` of individual senders on group chats and using it to override the conversation name by bypassing assignment logic for IDs containing `@g.us`.
+- **Team Assignment ID Nullification**: Fixed a payload bug in `ContactSidebar.jsx` where selecting a team member sent an `agentId` instead of a `userId`, resulting in missing selections on the server.
 - **Inbox Flex Layout (Sidebar Cutoff)**: Fixed `.inbox-main` flex-direction CSS bug. Changing it to `row` ensured the ContactSidebar renders correctly on the right side instead of cutting off underneath the chat window.
 - **Agent Actions Trigger Nullification**: Fixed `processMessage()` in `agent.service.js` where the `buildSystemPrompt()` function injection logic was completely skipped, causing valid actions (like `CLOSE_CONVERSATION`) to be ignored by the LLM.
 - **Inbox Contact & Group Names**: Resolved issue where Webhook messages would arrive without `pushName` being saved to the database. Modified `webhookController.js` and `chat.service.js` to correctly pass and attach `contactName` for both 1-on-1 and Group chats. Group chats are now reliably synced.
