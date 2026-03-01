@@ -35,9 +35,9 @@ model Tenant {
   integrations    Integration[]
   workflows       Workflow[]
 
-  contacts        Contact[]
-  contactLabels   ContactLabel[]
-  activityLogs    ActivityLog[]
+  contacts      Contact[]
+  contactLabels ContactLabel[]
+  activityLogs  ActivityLog[]
 
   @@map("tenants")
 }
@@ -334,6 +334,11 @@ model AIAgent {
   isActive Boolean @default(true)
   priority Int     @default(0)
 
+  // Phase 4: Action & Group Extensions
+  actionConfig       Json?
+  allowGroupResponse Boolean  @default(false)
+  allowedGroups      String[] @default([])
+
   actions              AgentAction[]
   knowledgeSources     AgentKnowledge[]
   routingRules         AgentRoutingRule[]  @relation("FromAgent")
@@ -443,22 +448,22 @@ model Contact {
   tenantId String @map("tenant_id")
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  phoneNumber  String  @map("phone_number")
+  phoneNumber  String    @map("phone_number")
   name         String?
   email        String?
   gender       String? // 'male', 'female'
   birthDate    DateTime? @map("birth_date") @db.Date
   governorate  String?
   district     String?
-  address      String? @db.Text
-  source       String  @default("manual") // 'whatsapp', 'manual', 'import', 'website'
-  customFields Json?   @map("custom_fields")
+  address      String?   @db.Text
+  source       String    @default("manual") // 'whatsapp', 'manual', 'import', 'website'
+  customFields Json?     @map("custom_fields")
 
   lifecycleStageId String?         @map("lifecycle_stage_id")
   lifecycleStage   LifecycleStage? @relation(fields: [lifecycleStageId], references: [id])
 
-  labels ContactLabelAssignment[]
-  notes  ContactNote[]
+  labels       ContactLabelAssignment[]
+  notes        ContactNote[]
   activityLogs ActivityLog[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -506,8 +511,8 @@ model ContactNote {
   contactId String  @map("contact_id")
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  userId  String  @map("user_id")
-  content String  @db.Text
+  userId  String @map("user_id")
+  content String @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -528,8 +533,8 @@ model ActivityLog {
   userId         String? @map("user_id") // null = AI agent
   agentId        String? @map("agent_id")
 
-  actionType  String  @map("action_type") // 'lifecycle_change', 'label_added', 'label_removed', 'note_added', 'assigned', 'closed', 'tool_email', 'tool_calendar', 'tool_whatsapp'
-  description String  @db.Text
+  actionType  String @map("action_type") // 'lifecycle_change', 'label_added', 'label_removed', 'note_added', 'assigned', 'closed', 'tool_email', 'tool_calendar', 'tool_whatsapp'
+  description String @db.Text
   metadata    Json?
 
   createdAt DateTime @default(now()) @map("created_at")

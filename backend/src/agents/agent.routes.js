@@ -145,7 +145,7 @@ router.put('/:id', tenantContext, async (req, res) => {
       'tone', 'responseStyle', 'useHistory', 'historyLength',
       'followUpEnabled', 'followUpDelay', 'followUpMessage',
       'workingHoursEnabled', 'workingHours', 'outOfHoursMessage',
-      'isActive', 'priority', 'allowGroupResponse', 'allowedGroups'
+      'isActive', 'priority', 'allowGroupResponse', 'allowedGroups', 'actionConfig'
     ];
 
     const finalData = {};
