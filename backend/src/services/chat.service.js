@@ -89,7 +89,8 @@ class ChatService {
     const conversations = await prisma.conversation.findMany({
       where,
       include: {
-        lifecycleStage: true
+        lifecycleStage: true,
+        assignedUser: { select: { id: true, email: true } }
       },
       orderBy: { lastMessageAt: 'desc' },
       take: limit,
@@ -107,6 +108,7 @@ class ChatService {
       where: { id: conversationId, tenantId },
       include: {
         lifecycleStage: true,
+        assignedUser: { select: { id: true, email: true } },
         messages: {
           include: {
             instance: {
@@ -181,24 +183,27 @@ class ChatService {
    * Update conversation assignment
    */
   async updateAssignment(tenantId, conversationId, assignmentData) {
-    const { type, agentId } = assignmentData; // type: 'agent', 'me', 'unassign'
+    const { type, agentId, userId } = assignmentData; // type: 'agent', 'user', 'me', 'unassign'
 
     let updateData = {};
     if (type === 'agent') {
       updateData = {
         currentAgentId: agentId,
+        assignedUserId: null,
         escalated: false,
         aiEnabled: true
       };
-    } else if (type === 'me') {
+    } else if (type === 'user' || type === 'me') {
       updateData = {
         currentAgentId: null,
+        assignedUserId: userId,
         escalated: true,
         aiEnabled: false
       };
     } else if (type === 'unassign') {
       updateData = {
         currentAgentId: null,
+        assignedUserId: null,
         escalated: false,
         aiEnabled: true
       };
@@ -207,7 +212,10 @@ class ChatService {
     const conversation = await prisma.conversation.update({
       where: { id: conversationId },
       data: updateData,
-      include: { lifecycleStage: true }
+      include: {
+        lifecycleStage: true,
+        assignedUser: { select: { id: true, email: true } }
+      }
     });
 
     return conversation;
@@ -259,8 +267,15 @@ class ChatService {
       content,
       mediaUrl,
       wamid: result?.key?.id || null,
-      status: 'sent'
+      status: 'sent',
     });
+
+    if (messageData.userId && savedMessage) {
+      await prisma.chatMessage.update({
+        where: { id: savedMessage.id },
+        data: { senderUserId: messageData.userId }
+      });
+    }
 
     // Update conversation
     await prisma.conversation.update({

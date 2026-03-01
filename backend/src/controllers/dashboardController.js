@@ -113,6 +113,30 @@ const getStats = async (req, res) => {
       }
     });
 
+    // 8. Team Insights
+    const teamMembers = await prisma.user.findMany({
+      where: { tenantId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        _count: {
+          select: {
+            sentMessages: {
+              where: { direction: 'outgoing' }
+            }
+          }
+        }
+      }
+    });
+
+    const teamInsights = teamMembers.map(u => ({
+      id: u.id,
+      name: u.email.split('@')[0], // Extract name from email for display
+      role: u.role,
+      messagesReplied: u._count.sentMessages
+    })).sort((a, b) => b.messagesReplied - a.messagesReplied);
+
     res.json({
       campaigns: totalCampaigns,
       messages: {
@@ -133,7 +157,8 @@ const getStats = async (req, res) => {
         status: c.status,
         createdAt: c.createdAt,
         messageCount: c._count.messages
-      }))
+      })),
+      teamInsights // added to response
     });
 
   } catch (error) {

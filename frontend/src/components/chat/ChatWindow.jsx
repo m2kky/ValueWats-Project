@@ -160,17 +160,9 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
             <div className="w-4 h-4 rounded-full bg-blue-500/20 flex items-center justify-center">
               <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
             </div>
-            <select
-              value={selectedInstance}
-              onChange={(e) => setSelectedInstance(e.target.value)}
-              className="bg-transparent text-xs font-semibold text-zinc-300 outline-none cursor-pointer hover:text-white"
-            >
-              {instances.map(inst => (
-                <option key={inst.id} value={inst.id} className="bg-zinc-900 text-white">
-                  {inst.instanceName}
-                </option>
-              ))}
-            </select>
+            <span className="bg-transparent text-xs font-semibold text-zinc-300">
+              {instances.find(inst => inst.id === selectedInstance)?.instanceName || 'Unknown Instance'}
+            </span>
           </div>
 
           {/* Text Input Area */}

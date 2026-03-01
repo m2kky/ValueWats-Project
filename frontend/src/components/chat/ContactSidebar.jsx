@@ -119,8 +119,14 @@ export default function ContactSidebar({ conversation, agents, users, onClose, o
       assignmentLabel = assignedAgent.name;
       assignmentIcon = <span className="text-sm">🤖</span>;
     }
+  } else if (conversation.assignedUserId || conversation.assignedUser) {
+    const assignedUser = users?.find(u => u.id === conversation.assignedUserId) || conversation.assignedUser;
+    if (assignedUser) {
+      assignmentLabel = assignedUser.email.split('@')[0];
+      assignmentIcon = <UserCircleIcon className="w-5 h-5 text-indigo-400" />;
+    }
   } else if (!conversation.aiEnabled && conversation.escalated) {
-    assignmentLabel = "Assigned to me";
+    assignmentLabel = "Assigned to team";
     assignmentIcon = <UserCircleIcon className="w-5 h-5 text-indigo-400" />;
   }
 
@@ -181,14 +187,24 @@ export default function ContactSidebar({ conversation, agents, users, onClose, o
                 </button>
               ))}
 
-              <div className="px-3 py-1.5 mt-2 text-xs font-bold text-zinc-500 uppercase tracking-wider">Human</div>
+              <div className="px-3 py-1.5 mt-2 text-xs font-bold text-zinc-500 uppercase tracking-wider">Team Members</div>
               <button
                 onClick={() => handleAssign('me')}
                 className="w-full text-left px-4 py-2 text-sm text-zinc-200 hover:bg-white/5 flex items-center justify-between"
               >
                 <span className="flex items-center gap-2">👤 Assign to me</span>
-                {(!conversation.aiEnabled && conversation.escalated) && <CheckIcon className="w-4 h-4 text-indigo-400" />}
+                {(!conversation.aiEnabled && conversation.escalated && !conversation.assignedUserId) && <CheckIcon className="w-4 h-4 text-indigo-400" />}
               </button>
+              {users?.map(user => (
+                <button
+                  key={user.id}
+                  onClick={() => handleAssign('user', user.id)}
+                  className="w-full text-left px-4 py-2 text-sm text-zinc-200 hover:bg-white/5 flex items-center justify-between truncate"
+                >
+                  <span className="flex items-center gap-2 truncate">👤 {user.email.split('@')[0]}</span>
+                  {conversation.assignedUserId === user.id && <CheckIcon className="w-4 h-4 text-indigo-400 shrink-0" />}
+                </button>
+              ))}
 
               <div className="h-px w-full bg-white/5 my-2"></div>
               <button

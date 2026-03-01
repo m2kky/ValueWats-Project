@@ -53,6 +53,9 @@ model User {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  assignedConversations Conversation[] @relation("AssignedUser")
+  sentMessages          ChatMessage[]  @relation("SentMessage")
+
   @@map("users")
 }
 
@@ -226,6 +229,9 @@ model Conversation {
   currentAgentId String?
   currentAgent   AIAgent? @relation("CurrentAgent", fields: [currentAgentId], references: [id])
 
+  assignedUserId String?
+  assignedUser   User?   @relation("AssignedUser", fields: [assignedUserId], references: [id])
+
   agentHistory ConversationAgent[]
 
   lifecycleStageId String?
@@ -261,8 +267,11 @@ model ChatMessage {
   status          String   @default("pending")
   createdAt       DateTime @default(now()) @map("created_at")
 
+  senderUserId String? @map("sender_user_id")
+
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   instance     Instance?    @relation(fields: [instanceId], references: [id])
+  senderUser   User?        @relation("SentMessage", fields: [senderUserId], references: [id])
 
   @@index([conversationId, createdAt])
   @@map("chat_messages")

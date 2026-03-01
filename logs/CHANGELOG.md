@@ -6,13 +6,17 @@ All notable changes to the ValueWats project, tracked by date.
 
 ## [2026-03-01] — Agent Actions & UI Refinements
 
+### Added
+- **Team Assignment**: Upgraded the chat assignment functionality to populate from actual team members (Users) instead of AI agents.
+- **Team Insights Dashboard**: Introduced a new "Team Insights" section ranking team members by their number of replies.
+
 ### Fixed
 - **Inbox Flex Layout (Sidebar Cutoff)**: Fixed `.inbox-main` flex-direction CSS bug. Changing it to `row` ensured the ContactSidebar renders correctly on the right side instead of cutting off underneath the chat window.
-- **Agent Actions Trigger Nullification**: Fixed `processMessage()` in `agent.service.js` where the `buildSystemPrompt()` function injection logic was completely skipped, causing valid actions (like `CLOSE_CONVERSATION`) to be ignored by the LLM. 
+- **Agent Actions Trigger Nullification**: Fixed `processMessage()` in `agent.service.js` where the `buildSystemPrompt()` function injection logic was completely skipped, causing valid actions (like `CLOSE_CONVERSATION`) to be ignored by the LLM.
 - **Inbox Contact & Group Names**: Resolved issue where Webhook messages would arrive without `pushName` being saved to the database. Modified `webhookController.js` and `chat.service.js` to correctly pass and attach `contactName` for both 1-on-1 and Group chats. Group chats are now reliably synced.
 
 ### Changed
-- **Premium Agent Configuration UI**: Completely refactored `Agents.jsx`. The legacy 3-tab system (Core, Skills, Database) has been flattened into a sleek, premium single-page vertical architecture for much faster configuration and zero context switching. 
+- **Premium Agent Configuration UI**: Completely refactored `Agents.jsx`. The legacy 3-tab system (Core, Skills, Database) has been flattened into a sleek, premium single-page vertical architecture for much faster configuration and zero context switching.
 - **Inbox "Channel Source" Indicator**: Streamlined the `ChatWindow.jsx` header. Reduced visual clutter by converting the dropdown `<select>` into an elegant static channel label, while preserving auto-routing instance logic internally.
 - **Premium Inbox UI Redesign (Facebook Messenger Style)**: 
   - Implemented a collapsed "Thin Sidebar" in App Layout strictly for the Inbox page to maximize space.

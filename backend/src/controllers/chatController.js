@@ -51,13 +51,15 @@ const sendMessage = async (req, res) => {
       return res.status(400).json({ error: 'conversationId, instanceId, and content are required' });
     }
 
-    const message = await chatService.sendMessage(tenantId, {
+    const messageData = {
       conversationId,
       instanceId,
       content,
       mediaUrl,
-      messageType
-    });
+      messageType,
+      userId: req.user.id // inject the user ID that is making the request
+    };
+    const message = await chatService.sendMessage(tenantId, messageData);
 
     // Emit real-time event
     try {
@@ -99,7 +101,10 @@ module.exports = {
     try {
       const tenantId = req.user.tenantId;
       const { id } = req.params;
-      const assignmentData = req.body; // { type, agentId }
+      const assignmentData = req.body; // { type, agentId, userId }
+      if (assignmentData.type === 'me') {
+        assignmentData.userId = req.user.id;
+      }
 
       const updated = await chatService.updateAssignment(tenantId, id, assignmentData);
       res.json({ success: true, conversation: updated });

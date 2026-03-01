@@ -52,3 +52,5 @@
 - [x] Facebook-style Inbox right sidebar (Assignment & CRM Fields) — 2026-03-01
 - [x] Fix Agent Actions UI cutoff and visually redesign to dark theme — 2026-03-01
 - [x] Premium Inbox Redesign (4-Column Layout, Dark Theme, Custom Filters) — 2026-03-01
+- [x] Inbox Chat Assignment to Team Members — 2026-03-01
+- [x] Dashboard Team Insights for messages replied to by staff — 2026-03-01

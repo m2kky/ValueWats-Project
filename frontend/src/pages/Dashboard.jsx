@@ -43,7 +43,8 @@ export default function Dashboard() {
     messages: { total: 0, sent: 0, delivered: 0, read: 0, failed: 0, deliveryRate: 0, readRate: 0 },
     campaigns: 0,
     contacts: 0,
-    ai: { messagesHandled: 0, escalationRate: 0, activeSessions: 0 }
+    ai: { messagesHandled: 0, escalationRate: 0, activeSessions: 0 },
+    teamInsights: []
   });
   const [user, setUser] = useState(null);
 
@@ -68,7 +69,8 @@ export default function Dashboard() {
           messagesHandled: data.ai?.messagesHandled || 0,
           escalationRate: data.ai?.escalationRate || 0,
           activeSessions: data.ai?.activeSessions || 0
-        }
+        },
+        teamInsights: data.teamInsights || []
       });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -190,6 +192,32 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Team Insights */}
+          {stats.teamInsights && stats.teamInsights.length > 0 && (
+            <div className="glass-card p-8 mt-8">
+              <h2 className="text-xl font-black text-white uppercase tracking-widest mb-6">Team Insights</h2>
+              <div className="space-y-4">
+                {stats.teamInsights.map(member => (
+                  <div key={member.id} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                        {member.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-white">{member.name}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-zinc-500">{member.role}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-black text-emerald-400">{member.messagesReplied}</div>
+                      <div className="text-[10px] uppercase tracking-wider text-zinc-500">Replies</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Global Activity Feed */}
