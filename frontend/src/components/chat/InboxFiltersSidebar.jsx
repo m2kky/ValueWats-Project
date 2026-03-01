@@ -2,7 +2,7 @@ import {
     InboxIcon,
     UserIcon,
     UserMinusIcon,
-    PhoneArrowDownIcon,
+    PhoneArrowDownLeftIcon,
     CpuChipIcon,
     PlusIcon,
     Cog6ToothIcon
@@ -52,7 +52,7 @@ export default function InboxFiltersSidebar({ conversations }) {
 
                     <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-zinc-400 hover:bg-white/5 hover:text-white transition-colors">
                         <div className="flex items-center gap-3">
-                            <PhoneArrowDownIcon className="w-[18px] h-[18px]" />
+                            <PhoneArrowDownLeftIcon className="w-[18px] h-[18px]" />
                             <span className="text-sm font-medium">Incoming Calls</span>
                         </div>
                     </button>
