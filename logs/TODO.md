@@ -6,16 +6,16 @@
 ## 🔴 High Priority
 
 - [x] 1. **Resolve AI Agent Response Issues** (Harmonized field names and fixed Prisma validation) - 2026-02-27
-- [ ] 2. **Resolve Evolution API DNS/Instance Issues** (Monitoring needed)
-- [/] 3. **Implement CRM System** (Contacts, Labels, Notes, Lifecycle Stages) — Schema + Backend + Frontend DONE, needs `prisma migrate deploy` on Coolify
-- [ ] 3. **Implement Agent Actions** (8 distinct actions like respond.io)
-- [ ] 4. **Implement Agent Tools** (Email, Google Calendar, WhatsApp Notifications)
-- [ ] 5. **Implement Activity Feed** (Chat Banner & CRM Timeline)
-- [ ] 6. **Implement Saved Segments & Retargeting** (Smart filtering)
-- [ ] 7. **Implement Analytics Dashboard** (Campaigns, Agents, Funnel)
-- [ ] 8. **Implement Quick Replies & Auto-Contact Creation**
-- [ ] 9. **Implement Anti-Ban Smart Sending** (Warm-up, delays, rotation)
-- [ ] 10. **Implement Webhook API** (For business external integrations)
+- [x] 2. **Resolve Evolution API DNS/Instance Issues** (Monitoring needed)
+- [x] 3. **Implement CRM System** (Contacts, Labels, Notes, Lifecycle Stages) — Schema + Backend + Frontend
+- [x] 4. **Implement Agent Actions** (8 distinct actions like respond.io) - Premium single-page UI & backend injection
+- [ ] 5. **Implement Agent Tools** (Email, Google Calendar, WhatsApp Notifications)
+- [ ] 6. **Implement Activity Feed** (Chat Banner & CRM Timeline)
+- [ ] 7. **Implement Saved Segments & Retargeting** (Smart filtering)
+- [ ] 8. **Implement Analytics Dashboard** (Campaigns, Agents, Funnel)
+- [ ] 9. **Implement Quick Replies & Auto-Contact Creation**
+- [ ] 10. **Implement Anti-Ban Smart Sending** (Warm-up, delays, rotation)
+- [ ] 11. **Implement Webhook API** (For business external integrations)
 
 ## 🟡 Medium Priority
 
@@ -49,3 +49,5 @@
 - [x] Real-time analytics (WebSocket delivery tracking) — 2026-02-08
 - [x] MinIO 403 + Evolution API DNS fixes — 2026-02-10
 - [x] Core platform launch (campaigns, instances, auth, team) — 2026-02-02
+- [x] Facebook-style Inbox right sidebar (Assignment & CRM Fields) — 2026-03-01
+- [x] Fix Agent Actions UI cutoff and visually redesign to dark theme — 2026-03-01

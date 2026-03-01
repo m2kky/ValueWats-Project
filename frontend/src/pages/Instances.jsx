@@ -120,7 +120,7 @@ export default function Instances() {
       </div>
 
       {/* Content */}
-      <div className="glass-card overflow-hidden">
+      <div className="glass-card overflow-visible">
         {loading ? (
           <div className="text-center py-16">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)] mx-auto mb-4"></div>
