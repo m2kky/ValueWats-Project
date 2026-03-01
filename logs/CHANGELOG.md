@@ -13,6 +13,13 @@ All notable changes to the ValueWats project, tracked by date.
 ### Changed
 - **Premium Agent Configuration UI**: Completely refactored `Agents.jsx`. The legacy 3-tab system (Core, Skills, Database) has been flattened into a sleek, premium single-page vertical architecture for much faster configuration and zero context switching. 
 - **Inbox "Channel Source" Indicator**: Streamlined the `ChatWindow.jsx` header. Reduced visual clutter by converting the dropdown `<select>` into an elegant static channel label, while preserving auto-routing instance logic internally.
+- **Premium Inbox UI Redesign (Facebook Messenger Style)**: 
+  - Implemented a collapsed "Thin Sidebar" in App Layout strictly for the Inbox page to maximize space.
+  - Created a new inner `InboxFiltersSidebar.jsx` containing structured filters (All, Mine, Unassigned, Lifecycle Stages).
+  - Redesigned `ConversationList.jsx` to feature a dark UI with top Tabs (Chats/Calls) and clean unread counts.
+  - Revamped `ChatWindow.jsx` header into a sleek minimalist bar.
+  - Redeveloped the input Composer area to look modern and integrated an "AI Assist" button aesthetic.
+  - Darkened all backgrounds to `flat black #000000 / #0f0f11` to closely match a high-fidelity conceptual mockup.
 
 ---
 

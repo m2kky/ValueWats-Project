@@ -1,0 +1,543 @@
+2026-Mar-01 13:08:18.520296 Starting deployment of <REDACTED>:m2kky/ValueWats-Project.git:main to localhost.
+2026-Mar-01 13:08:19.161523 Preparing container with helper image: ghcr.io/coollabsio/coolify-helper:1.0.12
+2026-Mar-01 13:08:19.519566 [DEBUG] [CMD]: docker stop -t 30 z4gcosgwsg84g808go040s4c
+2026-Mar-01 13:08:19.519566 [DEBUG] Error response from daemon: No such container: z4gcosgwsg84g808go040s4c
+2026-Mar-01 13:08:19.886093 [DEBUG] [CMD]: docker run -d --network coolify --name z4gcosgwsg84g808go040s4c  --rm -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/coollabsio/coolify-helper:1.0.12
+2026-Mar-01 13:08:19.886093 [DEBUG] bf33b3ff67638117484fe9bd0adb604d547f9e8febadecdf2a2467b815fd57f5
+2026-Mar-01 13:08:23.154447 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'GIT_SSH_COMMAND="ssh -o ConnectTimeout=30 -p 22 -o Port=22 -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git ls-remote <REDACTED>:m2kky/ValueWats-Project.git refs/heads/main'
+2026-Mar-01 13:08:23.154447 [DEBUG] c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e	refs/heads/main
+2026-Mar-01 13:08:23.638868 Image not found (i0kwck044gc80s0osco8w0wg:c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e). Building new image.
+2026-Mar-01 13:08:23.647182 ----------------------------------------
+2026-Mar-01 13:08:23.654758 Importing <REDACTED>:m2kky/ValueWats-Project.git:main (commit sha c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e) to /artifacts/z4gcosgwsg84g808go040s4c.
+2026-Mar-01 13:08:24.273750 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'mkdir -p /root/.ssh' && docker exec z4gcosgwsg84g808go040s4c bash -c 'echo 'LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcFFJQkFBS0NBUUVBeUJrWFp6Vkd4R0RMSU5pRm9YaHo4UDAxNEpzbEY4enA0bmJIajdtdXo2VzA2d1c4ClJNNUdWRzY2WUhFWDY0b0JNTlA3djE4QmUzVkxwNXZDVDdEU1lCN1pEUUpRUG9kdE1QL2lqV2s3T3lsVndMZmwKcEVZc0NyVkowK1VkSXBaZVBjMm1Cci9uekpWcUdnL1ZMdUhTZDFaeUVQZGlhQWpGM2hvTUpJUDA4ckppQkprQQpLaERYL25jWE91Mi9Wdlp0d0REK3hUTzFsekVnQklDS1FrT1VlTmRLMUNKQmFOOFZjTklsQmFlSFFVejU3czNPCk1kd0ZEWlRzRVhST3ZsSE1rdnFFODJaVFp6OHl6VTk2czdpR0N3QjN6WklDTXAyRUllaStEaEF3aVBQdmFZdC8KbXNvQk9kRCtFZ2FvcnB2b2VVdDhVNUVGeDVrVjd1c0lrQnZwSndJREFRQUJBb0lCQVFEQ0taN005aVJ5SDk1YgpROTcvWE90Y0Y4ZjA1M2FwenB2UXRTTlY4bjZQWFNMZHZ4WDl5Zzd5bFBOaTY3cWpRcWwvSU9PeXdkU2xZSjhGCng1MVlTS01LeEVRblhHeFRFSVJDdkxtd01FRmFXZlNzNllUNnoyQ2pEMkRSTFF3RmFOV1BzUUorb0M2a0ZRUDgKd0FwRDBMcXlNLzdCT2R1U1Naait1Rlc2QlJWbGZUdm5jVklmK1BLS243OTRUZUljdTVUQjZHdnFOZVNhb282dwpBVGwzeENNd2M3TEFlaldrVzYrMzlKYnNrRjVaWlNaVk1ESHNOMTZ5SWlkZDlEaXQ0dStRb0YwS1B2STBrUVVFCmxkYkx1ZXM5SnZkNys3NlVLc3RwTGt2Y2E0b2NCQU0rOUJLcEFRZmFreERvVkZ0VE5lbGlGQnU5cGh6WHJtOXUKb0d0eXZkQVpBb0dCQVBXOVIzaFZXMGNqVlQ1MFpkcDhhVDMySnVUa0tnRUl6VUVVSnZUbEpQQituVzhpYkFQNwp2OHAzSGcvbzBrVmt0NFA3VWtzQURWdUVhVDVqWDhlSDVZKzNYZ0tpNUNibW1TTWI4R1VybDZWY3p6SEVJK1RGCmVLdXZNNk5HaitCQ1kzRUVMeFUxR1RmTUtaZzhjMXBWUjZJWWVrdEJiQ2FSQnpvQzVQaVdiZ1R0QW9HQkFOQnoKOHd3bXROYlRvSml4RjlUbTNPK1ZQQ1RmMi9ONVptWExVWnhoWW1kVlc2WHpvNmhFZGx5OTUrdXRMNVI3NlRzRgo0N0RIWDQxUWVId2c0a2c0TlN0eTZ2a3VFYzBwaElhVUZ2dnNNYVQ0OG5HSGxWN09kUkM1MzRqRm5KSTNmZm1VClZxWURGS21ja0lXN1JtMHcyTWlBY2I3VVQ3ZnJqQ3lweG1TcFJWZmpBb0dCQU5JQWJVRlNnR3lzcno1dUxsU20KbVRHUVYvQ25ZNVg2dFoxMTRVekxQZVFmNzk1M1ppT0pVbjl0aUUxRVE5MTFrcmJCWWJRaVdVZnFRaDVFd2ljNwo1VndKOGRjQzZVS3RNaFVrM1MwNE1hSHBURTlWTk85ZUtoOWQzQjBlUWZuK0Fna2s4QytKYndHV0FiM05leTZwClRrd2g2dkRBK2ZHRFlzK2FoWjVDdjhhSkFvR0FITzlMV0c5ekFMTGxndXhxRzNKa1RwbFBmT3JaOUNUdzBzWnoKTUpyUDl2b0JPN3JqQjdOaEhxUjVzZHdiVTZnVGlzN1plU3RqbHhFSmVHbDBINFExMVM4aGNLODFaMTRRK0VGTQpJM0g0dmlhVU9MQVNTdE9ycWtPeXhLQnhpRlpObFR4Qy9zNUVxdnFCa1I2YXV3Tmh4QXNZUHQzbnB1YjZVU1RMCjFpTXM3Zk1DZ1lFQTVSVzNqZzQwTXVOcGdwU29FZi9tU0tYcHA0a3cyTEw4U1hkSlRpZ204SFFZRGFyZytFd2wKVFV2TDJ0RmhEeXJZRjdMYnRnWHMyS2xITVZQQkk5SEU1cHg3a1VvQ294Q2d1NURxSW5BSzNuMUV1dDdrdVk4NQpja0hCb010cXo4UTNNSDcvVDZWRy9QSEZ4SlhNY0gzOGxidXRLQm1EUmlqOHk1dk4wdHRvZG5VPQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=' | base64 -d | tee /root/.ssh/id_rsa > /dev/null' && docker exec z4gcosgwsg84g808go040s4c bash -c 'chmod 600 /root/.ssh/id_rsa' && docker exec z4gcosgwsg84g808go040s4c bash -c 'GIT_SSH_COMMAND="ssh -o ConnectTimeout=30 -p 22 -o Port=22 -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa" git clone --depth=1 --recurse-submodules --shallow-submodules -b 'main' '<REDACTED>:m2kky/ValueWats-Project.git' '/artifacts/z4gcosgwsg84g808go040s4c' && cd '/artifacts/z4gcosgwsg84g808go040s4c' && if [ -f .gitmodules ]; then git submodule sync && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git submodule update --init --recursive --depth=1; fi && cd '/artifacts/z4gcosgwsg84g808go040s4c' && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git lfs pull'
+2026-Mar-01 13:08:24.273750 [DEBUG] Cloning into '/artifacts/z4gcosgwsg84g808go040s4c'...
+2026-Mar-01 13:08:27.961112 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'cd /artifacts/z4gcosgwsg84g808go040s4c && git log -1 c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e --pretty=%B'
+2026-Mar-01 13:08:27.961112 [DEBUG] feat(UI): complete Inbox redesign to match flat dark Facebook Messenger style mockup
+2026-Mar-01 13:08:28.399206 Generating nixpacks configuration with: nixpacks plan -f json --env NIXPACKS_NODE_VERSION=22 --env COOLIFY_URL=https://app.muhammedmekky.com --env COOLIFY_FQDN=app.muhammedmekky.com --env COOLIFY_BRANCH=main --env COOLIFY_RESOURCE_UUID=i0kwck044gc80s0osco8w0wg --build-cmd "npm run build:frontend" --start-cmd "npm run start:backend" --install-cmd "npm run install:all" /artifacts/z4gcosgwsg84g808go040s4c
+2026-Mar-01 13:08:28.815425 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'nixpacks plan -f json --env NIXPACKS_NODE_VERSION=22 --env COOLIFY_URL=https://app.muhammedmekky.com --env COOLIFY_FQDN=app.muhammedmekky.com --env COOLIFY_BRANCH=main --env COOLIFY_RESOURCE_UUID=i0kwck044gc80s0osco8w0wg --build-cmd "npm run build:frontend" --start-cmd "npm run start:backend" --install-cmd "npm run install:all" /artifacts/z4gcosgwsg84g808go040s4c'
+2026-Mar-01 13:08:28.815425 [DEBUG] {
+2026-Mar-01 13:08:28.815425 [DEBUG] "providers": [],
+2026-Mar-01 13:08:28.815425 [DEBUG] "buildImage": "ghcr.io/railwayapp/nixpacks:ubuntu-1745885067",
+2026-Mar-01 13:08:28.815425 [DEBUG] "variables": {
+2026-Mar-01 13:08:28.815425 [DEBUG] "CI": "true",
+2026-Mar-01 13:08:28.815425 [DEBUG] "COOLIFY_BRANCH": "main",
+2026-Mar-01 13:08:28.815425 [DEBUG] "COOLIFY_FQDN": "app.muhammedmekky.com",
+2026-Mar-01 13:08:28.815425 [DEBUG] "COOLIFY_RESOURCE_UUID": "i0kwck044gc80s0osco8w0wg",
+2026-Mar-01 13:08:28.815425 [DEBUG] "COOLIFY_URL": "https://app.muhammedmekky.com",
+2026-Mar-01 13:08:28.815425 [DEBUG] "NIXPACKS_METADATA": "node",
+2026-Mar-01 13:08:28.815425 [DEBUG] "NIXPACKS_NODE_VERSION": "22",
+2026-Mar-01 13:08:28.815425 [DEBUG] "NODE_ENV": "production",
+2026-Mar-01 13:08:28.815425 [DEBUG] "NPM_CONFIG_PRODUCTION": "false"
+2026-Mar-01 13:08:28.815425 [DEBUG] },
+2026-Mar-01 13:08:28.815425 [DEBUG] "phases": {
+2026-Mar-01 13:08:28.815425 [DEBUG] "build": {
+2026-Mar-01 13:08:28.815425 [DEBUG] "dependsOn": [
+2026-Mar-01 13:08:28.815425 [DEBUG] "install"
+2026-Mar-01 13:08:28.815425 [DEBUG] ],
+2026-Mar-01 13:08:28.815425 [DEBUG] "cmds": [
+2026-Mar-01 13:08:28.815425 [DEBUG] "npm run build:frontend"
+2026-Mar-01 13:08:28.815425 [DEBUG] ],
+2026-Mar-01 13:08:28.815425 [DEBUG] "cacheDirectories": [
+2026-Mar-01 13:08:28.815425 [DEBUG] "node_modules/.cache"
+2026-Mar-01 13:08:28.815425 [DEBUG] ]
+2026-Mar-01 13:08:28.815425 [DEBUG] },
+2026-Mar-01 13:08:28.815425 [DEBUG] "install": {
+2026-Mar-01 13:08:28.815425 [DEBUG] "dependsOn": [
+2026-Mar-01 13:08:28.815425 [DEBUG] "setup"
+2026-Mar-01 13:08:28.815425 [DEBUG] ],
+2026-Mar-01 13:08:28.815425 [DEBUG] "cmds": [
+2026-Mar-01 13:08:28.815425 [DEBUG] "npm run install:all"
+2026-Mar-01 13:08:28.815425 [DEBUG] ],
+2026-Mar-01 13:08:28.815425 [DEBUG] "cacheDirectories": [
+2026-Mar-01 13:08:28.815425 [DEBUG] "/root/.npm"
+2026-Mar-01 13:08:28.815425 [DEBUG] ],
+2026-Mar-01 13:08:28.815425 [DEBUG] "paths": [
+2026-Mar-01 13:08:28.815425 [DEBUG] "/app/node_modules/.bin"
+2026-Mar-01 13:08:28.815425 [DEBUG] ]
+2026-Mar-01 13:08:28.815425 [DEBUG] },
+2026-Mar-01 13:08:28.815425 [DEBUG] "setup": {
+2026-Mar-01 13:08:28.815425 [DEBUG] "nixPkgs": [
+2026-Mar-01 13:08:28.815425 [DEBUG] "nodejs_22",
+2026-Mar-01 13:08:28.815425 [DEBUG] "npm-9_x",
+2026-Mar-01 13:08:28.815425 [DEBUG] "openssl"
+2026-Mar-01 13:08:28.815425 [DEBUG] ],
+2026-Mar-01 13:08:28.815425 [DEBUG] "nixOverlays": [
+2026-Mar-01 13:08:28.815425 [DEBUG] "https://github.com/railwayapp/nix-npm-overlay/archive/main.tar.gz"
+2026-Mar-01 13:08:28.815425 [DEBUG] ],
+2026-Mar-01 13:08:28.815425 [DEBUG] "nixpkgsArchive": "ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7"
+2026-Mar-01 13:08:28.815425 [DEBUG] }
+2026-Mar-01 13:08:28.815425 [DEBUG] },
+2026-Mar-01 13:08:28.815425 [DEBUG] "start": {
+2026-Mar-01 13:08:28.815425 [DEBUG] "cmd": "npm run start:backend"
+2026-Mar-01 13:08:28.815425 [DEBUG] }
+2026-Mar-01 13:08:28.815425 [DEBUG] }
+2026-Mar-01 13:08:29.235690 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'nixpacks detect /artifacts/z4gcosgwsg84g808go040s4c'
+2026-Mar-01 13:08:29.235690 [DEBUG] node
+2026-Mar-01 13:08:29.247974 Found application type: node.
+2026-Mar-01 13:08:29.255279 If you need further customization, please check the documentation of Nixpacks: https://nixpacks.com/docs/providers/node
+2026-Mar-01 13:08:29.303063 [DEBUG] Final Nixpacks plan: {
+2026-Mar-01 13:08:29.303063 [DEBUG] "providers": [],
+2026-Mar-01 13:08:29.303063 [DEBUG] "buildImage": "ghcr.io\/railwayapp\/nixpacks:ubuntu-1745885067",
+2026-Mar-01 13:08:29.303063 [DEBUG] "phases": {
+2026-Mar-01 13:08:29.303063 [DEBUG] "build": {
+2026-Mar-01 13:08:29.303063 [DEBUG] "dependsOn": [
+2026-Mar-01 13:08:29.303063 [DEBUG] "install"
+2026-Mar-01 13:08:29.303063 [DEBUG] ],
+2026-Mar-01 13:08:29.303063 [DEBUG] "cmds": [
+2026-Mar-01 13:08:29.303063 [DEBUG] "npm run build:frontend"
+2026-Mar-01 13:08:29.303063 [DEBUG] ],
+2026-Mar-01 13:08:29.303063 [DEBUG] "cacheDirectories": [
+2026-Mar-01 13:08:29.303063 [DEBUG] "node_modules\/.cache"
+2026-Mar-01 13:08:29.303063 [DEBUG] ]
+2026-Mar-01 13:08:29.303063 [DEBUG] },
+2026-Mar-01 13:08:29.303063 [DEBUG] "install": {
+2026-Mar-01 13:08:29.303063 [DEBUG] "dependsOn": [
+2026-Mar-01 13:08:29.303063 [DEBUG] "setup"
+2026-Mar-01 13:08:29.303063 [DEBUG] ],
+2026-Mar-01 13:08:29.303063 [DEBUG] "cmds": [
+2026-Mar-01 13:08:29.303063 [DEBUG] "npm run install:all"
+2026-Mar-01 13:08:29.303063 [DEBUG] ],
+2026-Mar-01 13:08:29.303063 [DEBUG] "cacheDirectories": [
+2026-Mar-01 13:08:29.303063 [DEBUG] "\/root\/.npm"
+2026-Mar-01 13:08:29.303063 [DEBUG] ],
+2026-Mar-01 13:08:29.303063 [DEBUG] "paths": [
+2026-Mar-01 13:08:29.303063 [DEBUG] "\/app\/node_modules\/.bin"
+2026-Mar-01 13:08:29.303063 [DEBUG] ]
+2026-Mar-01 13:08:29.303063 [DEBUG] },
+2026-Mar-01 13:08:29.303063 [DEBUG] "setup": {
+2026-Mar-01 13:08:29.303063 [DEBUG] "nixPkgs": [
+2026-Mar-01 13:08:29.303063 [DEBUG] "nodejs_22",
+2026-Mar-01 13:08:29.303063 [DEBUG] "npm-9_x",
+2026-Mar-01 13:08:29.303063 [DEBUG] "openssl"
+2026-Mar-01 13:08:29.303063 [DEBUG] ],
+2026-Mar-01 13:08:29.303063 [DEBUG] "nixOverlays": [
+2026-Mar-01 13:08:29.303063 [DEBUG] "https:\/\/github.com\/railwayapp\/nix-npm-overlay\/archive\/main.tar.gz"
+2026-Mar-01 13:08:29.303063 [DEBUG] ],
+2026-Mar-01 13:08:29.303063 [DEBUG] "nixpkgsArchive": "ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7",
+2026-Mar-01 13:08:29.303063 [DEBUG] "aptPkgs": [
+2026-Mar-01 13:08:29.303063 [DEBUG] "curl",
+2026-Mar-01 13:08:29.303063 [DEBUG] "wget"
+2026-Mar-01 13:08:29.303063 [DEBUG] ]
+2026-Mar-01 13:08:29.303063 [DEBUG] }
+2026-Mar-01 13:08:29.303063 [DEBUG] },
+2026-Mar-01 13:08:29.303063 [DEBUG] "start": {
+2026-Mar-01 13:08:29.303063 [DEBUG] "cmd": "npm run start:backend"
+2026-Mar-01 13:08:29.303063 [DEBUG] }
+2026-Mar-01 13:08:29.303063 [DEBUG] }
+2026-Mar-01 13:08:30.550525 [DEBUG] Creating build-time .env file in /artifacts (outside Docker context).
+2026-Mar-01 13:08:31.014116 ----------------------------------------
+2026-Mar-01 13:08:31.020845 ⚠️ Build-time environment variable warning: NODE_ENV=production
+2026-Mar-01 13:08:31.027569 Affects: Node.js/npm/yarn/bun/pnpm
+2026-Mar-01 13:08:31.033276 Issue: Skips devDependencies installation which are often required for building (webpack, typescript, etc.)
+2026-Mar-01 13:08:31.038950 Recommendation: Uncheck "Available at Buildtime" or use "development" during build
+2026-Mar-01 13:08:31.045046 
+2026-Mar-01 13:08:31.050812 💡 Tips to resolve build issues:
+2026-Mar-01 13:08:31.056294 1. Set these variables as "Runtime only" in the environment variables settings
+2026-Mar-01 13:08:31.063474 2. Use different values for build-time (e.g., NODE_ENV=development for build)
+2026-Mar-01 13:08:31.069976 3. Consider using multi-stage Docker builds to separate build and runtime environments
+2026-Mar-01 13:08:31.082220 ----------------------------------------
+2026-Mar-01 13:08:31.090156 Building docker image started.
+2026-Mar-01 13:08:31.095768 To check the current progress, click on Show Debug Logs.
+2026-Mar-01 13:08:31.928579 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'nixpacks build -c /artifacts/thegameplan.json --cache-key 'i0kwck044gc80s0osco8w0wg' --no-error-without-start -n i0kwck044gc80s0osco8w0wg:c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e /artifacts/z4gcosgwsg84g808go040s4c -o /artifacts/z4gcosgwsg84g808go040s4c'
+2026-Mar-01 13:08:31.928579 [DEBUG] 
+2026-Mar-01 13:08:31.928579 [DEBUG] ╔══════════════════ Nixpacks v1.41.0 ══════════════════╗
+2026-Mar-01 13:08:31.928579 [DEBUG] ║ setup      │ nodejs_22, npm-9_x, openssl, curl, wget ║
+2026-Mar-01 13:08:31.928579 [DEBUG] ║──────────────────────────────────────────────────────║
+2026-Mar-01 13:08:31.928579 [DEBUG] ║ install    │ npm run install:all                     ║
+2026-Mar-01 13:08:31.928579 [DEBUG] ║──────────────────────────────────────────────────────║
+2026-Mar-01 13:08:31.928579 [DEBUG] ║ build      │ npm run build:frontend                  ║
+2026-Mar-01 13:08:31.928579 [DEBUG] ║──────────────────────────────────────────────────────║
+2026-Mar-01 13:08:31.928579 [DEBUG] ║ start      │ npm run start:backend                   ║
+2026-Mar-01 13:08:31.928579 [DEBUG] ╚══════════════════════════════════════════════════════╝
+2026-Mar-01 13:08:31.932438 [DEBUG] Saved output to:
+2026-Mar-01 13:08:31.932438 [DEBUG] /artifacts/z4gcosgwsg84g808go040s4c
+2026-Mar-01 13:08:32.322816 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'cat /artifacts/z4gcosgwsg84g808go040s4c/.nixpacks/Dockerfile'
+2026-Mar-01 13:08:32.322816 [DEBUG] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] ENTRYPOINT ["/bin/bash", "-l", "-c"]
+2026-Mar-01 13:08:32.322816 [DEBUG] WORKDIR /app/
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
+2026-Mar-01 13:08:32.322816 [DEBUG] RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d
+2026-Mar-01 13:08:32.322816 [DEBUG] RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends curl wget
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] ARG BACKEND_URL CI COOLIFY_BRANCH COOLIFY_FQDN COOLIFY_RESOURCE_UUID COOLIFY_URL DATABASE_URL DEEPSEEK_API_KEY DEEPSEEK_BASE_URL EVOLUTION_API_KEY EVOLUTION_API_URL JWT_SECRET NIXPACKS_METADATA NIXPACKS_NODE_VERSION NODE_ENV NPM_CONFIG_PRODUCTION OLLAMA_URL PORT REDIS_HOST REDIS_PASSWORD REDIS_PORT S3_ACCESS_KEY S3_BUCKET S3_ENDPOINT S3_REGION S3_SECRET_KEY SMTP_FROM SMTP_HOST SMTP_PASS SMTP_PORT SMTP_USER VITE_API_URL
+2026-Mar-01 13:08:32.322816 [DEBUG] ENV BACKEND_URL=$BACKEND_URL CI=$CI COOLIFY_BRANCH=$COOLIFY_BRANCH COOLIFY_FQDN=$COOLIFY_FQDN COOLIFY_RESOURCE_UUID=$COOLIFY_RESOURCE_UUID COOLIFY_URL=$COOLIFY_URL DATABASE_URL=$DATABASE_URL DEEPSEEK_API_KEY=$DEEPSEEK_API_KEY DEEPSEEK_BASE_URL=$DEEPSEEK_BASE_URL EVOLUTION_API_KEY=$EVOLUTION_API_KEY EVOLUTION_API_URL=$EVOLUTION_API_URL JWT_SECRET=$JWT_SECRET NIXPACKS_METADATA=$NIXPACKS_METADATA NIXPACKS_NODE_VERSION=$NIXPACKS_NODE_VERSION NODE_ENV=$NODE_ENV NPM_CONFIG_PRODUCTION=$NPM_CONFIG_PRODUCTION OLLAMA_URL=$OLLAMA_URL PORT=$PORT REDIS_HOST=$REDIS_HOST REDIS_PASSWORD=$REDIS_PASSWORD REDIS_PORT=$REDIS_PORT S3_ACCESS_KEY=$S3_ACCESS_KEY S3_BUCKET=$S3_BUCKET S3_ENDPOINT=$S3_ENDPOINT S3_REGION=$S3_REGION S3_SECRET_KEY=$S3_SECRET_KEY SMTP_FROM=$SMTP_FROM SMTP_HOST=$SMTP_HOST SMTP_PASS=$SMTP_PASS SMTP_PORT=$SMTP_PORT SMTP_USER=$SMTP_USER VITE_API_URL=$VITE_API_URL
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] # setup phase
+2026-Mar-01 13:08:32.322816 [DEBUG] # noop
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] # install phase
+2026-Mar-01 13:08:32.322816 [DEBUG] ENV NIXPACKS_PATH=/app/node_modules/.bin:$NIXPACKS_PATH
+2026-Mar-01 13:08:32.322816 [DEBUG] COPY . /app/.
+2026-Mar-01 13:08:32.322816 [DEBUG] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-/root/npm,target=/root/.npm npm run install:all
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] # build phase
+2026-Mar-01 13:08:32.322816 [DEBUG] COPY . /app/.
+2026-Mar-01 13:08:32.322816 [DEBUG] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] RUN printf '\nPATH=/app/node_modules/.bin:$PATH' >> /root/.profile
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] # start
+2026-Mar-01 13:08:32.322816 [DEBUG] COPY . /app
+2026-Mar-01 13:08:32.322816 [DEBUG] 
+2026-Mar-01 13:08:32.322816 [DEBUG] CMD ["npm run start:backend"]
+2026-Mar-01 13:08:33.115759 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'cat /artifacts/build.sh'
+2026-Mar-01 13:08:33.115759 [DEBUG] cd /artifacts/z4gcosgwsg84g808go040s4c && set -a && source /artifacts/build-time.env && set +a && docker build --add-host api-sgwcco4kw80sckwg4c08sgk4:10.0.1.7 --add-host coolify:10.0.1.2 --add-host coolify-db:10.0.1.4 --add-host coolify-realtime:10.0.1.15 --add-host coolify-redis:10.0.1.6 --add-host fsg8k800o0cwgs80scg00gcs:10.0.1.12 --add-host fsg8k800o0cwgs80scg00gcs-proxy:10.0.1.11 --add-host ic4c04s008gwc8cg4k8skkks:10.0.1.3 --add-host kgsw8cwgcswsc4ccsosk0kgg:10.0.1.10 --add-host v004w4ksw4c8ww488ogoo488:10.0.1.14 --add-host v004w4ksw4c8ww488ogoo488-proxy:10.0.1.9 --network host -f /artifacts/z4gcosgwsg84g808go040s4c/.nixpacks/Dockerfile --progress plain -t i0kwck044gc80s0osco8w0wg:c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e --build-arg CI --build-arg COOLIFY_BRANCH --build-arg COOLIFY_FQDN --build-arg COOLIFY_RESOURCE_UUID --build-arg COOLIFY_URL --build-arg NIXPACKS_METADATA --build-arg NIXPACKS_NODE_VERSION --build-arg NODE_ENV --build-arg NPM_CONFIG_PRODUCTION --build-arg S3_ENDPOINT --build-arg BACKEND_URL --build-arg OLLAMA_URL --build-arg SMTP_PASS --build-arg SMTP_FROM --build-arg SMTP_HOST --build-arg SMTP_PORT --build-arg SMTP_USER --build-arg S3_ACCESS_KEY --build-arg S3_SECRET_KEY --build-arg S3_BUCKET --build-arg S3_REGION --build-arg DATABASE_URL --build-arg EVOLUTION_API_KEY --build-arg JWT_SECRET --build-arg PORT --build-arg REDIS_PORT --build-arg REDIS_HOST --build-arg EVOLUTION_API_URL --build-arg REDIS_PASSWORD --build-arg DEEPSEEK_API_KEY --build-arg DEEPSEEK_BASE_URL --build-arg VITE_API_URL --build-arg COOLIFY_BUILD_SECRETS_HASH=9f72143762613082657f84acc937128233faaaace0ddc47b5af35f27b91d8f01 --build-arg 'COOLIFY_URL' --build-arg 'COOLIFY_FQDN' --build-arg 'COOLIFY_BRANCH' --build-arg 'COOLIFY_RESOURCE_UUID' /artifacts/z4gcosgwsg84g808go040s4c
+2026-Mar-01 13:08:33.827115 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'bash /artifacts/build.sh'
+2026-Mar-01 13:08:33.827115 [DEBUG] #0 building with "default" instance using docker driver
+2026-Mar-01 13:08:33.827115 [DEBUG] 
+2026-Mar-01 13:08:33.827115 [DEBUG] #1 [internal] load build definition from Dockerfile
+2026-Mar-01 13:08:33.827115 [DEBUG] #1 transferring dockerfile: 2.25kB done
+2026-Mar-01 13:08:33.827115 [DEBUG] #1 DONE 0.0s
+2026-Mar-01 13:08:33.827115 [DEBUG] 
+2026-Mar-01 13:08:33.827115 [DEBUG] #2 [internal] load metadata for ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
+2026-Mar-01 13:08:34.041911 [DEBUG] #2 DONE 0.4s
+2026-Mar-01 13:08:34.196668 [DEBUG] #3 [internal] load .dockerignore
+2026-Mar-01 13:08:34.196668 [DEBUG] #3 transferring context: 2B done
+2026-Mar-01 13:08:34.196668 [DEBUG] #3 DONE 0.0s
+2026-Mar-01 13:08:34.196668 [DEBUG] 
+2026-Mar-01 13:08:34.196668 [DEBUG] #4 [stage-0  1/11] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de
+2026-Mar-01 13:08:34.196668 [DEBUG] #4 DONE 0.0s
+2026-Mar-01 13:08:34.196668 [DEBUG] 
+2026-Mar-01 13:08:34.196668 [DEBUG] #5 [internal] load build context
+2026-Mar-01 13:08:34.196668 [DEBUG] #5 transferring context: 1.13MB 0.0s done
+2026-Mar-01 13:08:34.196668 [DEBUG] #5 DONE 0.0s
+2026-Mar-01 13:08:34.196668 [DEBUG] 
+2026-Mar-01 13:08:34.196668 [DEBUG] #6 [stage-0  2/11] WORKDIR /app/
+2026-Mar-01 13:08:34.196668 [DEBUG] #6 CACHED
+2026-Mar-01 13:08:34.196668 [DEBUG] 
+2026-Mar-01 13:08:34.196668 [DEBUG] #7 [stage-0  3/11] COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
+2026-Mar-01 13:08:34.196668 [DEBUG] #7 CACHED
+2026-Mar-01 13:08:34.196668 [DEBUG] 
+2026-Mar-01 13:08:34.196668 [DEBUG] #8 [stage-0  4/11] RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d
+2026-Mar-01 13:08:34.196668 [DEBUG] #8 CACHED
+2026-Mar-01 13:08:34.196668 [DEBUG] 
+2026-Mar-01 13:08:34.196668 [DEBUG] #9 [stage-0  5/11] RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends curl wget
+2026-Mar-01 13:08:34.196668 [DEBUG] #9 CACHED
+2026-Mar-01 13:08:34.196668 [DEBUG] 
+2026-Mar-01 13:08:34.196668 [DEBUG] #10 [stage-0  6/11] COPY . /app/.
+2026-Mar-01 13:08:34.196668 [DEBUG] #10 DONE 0.1s
+2026-Mar-01 13:08:34.345603 [DEBUG] #11 [stage-0  7/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-/root/npm,target=/root/.npm npm run install:all
+2026-Mar-01 13:08:34.345603 [DEBUG] #11 0.148 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:08:34.468599 [DEBUG] #11 0.174
+2026-Mar-01 13:08:34.468599 [DEBUG] #11 0.174 > install:all
+2026-Mar-01 13:08:34.468599 [DEBUG] #11 0.174 > npm install && cd backend && npm install && cd ../frontend && npm install
+2026-Mar-01 13:08:34.468599 [DEBUG] #11 0.174
+2026-Mar-01 13:08:34.468599 [DEBUG] #11 0.270 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:08:38.853699 [DEBUG] #11 4.654
+2026-Mar-01 13:08:38.853699 [DEBUG] #11 4.654 added 9 packages, and audited 10 packages in 4s
+2026-Mar-01 13:08:38.974343 [DEBUG] #11 4.655
+2026-Mar-01 13:08:38.974343 [DEBUG] #11 4.655 found 0 vulnerabilities
+2026-Mar-01 13:08:38.974343 [DEBUG] #11 4.777 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:08:43.328582 [DEBUG] #11 9.130 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2026-Mar-01 13:08:43.611381 [DEBUG] #11 9.413 npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting <REDACTED>
+2026-Mar-01 13:08:49.525775 [DEBUG] #11 15.33
+2026-Mar-01 13:08:49.525775 [DEBUG] #11 15.33 added 389 packages, and audited 390 packages in 11s
+2026-Mar-01 13:08:49.525775 [DEBUG] #11 15.33
+2026-Mar-01 13:08:49.525775 [DEBUG] #11 15.33 58 packages are looking for funding
+2026-Mar-01 13:08:49.525775 [DEBUG] #11 15.33   run `npm fund` for details
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 25 vulnerabilities (20 low, 4 high, 1 critical)
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 To address issues that do not require attention, run:
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39   npm audit fix
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 To address all issues possible (including breaking changes), run:
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39   npm audit fix --force
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 Some issues need review, and may require choosing
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 a different dependency.
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39
+2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 Run `npm audit` for details.
+2026-Mar-01 13:08:49.800389 [DEBUG] #11 15.60 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:08:50.414121 [DEBUG] #11 16.22 npm warn EBADENGINE Unsupported engine {
+2026-Mar-01 13:08:50.414121 [DEBUG] #11 16.22 npm warn EBADENGINE   package: '@vitejs/plugin-react@5.1.3',
+2026-Mar-01 13:08:50.414121 [DEBUG] #11 16.22 npm warn EBADENGINE   required: { node: '^20.19.0 || >=22.12.0' },
+2026-Mar-01 13:08:50.414121 [DEBUG] #11 16.22 npm warn EBADENGINE   current: { node: 'v22.11.0', npm: '10.9.0' }
+2026-Mar-01 13:08:50.414121 [DEBUG] #11 16.22 npm warn EBADENGINE }
+2026-Mar-01 13:08:50.704544 [DEBUG] #11 16.50 npm warn EBADENGINE Unsupported engine {
+2026-Mar-01 13:08:50.704544 [DEBUG] #11 16.50 npm warn EBADENGINE   package: 'vite@7.3.1',
+2026-Mar-01 13:08:50.704544 [DEBUG] #11 16.50 npm warn EBADENGINE   required: { node: '^20.19.0 || >=22.12.0' },
+2026-Mar-01 13:08:50.704544 [DEBUG] #11 16.50 npm warn EBADENGINE   current: { node: 'v22.11.0', npm: '10.9.0' }
+2026-Mar-01 13:08:50.704544 [DEBUG] #11 16.50 npm warn EBADENGINE }
+2026-Mar-01 13:08:54.950794 [DEBUG] #11 20.75
+2026-Mar-01 13:08:54.950794 [DEBUG] #11 20.75 added 274 packages, and audited 275 packages in 5s
+2026-Mar-01 13:08:54.950794 [DEBUG] #11 20.75
+2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.75 59 packages are looking for funding
+2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.75   run `npm fund` for details
+2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77
+2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77 4 vulnerabilities (1 moderate, 3 high)
+2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77
+2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77 To address all issues, run:
+2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77   npm audit fix
+2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77
+2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77 Run `npm audit` for details.
+2026-Mar-01 13:08:55.521490 [DEBUG] #11 DONE 21.3s
+2026-Mar-01 13:08:55.637382 [DEBUG] #12 [stage-0  8/11] COPY . /app/.
+2026-Mar-01 13:08:55.637382 [DEBUG] #12 DONE 0.1s
+2026-Mar-01 13:08:55.792329 [DEBUG] #13 [stage-0  9/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend
+2026-Mar-01 13:08:55.856160 [DEBUG] #13 0.218 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:08:55.993913 [DEBUG] #13 0.241
+2026-Mar-01 13:08:55.993913 [DEBUG] #13 0.241 > build:frontend
+2026-Mar-01 13:08:55.993913 [DEBUG] #13 0.241 > cd frontend && npm run build
+2026-Mar-01 13:08:55.993913 [DEBUG] #13 0.241
+2026-Mar-01 13:08:55.993913 [DEBUG] #13 0.355 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:08:56.239208 [DEBUG] #13 0.387
+2026-Mar-01 13:08:56.239208 [DEBUG] #13 0.387 > frontend@0.0.1 build
+2026-Mar-01 13:08:56.239208 [DEBUG] #13 0.387 > vite build
+2026-Mar-01 13:08:56.239208 [DEBUG] #13 0.387
+2026-Mar-01 13:08:56.239208 [DEBUG] #13 0.450 You are using Node.js 22.11.0. Vite requires Node.js version 20.19+ or 22.12+. Please upgrade your Node.js version.
+2026-Mar-01 13:08:56.297814 [DEBUG] #13 0.660 vite v7.3.1 building client environment for production...
+2026-Mar-01 13:08:56.516736 [DEBUG] #13 0.727 transforming...
+2026-Mar-01 13:09:00.421261 [DEBUG] #13 4.783 ✓ 989 modules transformed.
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 ✗ Build failed in 4.10s
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 error during build:
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 src/components/chat/InboxFiltersSidebar.jsx (5:4): "PhoneArrowDownIcon" is not exported by "node_modules/@heroicons/react/24/outline/esm/index.js", imported by "src/components/chat/InboxFiltersSidebar.jsx".
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 file: /app/frontend/src/components/chat/InboxFiltersSidebar.jsx:5:4
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 3:     UserIcon,
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 4:     UserMinusIcon,
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 5:     PhoneArrowDownIcon,
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788        ^
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 6:     CpuChipIcon,
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 7:     PlusIcon,
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at getRollupError (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at error (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at Module.error (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at Module.traceVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at ModuleScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at FunctionScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at FunctionBodyScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at Identifier.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2825:28)
+2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)
+2026-Mar-01 13:09:00.591646 [DEBUG] #13 ERROR: process "/bin/bash -ol pipefail -c npm run build:frontend" did not complete successfully: exit code: 1
+2026-Mar-01 13:09:00.663920 [DEBUG] ------
+2026-Mar-01 13:09:00.663920 [DEBUG] > [stage-0  9/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend:
+2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at getRollupError (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at error (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at Module.error (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
+2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at Module.traceVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
+2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at ModuleScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
+2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at FunctionScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at FunctionBodyScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at Identifier.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
+2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2825:28)
+2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)
+2026-Mar-01 13:09:00.663920 [DEBUG] ------
+2026-Mar-01 13:09:00.675588 [DEBUG] 13 warnings found (use docker --debug to expand):
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "JWT_SECRET") (line 11)
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "S3_ACCESS_KEY") (line 12)
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "S3_SECRET_KEY") (line 12)
+2026-Mar-01 13:09:00.675588 [DEBUG] - UndefinedVar: Usage of undefined variable '$NIXPACKS_PATH' (line 18)
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "EVOLUTION_API_KEY") (line 11)
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "REDIS_PASSWORD") (line 11)
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "S3_ACCESS_KEY") (line 11)
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "S3_SECRET_KEY") (line 11)
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "DEEPSEEK_API_KEY") (line 12)
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "EVOLUTION_API_KEY") (line 12)
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "JWT_SECRET") (line 12)
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "REDIS_PASSWORD") (line 12)
+2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "DEEPSEEK_API_KEY") (line 11)
+2026-Mar-01 13:09:00.675588 [DEBUG] Dockerfile:24
+2026-Mar-01 13:09:00.675588 [DEBUG] --------------------
+2026-Mar-01 13:09:00.675588 [DEBUG] 22 |     # build phase
+2026-Mar-01 13:09:00.675588 [DEBUG] 23 |     COPY . /app/.
+2026-Mar-01 13:09:00.675588 [DEBUG] 24 | >>> RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend
+2026-Mar-01 13:09:00.675588 [DEBUG] 25 |
+2026-Mar-01 13:09:00.675588 [DEBUG] 26 |
+2026-Mar-01 13:09:00.675588 [DEBUG] --------------------
+2026-Mar-01 13:09:00.675588 [DEBUG] ERROR: failed to build: failed to solve: process "/bin/bash -ol pipefail -c npm run build:frontend" did not complete successfully: exit code: 1
+2026-Mar-01 13:09:00.687770 [DEBUG] exit status 1
+2026-Mar-01 13:09:00.784339 ========================================
+2026-Mar-01 13:09:00.805396 Deployment failed: Command execution failed (exit code 1): docker exec z4gcosgwsg84g808go040s4c bash -c 'bash /artifacts/build.sh'
+2026-Mar-01 13:09:00.805396 Error: #0 building with "default" instance using docker driver
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #1 [internal] load build definition from Dockerfile
+2026-Mar-01 13:09:00.805396 #1 transferring dockerfile: 2.25kB done
+2026-Mar-01 13:09:00.805396 #1 DONE 0.0s
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #2 [internal] load metadata for ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
+2026-Mar-01 13:09:00.805396 #2 DONE 0.4s
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #3 [internal] load .dockerignore
+2026-Mar-01 13:09:00.805396 #3 transferring context: 2B done
+2026-Mar-01 13:09:00.805396 #3 DONE 0.0s
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #4 [stage-0  1/11] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de
+2026-Mar-01 13:09:00.805396 #4 DONE 0.0s
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #5 [internal] load build context
+2026-Mar-01 13:09:00.805396 #5 transferring context: 1.13MB 0.0s done
+2026-Mar-01 13:09:00.805396 #5 DONE 0.0s
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #6 [stage-0  2/11] WORKDIR /app/
+2026-Mar-01 13:09:00.805396 #6 CACHED
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #7 [stage-0  3/11] COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
+2026-Mar-01 13:09:00.805396 #7 CACHED
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #8 [stage-0  4/11] RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d
+2026-Mar-01 13:09:00.805396 #8 CACHED
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #9 [stage-0  5/11] RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends curl wget
+2026-Mar-01 13:09:00.805396 #9 CACHED
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #10 [stage-0  6/11] COPY . /app/.
+2026-Mar-01 13:09:00.805396 #10 DONE 0.1s
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #11 [stage-0  7/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-/root/npm,target=/root/.npm npm run install:all
+2026-Mar-01 13:09:00.805396 #11 0.148 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:09:00.805396 #11 0.174
+2026-Mar-01 13:09:00.805396 #11 0.174 > install:all
+2026-Mar-01 13:09:00.805396 #11 0.174 > npm install && cd backend && npm install && cd ../frontend && npm install
+2026-Mar-01 13:09:00.805396 #11 0.174
+2026-Mar-01 13:09:00.805396 #11 0.270 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:09:00.805396 #11 4.654
+2026-Mar-01 13:09:00.805396 #11 4.654 added 9 packages, and audited 10 packages in 4s
+2026-Mar-01 13:09:00.805396 #11 4.655
+2026-Mar-01 13:09:00.805396 #11 4.655 found 0 vulnerabilities
+2026-Mar-01 13:09:00.805396 #11 4.777 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:09:00.805396 #11 9.130 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2026-Mar-01 13:09:00.805396 #11 9.413 npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting <REDACTED>
+2026-Mar-01 13:09:00.805396 #11 15.33
+2026-Mar-01 13:09:00.805396 #11 15.33 added 389 packages, and audited 390 packages in 11s
+2026-Mar-01 13:09:00.805396 #11 15.33
+2026-Mar-01 13:09:00.805396 #11 15.33 58 packages are looking for funding
+2026-Mar-01 13:09:00.805396 #11 15.33   run `npm fund` for details
+2026-Mar-01 13:09:00.805396 #11 15.39
+2026-Mar-01 13:09:00.805396 #11 15.39 25 vulnerabilities (20 low, 4 high, 1 critical)
+2026-Mar-01 13:09:00.805396 #11 15.39
+2026-Mar-01 13:09:00.805396 #11 15.39 To address issues that do not require attention, run:
+2026-Mar-01 13:09:00.805396 #11 15.39   npm audit fix
+2026-Mar-01 13:09:00.805396 #11 15.39
+2026-Mar-01 13:09:00.805396 #11 15.39 To address all issues possible (including breaking changes), run:
+2026-Mar-01 13:09:00.805396 #11 15.39   npm audit fix --force
+2026-Mar-01 13:09:00.805396 #11 15.39
+2026-Mar-01 13:09:00.805396 #11 15.39 Some issues need review, and may require choosing
+2026-Mar-01 13:09:00.805396 #11 15.39 a different dependency.
+2026-Mar-01 13:09:00.805396 #11 15.39
+2026-Mar-01 13:09:00.805396 #11 15.39 Run `npm audit` for details.
+2026-Mar-01 13:09:00.805396 #11 15.60 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:09:00.805396 #11 16.22 npm warn EBADENGINE Unsupported engine {
+2026-Mar-01 13:09:00.805396 #11 16.22 npm warn EBADENGINE   package: '@vitejs/plugin-react@5.1.3',
+2026-Mar-01 13:09:00.805396 #11 16.22 npm warn EBADENGINE   required: { node: '^20.19.0 || >=22.12.0' },
+2026-Mar-01 13:09:00.805396 #11 16.22 npm warn EBADENGINE   current: { node: 'v22.11.0', npm: '10.9.0' }
+2026-Mar-01 13:09:00.805396 #11 16.22 npm warn EBADENGINE }
+2026-Mar-01 13:09:00.805396 #11 16.50 npm warn EBADENGINE Unsupported engine {
+2026-Mar-01 13:09:00.805396 #11 16.50 npm warn EBADENGINE   package: 'vite@7.3.1',
+2026-Mar-01 13:09:00.805396 #11 16.50 npm warn EBADENGINE   required: { node: '^20.19.0 || >=22.12.0' },
+2026-Mar-01 13:09:00.805396 #11 16.50 npm warn EBADENGINE   current: { node: 'v22.11.0', npm: '10.9.0' }
+2026-Mar-01 13:09:00.805396 #11 16.50 npm warn EBADENGINE }
+2026-Mar-01 13:09:00.805396 #11 20.75
+2026-Mar-01 13:09:00.805396 #11 20.75 added 274 packages, and audited 275 packages in 5s
+2026-Mar-01 13:09:00.805396 #11 20.75
+2026-Mar-01 13:09:00.805396 #11 20.75 59 packages are looking for funding
+2026-Mar-01 13:09:00.805396 #11 20.75   run `npm fund` for details
+2026-Mar-01 13:09:00.805396 #11 20.77
+2026-Mar-01 13:09:00.805396 #11 20.77 4 vulnerabilities (1 moderate, 3 high)
+2026-Mar-01 13:09:00.805396 #11 20.77
+2026-Mar-01 13:09:00.805396 #11 20.77 To address all issues, run:
+2026-Mar-01 13:09:00.805396 #11 20.77   npm audit fix
+2026-Mar-01 13:09:00.805396 #11 20.77
+2026-Mar-01 13:09:00.805396 #11 20.77 Run `npm audit` for details.
+2026-Mar-01 13:09:00.805396 #11 DONE 21.3s
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #12 [stage-0  8/11] COPY . /app/.
+2026-Mar-01 13:09:00.805396 #12 DONE 0.1s
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 #13 [stage-0  9/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend
+2026-Mar-01 13:09:00.805396 #13 0.218 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:09:00.805396 #13 0.241
+2026-Mar-01 13:09:00.805396 #13 0.241 > build:frontend
+2026-Mar-01 13:09:00.805396 #13 0.241 > cd frontend && npm run build
+2026-Mar-01 13:09:00.805396 #13 0.241
+2026-Mar-01 13:09:00.805396 #13 0.355 npm warn config production Use `--omit=dev` instead.
+2026-Mar-01 13:09:00.805396 #13 0.387
+2026-Mar-01 13:09:00.805396 #13 0.387 > frontend@0.0.1 build
+2026-Mar-01 13:09:00.805396 #13 0.387 > vite build
+2026-Mar-01 13:09:00.805396 #13 0.387
+2026-Mar-01 13:09:00.805396 #13 0.450 You are using Node.js 22.11.0. Vite requires Node.js version 20.19+ or 22.12+. Please upgrade your Node.js version.
+2026-Mar-01 13:09:00.805396 #13 0.660 vite v7.3.1 building client environment for production...
+2026-Mar-01 13:09:00.805396 #13 0.727 transforming...
+2026-Mar-01 13:09:00.805396 #13 4.783 ✓ 989 modules transformed.
+2026-Mar-01 13:09:00.805396 #13 4.788 ✗ Build failed in 4.10s
+2026-Mar-01 13:09:00.805396 #13 4.788 error during build:
+2026-Mar-01 13:09:00.805396 #13 4.788 src/components/chat/InboxFiltersSidebar.jsx (5:4): "PhoneArrowDownIcon" is not exported by "node_modules/@heroicons/react/24/outline/esm/index.js", imported by "src/components/chat/InboxFiltersSidebar.jsx".
+2026-Mar-01 13:09:00.805396 #13 4.788 file: /app/frontend/src/components/chat/InboxFiltersSidebar.jsx:5:4
+2026-Mar-01 13:09:00.805396 #13 4.788
+2026-Mar-01 13:09:00.805396 #13 4.788 3:     UserIcon,
+2026-Mar-01 13:09:00.805396 #13 4.788 4:     UserMinusIcon,
+2026-Mar-01 13:09:00.805396 #13 4.788 5:     PhoneArrowDownIcon,
+2026-Mar-01 13:09:00.805396 #13 4.788        ^
+2026-Mar-01 13:09:00.805396 #13 4.788 6:     CpuChipIcon,
+2026-Mar-01 13:09:00.805396 #13 4.788 7:     PlusIcon,
+2026-Mar-01 13:09:00.805396 #13 4.788
+2026-Mar-01 13:09:00.805396 #13 4.788     at getRollupError (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+2026-Mar-01 13:09:00.805396 #13 4.788     at error (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+2026-Mar-01 13:09:00.805396 #13 4.788     at Module.error (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
+2026-Mar-01 13:09:00.805396 #13 4.788     at Module.traceVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
+2026-Mar-01 13:09:00.805396 #13 4.788     at ModuleScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
+2026-Mar-01 13:09:00.805396 #13 4.788     at FunctionScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+2026-Mar-01 13:09:00.805396 #13 4.788     at FunctionBodyScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+2026-Mar-01 13:09:00.805396 #13 4.788     at Identifier.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
+2026-Mar-01 13:09:00.805396 #13 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2825:28)
+2026-Mar-01 13:09:00.805396 #13 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)
+2026-Mar-01 13:09:00.805396 #13 ERROR: process "/bin/bash -ol pipefail -c npm run build:frontend" did not complete successfully: exit code: 1
+2026-Mar-01 13:09:00.805396 ------
+2026-Mar-01 13:09:00.805396 > [stage-0  9/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend:
+2026-Mar-01 13:09:00.805396 4.788     at getRollupError (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+2026-Mar-01 13:09:00.805396 4.788     at error (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+2026-Mar-01 13:09:00.805396 4.788     at Module.error (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
+2026-Mar-01 13:09:00.805396 4.788     at Module.traceVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
+2026-Mar-01 13:09:00.805396 4.788     at ModuleScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
+2026-Mar-01 13:09:00.805396 4.788     at FunctionScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+2026-Mar-01 13:09:00.805396 4.788     at FunctionBodyScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+2026-Mar-01 13:09:00.805396 4.788     at Identifier.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
+2026-Mar-01 13:09:00.805396 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2825:28)
+2026-Mar-01 13:09:00.805396 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)
+2026-Mar-01 13:09:00.805396 ------
+2026-Mar-01 13:09:00.805396 
+2026-Mar-01 13:09:00.805396 13 warnings found (use docker --debug to expand):
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "JWT_SECRET") (line 11)
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "S3_ACCESS_KEY") (line 12)
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "S3_SECRET_KEY") (line 12)
+2026-Mar-01 13:09:00.805396 - UndefinedVar: Usage of undefined variable '$NIXPACKS_PATH' (line 18)
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "EVOLUTION_API_KEY") (line 11)
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "REDIS_PASSWORD") (line 11)
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "S3_ACCESS_KEY") (line 11)
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "S3_SECRET_KEY") (line 11)
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "DEEPSEEK_API_KEY") (line 12)
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "EVOLUTION_API_KEY") (line 12)
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "JWT_SECRET") (line 12)
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "REDIS_PASSWORD") (line 12)
+2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "DEEPSEEK_API_KEY") (line 11)
+2026-Mar-01 13:09:00.805396 Dockerfile:24
+2026-Mar-01 13:09:00.805396 --------------------
+2026-Mar-01 13:09:00.805396 22 |     # build phase
+2026-Mar-01 13:09:00.805396 23 |     COPY . /app/.
+2026-Mar-01 13:09:00.805396 24 | >>> RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend
+2026-Mar-01 13:09:00.805396 25 |
+2026-Mar-01 13:09:00.805396 26 |
+2026-Mar-01 13:09:00.805396 --------------------
+2026-Mar-01 13:09:00.805396 ERROR: failed to build: failed to solve: process "/bin/bash -ol pipefail -c npm run build:frontend" did not complete successfully: exit code: 1
+2026-Mar-01 13:09:00.805396 exit status 1
+2026-Mar-01 13:09:00.828581 [DEBUG] Error type: RuntimeException
+2026-Mar-01 13:09:00.845370 [DEBUG] Error code: 0
+2026-Mar-01 13:09:00.854509 [DEBUG] Location: /var/www/html/app/Traits/ExecuteRemoteCommand.php:243
+2026-Mar-01 13:09:00.867988 [DEBUG] Stack trace (first 5 lines):
+2026-Mar-01 13:09:00.897002 [DEBUG] #0 /var/www/html/app/Traits/ExecuteRemoteCommand.php(104): App\Jobs\ApplicationDeploymentJob->executeCommandWithProcess()
+2026-Mar-01 13:09:00.916231 [DEBUG] #1 /var/www/html/vendor/laravel/framework/src/Illuminate/Collections/Traits/EnumeratesValues.php(271): App\Jobs\ApplicationDeploymentJob->{closure:App\Traits\ExecuteRemoteCommand::execute_remote_command():71}()
+2026-Mar-01 13:09:00.932785 [DEBUG] #2 /var/www/html/app/Traits/ExecuteRemoteCommand.php(71): Illuminate\Support\Collection->each()
+2026-Mar-01 13:09:00.942488 [DEBUG] #3 /var/www/html/app/Jobs/ApplicationDeploymentJob.php(3118): App\Jobs\ApplicationDeploymentJob->execute_remote_command()
+2026-Mar-01 13:09:00.951154 [DEBUG] #4 /var/www/html/app/Jobs/ApplicationDeploymentJob.php(888): App\Jobs\ApplicationDeploymentJob->build_image()
+2026-Mar-01 13:09:00.958004 ========================================
+2026-Mar-01 13:09:00.964381 Deployment failed. Removing the new version of your application.
+2026-Mar-01 13:09:02.896633 Gracefully shutting down build container: z4gcosgwsg84g808go040s4c
+2026-Mar-01 13:09:03.555669 [DEBUG] [CMD]: docker stop -t 30 z4gcosgwsg84g808go040s4c
+2026-Mar-01 13:09:03.555669 [DEBUG] z4gcosgwsg84g808go040s4c

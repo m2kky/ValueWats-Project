@@ -51,3 +51,4 @@
 - [x] Core platform launch (campaigns, instances, auth, team) — 2026-02-02
 - [x] Facebook-style Inbox right sidebar (Assignment & CRM Fields) — 2026-03-01
 - [x] Fix Agent Actions UI cutoff and visually redesign to dark theme — 2026-03-01
+- [x] Premium Inbox Redesign (4-Column Layout, Dark Theme, Custom Filters) — 2026-03-01
