@@ -7,6 +7,7 @@ All notable changes to the ValueWats project, tracked by date.
 ## [2026-03-01] — Agent Actions & UI Refinements
 
 ### Fixed
+- **Inbox Flex Layout (Sidebar Cutoff)**: Fixed `.inbox-main` flex-direction CSS bug. Changing it to `row` ensured the ContactSidebar renders correctly on the right side instead of cutting off underneath the chat window.
 - **Agent Actions Trigger Nullification**: Fixed `processMessage()` in `agent.service.js` where the `buildSystemPrompt()` function injection logic was completely skipped, causing valid actions (like `CLOSE_CONVERSATION`) to be ignored by the LLM. 
 - **Inbox Contact & Group Names**: Resolved issue where Webhook messages would arrive without `pushName` being saved to the database. Modified `webhookController.js` and `chat.service.js` to correctly pass and attach `contactName` for both 1-on-1 and Group chats. Group chats are now reliably synced.
 
