@@ -4,6 +4,7 @@ import api from '../api/client';
 import ConversationList from '../components/chat/ConversationList';
 import ChatWindow from '../components/chat/ChatWindow';
 import ContactSidebar from '../components/chat/ContactSidebar';
+import InboxFiltersSidebar from '../components/chat/InboxFiltersSidebar';
 import '../styles/inbox.css';
 
 export default function Inbox() {
@@ -213,6 +214,8 @@ export default function Inbox() {
 
   return (
     <div className="inbox-container">
+      <InboxFiltersSidebar conversations={conversations} />
+
       {/* Conversation List Sidebar */}
       <aside className="inbox-sidebar">
         <ConversationList

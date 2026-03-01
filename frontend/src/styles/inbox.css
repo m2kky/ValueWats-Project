@@ -5,16 +5,16 @@
 /* Container */
 .inbox-container {
   display: flex;
-  height: calc(100vh - 64px - 4rem); /* subtract navbar height and layout padding */
+  height: 100%;
+  width: 100%;
   overflow: hidden;
-  background-color: transparent;
-  @apply glass-card;
+  background-color: #000000;
 }
 
 .inbox-sidebar {
-  width: 380px;
+  width: 320px;
   min-width: 320px;
-  background: rgba(24, 24, 27, 0.4); /* zinc-900/40 */
+  background: #0f0f11;
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
@@ -26,7 +26,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: rgba(9, 9, 11, 0.4); /* zinc-950/40 */
+  background: #000000;
 }
 
 /* Empty State */

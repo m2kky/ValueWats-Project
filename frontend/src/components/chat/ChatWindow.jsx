@@ -6,7 +6,8 @@ import {
   PaperClipIcon,
   EllipsisVerticalIcon,
   PhoneIcon,
-  VideoCameraIcon
+  VideoCameraIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import { formatPhoneNumber } from '../../utils/formatters';
 
@@ -68,49 +69,40 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
   const messages = conversation.messages || [];
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950/20 backdrop-blur-sm relative">
+    <div className="flex flex-col h-full bg-transparent relative">
       {/* Premium Header */}
-      <header className="h-20 border-b border-white/5 bg-zinc-950/40 backdrop-blur-xl flex items-center justify-between px-8 z-10">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-lg flex items-center justify-center text-white font-black text-xl">
+      <header className="h-[72px] border-b border-white/5 bg-transparent flex items-center justify-between px-6 z-10 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white font-bold text-lg">
             {(conversation.contactName || conversation.contactNumber)?.[0]?.toUpperCase() || '?'}
           </div>
-          <div>
-            <h3 className="font-black text-white tracking-tight uppercase italic truncate max-w-[200px]">
+          <div className="flex flex-col">
+            <h3 className="font-bold text-[15px] text-white tracking-tight flex items-center gap-2">
               {conversation.contactName || conversation.contactNumber}
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">
+                New Lead
+              </span>
             </h3>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none">WhatsApp Live</span>
-            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Quick Actions */}
-          <div className="hidden sm:flex items-center gap-1 mr-4 pr-4 border-r border-white/5">
-            <button className="p-2.5 rounded-xl hover:bg-white/5 text-zinc-400 hover:text-white transition-all"><PhoneIcon className="w-5 h-5" /></button>
-            <button className="p-2.5 rounded-xl hover:bg-white/5 text-zinc-400 hover:text-white transition-all"><VideoCameraIcon className="w-5 h-5" /></button>
-          </div>
-
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] font-bold text-zinc-500 mb-1 uppercase tracking-tighter">Channel</span>
-            <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20">
-              {conversation.instanceName || instances[0]?.instanceName || 'WhatsApp'}
-            </span>
-          </div>
-          <button className="p-2.5 rounded-xl hover:bg-white/5 text-zinc-400 hover:text-white transition-all ml-4">
-            <EllipsisVerticalIcon className="w-6 h-6" />
+        <div className="flex items-center gap-1.5 text-zinc-400">
+          <button className="p-2 rounded-xl hover:bg-white/5 hover:text-white transition-all"><MagnifyingGlassIcon className="w-5 h-5" /></button>
+          <button className="p-2 rounded-xl hover:bg-white/5 hover:text-white transition-all"><PhoneIcon className="w-5 h-5" /></button>
+          <button className="p-2 rounded-xl hover:bg-white/5 hover:text-white transition-all"><VideoCameraIcon className="w-5 h-5" /></button>
+          <div className="w-px h-5 bg-white/10 mx-1"></div>
+          <button className="p-2 rounded-xl hover:bg-white/5 hover:text-white transition-all">
+            <EllipsisVerticalIcon className="w-5 h-5" />
           </button>
         </div>
       </header>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar scroll-smooth">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth bg-transparent">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-zinc-700 opacity-20">
-            <ChatBubbleLeftRightIcon className="w-24 h-24 mb-4" />
-            <p className="text-xl font-black uppercase tracking-[0.2em]">Begin discussion</p>
+            <ChatBubbleLeftRightIcon className="w-16 h-16 mb-4" />
+            <p className="text-lg font-bold uppercase tracking-[0.2em]">No Messages</p>
           </div>
         ) : (
           messages.map((msg, idx) => {
@@ -120,29 +112,32 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
             return (
               <div key={msg.id} className="space-y-2">
                 {showTime && (
-                  <div className="flex justify-center my-8">
-                    <span className="px-3 py-1 rounded-lg bg-white/5 text-[10px] font-black text-zinc-500 uppercase tracking-widest border border-white/5">
-                      {format(new Date(msg.createdAt), 'EEEE, HH:mm')}
+                  <div className="flex justify-center my-6 relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-white/5"></div>
+                    </div>
+                    <span className="relative px-3 py-1 bg-[#000000] text-[10px] font-bold text-zinc-500 uppercase tracking-widest rounded-full border border-white/5">
+                      Today
                     </span>
                   </div>
                 )}
                 <div className={`flex ${isOut ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[70%] group relative animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                    <div className={`px-5 py-3.5 rounded-2xl text-sm font-medium shadow-xl 
+                    <div className={`px-4 py-2.5 rounded-2xl text-[15px] shadow-sm
                       ${isOut
-                        ? 'bg-indigo-600 text-white rounded-tr-none shadow-indigo-500/10'
-                        : 'bg-zinc-900 border border-white/5 text-zinc-200 rounded-tl-none shadow-black/40'
+                        ? 'bg-indigo-600 text-white rounded-tr-sm'
+                        : 'bg-[#18181b] border border-white/5 text-zinc-200 rounded-tl-sm'
                       }`}>
 
                       {msg.content || '[Media Content]'}
 
                       {msg.mediaUrl && msg.messageType === 'image' && (
-                        <div className="mt-3 rounded-lg overflow-hidden border border-white/10">
-                          <img src={msg.mediaUrl} alt="" className="max-w-full hover:scale-105 transition-transform duration-500" />
+                        <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
+                          <img src={msg.mediaUrl} alt="" className="max-w-full" />
                         </div>
                       )}
 
-                      <div className={`flex items-center gap-1.5 mt-2 text-[10px] font-bold opacity-50 
+                      <div className={`flex items-center gap-1.5 mt-1.5 text-[10px] font-semibold opacity-60 
                         ${isOut ? 'justify-end' : 'justify-start'}`}>
                         <span>{format(new Date(msg.createdAt), 'HH:mm')}</span>
                         {isOut && <span className="text-xs">{getStatusIcon(msg.status)}</span>}
@@ -157,42 +152,77 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Premium Input Area */}
-      <footer className="p-6 bg-zinc-950/40 backdrop-blur-xl border-t border-white/5">
-        <div className="max-w-5xl mx-auto flex items-end gap-4">
-          <div className="flex items-center gap-1 mb-1.5">
-            <button className="p-2.5 rounded-xl hover:bg-white/5 text-zinc-500 hover:text-white transition-all"><PaperClipIcon className="w-5 h-5" /></button>
-            <button className="p-2.5 rounded-xl hover:bg-white/5 text-zinc-500 hover:text-white transition-all"><FaceSmileIcon className="w-5 h-5" /></button>
+      {/* Modern Composer Area */}
+      <footer className="px-6 pb-6 pt-2 bg-transparent shrink-0">
+        <div className="bg-[#18181b] border border-white/5 rounded-xl overflow-hidden flex flex-col focus-within:border-white/10 transition-colors shadow-lg">
+          {/* Source/Channel Selector Top Bar */}
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/5 bg-[#18181b]">
+            <div className="w-4 h-4 rounded-full bg-blue-500/20 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
+            </div>
+            <select
+              value={selectedInstance}
+              onChange={(e) => setSelectedInstance(e.target.value)}
+              className="bg-transparent text-xs font-semibold text-zinc-300 outline-none cursor-pointer hover:text-white"
+            >
+              {instances.map(inst => (
+                <option key={inst.id} value={inst.id} className="bg-zinc-900 text-white">
+                  {inst.instanceName}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="flex-1 relative">
+          {/* Text Input Area */}
+          <div className="px-4 py-3 bg-[#18181b]">
             <textarea
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Craft a message..."
+              placeholder="Use '/' for snippets, '@' for variables, ':' for emoji"
               rows={1}
-              className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-3.5 text-sm text-zinc-100 outline-none focus:border-indigo-500/30 focus:ring-4 focus:ring-indigo-500/5 transition-all resize-none custom-scrollbar"
-              style={{ maxHeight: '120px' }}
+              className="w-full bg-transparent text-[15px] text-zinc-100 outline-none resize-none placeholder:text-zinc-600"
+              style={{ maxHeight: '160px', minHeight: '24px' }}
             />
           </div>
 
-          <button
-            onClick={handleSend}
-            disabled={!message.trim() || !selectedInstance || sending}
-            className={`p-4 rounded-2xl flex items-center justify-center transition-all shadow-lg
-              ${!message.trim() || sending
-                ? 'bg-zinc-800 text-zinc-600 grayscale'
-                : 'bg-indigo-600 text-white hover:bg-indigo-500 hover:shadow-indigo-500/20 active:scale-95'
-              }`}
-          >
-            {sending ? (
-              <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-            ) : (
-              <PaperAirplaneIcon className="w-5 h-5 -rotate-45 -translate-y-0.5" />
-            )}
-          </button>
+          {/* Bottom Toolbar */}
+          <div className="flex items-center justify-between px-3 py-2 bg-[#18181b] border-t border-white/5">
+            <div className="flex items-center gap-1">
+              <button className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-500 hover:text-zinc-300 transition-colors" title="Formatting">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" /></svg>
+              </button>
+              <button className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-500 hover:text-zinc-300 transition-colors" title="Attach file">
+                <PaperClipIcon className="w-5 h-5" />
+              </button>
+              <button className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-500 hover:text-zinc-300 transition-colors" title="Insert Emoji">
+                <FaceSmileIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400 text-xs font-bold transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                AI Assist
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={!message.trim() || !selectedInstance || sending}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all
+                  ${!message.trim() || sending
+                    ? 'bg-zinc-800 text-zinc-600'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                  }`}
+              >
+                {sending ? (
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <PaperAirplaneIcon className="w-4 h-4 -rotate-45" />
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

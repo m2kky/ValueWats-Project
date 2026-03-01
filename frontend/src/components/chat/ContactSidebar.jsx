@@ -127,10 +127,10 @@ export default function ContactSidebar({ conversation, agents, users, onClose, o
   const currentStage = lifecycleStages.find(s => s.id === conversation.lifecycleStageId);
 
   return (
-    <div className="w-80 min-w-[320px] h-full bg-zinc-950/60 border-l border-white/5 flex flex-col overflow-y-auto custom-scrollbar">
+    <div className="w-80 min-w-[320px] h-full bg-[#0f0f11] border-l border-white/5 flex flex-col overflow-y-auto custom-scrollbar">
 
       {/* Header */}
-      <div className="p-4 border-b border-white/5 flex items-center justify-between sticky top-0 bg-zinc-950/80 backdrop-blur-md z-10">
+      <div className="p-4 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#0f0f11] z-10">
         <h3 className="font-bold text-white flex items-center gap-2">
           <UserCircleIcon className="w-5 h-5 text-indigo-400" />
           Contact details
