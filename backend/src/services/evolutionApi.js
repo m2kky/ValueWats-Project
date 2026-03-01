@@ -77,8 +77,9 @@ class EvolutionAPI {
       // ✨ Auto-configure webhook
       // Use internal service name for Docker network communication
       // ✨ Auto-configure webhook
-      // Hardcode to the HTTP proxy domain in coolify since internal alias changes and HTTPS times out
-      const defaultWebhookBase = 'http://i0kwck044gc80s0osco8w0wg.72.62.50.238.sslip.io';
+      // Use Docker internal networking (both containers share the 'coolify' network)
+      // Container name may change on redeploy — override with WEBHOOK_INTERNAL_URL env var if needed
+      const defaultWebhookBase = 'http://i0kwck044gc80s0osco8w0wg-043518589710:3000';
       const webhookUrl = `${process.env.WEBHOOK_INTERNAL_URL || defaultWebhookBase}/api/webhooks/receive`;
 
       console.log('Setting webhook for instance:', sanitizedInstanceName, 'URL:', webhookUrl);

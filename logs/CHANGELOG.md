@@ -4,7 +4,17 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
-## [2026-02-27] — Bug Fixes
+## [2026-03-01] — Agent Actions & UI Refinements
+
+### Fixed
+- **Agent Actions Trigger Nullification**: Fixed `processMessage()` in `agent.service.js` where the `buildSystemPrompt()` function injection logic was completely skipped, causing valid actions (like `CLOSE_CONVERSATION`) to be ignored by the LLM. 
+- **Inbox Contact & Group Names**: Resolved issue where Webhook messages would arrive without `pushName` being saved to the database. Modified `webhookController.js` and `chat.service.js` to correctly pass and attach `contactName` for both 1-on-1 and Group chats. Group chats are now reliably synced.
+
+### Changed
+- **Premium Agent Configuration UI**: Completely refactored `Agents.jsx`. The legacy 3-tab system (Core, Skills, Database) has been flattened into a sleek, premium single-page vertical architecture for much faster configuration and zero context switching. 
+- **Inbox "Channel Source" Indicator**: Streamlined the `ChatWindow.jsx` header. Reduced visual clutter by converting the dropdown `<select>` into an elegant static channel label, while preserving auto-routing instance logic internally.
+
+---
 
 ### Fixed
 - **AI Agent Field Mismatch**: Harmonized `model` vs `aiModel` field names across the stack. Added a mapping in `agent.routes.js` and updated `Agents.jsx` to use `aiModel`, resolving `PrismaClientValidationError`.

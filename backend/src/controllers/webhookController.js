@@ -188,10 +188,13 @@ const handleIncomingMessage = async (req, res) => {
     try {
       console.log('[Webhook] 💾 Saving to chat inbox...');
 
+      // Extract pushName for contact name display
+      const pushName = data.pushName || msgObj.pushName || null;
+
       conversation = await chatService.upsertConversation(
         instance.tenantId,
         contactNumber,
-        { content: text || `[${messageType}]`, fromMe }
+        { content: text || `[${messageType}]`, fromMe, contactName: pushName }
       );
 
       console.log(`[Webhook] ✅ Conversation upserted: ${conversation.id}`);

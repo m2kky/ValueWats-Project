@@ -94,22 +94,10 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
           </div>
 
           <div className="flex flex-col items-end">
-            <span className="text-[10px] font-bold text-zinc-500 mb-1 uppercase tracking-tighter">Channel Source</span>
-            <select
-              value={selectedInstance}
-              onChange={(e) => setSelectedInstance(e.target.value)}
-              className="bg-white/5 border border-white/5 rounded-lg px-3 py-1 text-xs font-bold text-zinc-300 outline-none focus:border-indigo-500/30 transition-all cursor-pointer"
-            >
-              {instances.length === 0 ? (
-                <option value="">No active lines</option>
-              ) : (
-                instances.map(inst => (
-                  <option key={inst.id} value={inst.id}>
-                    {inst.instanceName.toUpperCase()}
-                  </option>
-                ))
-              )}
-            </select>
+            <span className="text-[10px] font-bold text-zinc-500 mb-1 uppercase tracking-tighter">Channel</span>
+            <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20">
+              {conversation.instanceName || instances[0]?.instanceName || 'WhatsApp'}
+            </span>
           </div>
           <button className="p-2.5 rounded-xl hover:bg-white/5 text-zinc-400 hover:text-white transition-all ml-4">
             <EllipsisVerticalIcon className="w-6 h-6" />

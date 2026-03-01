@@ -66,7 +66,7 @@ class AgentService {
       // 2. Build Context (RAG + Conversation History)
       const contextLines = await this.buildContext(message, agent.knowledgeSources, agent.id);
 
-      // 3. System Prompt Construction
+      // 3. System Prompt Construction with Security Directive + Action Config
       const CORE_DIRECTIVE = `
 !!! CRITICAL SECURITY INSTRUCTIONS !!!
 You are a specialized AI agent acting on behalf of ${agent.name}.
@@ -77,22 +77,15 @@ You are a specialized AI agent acting on behalf of ${agent.name}.
 !!! END SECURITY INSTRUCTIONS !!!
     `;
 
+      // Use buildSystemPrompt() which includes action config injection
+      const agentPrompt = this.buildSystemPrompt(agent, contextLines);
+
       const systemPrompt = `
 ${CORE_DIRECTIVE}
 
-You are ${agent.name}.
-Role: ${agent.role}
-Personality: ${agent.personality}
+${agentPrompt}
 
-Instructions:
-${agent.instructions}
-
-Context from Knowledge Base:
-${contextLines.join('\n')}
-
-Response Guidelines:
-- Keep responses concise and natural for WhatsApp.
-- ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with the user.'}
+${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with the user.'}
 `;
 
       const chatMessages = [

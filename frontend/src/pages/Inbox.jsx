@@ -12,6 +12,7 @@ export default function Inbox() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [socket, setSocket] = useState(null);
+  const [initialSynced, setInitialSynced] = useState(false);
 
   // Setup socket connection
   useEffect(() => {
@@ -83,9 +84,33 @@ export default function Inbox() {
     };
   }, [socket]);
 
-  // Fetch conversations
+  // Auto-sync + fetch on mount
   useEffect(() => {
-    fetchConversations();
+    const initInbox = async () => {
+      try {
+        setLoading(true);
+        setSyncing(true);
+
+        // 1. Auto-sync chats from Evolution API (pulls old chats with names)
+        await api.post('/chat/sync').catch(err => {
+          console.warn('[Inbox] Auto-sync failed (non-fatal):', err.message);
+        });
+
+        setSyncing(false);
+
+        // 2. Then fetch conversations
+        const { data } = await api.get('/chat/conversations');
+        setConversations(data.conversations || []);
+        setInitialSynced(true);
+      } catch (error) {
+        console.error('Failed to initialize inbox:', error);
+      } finally {
+        setLoading(false);
+        setSyncing(false);
+      }
+    };
+
+    initInbox();
     fetchInstances();
   }, []);
 
@@ -93,25 +118,13 @@ export default function Inbox() {
     try {
       setSyncing(true);
       await api.post('/chat/sync');
-      await fetchConversations();
-      alert('Chats synchronized successfully!');
+      const { data } = await api.get('/chat/conversations');
+      setConversations(data.conversations || []);
     } catch (error) {
       console.error('Failed to sync chats:', error);
       alert('Failed to sync chats. Check logs.');
     } finally {
       setSyncing(false);
-    }
-  };
-
-  const fetchConversations = async () => {
-    try {
-      setLoading(true);
-      const { data } = await api.get('/chat/conversations');
-      setConversations(data.conversations || []);
-    } catch (error) {
-      console.error('Failed to fetch conversations:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -211,12 +224,20 @@ export default function Inbox() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <h2>Select a conversation</h2>
-            <p>Choose a conversation from the sidebar to start chatting</p>
+            {syncing ? (
+              <>
+                <h2>Syncing chats...</h2>
+                <p>Pulling conversations from WhatsApp. This may take a moment.</p>
+              </>
+            ) : (
+              <>
+                <h2>Select a conversation</h2>
+                <p>Choose a conversation from the sidebar to start chatting</p>
+              </>
+            )}
           </div>
         )}
       </main>
     </div>
   );
 }
-

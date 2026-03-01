@@ -15,7 +15,9 @@ class ChatService {
           lastMessage: messageData.content?.substring(0, 100) || '[Media]',
           lastMessageAt: new Date(),
           unreadCount: messageData.fromMe ? { set: 0 } : { increment: 1 },
-          status: 'open'
+          status: 'open',
+          // Update contact name if provided and not just a phone number
+          ...(messageData.contactName && { contactName: messageData.contactName })
         },
         create: {
           tenantId,
@@ -260,13 +262,18 @@ class ChatService {
         if (!Array.isArray(remoteChats)) continue;
 
         for (const chat of remoteChats) {
-          const contactNumber = chat.id.replace('@s.whatsapp.net', '');
-          if (contactNumber.includes('@g.us')) continue; // Skip groups for now if needed
+          const isGroup = chat.id.endsWith('@g.us');
+          const contactNumber = isGroup ? chat.id : chat.id.replace('@s.whatsapp.net', '');
+
+          // Determine display name: group subject, pushName, or phone number
+          const displayName = isGroup
+            ? (chat.subject || chat.name || contactNumber)
+            : (chat.pushName || chat.name || contactNumber);
 
           // 3. Upsert conversation
           const conversation = await this.upsertConversation(tenantId, contactNumber, {
             content: chat.message || chat.lastMessage?.message?.conversation || '',
-            contactName: chat.pushName || contactNumber,
+            contactName: displayName,
             fromMe: false // Default to false for sync
           });
 
