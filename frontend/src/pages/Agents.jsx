@@ -19,6 +19,8 @@ import {
   WrenchScrewdriverIcon,
   UserGroupIcon,
   ShieldCheckIcon,
+  CloudArrowUpIcon,
+  DocumentIcon,
 } from '@heroicons/react/24/outline';
 import ActionCard from '../components/ActionCard';
 
