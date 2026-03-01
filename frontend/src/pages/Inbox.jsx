@@ -3,12 +3,15 @@ import io from 'socket.io-client';
 import api from '../api/client';
 import ConversationList from '../components/chat/ConversationList';
 import ChatWindow from '../components/chat/ChatWindow';
+import ContactSidebar from '../components/chat/ContactSidebar';
 import '../styles/inbox.css';
 
 export default function Inbox() {
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [instances, setInstances] = useState([]);
+  const [agents, setAgents] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [socket, setSocket] = useState(null);
@@ -112,7 +115,21 @@ export default function Inbox() {
 
     initInbox();
     fetchInstances();
+    fetchSupportData();
   }, []);
+
+  const fetchSupportData = async () => {
+    try {
+      const [agentsRes, teamRes] = await Promise.all([
+        api.get('/agents').catch(() => ({ data: { agents: [] } })),
+        api.get('/team').catch(() => ({ data: { users: [] } }))
+      ]);
+      if (agentsRes.data?.agents) setAgents(agentsRes.data.agents);
+      if (teamRes.data?.users) setUsers(teamRes.data.users);
+    } catch (error) {
+      console.error('Failed to fetch support data:', error);
+    }
+  };
 
   const handleSync = async () => {
     try {
@@ -209,14 +226,25 @@ export default function Inbox() {
       </aside>
 
       {/* Chat Window */}
-      <main className="inbox-main">
+      <main className="inbox-main flex-1 flex min-w-0">
         {selectedConversation ? (
-          <ChatWindow
-            conversation={selectedConversation}
-            instances={instances}
-            onSendMessage={handleSendMessage}
-            onUpdate={handleConversationUpdate}
-          />
+          <>
+            <div className="flex-1 min-w-0 h-full">
+              <ChatWindow
+                conversation={selectedConversation}
+                instances={instances}
+                onSendMessage={handleSendMessage}
+                onUpdate={handleConversationUpdate}
+              />
+            </div>
+            <ContactSidebar
+              conversation={selectedConversation}
+              agents={agents}
+              users={users}
+              onClose={null}
+              onUpdate={handleConversationUpdate}
+            />
+          </>
         ) : (
           <div className="inbox-empty-state">
             <div className="inbox-empty-icon">

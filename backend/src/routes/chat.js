@@ -8,6 +8,7 @@ router.get('/conversations', chatController.getConversations);
 router.get('/conversations/:id', chatController.getConversation);
 router.post('/messages/send', chatController.sendMessage);
 router.put('/conversations/:id/contact', chatController.updateContact);
+router.put('/conversations/:id/assign', chatController.assignConversation);
 router.get('/lifecycle-stages', chatController.getLifecycleStages);
 router.post('/sync', chatController.syncConversations);
 

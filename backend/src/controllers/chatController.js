@@ -95,6 +95,20 @@ module.exports = {
     }
   },
 
+  assignConversation: async (req, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const { id } = req.params;
+      const assignmentData = req.body; // { type, agentId }
+
+      const updated = await chatService.updateAssignment(tenantId, id, assignmentData);
+      res.json({ success: true, conversation: updated });
+    } catch (error) {
+      console.error('Assign conversation error:', error);
+      res.status(500).json({ error: 'Failed to assign conversation' });
+    }
+  },
+
   getLifecycleStages: async (req, res) => {
     try {
       const tenantId = req.user.tenantId;

@@ -178,6 +178,42 @@ class ChatService {
   }
 
   /**
+   * Update conversation assignment
+   */
+  async updateAssignment(tenantId, conversationId, assignmentData) {
+    const { type, agentId } = assignmentData; // type: 'agent', 'me', 'unassign'
+
+    let updateData = {};
+    if (type === 'agent') {
+      updateData = {
+        currentAgentId: agentId,
+        escalated: false,
+        aiEnabled: true
+      };
+    } else if (type === 'me') {
+      updateData = {
+        currentAgentId: null,
+        escalated: true,
+        aiEnabled: false
+      };
+    } else if (type === 'unassign') {
+      updateData = {
+        currentAgentId: null,
+        escalated: false,
+        aiEnabled: true
+      };
+    }
+
+    const conversation = await prisma.conversation.update({
+      where: { id: conversationId },
+      data: updateData,
+      include: { lifecycleStage: true }
+    });
+
+    return conversation;
+  }
+
+  /**
    * Mark conversation as read
    */
   async markAsRead(conversationId, tenantId) {

@@ -1,213 +1,339 @@
 import { useState, useEffect } from 'react';
-import { 
-  UserCircleIcon, 
-  PhoneIcon, 
-  TagIcon, 
-  AdjustmentsHorizontalIcon,
-  XMarkIcon
-} from '@heroicons/react/24/outline';
 import api from '../../api/client';
+import { formatPhoneNumber } from '../../utils/formatters';
+import {
+  UserCircleIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+  GlobeAltIcon,
+  LanguageIcon,
+  ChevronDownIcon,
+  XMarkIcon,
+  PencilSquareIcon,
+  CheckIcon
+} from '@heroicons/react/24/outline';
 
-export default function ContactSidebar({ conversation, onClose, onUpdate }) {
+export default function ContactSidebar({ conversation, agents, users, onClose, onUpdate }) {
   const [loading, setLoading] = useState(false);
-  const [stages, setStages] = useState([]);
-  
-  // Local state for editing
-  const [name, setName] = useState(conversation.contactName || '');
-  const [labels, setLabels] = useState(conversation.labels?.join(', ') || '');
-  const [stageId, setStageId] = useState(conversation.lifecycleStageId || '');
-  const [customFields, setCustomFields] = useState(
-    conversation.contactFields?.map(f => ({ name: f.fieldName, value: f.fieldValue })) || []
-  );
-  const [newFieldName, setNewFieldName] = useState('');
-  const [newFieldValue, setNewFieldValue] = useState('');
+  const [editingFields, setEditingFields] = useState(false);
+  const [formData, setFormData] = useState({
+    contactName: conversation?.contactName || '',
+    email: '',
+    country: '',
+    language: ''
+  });
 
-  // Fetch lifecycle stages
-  useEffect(() => {
-    api.get('/chat/lifecycle-stages')
-      .then(res => setStages(res.data.stages))
-      .catch(console.error);
-  }, []);
+  const [contactFields, setContactFields] = useState([]);
+  const [assignDropdownOpen, setAssignDropdownOpen] = useState(false);
+  const [stageDropdownOpen, setStageDropdownOpen] = useState(false);
+  const [lifecycleStages, setLifecycleStages] = useState([]);
 
-  // Update local state when conversation changes
   useEffect(() => {
-    setName(conversation.contactName || '');
-    setLabels(conversation.labels?.join(', ') || '');
-    setStageId(conversation.lifecycleStageId || '');
-    setCustomFields(conversation.contactFields?.map(f => ({ name: f.fieldName, value: f.fieldValue })) || []);
+    if (conversation) {
+      setFormData({
+        contactName: conversation.contactName || '',
+        email: conversation.contactFields?.find(f => f.fieldName === 'email')?.fieldValue || '',
+        country: conversation.contactFields?.find(f => f.fieldName === 'country')?.fieldValue || '',
+        language: conversation.contactFields?.find(f => f.fieldName === 'language')?.fieldValue || '',
+      });
+      setContactFields(conversation.contactFields || []);
+      fetchStages();
+    }
   }, [conversation]);
 
-  const handleSave = async () => {
+  const fetchStages = async () => {
+    try {
+      const { data } = await api.get('/chat/lifecycle-stages');
+      setLifecycleStages(data.stages || []);
+    } catch (error) {
+      console.error('Failed to fetch lifecycle stages', error);
+    }
+  };
+
+  const handleSaveFields = async () => {
     setLoading(true);
     try {
-      const labelsArray = labels.split(',').map(s => s.trim()).filter(Boolean);
-      
-      const payload = {
-        contactName: name,
-        labels: labelsArray,
-        lifecycleStageId: stageId || null,
-        customFields
-      };
+      const customFields = [
+        { name: 'email', value: formData.email },
+        { name: 'country', value: formData.country },
+        { name: 'language', value: formData.language }
+      ].filter(f => f.value);
 
-      const res = await api.put(`/chat/conversations/${conversation.id}/contact`, payload);
-      if (onUpdate) onUpdate(res.data.conversation);
-      
-      // Show success toast (implied)
+      const { data } = await api.put(`/chat/conversations/${conversation.id}/contact`, {
+        contactName: formData.contactName,
+        customFields
+      });
+
+      setContactFields(data.conversation?.contactFields || customFields);
+      setEditingFields(false);
+      if (onUpdate) onUpdate(data.conversation);
     } catch (error) {
-      console.error('Failed to save contact:', error);
+      console.error('Failed to save contact fields:', error);
       alert('Failed to save contact details');
     } finally {
       setLoading(false);
     }
   };
 
-  const addField = () => {
-    if (!newFieldName || !newFieldValue) return;
-    setCustomFields([...customFields, { name: newFieldName, value: newFieldValue }]);
-    setNewFieldName('');
-    setNewFieldValue('');
+  const handleAssign = async (type, id = null) => {
+    setAssignDropdownOpen(false);
+    setLoading(true);
+    try {
+      const payload = { type }; // 'agent', 'me', 'unassign'
+      if (id) payload.agentId = id;
+
+      const { data } = await api.put(`/chat/conversations/${conversation.id}/assign`, payload);
+      if (onUpdate) onUpdate(data.conversation);
+    } catch (error) {
+      console.error('Failed to assign conversation:', error);
+      alert('Failed to assign conversation');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const removeField = (index) => {
-    setCustomFields(customFields.filter((_, i) => i !== index));
+  const handleSetStage = async (stageId) => {
+    setStageDropdownOpen(false);
+    setLoading(true);
+    try {
+      const { data } = await api.put(`/chat/conversations/${conversation.id}/contact`, {
+        lifecycleStageId: stageId
+      });
+      if (onUpdate) onUpdate(data.conversation);
+    } catch (error) {
+      console.error('Failed to update stage:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (!conversation) return null;
+
+  // Determine current assignment status
+  let assignmentLabel = "Unassigned";
+  let assignmentIcon = <UserCircleIcon className="w-5 h-5 text-zinc-400" />;
+
+  if (conversation.currentAgentId) {
+    const assignedAgent = agents.find(a => a.id === conversation.currentAgentId);
+    if (assignedAgent) {
+      assignmentLabel = assignedAgent.name;
+      assignmentIcon = <span className="text-sm">🤖</span>;
+    }
+  } else if (!conversation.aiEnabled && conversation.escalated) {
+    assignmentLabel = "Assigned to me";
+    assignmentIcon = <UserCircleIcon className="w-5 h-5 text-indigo-400" />;
+  }
+
+  const currentStage = lifecycleStages.find(s => s.id === conversation.lifecycleStageId);
 
   return (
-    <div className="w-80 border-l border-gray-200 bg-white h-full overflow-y-auto flex flex-col">
+    <div className="w-80 min-w-[320px] h-full bg-zinc-950/60 border-l border-white/5 flex flex-col overflow-y-auto custom-scrollbar">
+
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-        <h3 className="font-semibold text-gray-700">Contact Details</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-          <XMarkIcon className="h-5 w-5" />
-        </button>
+      <div className="p-4 border-b border-white/5 flex items-center justify-between sticky top-0 bg-zinc-950/80 backdrop-blur-md z-10">
+        <h3 className="font-bold text-white flex items-center gap-2">
+          <UserCircleIcon className="w-5 h-5 text-indigo-400" />
+          Contact details
+        </h3>
+        {onClose && (
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 text-zinc-400">
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
-      <div className="p-6 flex-1 space-y-6">
-        {/* Profile Info */}
-        <div className="flex flex-col items-center">
-          <div className="h-20 w-20 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 text-2xl font-bold mb-3">
-             {name?.[0]?.toUpperCase() || conversation.contactNumber?.[0] || '?'}
-          </div>
-          <div className="text-center w-full">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="block w-full text-center text-lg font-medium border-none focus:ring-0 focus:border-b focus:border-indigo-500 bg-transparent placeholder-gray-400"
-              placeholder="Add Name"
-            />
-            <div className="flex items-center justify-center gap-1 text-gray-500 mt-1">
-              <PhoneIcon className="h-4 w-4" />
-              <span className="text-sm">{conversation.contactNumber}</span>
-            </div>
-          </div>
+      {/* Profile Overview */}
+      <div className="p-6 flex flex-col items-center border-b border-white/5">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-xl flex items-center justify-center text-white font-black text-3xl mb-4">
+          {(conversation.contactName || conversation.contactNumber)?.[0]?.toUpperCase() || '?'}
         </div>
+        <h2 className="text-lg font-bold text-white text-center break-all">
+          {conversation.contactName || conversation.contactNumber}
+        </h2>
 
-        <hr className="border-gray-100" />
+        {/* Assignment Button */}
+        <div className="relative mt-4 w-full">
+          <button
+            onClick={() => setAssignDropdownOpen(!assignDropdownOpen)}
+            disabled={loading}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+          >
+            <div className="flex items-center gap-2">
+              {assignmentIcon}
+              <span className={`text-sm font-medium ${conversation.currentAgentId || (!conversation.aiEnabled && conversation.escalated) ? 'text-white' : 'text-zinc-400'}`}>
+                {assignmentLabel}
+              </span>
+            </div>
+            <ChevronDownIcon className="w-4 h-4 text-zinc-400" />
+          </button>
+
+          {assignDropdownOpen && (
+            <div className="absolute top-full left-0 w-full mt-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-20 py-2">
+              <div className="px-3 py-1.5 text-xs font-bold text-zinc-500 uppercase tracking-wider">AI Agents</div>
+              {agents.map(agent => (
+                <button
+                  key={agent.id}
+                  onClick={() => handleAssign('agent', agent.id)}
+                  className="w-full text-left px-4 py-2 text-sm text-zinc-200 hover:bg-white/5 flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">🤖 {agent.name}</span>
+                  {conversation.currentAgentId === agent.id && <CheckIcon className="w-4 h-4 text-indigo-400" />}
+                </button>
+              ))}
+
+              <div className="px-3 py-1.5 mt-2 text-xs font-bold text-zinc-500 uppercase tracking-wider">Human</div>
+              <button
+                onClick={() => handleAssign('me')}
+                className="w-full text-left px-4 py-2 text-sm text-zinc-200 hover:bg-white/5 flex items-center justify-between"
+              >
+                <span className="flex items-center gap-2">👤 Assign to me</span>
+                {(!conversation.aiEnabled && conversation.escalated) && <CheckIcon className="w-4 h-4 text-indigo-400" />}
+              </button>
+
+              <div className="h-px w-full bg-white/5 my-2"></div>
+              <button
+                onClick={() => handleAssign('unassign')}
+                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-400/10 flex items-center gap-2"
+              >
+                <XMarkIcon className="w-4 h-4" /> Unassign
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Stage & Contact Fields */}
+      <div className="p-5 flex flex-col gap-6">
 
         {/* Lifecycle Stage */}
-        <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-            Lifecycle Stage
-          </label>
-          <select
-            value={stageId}
-            onChange={(e) => setStageId(e.target.value)}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+        <div className="relative">
+          <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 block">Lifecycle Stage</label>
+          <button
+            onClick={() => setStageDropdownOpen(!stageDropdownOpen)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-900 border border-white/5 hover:border-white/10 transition-all text-sm text-zinc-300"
           >
-            <option value="">Select Stage</option>
-            {stages.map(s => (
-              <option key={s.id} value={s.id}>{s.name} {s.emoji}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Labels */}
-        <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-            Labels (comma separated)
-          </label>
-          <div className="relative rounded-md shadow-sm">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <TagIcon className="h-4 w-4 text-gray-400" />
+            <div className="flex items-center gap-2">
+              {currentStage ? (
+                <>
+                  <span dangerouslySetLabel={{ __html: currentStage.emoji || '📌' }} />
+                  <span>{currentStage.name}</span>
+                </>
+              ) : (
+                <span className="text-zinc-500">Select Stage...</span>
+              )}
             </div>
-            <input
-              type="text"
-              value={labels}
-              onChange={(e) => setLabels(e.target.value)}
-              className="block w-full rounded-md border-gray-300 pl-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              placeholder="vip, new, lead"
-            />
-          </div>
+            <ChevronDownIcon className="w-4 h-4 text-zinc-500" />
+          </button>
+
+          {stageDropdownOpen && (
+            <div className="absolute top-full left-0 w-full mt-1 bg-zinc-800 border border-white/10 rounded-lg shadow-xl z-20 py-1">
+              {lifecycleStages.map(stage => (
+                <button
+                  key={stage.id}
+                  onClick={() => handleSetStage(stage.id)}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 flex items-center gap-2"
+                >
+                  <span dangerouslySetInnerHTML={{ __html: stage.emoji || '📌' }} />
+                  {stage.name}
+                </button>
+              ))}
+              <button
+                onClick={() => handleSetStage(null)}
+                className="w-full text-left px-3 py-2 text-sm text-zinc-500 hover:bg-white/5 border-t border-white/5"
+              >
+                Clear Stage
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Custom Fields */}
+        {/* Contact Fields */}
         <div>
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 flex justify-between items-center">
-            <span>Custom Fields</span>
-            <span className="text-xs normal-case bg-gray-100 px-2 py-0.5 rounded text-gray-600">{customFields.length}</span>
-          </label>
-          
-          <div className="space-y-2 mb-3">
-            {customFields.map((field, idx) => (
-              <div key={idx} className="flex gap-2 group">
-                <div className="flex-1 bg-gray-50 p-2 rounded text-sm relative">
-                  <div className="text-xs text-gray-500">{field.name}</div>
-                  <input 
-                    value={field.value}
-                    onChange={(e) => {
-                      const newFields = [...customFields];
-                      newFields[idx].value = e.target.value;
-                      setCustomFields(newFields);
-                    }}
-                    className="bg-transparent w-full border-none p-0 h-5 text-gray-800 focus:ring-0 text-sm"
-                  />
-                  <button 
-                    onClick={() => removeField(idx)}
-                    className="absolute top-1 right-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <XMarkIcon className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div className="flex justify-between items-center mb-3">
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Contact Fields</label>
+            {!editingFields ? (
+              <button onClick={() => setEditingFields(true)} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                <PencilSquareIcon className="w-3 h-3" /> Edit
+              </button>
+            ) : (
+              <button onClick={handleSaveFields} disabled={loading} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-bold">
+                {loading ? 'Saving...' : 'Save'}
+              </button>
+            )}
           </div>
 
-          <div className="flex gap-2 items-center bg-gray-50 p-2 rounded border border-dashed border-gray-300">
-            <input
-              placeholder="Field"
-              value={newFieldName}
-              onChange={(e) => setNewFieldName(e.target.value)}
-              className="w-1/3 bg-transparent border-none p-1 text-xs focus:ring-0"
-            />
-            <span className="text-gray-300">|</span>
-            <input
-              placeholder="Value"
-              value={newFieldValue}
-              onChange={(e) => setNewFieldValue(e.target.value)}
-              className="flex-1 bg-transparent border-none p-1 text-xs focus:ring-0"
-              onKeyDown={(e) => e.key === 'Enter' && addField()}
-            />
-            <button 
-              onClick={addField}
-              disabled={!newFieldName || !newFieldValue}
-              className="text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
-            >
-              <UserCircleIcon className="h-5 w-5" /> 
-            </button>
+          <div className="space-y-4">
+            {/* Phone */}
+            <div className="flex gap-3">
+              <PhoneIcon className="w-5 h-5 text-zinc-500 mt-1 shrink-0" />
+              <div className="flex-1">
+                <div className="text-xs text-zinc-500 mb-1">Phone Number</div>
+                <div className="text-sm text-white">{formatPhoneNumber(conversation.contactNumber)}</div>
+              </div>
+            </div>
+
+            {/* Email */}
+            <div className="flex gap-3">
+              <EnvelopeIcon className="w-5 h-5 text-zinc-500 mt-1 shrink-0" />
+              <div className="flex-1">
+                <div className="text-xs text-zinc-500 mb-1">Email Address</div>
+                {editingFields ? (
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    placeholder="example@domain.com"
+                  />
+                ) : (
+                  <div className="text-sm text-zinc-300">{formData.email || <span className="text-zinc-600 italic">No email</span>}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Country */}
+            <div className="flex gap-3">
+              <GlobeAltIcon className="w-5 h-5 text-zinc-500 mt-1 shrink-0" />
+              <div className="flex-1">
+                <div className="text-xs text-zinc-500 mb-1">Country</div>
+                {editingFields ? (
+                  <input
+                    type="text"
+                    value={formData.country}
+                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    placeholder="e.g. Egypt"
+                  />
+                ) : (
+                  <div className="text-sm text-zinc-300">{formData.country || <span className="text-zinc-600 italic">No country</span>}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Language */}
+            <div className="flex gap-3">
+              <LanguageIcon className="w-5 h-5 text-zinc-500 mt-1 shrink-0" />
+              <div className="flex-1">
+                <div className="text-xs text-zinc-500 mb-1">Language</div>
+                {editingFields ? (
+                  <input
+                    type="text"
+                    value={formData.language}
+                    onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    placeholder="e.g. Arabic"
+                  />
+                ) : (
+                  <div className="text-sm text-zinc-300">{formData.language || <span className="text-zinc-600 italic">No language</span>}</div>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
+
       </div>
 
-      <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <button
-          onClick={handleSave}
-          disabled={loading}
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-        >
-          {loading ? 'Saving...' : 'Save Changes'}
-        </button>
-      </div>
     </div>
   );
 }
