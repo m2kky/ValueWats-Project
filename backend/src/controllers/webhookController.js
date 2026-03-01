@@ -190,11 +190,13 @@ const handleIncomingMessage = async (req, res) => {
 
       // Extract pushName for contact name display
       const pushName = data.pushName || msgObj.pushName || null;
+      const isGroup = remoteJid.endsWith('@g.us');
+      const resolvedContactName = isGroup ? null : pushName;
 
       conversation = await chatService.upsertConversation(
         instance.tenantId,
         contactNumber,
-        { content: text || `[${messageType}]`, fromMe, contactName: pushName }
+        { content: text || `[${messageType}]`, fromMe, contactName: resolvedContactName }
       );
 
       console.log(`[Webhook] ✅ Conversation upserted: ${conversation.id}`);

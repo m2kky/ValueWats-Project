@@ -79,8 +79,11 @@ export default function ContactSidebar({ conversation, agents, users, onClose, o
     setAssignDropdownOpen(false);
     setLoading(true);
     try {
-      const payload = { type }; // 'agent', 'me', 'unassign'
-      if (id) payload.agentId = id;
+      const payload = { type }; // 'agent', 'me', 'unassign', 'user'
+      if (id) {
+        if (type === 'agent') payload.agentId = id;
+        else if (type === 'user') payload.userId = id;
+      }
 
       const { data } = await api.put(`/chat/conversations/${conversation.id}/assign`, payload);
       if (onUpdate) onUpdate(data.conversation);
