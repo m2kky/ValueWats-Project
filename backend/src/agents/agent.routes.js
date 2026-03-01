@@ -245,7 +245,8 @@ router.post('/:id/test', tenantContext, async (req, res) => {
       max_tokens: agent.maxTokens ?? 500
     });
 
-    res.json({ response });
+    const aiReply = typeof response === 'string' ? response : (response?.content || response?.message || 'No response');
+    res.json({ response: aiReply });
   } catch (error) {
     console.error('[Agents] Test chat error:', error);
     res.status(500).json({ error: 'Failed to get test response', response: 'Error processing your message.' });
