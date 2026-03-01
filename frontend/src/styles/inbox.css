@@ -24,7 +24,7 @@
 .inbox-main {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   overflow: hidden;
   background: #000000;
 }
