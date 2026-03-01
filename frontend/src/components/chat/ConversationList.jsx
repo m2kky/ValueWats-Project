@@ -136,11 +136,21 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
                       )}
                       <span className="truncate">{conv.lastMessage || 'No discussion yet'}</span>
                     </p>
-                    {/* Badge */}
+                    {/* Badge & Assignee */}
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">
                         New Lead
                       </span>
+                      {conv.assignedUser && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
+                          👤 {conv.assignedUser.email.split('@')[0]}
+                        </span>
+                      )}
+                      {conv.currentAgentId && !conv.assignedUser && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase tracking-wider">
+                          🤖 Bot
+                        </span>
+                      )}
                     </div>
                   </div>
 
