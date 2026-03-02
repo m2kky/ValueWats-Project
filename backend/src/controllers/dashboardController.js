@@ -113,7 +113,6 @@ const getStats = async (req, res) => {
       select: {
         id: true,
         email: true,
-        name: true,
         role: true,
         _count: {
           select: {
@@ -125,7 +124,7 @@ const getStats = async (req, res) => {
 
     const teamInsights = teamMembers.map(u => ({
       id: u.id,
-      name: u.name || u.email.split('@')[0],
+      name: u.email.split('@')[0],
       role: u.role,
       messagesReplied: u._count.sentMessages
     })).sort((a, b) => b.messagesReplied - a.messagesReplied);

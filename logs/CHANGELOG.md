@@ -299,3 +299,6 @@ All notable changes to the ValueWats project, tracked by date.
 - Removed direct 'X' buttons from sidebars
 - Implemented persistent UI toggles natively in headers
 - Rewrote dashboard stats logic to merge Message and ChatMessage calculations
+- Updated left Sidebar (Inbox Filters) toggle to use an expand/collapse SVG dynamically.
+- Added thin vertical menu panel to the far right specifically for toggling the Contact Details menu (emulating Zendesk UX).
+- Refined Dashboard calculations using actual database records and identified the migration deployment issue.
