@@ -276,6 +276,29 @@ Stack: ${error.stack}
   }
 
   /**
+   * Fetch group info (subject/name) from Evolution API
+   */
+  async getGroupInfo(instanceName, groupJid) {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/group/findGroupInfos/${instanceName}`,
+        {
+          params: { groupJid },
+          headers: { apikey: this.apiKey },
+          timeout: 10000
+        }
+      );
+      // Response is typically { id, subject, subjectOwner, ... }
+      const groupData = response.data;
+      return groupData?.subject || groupData?.name || null;
+    } catch (error) {
+      // Silently return null — don't crash if group info not available
+      console.warn(`[EvolutionAPI] Could not fetch group info for ${groupJid}:`, error.response?.data?.message || error.message);
+      return null;
+    }
+  }
+
+  /**
    * Set Webhook for instance
    */
   async setWebhook(instanceName, webhookUrl, enabled = true, tenantId = null) {

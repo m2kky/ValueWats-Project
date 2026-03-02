@@ -191,12 +191,26 @@ const handleIncomingMessage = async (req, res) => {
       // Extract pushName for contact name display
       const pushName = data.pushName || msgObj.pushName || null;
       const isGroup = remoteJid.endsWith('@g.us');
-      const resolvedContactName = isGroup ? null : pushName;
+
+      // For group chats: fetch the real group name from Evolution API
+      // For 1-on-1 chats: use pushName (WhatsApp display name)
+      let resolvedContactName = null;
+      if (isGroup) {
+        // Try to get real group name — fallback to existing conversation name or null
+        resolvedContactName = await evolutionApi.getGroupInfo(instanceName, remoteJid);
+      } else {
+        resolvedContactName = pushName;
+      }
 
       conversation = await chatService.upsertConversation(
         instance.tenantId,
         contactNumber,
-        { content: text || `[${messageType}]`, fromMe, contactName: resolvedContactName }
+        {
+          content: text || `[${messageType}]`,
+          fromMe,
+          // Only update contactName if we have a real name (preserve existing group name if API fails)
+          contactName: resolvedContactName || undefined
+        }
       );
 
       console.log(`[Webhook] ✅ Conversation upserted: ${conversation.id}`);
