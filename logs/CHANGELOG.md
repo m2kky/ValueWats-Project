@@ -295,3 +295,4 @@ All notable changes to the ValueWats project, tracked by date.
 - **Email service**: OTP via SMTP (Hostinger).
 - **Queue system**: BullMQ for throttled campaign message delivery.
 - **Coolify deployment**: Single-container setup with Nginx proxy.
+## [2026-03-02] UI Toggles & Badges Update

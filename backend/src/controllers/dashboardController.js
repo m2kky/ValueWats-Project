@@ -6,22 +6,24 @@ const getStats = async (req, res) => {
     const { tenantId } = req.user;
 
     // 1. Get Campaign Counts
-    // We want: Total Campaigns
     const totalCampaigns = await prisma.campaign.count({
       where: { tenantId }
     });
 
-    // 2. Get Message Stats
-    // We want: Total Messages, Sent, Delivered, Read, Failed
-    const messageStats = await prisma.message.groupBy({
+    // 2. Get Message Stats (Campaign Messages)
+    const campaignMessageStats = await prisma.message.groupBy({
       by: ['status'],
+      where: { tenantId },
+      _count: { id: true }
+    });
+
+    // 2.5 Get Inbox Chat Message Stats
+    const chatMessageStats = await prisma.chatMessage.groupBy({
+      by: ['status', 'direction'],
       where: {
-        tenantId,
-        // Optional: filter by date range if passed in query params
+        conversation: { tenantId }
       },
-      _count: {
-        id: true
-      }
+      _count: { id: true }
     });
 
     const stats = {
@@ -33,10 +35,10 @@ const getStats = async (req, res) => {
       pending: 0
     };
 
-    messageStats.forEach(stat => {
+    // Aggregate Campaign Messages
+    campaignMessageStats.forEach(stat => {
       const count = stat._count.id;
       stats.total += count;
-
       const status = stat.status.toLowerCase();
       if (status === 'sent') stats.sent += count;
       else if (status === 'delivered') stats.delivered += count;
@@ -45,56 +47,52 @@ const getStats = async (req, res) => {
       else if (status === 'pending') stats.pending += count;
     });
 
-    // Note: 'delivered' usually implies 'sent', and 'read' implies 'delivered'.
-    // Depending on how we want to display, we might want cumulative counts.
-    // For now, let's keep them as mutually exclusive buckets based on current status.
+    // Aggregate Inbox Messages (Outgoing only, or count both as total traffic)
+    let aiMessages = 0;
+    chatMessageStats.forEach(stat => {
+      const count = stat._count.id;
+      stats.total += count; // Count all inbox activity as well
+      const status = stat.status.toLowerCase();
+
+      // We only care about delivery statuses for outgoing messages mostly
+      if (stat.direction === 'outgoing') {
+        if (status === 'sent') stats.sent += count;
+        else if (status === 'delivered') stats.delivered += count;
+        else if (status === 'read') stats.read += count;
+        else if (status === 'error' || status === 'failed') stats.failed += count;
+        else if (status === 'pending') stats.pending += count;
+      }
+    });
+
+    // In our ChatMessages, AI messages are often tracked uniquely, but for now we'll 
+    // count the ones generated without a senderUserId as AI messages
+    aiMessages = await prisma.chatMessage.count({
+      where: {
+        conversation: { tenantId },
+        direction: 'outgoing',
+        senderUserId: null
+      }
+    });
 
     // 3. Get Active Instances
     const activeInstances = await prisma.instance.count({
-      where: {
-        tenantId,
-        status: 'connected'
-      }
+      where: { tenantId, status: 'connected' }
     });
 
-    // 4. Get Total Contacts (Unique recipients)
-    // Prisma doesn't support distinct count on non-unique fields directly efficiently in all DBs via count()
-    // But for postgres we can do filtered count or just count all messages recipients? 
-    // Actually, "Contacts" usually implies unique people. 
-    // Since we don't have a specific Contact model yet (it's embedded in messages/campaigns), 
-    // we might just return total messages as proxy or 0 for now until we have a Contact book.
-    // Or we can count distinct recipientNumbers from Messages.
-
-    // Let's use total messages for now as "Touchpoints" or similar, 
-    // or just return 0 if we don't have a contact book.
-    // Actually, the dashboard card says "Total Contacts". 
-    // Let's query distinct recipientNumber from Message table for now.
-
-    const uniqueContacts = await prisma.message.findMany({
-      where: { tenantId },
-      distinct: ['recipientNumber'],
-      select: { recipientNumber: true }
+    // 4. Get Total Contacts -> we can just use the number of unique conversations as "reach"
+    const totalContacts = await prisma.conversation.count({
+      where: { tenantId }
     });
-    const totalContacts = uniqueContacts.length;
 
     // 5. Calculate Rates
-    const deliveryRate = stats.sent > 0 ? (stats.delivered / stats.sent) * 100 : 0;
-    const readRate = stats.delivered > 0 ? (stats.read / stats.delivered) * 100 : 0;
+    // Sent metric usually denotes successful transfer to WhatsApp node, so delivered is a subset of sent.
+    const attemptCount = stats.sent + stats.delivered + stats.read;
+    const deliveryRate = attemptCount > 0 ? ((stats.delivered + stats.read) / attemptCount) * 100 : 0;
+    const readRate = (stats.delivered + stats.read) > 0 ? (stats.read / (stats.delivered + stats.read)) * 100 : 0;
 
     // 6. AI Agent Metrics
-    const aiMessages = await prisma.chatMessage.count({
-      where: {
-        tenantId,
-        direction: 'outgoing',
-        // In our system, AI messages are usually marked via metadata 
-        // or we can count messages from sessions where an agent was active
-      }
-    });
-
     const aiSessionsCount = await prisma.conversationAgent.count({
-      where: {
-        agent: { tenantId }
-      }
+      where: { agent: { tenantId } }
     });
 
     const escalations = await prisma.conversation.count({
@@ -106,11 +104,7 @@ const getStats = async (req, res) => {
       where: { tenantId },
       orderBy: { createdAt: 'desc' },
       take: 5,
-      include: {
-        _count: {
-          select: { messages: true }
-        }
-      }
+      include: { _count: { select: { messages: true } } }
     });
 
     // 8. Team Insights
@@ -119,12 +113,11 @@ const getStats = async (req, res) => {
       select: {
         id: true,
         email: true,
+        name: true,
         role: true,
         _count: {
           select: {
-            sentMessages: {
-              where: { direction: 'outgoing' }
-            }
+            sentMessages: { where: { direction: 'outgoing' } }
           }
         }
       }
@@ -132,7 +125,7 @@ const getStats = async (req, res) => {
 
     const teamInsights = teamMembers.map(u => ({
       id: u.id,
-      name: u.email.split('@')[0], // Extract name from email for display
+      name: u.name || u.email.split('@')[0],
       role: u.role,
       messagesReplied: u._count.sentMessages
     })).sort((a, b) => b.messagesReplied - a.messagesReplied);
@@ -158,7 +151,7 @@ const getStats = async (req, res) => {
         createdAt: c.createdAt,
         messageCount: c._count.messages
       })),
-      teamInsights // added to response
+      teamInsights
     });
 
   } catch (error) {
