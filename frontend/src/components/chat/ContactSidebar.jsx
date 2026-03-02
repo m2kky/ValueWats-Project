@@ -13,7 +13,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 
-export default function ContactSidebar({ conversation, agents, users, onUpdate }) {
+export default function ContactSidebar({ conversation, agents, users, onToggle, onUpdate }) {
   const [loading, setLoading] = useState(false);
   const [editingFields, setEditingFields] = useState(false);
   const [formData, setFormData] = useState({
@@ -151,9 +151,15 @@ export default function ContactSidebar({ conversation, agents, users, onUpdate }
     <div className="w-80 min-w-[320px] h-full bg-[#0f0f11] border-l border-white/5 flex flex-col overflow-y-auto custom-scrollbar">
 
       {/* Header */}
-      <div className="p-4 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#0f0f11] z-10">
+      <div className="p-4 border-b border-white/5 flex items-center gap-3 sticky top-0 bg-[#0f0f11] z-10">
+        <button onClick={onToggle} className="p-1 hover:bg-white/10 rounded text-zinc-400 transition-colors" title="Collapse Contact Details">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="15" y1="3" x2="15" y2="21"></line>
+            <path d="M10 16l4-4-4-4"></path>
+          </svg>
+        </button>
         <h3 className="font-bold text-white flex items-center gap-2">
-          <UserCircleIcon className="w-5 h-5 text-indigo-400" />
           Contact details
         </h3>
       </div>

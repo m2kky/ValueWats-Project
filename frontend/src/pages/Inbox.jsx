@@ -260,10 +260,22 @@ export default function Inbox() {
                 conversation={selectedConversation}
                 agents={agents}
                 users={users}
-                onClose={() => setShowContactSidebar(false)}
+                onToggle={() => setShowContactSidebar(!showContactSidebar)}
                 onUpdate={handleConversationUpdate}
               />
             )}
+
+            {/* Right Mini Toolbar (Like Image 2) */}
+            <div className="w-12 h-full bg-[#0f0f11] border-l border-white/5 flex flex-col items-center py-4 gap-4 z-10">
+              <button
+                onClick={() => setShowContactSidebar(!showContactSidebar)}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${showContactSidebar ? 'bg-indigo-500 text-white shadow-lg' : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'
+                  }`}
+                title="Toggle Contact Details"
+              >
+                <UserCircleIcon className="w-5 h-5" />
+              </button>
+            </div>
           </>
         ) : (
           <div className="inbox-empty-state">
