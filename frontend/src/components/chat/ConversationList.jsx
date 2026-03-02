@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { formatPhoneNumber } from '../../utils/formatters';
-import { ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline';
 
-export default function ConversationList({ conversations, selectedId, onSelect, loading, onSync, syncing, activeFilter = 'all' }) {
+export default function ConversationList({ conversations, selectedId, onSelect, loading, onSync, syncing, activeFilter = 'all', showFilters, onToggleFilters }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showUnread, setShowUnread] = useState(false);
 
@@ -64,7 +64,14 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
               Calls
             </button>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-zinc-400">
+            <button
+              onClick={onToggleFilters}
+              className={`p-2 rounded-xl hover:bg-white/5 transition-all ${showFilters ? 'text-white bg-white/5' : ''}`}
+            >
+              <FunnelIcon className="w-5 h-5" />
+            </button>
+            <div className="w-px h-5 bg-white/10 mx-1"></div>
             <button
               onClick={onSync}
               disabled={syncing}
@@ -158,49 +165,52 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
                       )}
                       <span className="truncate">{conv.lastMessage || 'No discussion yet'}</span>
                     </p>
-                    {/* Badge & Assignee */}
-                    <div className="flex items-center gap-2 mt-1">
+                    {/* Badges Container */}
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      {/* Lifecycle Stage / New Lead */}
                       {conv.lifecycleStage ? (
                         <span
-                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border uppercase tracking-wider"
+                          className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium border"
                           style={{
                             backgroundColor: `${conv.lifecycleStage.color}15` || 'rgba(59, 130, 246, 0.1)',
                             color: conv.lifecycleStage.color || '#3b82f6',
-                            borderColor: `${conv.lifecycleStage.color}30` || 'rgba(59, 130, 246, 0.2)'
+                            borderColor: `${conv.lifecycleStage.color}20` || 'rgba(59, 130, 246, 0.15)'
                           }}
                         >
+                          <div className="w-1.5 h-1.5 rounded-full mr-1.5 opacity-80" style={{ backgroundColor: conv.lifecycleStage.color || '#3b82f6' }}></div>
                           {conv.lifecycleStage.name}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                          <div className="w-1.5 h-1.5 rounded-full mr-1.5 opacity-80 bg-blue-400"></div>
                           New Lead
-                        </span>
-                      )}
-
-                      {conv.assignedUser && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
-                          👤 {conv.assignedUser.email.split('@')[0]}
-                        </span>
-                      )}
-                      {conv.currentAgentId && !conv.assignedUser && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase tracking-wider">
-                          🤖 Bot
                         </span>
                       )}
 
                       {/* Group Label */}
                       {conv.isGroup && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+                        <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
                           👥 Group
                         </span>
                       )}
 
                       {/* Instance Label */}
                       {conv.instanceName && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-500/10 text-teal-400 border border-teal-500/20 tracking-wider" title={`Instance: ${conv.instanceName}`}>
-                          📱 {conv.instanceName.length > 12 ? conv.instanceName.slice(0, 12) + '…' : conv.instanceName}
+                        <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800/80 text-zinc-400 border border-zinc-700/80 max-w-[100px] truncate" title={`Instance: ${conv.instanceName}`}>
+                          📱 {conv.instanceName}
                         </span>
                       )}
+
+                      {/* Assignee / Bot Label */}
+                      {conv.assignedUser ? (
+                        <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800/80 text-zinc-400 border border-zinc-700/80">
+                          {conv.assignedUser.email.split('@')[0]}
+                        </span>
+                      ) : conv.currentAgentId ? (
+                        <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                          🤖 Bot
+                        </span>
+                      ) : null}
                     </div>
                   </div>
 

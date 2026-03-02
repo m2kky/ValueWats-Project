@@ -10,7 +10,7 @@ import {
     Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
-export default function InboxFiltersSidebar({ conversations, activeFilter, setActiveFilter }) {
+export default function InboxFiltersSidebar({ conversations, activeFilter, setActiveFilter, onClose }) {
     const [stages, setStages] = useState([]);
 
     useEffect(() => {
@@ -35,9 +35,16 @@ export default function InboxFiltersSidebar({ conversations, activeFilter, setAc
         <aside className="w-[260px] bg-[#0f0f11] border-r border-white/5 flex flex-col h-full shrink-0">
             <div className="p-4 flex items-center justify-between mb-2 mt-2">
                 <h2 className="text-[1.1rem] font-bold text-white tracking-wide">Inbox</h2>
-                <button className="text-zinc-500 hover:text-white transition-colors">
-                    <Cog6ToothIcon className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1">
+                    <button className="text-zinc-500 hover:text-white transition-colors p-1">
+                        <Cog6ToothIcon className="w-4 h-4" />
+                    </button>
+                    {onClose && (
+                        <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors p-1" title="Close panel">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-3 space-y-6 pb-4 custom-scrollbar">

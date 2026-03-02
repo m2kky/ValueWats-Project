@@ -18,6 +18,8 @@ export default function Inbox() {
   const [socket, setSocket] = useState(null);
   const [initialSynced, setInitialSynced] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(true);
+  const [showContactSidebar, setShowContactSidebar] = useState(true);
 
   // Setup socket connection
   useEffect(() => {
@@ -215,11 +217,14 @@ export default function Inbox() {
 
   return (
     <div className="inbox-container">
-      <InboxFiltersSidebar
-        conversations={conversations}
-        activeFilter={activeFilter}
-        setActiveFilter={setActiveFilter}
-      />
+      {showFilters && (
+        <InboxFiltersSidebar
+          conversations={conversations}
+          activeFilter={activeFilter}
+          setActiveFilter={setActiveFilter}
+          onClose={() => setShowFilters(false)}
+        />
+      )}
 
       {/* Conversation List Sidebar */}
       <aside className="inbox-sidebar">
@@ -231,6 +236,8 @@ export default function Inbox() {
           onSync={handleSync}
           syncing={syncing}
           activeFilter={activeFilter}
+          showFilters={showFilters}
+          onToggleFilters={() => setShowFilters(!showFilters)}
         />
       </aside>
 
@@ -244,15 +251,19 @@ export default function Inbox() {
                 instances={instances}
                 onSendMessage={handleSendMessage}
                 onUpdate={handleConversationUpdate}
+                showContactSidebar={showContactSidebar}
+                onToggleContactSidebar={() => setShowContactSidebar(!showContactSidebar)}
               />
             </div>
-            <ContactSidebar
-              conversation={selectedConversation}
-              agents={agents}
-              users={users}
-              onClose={null}
-              onUpdate={handleConversationUpdate}
-            />
+            {showContactSidebar && (
+              <ContactSidebar
+                conversation={selectedConversation}
+                agents={agents}
+                users={users}
+                onClose={() => setShowContactSidebar(false)}
+                onUpdate={handleConversationUpdate}
+              />
+            )}
           </>
         ) : (
           <div className="inbox-empty-state">
