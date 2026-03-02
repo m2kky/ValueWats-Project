@@ -17,13 +17,10 @@ export default function ContactSidebar({ conversation, agents, users, onClose, o
   const [loading, setLoading] = useState(false);
   const [editingFields, setEditingFields] = useState(false);
   const [formData, setFormData] = useState({
-    contactName: conversation?.contactName || '',
-    email: '',
-    country: '',
-    language: ''
+    contactName: conversation?.contactName || ''
   });
 
-  const [contactFields, setContactFields] = useState([]);
+  const [customFields, setCustomFields] = useState([]);
   const [assignDropdownOpen, setAssignDropdownOpen] = useState(false);
   const [stageDropdownOpen, setStageDropdownOpen] = useState(false);
   const [lifecycleStages, setLifecycleStages] = useState([]);
@@ -31,12 +28,22 @@ export default function ContactSidebar({ conversation, agents, users, onClose, o
   useEffect(() => {
     if (conversation) {
       setFormData({
-        contactName: conversation.contactName || '',
-        email: conversation.contactFields?.find(f => f.fieldName === 'email')?.fieldValue || '',
-        country: conversation.contactFields?.find(f => f.fieldName === 'country')?.fieldValue || '',
-        language: conversation.contactFields?.find(f => f.fieldName === 'language')?.fieldValue || '',
+        contactName: conversation.contactName || ''
       });
-      setContactFields(conversation.contactFields || []);
+
+      // Load standard and custom fields into dynamic array
+      const existingFields = conversation.contactFields || [];
+      // Ensure we always have at least Email, Country, Language visible for quick editing
+      const standardKeys = ['email', 'country', 'language'];
+      const mergedFields = [...existingFields.map(f => ({ name: f.fieldName, value: f.fieldValue }))];
+
+      standardKeys.forEach(key => {
+        if (!mergedFields.find(f => f.name.toLowerCase() === key)) {
+          mergedFields.push({ name: key, value: '' });
+        }
+      });
+
+      setCustomFields(mergedFields);
       fetchStages();
     }
   }, [conversation]);
@@ -53,18 +60,23 @@ export default function ContactSidebar({ conversation, agents, users, onClose, o
   const handleSaveFields = async () => {
     setLoading(true);
     try {
-      const customFields = [
-        { name: 'email', value: formData.email },
-        { name: 'country', value: formData.country },
-        { name: 'language', value: formData.language }
-      ].filter(f => f.value);
+      const fieldsToSave = customFields.filter(f => f.name && f.value).map(f => ({ name: f.name.toLowerCase(), value: f.value }));
 
       const { data } = await api.put(`/chat/conversations/${conversation.id}/contact`, {
         contactName: formData.contactName,
-        customFields
+        customFields: fieldsToSave
       });
 
-      setContactFields(data.conversation?.contactFields || customFields);
+      // Update local state without losing standard empty keys
+      const savedFields = data.conversation?.contactFields?.map(f => ({ name: f.fieldName, value: f.fieldValue })) || fieldsToSave;
+      const standardKeys = ['email', 'country', 'language'];
+      standardKeys.forEach(key => {
+        if (!savedFields.find(f => f.name.toLowerCase() === key)) {
+          savedFields.push({ name: key, value: '' });
+        }
+      });
+
+      setCustomFields(savedFields);
       setEditingFields(false);
       if (onUpdate) onUpdate(data.conversation);
     } catch (error) {
@@ -282,7 +294,7 @@ export default function ContactSidebar({ conversation, agents, users, onClose, o
           </div>
 
           <div className="space-y-4">
-            {/* Phone */}
+            {/* Phone (Always fixed) */}
             <div className="flex gap-3">
               <PhoneIcon className="w-5 h-5 text-zinc-500 mt-1 shrink-0" />
               <div className="flex-1">
@@ -291,68 +303,72 @@ export default function ContactSidebar({ conversation, agents, users, onClose, o
               </div>
             </div>
 
-            {/* Email */}
-            <div className="flex gap-3">
-              <EnvelopeIcon className="w-5 h-5 text-zinc-500 mt-1 shrink-0" />
-              <div className="flex-1">
-                <div className="text-xs text-zinc-500 mb-1">Email Address</div>
-                {editingFields ? (
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-zinc-900 border border-white/10 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
-                    placeholder="example@domain.com"
-                  />
-                ) : (
-                  <div className="text-sm text-zinc-300">{formData.email || <span className="text-zinc-600 italic">No email</span>}</div>
-                )}
+            {/* Dynamic Custom Fields */}
+            {customFields.map((field, idx) => (
+              <div key={idx} className="flex gap-3 relative">
+                <GlobeAltIcon className="w-5 h-5 text-zinc-500 mt-1 shrink-0" />
+                <div className="flex-1">
+                  {editingFields ? (
+                    <div className="flex flex-col gap-1">
+                      <input
+                        type="text"
+                        value={field.name}
+                        onChange={(e) => {
+                          const newFields = [...customFields];
+                          newFields[idx].name = e.target.value;
+                          setCustomFields(newFields);
+                        }}
+                        className="text-xs font-bold text-zinc-400 bg-transparent border-b border-white/10 focus:border-indigo-500 focus:outline-none uppercase tracking-wider mb-1"
+                        placeholder="Field Name"
+                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={field.value}
+                          onChange={(e) => {
+                            const newFields = [...customFields];
+                            newFields[idx].value = e.target.value;
+                            setCustomFields(newFields);
+                          }}
+                          className="w-full bg-zinc-900 border border-white/10 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
+                          placeholder={`Enter ${field.name || 'value'}`}
+                        />
+                        <button
+                          onClick={() => setCustomFields(customFields.filter((_, i) => i !== idx))}
+                          className="text-zinc-500 hover:text-red-400"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Hide empty standard fields in view mode to keep UI clean, unless there is a value */}
+                      {(field.value || ['email', 'country', 'language'].includes(field.name.toLowerCase())) && (
+                        <>
+                          <div className="text-xs text-zinc-500 mb-1 capitalize tracking-wider">{field.name}</div>
+                          <div className="text-sm text-zinc-300">
+                            {field.value || <span className="text-zinc-600 italic">No {field.name}</span>}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
+            ))}
 
-            {/* Country */}
-            <div className="flex gap-3">
-              <GlobeAltIcon className="w-5 h-5 text-zinc-500 mt-1 shrink-0" />
-              <div className="flex-1">
-                <div className="text-xs text-zinc-500 mb-1">Country</div>
-                {editingFields ? (
-                  <input
-                    type="text"
-                    value={formData.country}
-                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                    className="w-full bg-zinc-900 border border-white/10 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
-                    placeholder="e.g. Egypt"
-                  />
-                ) : (
-                  <div className="text-sm text-zinc-300">{formData.country || <span className="text-zinc-600 italic">No country</span>}</div>
-                )}
-              </div>
-            </div>
-
-            {/* Language */}
-            <div className="flex gap-3">
-              <LanguageIcon className="w-5 h-5 text-zinc-500 mt-1 shrink-0" />
-              <div className="flex-1">
-                <div className="text-xs text-zinc-500 mb-1">Language</div>
-                {editingFields ? (
-                  <input
-                    type="text"
-                    value={formData.language}
-                    onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                    className="w-full bg-zinc-900 border border-white/10 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
-                    placeholder="e.g. Arabic"
-                  />
-                ) : (
-                  <div className="text-sm text-zinc-300">{formData.language || <span className="text-zinc-600 italic">No language</span>}</div>
-                )}
-              </div>
-            </div>
-
+            {editingFields && (
+              <button
+                onClick={() => setCustomFields([...customFields, { name: '', value: '' }])}
+                className="w-full flex items-center justify-center gap-2 py-2 border border-dashed border-white/20 rounded-lg text-xs text-zinc-400 hover:text-white hover:border-white/40 transition-all mt-4"
+              >
+                <PlusIcon className="w-4 h-4" /> Add Custom Field
+              </button>
+            )}
           </div>
         </div>
-
       </div>
-
     </div>
   );
 }

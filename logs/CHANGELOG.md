@@ -7,10 +7,14 @@ All notable changes to the ValueWats project, tracked by date.
 ## [2026-03-01] — Agent Actions & UI Refinements
 
 ### Added
+- **Inbox Custom Fields Sync**: Completely refactored `ContactSidebar.jsx` to dynamically render custom fields and allow adding infinite new fields on the fly. Fields are strictly synced and upserted back to the `ContactField` and `Contact` models upon saving.
+- **Inbox Dynamic Functional Filters**: Connected `Inbox.jsx`, `InboxFiltersSidebar.jsx`, and `ConversationList.jsx` states to enable fully functional live filtering across categories (All, Mine, Unassigned, Unread).
+- **Dynamic Leads Status Badges**: Added logic to dynamically render CRM Lifecycle Stages correctly mapped with custom colors in the ConversationList and ChatWindow (replacing the hardcoded "New Lead").
 - **Team Assignment**: Upgraded the chat assignment functionality to populate from actual team members (Users) instead of AI agents.
 - **Team Insights Dashboard**: Introduced a new "Team Insights" section ranking team members by their number of replies.
 
 ### Fixed
+- **Unread Toggle Fixed**: Restored functionality to the Unread toggle button in the Inbox to correctly parse local `unreadCount`.
 - **Group Chat Names Overriden**: Fixed `webhookController.js` pulling the `pushName` of individual senders on group chats and using it to override the conversation name by bypassing assignment logic for IDs containing `@g.us`.
 - **Team Assignment ID Nullification**: Fixed a payload bug in `ContactSidebar.jsx` where selecting a team member sent an `agentId` instead of a `userId`, resulting in missing selections on the server.
 - **Inbox Flex Layout (Sidebar Cutoff)**: Fixed `.inbox-main` flex-direction CSS bug. Changing it to `row` ensured the ContactSidebar renders correctly on the right side instead of cutting off underneath the chat window.

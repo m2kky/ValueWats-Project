@@ -17,6 +17,7 @@ export default function Inbox() {
   const [syncing, setSyncing] = useState(false);
   const [socket, setSocket] = useState(null);
   const [initialSynced, setInitialSynced] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
 
   // Setup socket connection
   useEffect(() => {
@@ -214,7 +215,11 @@ export default function Inbox() {
 
   return (
     <div className="inbox-container">
-      <InboxFiltersSidebar conversations={conversations} />
+      <InboxFiltersSidebar
+        conversations={conversations}
+        activeFilter={activeFilter}
+        setActiveFilter={setActiveFilter}
+      />
 
       {/* Conversation List Sidebar */}
       <aside className="inbox-sidebar">
@@ -225,6 +230,7 @@ export default function Inbox() {
           loading={loading}
           onSync={handleSync}
           syncing={syncing}
+          activeFilter={activeFilter}
         />
       </aside>
 

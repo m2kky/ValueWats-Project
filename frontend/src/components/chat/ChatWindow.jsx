@@ -79,9 +79,22 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
           <div className="flex flex-col">
             <h3 className="font-bold text-[15px] text-white tracking-tight flex items-center gap-2">
               {conversation.contactName || conversation.contactNumber}
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">
-                New Lead
-              </span>
+              {conversation.lifecycleStage ? (
+                <span
+                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border uppercase tracking-wider"
+                  style={{
+                    backgroundColor: `${conversation.lifecycleStage.color}15` || 'rgba(59, 130, 246, 0.1)',
+                    color: conversation.lifecycleStage.color || '#3b82f6',
+                    borderColor: `${conversation.lifecycleStage.color}30` || 'rgba(59, 130, 246, 0.2)'
+                  }}
+                >
+                  {conversation.lifecycleStage.name}
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">
+                  New Lead
+                </span>
+              )}
             </h3>
           </div>
         </div>

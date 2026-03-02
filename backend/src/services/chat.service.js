@@ -90,14 +90,26 @@ class ChatService {
       where,
       include: {
         lifecycleStage: true,
-        assignedUser: { select: { id: true, email: true } }
+        assignedUser: { select: { id: true, email: true } },
+        messages: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            instance: { select: { id: true, instanceName: true } }
+          }
+        }
       },
       orderBy: { lastMessageAt: 'desc' },
       take: limit,
       skip: offset
     });
 
-    return conversations;
+    // Attach instance info from most recent message for easy access on frontend
+    return conversations.map(conv => ({
+      ...conv,
+      instanceName: conv.messages?.[0]?.instance?.instanceName || null,
+      isGroup: conv.contactNumber?.includes('@g.us') || false
+    }));
   }
 
   /**
@@ -152,11 +164,20 @@ class ChatService {
       include: { lifecycleStage: true }
     });
 
-    // 2. Update Custom Fields
+    // 2. Sync to Contacts Table
+    const contactData = {
+      tenantId,
+      phoneNumber: conversation.contactNumber,
+      name: conversation.contactName || undefined,
+      lifecycleStageId: lifecycleStageId !== undefined ? lifecycleStageId : undefined,
+    };
+
+    const customFieldsToSave = {};
     if (customFields && Array.isArray(customFields)) {
       for (const field of customFields) {
         if (!field.name || !field.value) continue;
 
+        // Save dynamically to Contact Field table
         await prisma.contactField.upsert({
           where: {
             tenantId_contactNumber_fieldName: {
@@ -173,8 +194,38 @@ class ChatService {
             fieldValue: field.value
           }
         });
+
+        // Set standard fields for Contact if they match
+        if (field.name.toLowerCase() === 'email') contactData.email = field.value;
+        if (field.name.toLowerCase() === 'gender') contactData.gender = field.value;
+        if (field.name.toLowerCase() === 'address') contactData.address = field.value;
+        if (field.name.toLowerCase() === 'governorate') contactData.governorate = field.value;
+        if (field.name.toLowerCase() === 'district') contactData.district = field.value;
+
+        // Keep a neat JSON of all fields for `customFields` JSON column inside
+        customFieldsToSave[field.name] = field.value;
       }
+
+      contactData.customFields = customFieldsToSave;
     }
+
+    await prisma.contact.upsert({
+      where: {
+        tenantId_phoneNumber: {
+          tenantId,
+          phoneNumber: conversation.contactNumber
+        }
+      },
+      update: {
+        ...contactData,
+        // Make sure we don't accidentally overwrite with undefined
+        ...(contactData.name && { name: contactData.name }),
+        ...(contactData.email && { email: contactData.email }),
+        ...(contactData.gender && { gender: contactData.gender }),
+        ...(contactData.address && { address: contactData.address })
+      },
+      create: contactData
+    });
 
     return conversation;
   }

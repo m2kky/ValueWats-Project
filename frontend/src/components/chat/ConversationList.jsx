@@ -3,13 +3,32 @@ import { formatDistanceToNow } from 'date-fns';
 import { formatPhoneNumber } from '../../utils/formatters';
 import { ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
-export default function ConversationList({ conversations, selectedId, onSelect, loading, onSync, syncing }) {
+export default function ConversationList({ conversations, selectedId, onSelect, loading, onSync, syncing, activeFilter = 'all' }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [showUnread, setShowUnread] = useState(false);
 
-  const filtered = conversations.filter(conv =>
-    (conv.contactName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conv.contactNumber.includes(searchTerm)
-  );
+  const filtered = conversations.filter(conv => {
+    // 1. Search Term filter
+    const matchesSearch = (conv.contactName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      conv.contactNumber.includes(searchTerm);
+    if (!matchesSearch) return false;
+
+    // 2. Unread filter
+    if (showUnread && conv.unreadCount === 0) return false;
+
+    // 3. Sidebar active filters
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (activeFilter === 'mine') {
+      return conv.assignedUserId === user.id;
+    } else if (activeFilter === 'unassigned') {
+      return !conv.assignedUserId && !conv.currentAgentId;
+    } else if (activeFilter.startsWith('stage_')) {
+      const stageId = activeFilter.replace('stage_', '');
+      return conv.lifecycleStageId === stageId;
+    }
+
+    return true; // 'all' or default
+  });
 
   if (loading && conversations.length === 0) {
     return (
@@ -69,8 +88,11 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
           </button>
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-zinc-500">Unread</span>
-            <div className="w-7 h-4 bg-white/10 rounded-full relative cursor-pointer">
-              <div className="absolute left-0.5 top-0.5 w-3 h-3 bg-zinc-400 rounded-full transition-all"></div>
+            <div
+              className={`w-7 h-4 rounded-full relative cursor-pointer transition-all ${showUnread ? 'bg-indigo-500' : 'bg-white/10'}`}
+              onClick={() => setShowUnread(!showUnread)}
+            >
+              <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${showUnread ? 'left-3.5' : 'left-0.5 bg-zinc-400'}`}></div>
             </div>
           </div>
         </div>
@@ -137,10 +159,24 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
                       <span className="truncate">{conv.lastMessage || 'No discussion yet'}</span>
                     </p>
                     {/* Badge & Assignee */}
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">
-                        New Lead
-                      </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      {conv.lifecycleStage ? (
+                        <span
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border uppercase tracking-wider"
+                          style={{
+                            backgroundColor: `${conv.lifecycleStage.color}15` || 'rgba(59, 130, 246, 0.1)',
+                            color: conv.lifecycleStage.color || '#3b82f6',
+                            borderColor: `${conv.lifecycleStage.color}30` || 'rgba(59, 130, 246, 0.2)'
+                          }}
+                        >
+                          {conv.lifecycleStage.name}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">
+                          New Lead
+                        </span>
+                      )}
+
                       {conv.assignedUser && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
                           👤 {conv.assignedUser.email.split('@')[0]}
@@ -149,6 +185,20 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
                       {conv.currentAgentId && !conv.assignedUser && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase tracking-wider">
                           🤖 Bot
+                        </span>
+                      )}
+
+                      {/* Group Label */}
+                      {conv.isGroup && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+                          👥 Group
+                        </span>
+                      )}
+
+                      {/* Instance Label */}
+                      {conv.instanceName && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-500/10 text-teal-400 border border-teal-500/20 tracking-wider" title={`Instance: ${conv.instanceName}`}>
+                          📱 {conv.instanceName.length > 12 ? conv.instanceName.slice(0, 12) + '…' : conv.instanceName}
                         </span>
                       )}
                     </div>
