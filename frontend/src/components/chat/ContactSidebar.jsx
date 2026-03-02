@@ -13,7 +13,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 
-export default function ContactSidebar({ conversation, agents, users, onClose, onUpdate }) {
+export default function ContactSidebar({ conversation, agents, users, onUpdate }) {
   const [loading, setLoading] = useState(false);
   const [editingFields, setEditingFields] = useState(false);
   const [formData, setFormData] = useState({
@@ -156,11 +156,6 @@ export default function ContactSidebar({ conversation, agents, users, onClose, o
           <UserCircleIcon className="w-5 h-5 text-indigo-400" />
           Contact details
         </h3>
-        {onClose && (
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 text-zinc-400">
-            <XMarkIcon className="w-5 h-5" />
-          </button>
-        )}
       </div>
 
       {/* Profile Overview */}

@@ -10,7 +10,7 @@ import {
     Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
-export default function InboxFiltersSidebar({ conversations, activeFilter, setActiveFilter, onClose }) {
+export default function InboxFiltersSidebar({ conversations, activeFilter, setActiveFilter }) {
     const [stages, setStages] = useState([]);
 
     useEffect(() => {
@@ -36,14 +36,9 @@ export default function InboxFiltersSidebar({ conversations, activeFilter, setAc
             <div className="p-4 flex items-center justify-between mb-2 mt-2">
                 <h2 className="text-[1.1rem] font-bold text-white tracking-wide">Inbox</h2>
                 <div className="flex items-center gap-1">
-                    <button className="text-zinc-500 hover:text-white transition-colors p-1">
+                    <button className="text-zinc-500 hover:text-white transition-colors p-1" title="Settings">
                         <Cog6ToothIcon className="w-4 h-4" />
                     </button>
-                    {onClose && (
-                        <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors p-1" title="Close panel">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    )}
                 </div>
             </div>
 
