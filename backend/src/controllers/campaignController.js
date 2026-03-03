@@ -12,8 +12,15 @@ const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 const createCampaign = async (req, res) => {
   try {
-    const { name, instanceIds, message, messages, numbers, googleSheetUrl, phoneColumn, delayMin = 5, delayMax = 15, instanceSwitchCount = 50, messageRotationCount = 1, scheduledAt, endAt } = req.body;
+    const { name, instanceIds, message, messages, numbers, googleSheetUrl, phoneColumn, delayMin = 15, delayMax = 25, instanceSwitchCount = 50, messageRotationCount = 1, scheduledAt, endAt } = req.body;
+
     const tenantId = req.user.tenantId;
+
+    // Load tenant + plan for limit enforcement
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: { plan: true }
+    });
 
     // Handle messages (support both single 'message' and array 'messages')
     let messageList = [];
@@ -154,6 +161,33 @@ const createCampaign = async (req, res) => {
       return res.status(400).json({ error: 'No valid phone numbers found. Numbers must be 7-15 digits.' });
     }
 
+    // ====== PHASE 2: Plan-Based Contact Limit ======
+    const plan = tenant?.plan;
+    if (plan && contacts.length > plan.maxContactsPerCampaign) {
+      return res.status(402).json({
+        error: `Contact list exceeds your plan limit of ${plan.maxContactsPerCampaign} contacts per campaign. Please upgrade your plan or reduce the contact list.`,
+        limit: plan.maxContactsPerCampaign,
+        requested: contacts.length
+      });
+    }
+
+    // ====== PHASE 3: Filter Out Blacklisted Contacts (Opt-out) ======
+    const phoneNumbers = contacts.map(c => c.number);
+    const blacklistedContacts = await prisma.contact.findMany({
+      where: { tenantId, phoneNumber: { in: phoneNumbers }, blacklisted: true },
+      select: { phoneNumber: true }
+    });
+    const blacklistedSet = new Set(blacklistedContacts.map(c => c.phoneNumber));
+    const filteredContacts = contacts.filter(c => !blacklistedSet.has(c.number));
+    if (blacklistedSet.size > 0) {
+      console.log(`[Campaign] Filtered out ${blacklistedSet.size} blacklisted contact(s) from campaign.`);
+    }
+    contacts = filteredContacts;
+
+    if (contacts.length === 0) {
+      return res.status(400).json({ error: 'All provided contacts have opted out of marketing messages.' });
+    }
+
     // Handle Media Attachment
     let mediaUrl = null;
     let mediaType = null;
@@ -227,10 +261,22 @@ const createCampaign = async (req, res) => {
         const instanceIndex = Math.floor(i / parseInt(instanceSwitchCount)) % instanceList.length;
         const currentInstance = instanceList[instanceIndex];
         const templateIndex = Math.floor(i / parseInt(messageRotationCount)) % templates.length;
-        const currentMessage = templates[templateIndex];
+        let currentMessage = templates[templateIndex];
+
+        // Anti-Ban Spintax & Dynamic Global Variables
+        const generateInvisibleString = () => {
+          const chars = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
+          let str = '';
+          const len = Math.floor(Math.random() * 5) + 3;
+          for (let j = 0; j < len; j++) str += chars[Math.floor(Math.random() * chars.length)];
+          return str;
+        };
+
+        currentMessage += generateInvisibleString();
+        currentMessage = currentMessage.replace(/{{rand}}/gi, Math.floor(Math.random() * 10000).toString());
+        currentMessage = currentMessage.replace(/{{date}}/gi, new Date().toLocaleString('ar-EG'));
 
         const finalMessage = currentMessage;
-
 
         const messageRecord = await prisma.message.create({
           data: {
@@ -241,7 +287,8 @@ const createCampaign = async (req, res) => {
             recipientNumber: contact.number,
             tenantId,
             mediaUrl,
-            mediaType
+            mediaType,
+            variables: contact.variables || null
           }
         });
 
@@ -297,8 +344,10 @@ const createCampaign = async (req, res) => {
         parseInt(instanceSwitchCount),
         parseInt(messageRotationCount),
         mediaUrl,
-        mediaType
+        mediaType,
+        plan // Phase 4 Working Hours config
       );
+
 
       // Update status to PROCESSING now that messages are queued
       await prisma.campaign.update({

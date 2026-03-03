@@ -89,6 +89,7 @@ app.use('/api/agents', agentRoutes);
 app.use('/api/agents', require('./agents/knowledge.routes'));
 app.use('/api/lifecycle', require('./routes/lifecycle.routes'));
 app.use('/api/contacts', require('./routes/contacts'));
+app.use('/api/templates', tenantContext, require('./routes/templates'));
 
 // Public routes (Webhooks)
 app.use('/api/webhooks', webhookRoutes);

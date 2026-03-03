@@ -12,6 +12,7 @@ import {
   MagnifyingGlassIcon,
   BellIcon,
   UsersIcon,
+  DocumentDuplicateIcon
 } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
@@ -51,6 +52,7 @@ export default function Layout({ children }) {
     { name: 'Inbox', path: '/inbox', icon: ChatBubbleLeftRightIcon },
     { name: 'Contacts', path: '/contacts', icon: UsersIcon },
     { name: 'Campaigns', path: '/campaigns', icon: MegaphoneIcon },
+    { name: 'Templates', path: '/templates', icon: DocumentDuplicateIcon },
     { name: 'AI Agents', path: '/agents', icon: CpuChipIcon },
     { name: 'Instances', path: '/instances', icon: DevicePhoneMobileIcon },
     { name: 'Automations', path: '/automations', icon: BoltIcon },
@@ -88,8 +90,8 @@ export default function Layout({ children }) {
                 to={item.path}
                 title={isInboxRoute ? item.name : undefined}
                 className={`flex items-center rounded-xl transition-all group relative ${isInboxRoute
-                    ? `w-10 h-10 justify-center ${active ? 'bg-indigo-600/10 text-indigo-400' : 'text-zinc-500 hover:bg-white/5 hover:text-white'}`
-                    : `px-3 py-2.5 gap-3 ${active ? 'bg-indigo-600/10 text-indigo-400 font-bold' : 'text-zinc-400 hover:bg-white/5 hover:text-white font-medium'}`
+                  ? `w-10 h-10 justify-center ${active ? 'bg-indigo-600/10 text-indigo-400' : 'text-zinc-500 hover:bg-white/5 hover:text-white'}`
+                  : `px-3 py-2.5 gap-3 ${active ? 'bg-indigo-600/10 text-indigo-400 font-bold' : 'text-zinc-400 hover:bg-white/5 hover:text-white font-medium'}`
                   }`}
               >
                 <item.icon className={`transition-colors ${isInboxRoute ? 'w-[22px] h-[22px]' : 'w-5 h-5'} ${active ? 'text-indigo-400' : 'group-hover:text-white'}`} />

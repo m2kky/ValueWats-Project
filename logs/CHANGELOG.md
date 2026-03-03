@@ -4,6 +4,39 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-04] — WhatsApp Anti-Ban System (Phases 1-3)
+
+### Added
+- **Anti-Ban: Randomized Delays**: `queueService.js` now enforces 15-25 second random delay between messages (configurable per campaign). Frontend slider min set to 15s.
+- **Anti-Ban: Spintax & Invisible Chars**: Each outgoing message gets random zero-width Unicode characters appended. `{{rand}}` and `{{date}}` variables auto-inject randomized content.
+- **Anti-Ban: Typing Presence**: Added `evolutionApi.sendPresence()` that triggers "composing..." status 2-4 seconds before each message is dispatched, mimicking human behavior.
+- **Phase 2 — Plan Limits**: Added `Plan` model to `schema.prisma` with per-tier limits (`maxMessagesPerDay`, `maxContactsPerCampaign`, `maxInstances`, `workingHoursEnabled`).
+- **Phase 2 — Tenant.planId**: Added FK relation from `Tenant` to `Plan` so limits are enforced automatically.
+- **Phase 2 — Limit Enforcement**: `campaignController.js` now loads the tenant's plan and blocks campaign creation if contact count exceeds `maxContactsPerCampaign`.
+- **Phase 3 — Opt-out Blacklist**: Added `blacklisted` and `blacklistedAt` fields to `Contact` model.
+- **Phase 3 — Opt-out Detection**: `webhookController.js` now checks incoming messages for stop keywords (`وقف`, `stop`, `إلغاء`, etc.), marks the contact as blacklisted, and sends a confirmation reply.
+- **Phase 3 — Blacklist Filter**: `campaignController.js` filters out all blacklisted contacts before adding any jobs to the BullMQ queue.
+- **Migration**: `20260304000000_add_plans_and_blacklist` — SQL migration for `plans` table, `tenant.plan_id`, and `contact.blacklisted`.
+- **Seed Script**: `prisma/seedPlans.js` — Upserts 3 default plans (basic/pro/enterprise) with appropriate limits.
+- **Docs**: Created `docs/BACKEND_GUIDE.md`, `docs/DATABASE_SCHEMA.md`, `docs/API_REFERENCE.md`, `docs/FRONTEND_GUIDE.md`.
+- **Phase 4 — Working Hours Queue Delay**: `queueService.js` now uses `getWorkingHoursOffset` to hold scheduled campaigns and push them to the BullMQ queue at the exact moment the plan's working hours begin.
+- **Phase 4 — Working Hours Param**: Evaluated plan params passed down from `campaignController.js` to `queueService.js`.
+- **Phase 5 — Global Template Model**: Added `GlobalTemplate` to `schema.prisma` and generated manual SQL migration `20260304000001_add_global_templates`.
+- **Phase 5 — Templates API**: Build fully isolated CRUD routes (`/api/templates`) in backend mapped in `server.js` using `tenantContext`.
+- **Phase 5 — Templates UI**: Created a new sophisticated frontend library page `Templates.jsx` to draft, categorize, delete and copy templates. Accessible via sidebar.
+- **MCP**: Enabled `ssh-vps` and `redis-valuewats` MCP servers in `mcp_config.json`.
+
+### Changed
+- `NewCampaign.jsx` — Default delay changed from 5/15s to 15/25s. Slider minimum set to 15s.
+- `campaignController.js` — Default `delayMin`/`delayMax` now 15/25 seconds.
+
+### Notes
+- **DEPLOY REQUIRED**: Run `npx prisma migrate deploy` in Coolify terminal after pushing this commit.
+- **SEED REQUIRED**: Run `node prisma/seedPlans.js` to create the 3 default plans.
+- **Phase 1 (EVOLUTION_API_URL fix)** is still pending — needs the correct `.sslip.io` URL from user.
+
+---
+
 ## [2026-03-03] — Meta WhatsApp Cloud API Integration
 
 ### Added
@@ -14,6 +47,7 @@ All notable changes to the ValueWats project, tracked by date.
 - **Migration**: `20260801000000_add_meta_fields_to_instance` — Meta Cloud API support
 - **Routes**: Added `/api/webhooks/meta` (GET verification + POST events)
 - **Documentation**: `META_WHATSAPP_API.md` and `META_SENDING_MESSAGES.md`
+- **Documentation**: `META_EMBEDDED_SIGNUP_GUIDE.md` — Technical guide for implementing Meta's Embedded Signup for Tech Providers (BSP)
 
 ### Changed
 - **Architecture**: Transitioned from Evolution API to Meta WhatsApp Cloud API

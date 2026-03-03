@@ -33,6 +33,14 @@ messageQueue.process(async (job) => {
   try {
     console.log(`Processing message for ${number} via ${instanceName} (Media: ${mediaUrl ? 'Yes' : 'No'})`);
 
+    // Send typing presence first to mimic human behavior (add random 2s to 4s delay internally)
+    const typingDelay = Math.floor(Math.random() * (4000 - 2000 + 1)) + 2000;
+    await evolutionApi.sendPresence(instanceName, number, typingDelay);
+
+    // Wait for the simulated typing duration before dispatching the real message
+    await new Promise(resolve => setTimeout(resolve, typingDelay));
+
+    // Now send the actual message
     const result = await evolutionApi.sendMessage(tenantId, instanceName, number, message, mediaUrl, mediaType);
 
     // Extract wamid (message ID) from Evolution API response
@@ -124,6 +132,42 @@ async function checkCampaignCompletion(campaignId) {
 }
 
 /**
+ * Phase 4 — Working Hours
+ * Returns ms until the next valid sending window based on plan config.
+ * If currently inside working hours, returns 0 (start immediately).
+ * Timezone: UTC+2 (Cairo / Egypt Standard Time)
+ */
+function getWorkingHoursOffset(plan) {
+  if (!plan || !plan.workingHoursEnabled) return 0;
+
+  const [startH, startM] = plan.workingHoursStart.split(':').map(Number);
+  const [endH, endM] = plan.workingHoursEnd.split(':').map(Number);
+
+  // Get current time in Cairo (UTC+2)
+  const now = new Date();
+  const cairoNow = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
+  const currentMinutes = cairoNow.getHours() * 60 + cairoNow.getMinutes();
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+    return 0; // Currently inside working hours — start NOW
+  }
+
+  // Outside working hours — calculate delay to NEXT window
+  let minutesToStart;
+  if (currentMinutes < startMinutes) {
+    // Before today's window
+    minutesToStart = startMinutes - currentMinutes;
+  } else {
+    // After today's window — wait until tomorrow
+    minutesToStart = (24 * 60 - currentMinutes) + startMinutes;
+  }
+  console.log(`[Queue] Working Hours active. Offsetting by ${minutesToStart} minutes until next window.`);
+  return minutesToStart * 60 * 1000; // Convert to ms
+}
+
+/**
  * Add messages to the queue for a campaign with staggered delays, multi-instance support, and message rotation
  * @param {Array} instances - List of instances to use [{ id, instanceName }]
  * @param {Array} contacts - List of contacts [{ number, ... }]
@@ -134,9 +178,11 @@ async function checkCampaignCompletion(campaignId) {
  * @param {number} delayMax - Maximum delay between messages (seconds)
  * @param {number} instanceSwitchCount - Switch instance every N messages
  * @param {number} messageRotationCount - Switch template every N messages
+ * @param {object|null} plan - Tenant's subscription plan (for working hours enforcement)
  */
-const addToQueue = async (instances, contacts, messageTemplates, campaignId, tenantId, delayMin = 5, delayMax = 15, instanceSwitchCount = 50, messageRotationCount = 1, mediaUrl = null, mediaType = null) => {
-  let cumulativeDelay = 0;
+const addToQueue = async (instances, contacts, messageTemplates, campaignId, tenantId, delayMin = 15, delayMax = 25, instanceSwitchCount = 50, messageRotationCount = 1, mediaUrl = null, mediaType = null, plan = null) => {
+  // Phase 4: Working Hours — offset the entire campaign start time
+  let cumulativeDelay = getWorkingHoursOffset(plan);
   const jobs = [];
 
   // Ensure inputs are arrays
@@ -155,7 +201,25 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
     const templateIndex = Math.floor(i / intVal(messageRotationCount)) % templates.length;
     let currentMessage = templates[templateIndex];
 
-    // Interpolate Variables if present
+    // Anti-Ban Spintax & Dynamic Global Variables
+    // Usage: {{rand}} = Random invisible characters to make each message slightly unique
+    // Usage: {{date}} = Current date/time to make each message timestamped
+    const generateInvisibleString = () => {
+      const chars = ['\u200B', '\u200C', '\u200D', '\uFEFF']; // Zero-width characters
+      let str = '';
+      const len = Math.floor(Math.random() * 5) + 3; // 3 to 7 chars
+      for (let j = 0; j < len; j++) str += chars[Math.floor(Math.random() * chars.length)];
+      return str;
+    };
+
+    // Inject invisible random chars at the end of the message to bypass hash-matching spam filters
+    currentMessage += generateInvisibleString();
+
+    // Replace basic dynamic variables
+    currentMessage = currentMessage.replace(/{{rand}}/gi, Math.floor(Math.random() * 10000).toString());
+    currentMessage = currentMessage.replace(/{{date}}/gi, new Date().toLocaleString('ar-EG'));
+
+    // Interpolate Contact Variables (from CSV mapping)
     if (contact.variables) {
       Object.keys(contact.variables).forEach(key => {
         const regex = new RegExp(`{{${key}}}`, 'gi');

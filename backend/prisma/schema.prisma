@@ -12,6 +12,25 @@ datasource db {
   extensions = [vector]
 }
 
+// Subscription Plans — defines limits per tier
+model Plan {
+  id                     String   @id @default(uuid())
+  name                   String   @unique // 'basic', 'pro', 'enterprise'
+  maxMessagesPerDay      Int      @default(300)
+  maxContactsPerCampaign Int      @default(500)
+  maxInstances           Int      @default(2)
+  workingHoursEnabled    Boolean  @default(false)
+  workingHoursStart      String   @default("09:00") // HH:MM (Cairo time)
+  workingHoursEnd        String   @default("22:00")
+  workingDays            String[] @default(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"])
+  price                  Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  tenants Tenant[]
+
+  @@map("plans")
+}
+
 model Tenant {
   id               String   @id @default(uuid())
   name             String
@@ -19,6 +38,10 @@ model Tenant {
   subscriptionPlan String?  @map("subscription_plan") // 'basic', 'pro', 'enterprise'
   status           String   @default("active") // 'active', 'suspended', 'trial'
   createdAt        DateTime @default(now()) @map("created_at")
+
+  // Subscription Plan (links to Plan model for limit enforcement)
+  planId String? @map("plan_id")
+  plan   Plan?   @relation(fields: [planId], references: [id])
 
   users           User[]
   instances       Instance[]
@@ -28,6 +51,7 @@ model Tenant {
   automationRules AutomationRule[]
   invitations     Invitation[]
   conversations   Conversation[]
+  globalTemplates GlobalTemplate[]
 
   agents          AIAgent[]
   lifecycleStages LifecycleStage[]
@@ -86,15 +110,15 @@ model Invitation {
 }
 
 model Instance {
-  id              String   @id @default(uuid())
-  tenantId        String   @map("tenant_id")
-  instanceName    String   @map("instance_name")
-  phoneNumber     String?  @map("phone_number")
-  phoneNumberId   String?  @map("phone_number_id") // Meta Cloud API Phone Number ID
-  accessToken     String?  @map("access_token") @db.Text // Meta Cloud API token (encrypted)
-  status          String // 'connected', 'disconnected', 'qr_pending'
-  qrCode          String?  @map("qr_code") @db.Text
-  createdAt       DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  instanceName  String   @map("instance_name")
+  phoneNumber   String?  @map("phone_number")
+  phoneNumberId String?  @map("phone_number_id") // Meta Cloud API Phone Number ID
+  accessToken   String?  @map("access_token") @db.Text // Meta Cloud API token (encrypted)
+  status        String // 'connected', 'disconnected', 'qr_pending'
+  qrCode        String?  @map("qr_code") @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
 
   tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaigns         Campaign[]
@@ -145,6 +169,19 @@ model MessageTemplate {
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@map("message_templates")
+}
+
+model GlobalTemplate {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  content   String   @db.Text
+  category  String   @default("general") // 'promo', 'announcement', etc.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("global_templates")
 }
 
 model CampaignInstance {
@@ -469,6 +506,10 @@ model Contact {
   address      String?   @db.Text
   source       String    @default("manual") // 'whatsapp', 'manual', 'import', 'website'
   customFields Json?     @map("custom_fields")
+
+  // Opt-out / Anti-Spam Blacklist
+  blacklisted   Boolean   @default(false)
+  blacklistedAt DateTime? @map("blacklisted_at")
 
   lifecycleStageId String?         @map("lifecycle_stage_id")
   lifecycleStage   LifecycleStage? @relation(fields: [lifecycleStageId], references: [id])

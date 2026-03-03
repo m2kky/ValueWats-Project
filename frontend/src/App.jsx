@@ -11,6 +11,7 @@ import Automations from './pages/Automations';
 import Team from './pages/Team';
 import Inbox from './pages/Inbox';
 import Agents from './pages/Agents';
+import Templates from './pages/Templates';
 import Integrations from './pages/Integrations';
 import Workflows from './pages/Workflows';
 import Contacts from './pages/Contacts';
@@ -32,19 +33,19 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
+
         <Route path="/dashboard" element={
           <PrivateRoute>
             <Dashboard />
           </PrivateRoute>
         } />
-        
+
         <Route path="/campaigns" element={
           <PrivateRoute>
             <Campaigns />
           </PrivateRoute>
         } />
-        
+
         <Route path="/campaigns/new" element={
           <PrivateRoute>
             <NewCampaign />
@@ -74,7 +75,7 @@ function App() {
             <Automations />
           </PrivateRoute>
         } />
-        
+
         <Route path="/team" element={
           <PrivateRoute>
             <Team />
@@ -90,6 +91,12 @@ function App() {
         <Route path="/agents" element={
           <PrivateRoute>
             <Agents />
+          </PrivateRoute>
+        } />
+
+        <Route path="/templates" element={
+          <PrivateRoute>
+            <Templates />
           </PrivateRoute>
         } />
 
@@ -116,7 +123,7 @@ function App() {
             <ContactProfile />
           </PrivateRoute>
         } />
-        
+
         <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
     </BrowserRouter>

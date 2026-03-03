@@ -137,6 +137,28 @@ Stack: ${error.stack}
     }
   }
 
+  /**
+   * Send Typing/Recording Presence
+   */
+  async sendPresence(instanceName, number, delayMs = 3000) {
+    try {
+      await axios.post(
+        `${this.baseURL}/chat/sendPresence/${instanceName}`,
+        {
+          number,
+          delay: delayMs,
+          presence: "composing"
+        },
+        {
+          headers: { apikey: this.apiKey },
+          timeout: 10000
+        }
+      );
+    } catch (error) {
+      console.warn(`[sendPresence] Error setting typing presence for ${number} on ${instanceName}:`, error.message);
+    }
+  }
+
   async sendMessage(tenantId, instanceName, number, text, mediaUrl = null, mediaType = null) {
     let response;
     let attempts = 0;

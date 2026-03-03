@@ -248,6 +248,31 @@ const handleIncomingMessage = async (req, res) => {
 
     console.log(`[Webhook] 🤖 Processing automations for: ${text.substring(0, 50)}`);
 
+    // ====== OPT-OUT / BLACKLIST CHECK ======
+    // If the contact sends a stop keyword, blacklist them and skip all automations
+    const OPTOUT_KEYWORDS = ['stop', 'وقف', 'انهاء', 'إلغاء', 'الغاء', 'لا رسائل', 'unsubscribe', 'إلغاء الاشتراك'];
+    const normalizedText = text.trim().toLowerCase();
+    if (OPTOUT_KEYWORDS.some(kw => normalizedText === kw || normalizedText.includes(kw))) {
+      console.log(`[Webhook] 🚫 Opt-out keyword detected from ${contactNumber}. Blacklisting...`);
+      try {
+        await prisma.contact.updateMany({
+          where: { tenantId: instance.tenantId, phoneNumber: contactNumber },
+          data: { blacklisted: true, blacklistedAt: new Date() }
+        });
+        // Send opt-out confirmation
+        await evolutionApi.sendMessage(
+          instance.tenantId,
+          instanceName,
+          contactNumber,
+          '✅ تم إلغاء اشتراكك بنجاح. لن تصلك رسائل تسويقية منا بعد الآن. يمكنك التواصل معنا في أي وقت.'
+        );
+        console.log(`[Webhook] ✅ Contact ${contactNumber} blacklisted and opt-out confirmation sent.`);
+      } catch (optoutErr) {
+        console.error('[Webhook] ❌ Opt-out error:', optoutErr.message);
+      }
+      return res.status(200).send('OK');
+    }
+
     // ====== AUTOMATION RULES CHECK ======
     const automationRules = await prisma.automationRule.findMany({
       where: {

@@ -27,8 +27,8 @@ export default function NewCampaign() {
     message: '', // Kept for backward compatibility, will sync with messages[0]
     messages: [''], // Array of message templates
     numbers: '',
-    delayMin: 5,
-    delayMax: 15,
+    delayMin: 15,
+    delayMax: 25,
     instanceSwitchCount: 50,
     messageRotationCount: 1,
     scheduleEnabled: false,
@@ -579,14 +579,14 @@ export default function NewCampaign() {
                   </label>
                   <input
                     type="range"
-                    min="1"
+                    min="15"
                     max="60"
                     value={formData.delayMin}
                     onChange={e => setFormData({ ...formData, delayMin: parseInt(e.target.value) })}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   />
                   <div className="flex justify-between text-xs text-gray-400 mt-1">
-                    <span>1s</span>
+                    <span>15s</span>
                     <span>60s</span>
                   </div>
                 </div>
@@ -596,14 +596,14 @@ export default function NewCampaign() {
                   </label>
                   <input
                     type="range"
-                    min="1"
+                    min="15"
                     max="120"
                     value={formData.delayMax}
                     onChange={e => setFormData({ ...formData, delayMax: parseInt(e.target.value) })}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   />
                   <div className="flex justify-between text-xs text-gray-400 mt-1">
-                    <span>1s</span>
+                    <span>15s</span>
                     <span>120s</span>
                   </div>
                 </div>
