@@ -4,6 +4,28 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-03] — Meta WhatsApp Cloud API Integration
+
+### Added
+- **Meta Cloud API**: Complete native integration replacing Evolution API
+- **Services**: `metaApi.js` — send text/media messages, download media from Meta
+- **Webhook**: `metaWebhookController.js` — handle incoming messages and status updates from Meta
+- **Schema**: Added `phoneNumberId` and `accessToken` fields to `Instance` model
+- **Migration**: `20260801000000_add_meta_fields_to_instance` — Meta Cloud API support
+- **Routes**: Added `/api/webhooks/meta` (GET verification + POST events)
+- **Documentation**: `META_WHATSAPP_API.md` and `META_SENDING_MESSAGES.md`
+
+### Changed
+- **Architecture**: Transitioned from Evolution API to Meta WhatsApp Cloud API
+- **Webhook**: Meta webhook verification now working with proper token validation
+- **Instance Management**: Support for Meta Phone Number ID instead of QR codes
+
+### Fixed
+- **Webhook Verification**: Improved Meta webhook verification format and logging
+- **Token Handling**: Fixed corrupted access token in environment variables
+
+---
+
 ## [2026-03-01] — Agent Actions & UI Refinements
 
 ### Added
