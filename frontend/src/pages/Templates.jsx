@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/client';
 import { PlusIcon, PencilSquareIcon, TrashIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -19,7 +19,7 @@ export default function Templates() {
     const fetchTemplates = async () => {
         try {
             setLoading(true);
-            const res = await axios.get('/api/templates', { withCredentials: true });
+            const res = await api.get('/templates');
             setTemplates(res.data);
         } catch (error) {
             console.error('Error fetching templates:', error);
@@ -61,10 +61,10 @@ export default function Templates() {
         e.preventDefault();
         try {
             if (editingTemplate) {
-                await axios.patch(`/api/templates/${editingTemplate.id}`, formData, { withCredentials: true });
+                await api.patch(`/templates/${editingTemplate.id}`, formData);
                 toast.success('Template updated successfully');
             } else {
-                await axios.post('/api/templates', formData, { withCredentials: true });
+                await api.post('/templates', formData);
                 toast.success('Template created successfully');
             }
             handleCloseModal();
@@ -77,7 +77,7 @@ export default function Templates() {
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this template?')) return;
         try {
-            await axios.delete(`/api/templates/${id}`, { withCredentials: true });
+            await api.delete(`/templates/${id}`);
             toast.success('Template deleted');
             fetchTemplates();
         } catch (error) {
