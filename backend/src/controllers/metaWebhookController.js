@@ -7,11 +7,23 @@ const prisma = new PrismaClient();
 
 // GET: Meta webhook verification
 const verifyWebhook = (req, res) => {
+  console.log('[MetaWebhook] Verification request:', {
+    query: req.query,
+    headers: req.headers,
+    ip: req.ip
+  });
+  
   const { 'hub.mode': mode, 'hub.verify_token': token, 'hub.challenge': challenge } = req.query;
+  
+  console.log('[MetaWebhook] Verification params:', { mode, token, challenge });
+  console.log('[MetaWebhook] Expected token:', process.env.META_WEBHOOK_VERIFY_TOKEN);
+  
   if (mode === 'subscribe' && token === process.env.META_WEBHOOK_VERIFY_TOKEN) {
-    console.log('[MetaWebhook] ✅ Webhook verified');
+    console.log('[MetaWebhook] ✅ Webhook verified successfully');
     return res.status(200).send(challenge);
   }
+  
+  console.log('[MetaWebhook] ❌ Verification failed');
   res.sendStatus(403);
 };
 

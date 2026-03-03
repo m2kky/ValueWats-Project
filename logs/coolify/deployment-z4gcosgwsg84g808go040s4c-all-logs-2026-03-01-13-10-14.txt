@@ -541,3 +541,4 @@
 2026-Mar-01 13:09:02.896633 Gracefully shutting down build container: z4gcosgwsg84g808go040s4c
 2026-Mar-01 13:09:03.555669 [DEBUG] [CMD]: docker stop -t 30 z4gcosgwsg84g808go040s4c
 2026-Mar-01 13:09:03.555669 [DEBUG] z4gcosgwsg84g808go040s4c
+GIT_SSH_COMMAND
