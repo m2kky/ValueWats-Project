@@ -86,13 +86,15 @@ model Invitation {
 }
 
 model Instance {
-  id           String   @id @default(uuid())
-  tenantId     String   @map("tenant_id")
-  instanceName String   @map("instance_name")
-  phoneNumber  String?  @map("phone_number")
-  status       String // 'connected', 'disconnected', 'qr_pending'
-  qrCode       String?  @map("qr_code") @db.Text
-  createdAt    DateTime @default(now()) @map("created_at")
+  id              String   @id @default(uuid())
+  tenantId        String   @map("tenant_id")
+  instanceName    String   @map("instance_name")
+  phoneNumber     String?  @map("phone_number")
+  phoneNumberId   String?  @map("phone_number_id") // Meta Cloud API Phone Number ID
+  accessToken     String?  @map("access_token") @db.Text // Meta Cloud API token (encrypted)
+  status          String // 'connected', 'disconnected', 'qr_pending'
+  qrCode          String?  @map("qr_code") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
 
   tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaigns         Campaign[]
