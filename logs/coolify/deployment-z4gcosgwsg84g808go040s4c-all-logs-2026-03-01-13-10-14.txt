@@ -1,544 +1,190 @@
-2026-Mar-01 13:08:18.520296 Starting deployment of <REDACTED>:m2kky/ValueWats-Project.git:main to localhost.
-2026-Mar-01 13:08:19.161523 Preparing container with helper image: ghcr.io/coollabsio/coolify-helper:1.0.12
-2026-Mar-01 13:08:19.519566 [DEBUG] [CMD]: docker stop -t 30 z4gcosgwsg84g808go040s4c
-2026-Mar-01 13:08:19.519566 [DEBUG] Error response from daemon: No such container: z4gcosgwsg84g808go040s4c
-2026-Mar-01 13:08:19.886093 [DEBUG] [CMD]: docker run -d --network coolify --name z4gcosgwsg84g808go040s4c  --rm -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/coollabsio/coolify-helper:1.0.12
-2026-Mar-01 13:08:19.886093 [DEBUG] bf33b3ff67638117484fe9bd0adb604d547f9e8febadecdf2a2467b815fd57f5
-2026-Mar-01 13:08:23.154447 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'GIT_SSH_COMMAND="ssh -o ConnectTimeout=30 -p 22 -o Port=22 -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git ls-remote <REDACTED>:m2kky/ValueWats-Project.git refs/heads/main'
-2026-Mar-01 13:08:23.154447 [DEBUG] c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e	refs/heads/main
-2026-Mar-01 13:08:23.638868 Image not found (i0kwck044gc80s0osco8w0wg:c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e). Building new image.
-2026-Mar-01 13:08:23.647182 ----------------------------------------
-2026-Mar-01 13:08:23.654758 Importing <REDACTED>:m2kky/ValueWats-Project.git:main (commit sha c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e) to /artifacts/z4gcosgwsg84g808go040s4c.
-2026-Mar-01 13:08:24.273750 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'mkdir -p /root/.ssh' && docker exec z4gcosgwsg84g808go040s4c bash -c 'echo 'LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcFFJQkFBS0NBUUVBeUJrWFp6Vkd4R0RMSU5pRm9YaHo4UDAxNEpzbEY4enA0bmJIajdtdXo2VzA2d1c4ClJNNUdWRzY2WUhFWDY0b0JNTlA3djE4QmUzVkxwNXZDVDdEU1lCN1pEUUpRUG9kdE1QL2lqV2s3T3lsVndMZmwKcEVZc0NyVkowK1VkSXBaZVBjMm1Cci9uekpWcUdnL1ZMdUhTZDFaeUVQZGlhQWpGM2hvTUpJUDA4ckppQkprQQpLaERYL25jWE91Mi9Wdlp0d0REK3hUTzFsekVnQklDS1FrT1VlTmRLMUNKQmFOOFZjTklsQmFlSFFVejU3czNPCk1kd0ZEWlRzRVhST3ZsSE1rdnFFODJaVFp6OHl6VTk2czdpR0N3QjN6WklDTXAyRUllaStEaEF3aVBQdmFZdC8KbXNvQk9kRCtFZ2FvcnB2b2VVdDhVNUVGeDVrVjd1c0lrQnZwSndJREFRQUJBb0lCQVFEQ0taN005aVJ5SDk1YgpROTcvWE90Y0Y4ZjA1M2FwenB2UXRTTlY4bjZQWFNMZHZ4WDl5Zzd5bFBOaTY3cWpRcWwvSU9PeXdkU2xZSjhGCng1MVlTS01LeEVRblhHeFRFSVJDdkxtd01FRmFXZlNzNllUNnoyQ2pEMkRSTFF3RmFOV1BzUUorb0M2a0ZRUDgKd0FwRDBMcXlNLzdCT2R1U1Naait1Rlc2QlJWbGZUdm5jVklmK1BLS243OTRUZUljdTVUQjZHdnFOZVNhb282dwpBVGwzeENNd2M3TEFlaldrVzYrMzlKYnNrRjVaWlNaVk1ESHNOMTZ5SWlkZDlEaXQ0dStRb0YwS1B2STBrUVVFCmxkYkx1ZXM5SnZkNys3NlVLc3RwTGt2Y2E0b2NCQU0rOUJLcEFRZmFreERvVkZ0VE5lbGlGQnU5cGh6WHJtOXUKb0d0eXZkQVpBb0dCQVBXOVIzaFZXMGNqVlQ1MFpkcDhhVDMySnVUa0tnRUl6VUVVSnZUbEpQQituVzhpYkFQNwp2OHAzSGcvbzBrVmt0NFA3VWtzQURWdUVhVDVqWDhlSDVZKzNYZ0tpNUNibW1TTWI4R1VybDZWY3p6SEVJK1RGCmVLdXZNNk5HaitCQ1kzRUVMeFUxR1RmTUtaZzhjMXBWUjZJWWVrdEJiQ2FSQnpvQzVQaVdiZ1R0QW9HQkFOQnoKOHd3bXROYlRvSml4RjlUbTNPK1ZQQ1RmMi9ONVptWExVWnhoWW1kVlc2WHpvNmhFZGx5OTUrdXRMNVI3NlRzRgo0N0RIWDQxUWVId2c0a2c0TlN0eTZ2a3VFYzBwaElhVUZ2dnNNYVQ0OG5HSGxWN09kUkM1MzRqRm5KSTNmZm1VClZxWURGS21ja0lXN1JtMHcyTWlBY2I3VVQ3ZnJqQ3lweG1TcFJWZmpBb0dCQU5JQWJVRlNnR3lzcno1dUxsU20KbVRHUVYvQ25ZNVg2dFoxMTRVekxQZVFmNzk1M1ppT0pVbjl0aUUxRVE5MTFrcmJCWWJRaVdVZnFRaDVFd2ljNwo1VndKOGRjQzZVS3RNaFVrM1MwNE1hSHBURTlWTk85ZUtoOWQzQjBlUWZuK0Fna2s4QytKYndHV0FiM05leTZwClRrd2g2dkRBK2ZHRFlzK2FoWjVDdjhhSkFvR0FITzlMV0c5ekFMTGxndXhxRzNKa1RwbFBmT3JaOUNUdzBzWnoKTUpyUDl2b0JPN3JqQjdOaEhxUjVzZHdiVTZnVGlzN1plU3RqbHhFSmVHbDBINFExMVM4aGNLODFaMTRRK0VGTQpJM0g0dmlhVU9MQVNTdE9ycWtPeXhLQnhpRlpObFR4Qy9zNUVxdnFCa1I2YXV3Tmh4QXNZUHQzbnB1YjZVU1RMCjFpTXM3Zk1DZ1lFQTVSVzNqZzQwTXVOcGdwU29FZi9tU0tYcHA0a3cyTEw4U1hkSlRpZ204SFFZRGFyZytFd2wKVFV2TDJ0RmhEeXJZRjdMYnRnWHMyS2xITVZQQkk5SEU1cHg3a1VvQ294Q2d1NURxSW5BSzNuMUV1dDdrdVk4NQpja0hCb010cXo4UTNNSDcvVDZWRy9QSEZ4SlhNY0gzOGxidXRLQm1EUmlqOHk1dk4wdHRvZG5VPQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=' | base64 -d | tee /root/.ssh/id_rsa > /dev/null' && docker exec z4gcosgwsg84g808go040s4c bash -c 'chmod 600 /root/.ssh/id_rsa' && docker exec z4gcosgwsg84g808go040s4c bash -c 'GIT_SSH_COMMAND="ssh -o ConnectTimeout=30 -p 22 -o Port=22 -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/id_rsa" git clone --depth=1 --recurse-submodules --shallow-submodules -b 'main' '<REDACTED>:m2kky/ValueWats-Project.git' '/artifacts/z4gcosgwsg84g808go040s4c' && cd '/artifacts/z4gcosgwsg84g808go040s4c' && if [ -f .gitmodules ]; then git submodule sync && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git submodule update --init --recursive --depth=1; fi && cd '/artifacts/z4gcosgwsg84g808go040s4c' && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git lfs pull'
-2026-Mar-01 13:08:24.273750 [DEBUG] Cloning into '/artifacts/z4gcosgwsg84g808go040s4c'...
-2026-Mar-01 13:08:27.961112 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'cd /artifacts/z4gcosgwsg84g808go040s4c && git log -1 c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e --pretty=%B'
-2026-Mar-01 13:08:27.961112 [DEBUG] feat(UI): complete Inbox redesign to match flat dark Facebook Messenger style mockup
-2026-Mar-01 13:08:28.399206 Generating nixpacks configuration with: nixpacks plan -f json --env NIXPACKS_NODE_VERSION=22 --env COOLIFY_URL=https://app.muhammedmekky.com --env COOLIFY_FQDN=app.muhammedmekky.com --env COOLIFY_BRANCH=main --env COOLIFY_RESOURCE_UUID=i0kwck044gc80s0osco8w0wg --build-cmd "npm run build:frontend" --start-cmd "npm run start:backend" --install-cmd "npm run install:all" /artifacts/z4gcosgwsg84g808go040s4c
-2026-Mar-01 13:08:28.815425 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'nixpacks plan -f json --env NIXPACKS_NODE_VERSION=22 --env COOLIFY_URL=https://app.muhammedmekky.com --env COOLIFY_FQDN=app.muhammedmekky.com --env COOLIFY_BRANCH=main --env COOLIFY_RESOURCE_UUID=i0kwck044gc80s0osco8w0wg --build-cmd "npm run build:frontend" --start-cmd "npm run start:backend" --install-cmd "npm run install:all" /artifacts/z4gcosgwsg84g808go040s4c'
-2026-Mar-01 13:08:28.815425 [DEBUG] {
-2026-Mar-01 13:08:28.815425 [DEBUG] "providers": [],
-2026-Mar-01 13:08:28.815425 [DEBUG] "buildImage": "ghcr.io/railwayapp/nixpacks:ubuntu-1745885067",
-2026-Mar-01 13:08:28.815425 [DEBUG] "variables": {
-2026-Mar-01 13:08:28.815425 [DEBUG] "CI": "true",
-2026-Mar-01 13:08:28.815425 [DEBUG] "COOLIFY_BRANCH": "main",
-2026-Mar-01 13:08:28.815425 [DEBUG] "COOLIFY_FQDN": "app.muhammedmekky.com",
-2026-Mar-01 13:08:28.815425 [DEBUG] "COOLIFY_RESOURCE_UUID": "i0kwck044gc80s0osco8w0wg",
-2026-Mar-01 13:08:28.815425 [DEBUG] "COOLIFY_URL": "https://app.muhammedmekky.com",
-2026-Mar-01 13:08:28.815425 [DEBUG] "NIXPACKS_METADATA": "node",
-2026-Mar-01 13:08:28.815425 [DEBUG] "NIXPACKS_NODE_VERSION": "22",
-2026-Mar-01 13:08:28.815425 [DEBUG] "NODE_ENV": "production",
-2026-Mar-01 13:08:28.815425 [DEBUG] "NPM_CONFIG_PRODUCTION": "false"
-2026-Mar-01 13:08:28.815425 [DEBUG] },
-2026-Mar-01 13:08:28.815425 [DEBUG] "phases": {
-2026-Mar-01 13:08:28.815425 [DEBUG] "build": {
-2026-Mar-01 13:08:28.815425 [DEBUG] "dependsOn": [
-2026-Mar-01 13:08:28.815425 [DEBUG] "install"
-2026-Mar-01 13:08:28.815425 [DEBUG] ],
-2026-Mar-01 13:08:28.815425 [DEBUG] "cmds": [
-2026-Mar-01 13:08:28.815425 [DEBUG] "npm run build:frontend"
-2026-Mar-01 13:08:28.815425 [DEBUG] ],
-2026-Mar-01 13:08:28.815425 [DEBUG] "cacheDirectories": [
-2026-Mar-01 13:08:28.815425 [DEBUG] "node_modules/.cache"
-2026-Mar-01 13:08:28.815425 [DEBUG] ]
-2026-Mar-01 13:08:28.815425 [DEBUG] },
-2026-Mar-01 13:08:28.815425 [DEBUG] "install": {
-2026-Mar-01 13:08:28.815425 [DEBUG] "dependsOn": [
-2026-Mar-01 13:08:28.815425 [DEBUG] "setup"
-2026-Mar-01 13:08:28.815425 [DEBUG] ],
-2026-Mar-01 13:08:28.815425 [DEBUG] "cmds": [
-2026-Mar-01 13:08:28.815425 [DEBUG] "npm run install:all"
-2026-Mar-01 13:08:28.815425 [DEBUG] ],
-2026-Mar-01 13:08:28.815425 [DEBUG] "cacheDirectories": [
-2026-Mar-01 13:08:28.815425 [DEBUG] "/root/.npm"
-2026-Mar-01 13:08:28.815425 [DEBUG] ],
-2026-Mar-01 13:08:28.815425 [DEBUG] "paths": [
-2026-Mar-01 13:08:28.815425 [DEBUG] "/app/node_modules/.bin"
-2026-Mar-01 13:08:28.815425 [DEBUG] ]
-2026-Mar-01 13:08:28.815425 [DEBUG] },
-2026-Mar-01 13:08:28.815425 [DEBUG] "setup": {
-2026-Mar-01 13:08:28.815425 [DEBUG] "nixPkgs": [
-2026-Mar-01 13:08:28.815425 [DEBUG] "nodejs_22",
-2026-Mar-01 13:08:28.815425 [DEBUG] "npm-9_x",
-2026-Mar-01 13:08:28.815425 [DEBUG] "openssl"
-2026-Mar-01 13:08:28.815425 [DEBUG] ],
-2026-Mar-01 13:08:28.815425 [DEBUG] "nixOverlays": [
-2026-Mar-01 13:08:28.815425 [DEBUG] "https://github.com/railwayapp/nix-npm-overlay/archive/main.tar.gz"
-2026-Mar-01 13:08:28.815425 [DEBUG] ],
-2026-Mar-01 13:08:28.815425 [DEBUG] "nixpkgsArchive": "ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7"
-2026-Mar-01 13:08:28.815425 [DEBUG] }
-2026-Mar-01 13:08:28.815425 [DEBUG] },
-2026-Mar-01 13:08:28.815425 [DEBUG] "start": {
-2026-Mar-01 13:08:28.815425 [DEBUG] "cmd": "npm run start:backend"
-2026-Mar-01 13:08:28.815425 [DEBUG] }
-2026-Mar-01 13:08:28.815425 [DEBUG] }
-2026-Mar-01 13:08:29.235690 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'nixpacks detect /artifacts/z4gcosgwsg84g808go040s4c'
-2026-Mar-01 13:08:29.235690 [DEBUG] node
-2026-Mar-01 13:08:29.247974 Found application type: node.
-2026-Mar-01 13:08:29.255279 If you need further customization, please check the documentation of Nixpacks: https://nixpacks.com/docs/providers/node
-2026-Mar-01 13:08:29.303063 [DEBUG] Final Nixpacks plan: {
-2026-Mar-01 13:08:29.303063 [DEBUG] "providers": [],
-2026-Mar-01 13:08:29.303063 [DEBUG] "buildImage": "ghcr.io\/railwayapp\/nixpacks:ubuntu-1745885067",
-2026-Mar-01 13:08:29.303063 [DEBUG] "phases": {
-2026-Mar-01 13:08:29.303063 [DEBUG] "build": {
-2026-Mar-01 13:08:29.303063 [DEBUG] "dependsOn": [
-2026-Mar-01 13:08:29.303063 [DEBUG] "install"
-2026-Mar-01 13:08:29.303063 [DEBUG] ],
-2026-Mar-01 13:08:29.303063 [DEBUG] "cmds": [
-2026-Mar-01 13:08:29.303063 [DEBUG] "npm run build:frontend"
-2026-Mar-01 13:08:29.303063 [DEBUG] ],
-2026-Mar-01 13:08:29.303063 [DEBUG] "cacheDirectories": [
-2026-Mar-01 13:08:29.303063 [DEBUG] "node_modules\/.cache"
-2026-Mar-01 13:08:29.303063 [DEBUG] ]
-2026-Mar-01 13:08:29.303063 [DEBUG] },
-2026-Mar-01 13:08:29.303063 [DEBUG] "install": {
-2026-Mar-01 13:08:29.303063 [DEBUG] "dependsOn": [
-2026-Mar-01 13:08:29.303063 [DEBUG] "setup"
-2026-Mar-01 13:08:29.303063 [DEBUG] ],
-2026-Mar-01 13:08:29.303063 [DEBUG] "cmds": [
-2026-Mar-01 13:08:29.303063 [DEBUG] "npm run install:all"
-2026-Mar-01 13:08:29.303063 [DEBUG] ],
-2026-Mar-01 13:08:29.303063 [DEBUG] "cacheDirectories": [
-2026-Mar-01 13:08:29.303063 [DEBUG] "\/root\/.npm"
-2026-Mar-01 13:08:29.303063 [DEBUG] ],
-2026-Mar-01 13:08:29.303063 [DEBUG] "paths": [
-2026-Mar-01 13:08:29.303063 [DEBUG] "\/app\/node_modules\/.bin"
-2026-Mar-01 13:08:29.303063 [DEBUG] ]
-2026-Mar-01 13:08:29.303063 [DEBUG] },
-2026-Mar-01 13:08:29.303063 [DEBUG] "setup": {
-2026-Mar-01 13:08:29.303063 [DEBUG] "nixPkgs": [
-2026-Mar-01 13:08:29.303063 [DEBUG] "nodejs_22",
-2026-Mar-01 13:08:29.303063 [DEBUG] "npm-9_x",
-2026-Mar-01 13:08:29.303063 [DEBUG] "openssl"
-2026-Mar-01 13:08:29.303063 [DEBUG] ],
-2026-Mar-01 13:08:29.303063 [DEBUG] "nixOverlays": [
-2026-Mar-01 13:08:29.303063 [DEBUG] "https:\/\/github.com\/railwayapp\/nix-npm-overlay\/archive\/main.tar.gz"
-2026-Mar-01 13:08:29.303063 [DEBUG] ],
-2026-Mar-01 13:08:29.303063 [DEBUG] "nixpkgsArchive": "ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7",
-2026-Mar-01 13:08:29.303063 [DEBUG] "aptPkgs": [
-2026-Mar-01 13:08:29.303063 [DEBUG] "curl",
-2026-Mar-01 13:08:29.303063 [DEBUG] "wget"
-2026-Mar-01 13:08:29.303063 [DEBUG] ]
-2026-Mar-01 13:08:29.303063 [DEBUG] }
-2026-Mar-01 13:08:29.303063 [DEBUG] },
-2026-Mar-01 13:08:29.303063 [DEBUG] "start": {
-2026-Mar-01 13:08:29.303063 [DEBUG] "cmd": "npm run start:backend"
-2026-Mar-01 13:08:29.303063 [DEBUG] }
-2026-Mar-01 13:08:29.303063 [DEBUG] }
-2026-Mar-01 13:08:30.550525 [DEBUG] Creating build-time .env file in /artifacts (outside Docker context).
-2026-Mar-01 13:08:31.014116 ----------------------------------------
-2026-Mar-01 13:08:31.020845 ⚠️ Build-time environment variable warning: NODE_ENV=production
-2026-Mar-01 13:08:31.027569 Affects: Node.js/npm/yarn/bun/pnpm
-2026-Mar-01 13:08:31.033276 Issue: Skips devDependencies installation which are often required for building (webpack, typescript, etc.)
-2026-Mar-01 13:08:31.038950 Recommendation: Uncheck "Available at Buildtime" or use "development" during build
-2026-Mar-01 13:08:31.045046 
-2026-Mar-01 13:08:31.050812 💡 Tips to resolve build issues:
-2026-Mar-01 13:08:31.056294 1. Set these variables as "Runtime only" in the environment variables settings
-2026-Mar-01 13:08:31.063474 2. Use different values for build-time (e.g., NODE_ENV=development for build)
-2026-Mar-01 13:08:31.069976 3. Consider using multi-stage Docker builds to separate build and runtime environments
-2026-Mar-01 13:08:31.082220 ----------------------------------------
-2026-Mar-01 13:08:31.090156 Building docker image started.
-2026-Mar-01 13:08:31.095768 To check the current progress, click on Show Debug Logs.
-2026-Mar-01 13:08:31.928579 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'nixpacks build -c /artifacts/thegameplan.json --cache-key 'i0kwck044gc80s0osco8w0wg' --no-error-without-start -n i0kwck044gc80s0osco8w0wg:c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e /artifacts/z4gcosgwsg84g808go040s4c -o /artifacts/z4gcosgwsg84g808go040s4c'
-2026-Mar-01 13:08:31.928579 [DEBUG] 
-2026-Mar-01 13:08:31.928579 [DEBUG] ╔══════════════════ Nixpacks v1.41.0 ══════════════════╗
-2026-Mar-01 13:08:31.928579 [DEBUG] ║ setup      │ nodejs_22, npm-9_x, openssl, curl, wget ║
-2026-Mar-01 13:08:31.928579 [DEBUG] ║──────────────────────────────────────────────────────║
-2026-Mar-01 13:08:31.928579 [DEBUG] ║ install    │ npm run install:all                     ║
-2026-Mar-01 13:08:31.928579 [DEBUG] ║──────────────────────────────────────────────────────║
-2026-Mar-01 13:08:31.928579 [DEBUG] ║ build      │ npm run build:frontend                  ║
-2026-Mar-01 13:08:31.928579 [DEBUG] ║──────────────────────────────────────────────────────║
-2026-Mar-01 13:08:31.928579 [DEBUG] ║ start      │ npm run start:backend                   ║
-2026-Mar-01 13:08:31.928579 [DEBUG] ╚══════════════════════════════════════════════════════╝
-2026-Mar-01 13:08:31.932438 [DEBUG] Saved output to:
-2026-Mar-01 13:08:31.932438 [DEBUG] /artifacts/z4gcosgwsg84g808go040s4c
-2026-Mar-01 13:08:32.322816 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'cat /artifacts/z4gcosgwsg84g808go040s4c/.nixpacks/Dockerfile'
-2026-Mar-01 13:08:32.322816 [DEBUG] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] ENTRYPOINT ["/bin/bash", "-l", "-c"]
-2026-Mar-01 13:08:32.322816 [DEBUG] WORKDIR /app/
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
-2026-Mar-01 13:08:32.322816 [DEBUG] RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d
-2026-Mar-01 13:08:32.322816 [DEBUG] RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends curl wget
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] ARG BACKEND_URL CI COOLIFY_BRANCH COOLIFY_FQDN COOLIFY_RESOURCE_UUID COOLIFY_URL DATABASE_URL DEEPSEEK_API_KEY DEEPSEEK_BASE_URL EVOLUTION_API_KEY EVOLUTION_API_URL JWT_SECRET NIXPACKS_METADATA NIXPACKS_NODE_VERSION NODE_ENV NPM_CONFIG_PRODUCTION OLLAMA_URL PORT REDIS_HOST REDIS_PASSWORD REDIS_PORT S3_ACCESS_KEY S3_BUCKET S3_ENDPOINT S3_REGION S3_SECRET_KEY SMTP_FROM SMTP_HOST SMTP_PASS SMTP_PORT SMTP_USER VITE_API_URL
-2026-Mar-01 13:08:32.322816 [DEBUG] ENV BACKEND_URL=$BACKEND_URL CI=$CI COOLIFY_BRANCH=$COOLIFY_BRANCH COOLIFY_FQDN=$COOLIFY_FQDN COOLIFY_RESOURCE_UUID=$COOLIFY_RESOURCE_UUID COOLIFY_URL=$COOLIFY_URL DATABASE_URL=$DATABASE_URL DEEPSEEK_API_KEY=$DEEPSEEK_API_KEY DEEPSEEK_BASE_URL=$DEEPSEEK_BASE_URL EVOLUTION_API_KEY=$EVOLUTION_API_KEY EVOLUTION_API_URL=$EVOLUTION_API_URL JWT_SECRET=$JWT_SECRET NIXPACKS_METADATA=$NIXPACKS_METADATA NIXPACKS_NODE_VERSION=$NIXPACKS_NODE_VERSION NODE_ENV=$NODE_ENV NPM_CONFIG_PRODUCTION=$NPM_CONFIG_PRODUCTION OLLAMA_URL=$OLLAMA_URL PORT=$PORT REDIS_HOST=$REDIS_HOST REDIS_PASSWORD=$REDIS_PASSWORD REDIS_PORT=$REDIS_PORT S3_ACCESS_KEY=$S3_ACCESS_KEY S3_BUCKET=$S3_BUCKET S3_ENDPOINT=$S3_ENDPOINT S3_REGION=$S3_REGION S3_SECRET_KEY=$S3_SECRET_KEY SMTP_FROM=$SMTP_FROM SMTP_HOST=$SMTP_HOST SMTP_PASS=$SMTP_PASS SMTP_PORT=$SMTP_PORT SMTP_USER=$SMTP_USER VITE_API_URL=$VITE_API_URL
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] # setup phase
-2026-Mar-01 13:08:32.322816 [DEBUG] # noop
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] # install phase
-2026-Mar-01 13:08:32.322816 [DEBUG] ENV NIXPACKS_PATH=/app/node_modules/.bin:$NIXPACKS_PATH
-2026-Mar-01 13:08:32.322816 [DEBUG] COPY . /app/.
-2026-Mar-01 13:08:32.322816 [DEBUG] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-/root/npm,target=/root/.npm npm run install:all
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] # build phase
-2026-Mar-01 13:08:32.322816 [DEBUG] COPY . /app/.
-2026-Mar-01 13:08:32.322816 [DEBUG] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] RUN printf '\nPATH=/app/node_modules/.bin:$PATH' >> /root/.profile
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] # start
-2026-Mar-01 13:08:32.322816 [DEBUG] COPY . /app
-2026-Mar-01 13:08:32.322816 [DEBUG] 
-2026-Mar-01 13:08:32.322816 [DEBUG] CMD ["npm run start:backend"]
-2026-Mar-01 13:08:33.115759 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'cat /artifacts/build.sh'
-2026-Mar-01 13:08:33.115759 [DEBUG] cd /artifacts/z4gcosgwsg84g808go040s4c && set -a && source /artifacts/build-time.env && set +a && docker build --add-host api-sgwcco4kw80sckwg4c08sgk4:10.0.1.7 --add-host coolify:10.0.1.2 --add-host coolify-db:10.0.1.4 --add-host coolify-realtime:10.0.1.15 --add-host coolify-redis:10.0.1.6 --add-host fsg8k800o0cwgs80scg00gcs:10.0.1.12 --add-host fsg8k800o0cwgs80scg00gcs-proxy:10.0.1.11 --add-host ic4c04s008gwc8cg4k8skkks:10.0.1.3 --add-host kgsw8cwgcswsc4ccsosk0kgg:10.0.1.10 --add-host v004w4ksw4c8ww488ogoo488:10.0.1.14 --add-host v004w4ksw4c8ww488ogoo488-proxy:10.0.1.9 --network host -f /artifacts/z4gcosgwsg84g808go040s4c/.nixpacks/Dockerfile --progress plain -t i0kwck044gc80s0osco8w0wg:c14b67bc8494ad0fecb2510c2b898cae1e7b7e9e --build-arg CI --build-arg COOLIFY_BRANCH --build-arg COOLIFY_FQDN --build-arg COOLIFY_RESOURCE_UUID --build-arg COOLIFY_URL --build-arg NIXPACKS_METADATA --build-arg NIXPACKS_NODE_VERSION --build-arg NODE_ENV --build-arg NPM_CONFIG_PRODUCTION --build-arg S3_ENDPOINT --build-arg BACKEND_URL --build-arg OLLAMA_URL --build-arg SMTP_PASS --build-arg SMTP_FROM --build-arg SMTP_HOST --build-arg SMTP_PORT --build-arg SMTP_USER --build-arg S3_ACCESS_KEY --build-arg S3_SECRET_KEY --build-arg S3_BUCKET --build-arg S3_REGION --build-arg DATABASE_URL --build-arg EVOLUTION_API_KEY --build-arg JWT_SECRET --build-arg PORT --build-arg REDIS_PORT --build-arg REDIS_HOST --build-arg EVOLUTION_API_URL --build-arg REDIS_PASSWORD --build-arg DEEPSEEK_API_KEY --build-arg DEEPSEEK_BASE_URL --build-arg VITE_API_URL --build-arg COOLIFY_BUILD_SECRETS_HASH=9f72143762613082657f84acc937128233faaaace0ddc47b5af35f27b91d8f01 --build-arg 'COOLIFY_URL' --build-arg 'COOLIFY_FQDN' --build-arg 'COOLIFY_BRANCH' --build-arg 'COOLIFY_RESOURCE_UUID' /artifacts/z4gcosgwsg84g808go040s4c
-2026-Mar-01 13:08:33.827115 [DEBUG] [CMD]: docker exec z4gcosgwsg84g808go040s4c bash -c 'bash /artifacts/build.sh'
-2026-Mar-01 13:08:33.827115 [DEBUG] #0 building with "default" instance using docker driver
-2026-Mar-01 13:08:33.827115 [DEBUG] 
-2026-Mar-01 13:08:33.827115 [DEBUG] #1 [internal] load build definition from Dockerfile
-2026-Mar-01 13:08:33.827115 [DEBUG] #1 transferring dockerfile: 2.25kB done
-2026-Mar-01 13:08:33.827115 [DEBUG] #1 DONE 0.0s
-2026-Mar-01 13:08:33.827115 [DEBUG] 
-2026-Mar-01 13:08:33.827115 [DEBUG] #2 [internal] load metadata for ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
-2026-Mar-01 13:08:34.041911 [DEBUG] #2 DONE 0.4s
-2026-Mar-01 13:08:34.196668 [DEBUG] #3 [internal] load .dockerignore
-2026-Mar-01 13:08:34.196668 [DEBUG] #3 transferring context: 2B done
-2026-Mar-01 13:08:34.196668 [DEBUG] #3 DONE 0.0s
-2026-Mar-01 13:08:34.196668 [DEBUG] 
-2026-Mar-01 13:08:34.196668 [DEBUG] #4 [stage-0  1/11] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de
-2026-Mar-01 13:08:34.196668 [DEBUG] #4 DONE 0.0s
-2026-Mar-01 13:08:34.196668 [DEBUG] 
-2026-Mar-01 13:08:34.196668 [DEBUG] #5 [internal] load build context
-2026-Mar-01 13:08:34.196668 [DEBUG] #5 transferring context: 1.13MB 0.0s done
-2026-Mar-01 13:08:34.196668 [DEBUG] #5 DONE 0.0s
-2026-Mar-01 13:08:34.196668 [DEBUG] 
-2026-Mar-01 13:08:34.196668 [DEBUG] #6 [stage-0  2/11] WORKDIR /app/
-2026-Mar-01 13:08:34.196668 [DEBUG] #6 CACHED
-2026-Mar-01 13:08:34.196668 [DEBUG] 
-2026-Mar-01 13:08:34.196668 [DEBUG] #7 [stage-0  3/11] COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
-2026-Mar-01 13:08:34.196668 [DEBUG] #7 CACHED
-2026-Mar-01 13:08:34.196668 [DEBUG] 
-2026-Mar-01 13:08:34.196668 [DEBUG] #8 [stage-0  4/11] RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d
-2026-Mar-01 13:08:34.196668 [DEBUG] #8 CACHED
-2026-Mar-01 13:08:34.196668 [DEBUG] 
-2026-Mar-01 13:08:34.196668 [DEBUG] #9 [stage-0  5/11] RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends curl wget
-2026-Mar-01 13:08:34.196668 [DEBUG] #9 CACHED
-2026-Mar-01 13:08:34.196668 [DEBUG] 
-2026-Mar-01 13:08:34.196668 [DEBUG] #10 [stage-0  6/11] COPY . /app/.
-2026-Mar-01 13:08:34.196668 [DEBUG] #10 DONE 0.1s
-2026-Mar-01 13:08:34.345603 [DEBUG] #11 [stage-0  7/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-/root/npm,target=/root/.npm npm run install:all
-2026-Mar-01 13:08:34.345603 [DEBUG] #11 0.148 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:08:34.468599 [DEBUG] #11 0.174
-2026-Mar-01 13:08:34.468599 [DEBUG] #11 0.174 > install:all
-2026-Mar-01 13:08:34.468599 [DEBUG] #11 0.174 > npm install && cd backend && npm install && cd ../frontend && npm install
-2026-Mar-01 13:08:34.468599 [DEBUG] #11 0.174
-2026-Mar-01 13:08:34.468599 [DEBUG] #11 0.270 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:08:38.853699 [DEBUG] #11 4.654
-2026-Mar-01 13:08:38.853699 [DEBUG] #11 4.654 added 9 packages, and audited 10 packages in 4s
-2026-Mar-01 13:08:38.974343 [DEBUG] #11 4.655
-2026-Mar-01 13:08:38.974343 [DEBUG] #11 4.655 found 0 vulnerabilities
-2026-Mar-01 13:08:38.974343 [DEBUG] #11 4.777 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:08:43.328582 [DEBUG] #11 9.130 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
-2026-Mar-01 13:08:43.611381 [DEBUG] #11 9.413 npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting <REDACTED>
-2026-Mar-01 13:08:49.525775 [DEBUG] #11 15.33
-2026-Mar-01 13:08:49.525775 [DEBUG] #11 15.33 added 389 packages, and audited 390 packages in 11s
-2026-Mar-01 13:08:49.525775 [DEBUG] #11 15.33
-2026-Mar-01 13:08:49.525775 [DEBUG] #11 15.33 58 packages are looking for funding
-2026-Mar-01 13:08:49.525775 [DEBUG] #11 15.33   run `npm fund` for details
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 25 vulnerabilities (20 low, 4 high, 1 critical)
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 To address issues that do not require attention, run:
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39   npm audit fix
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 To address all issues possible (including breaking changes), run:
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39   npm audit fix --force
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 Some issues need review, and may require choosing
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 a different dependency.
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39
-2026-Mar-01 13:08:49.738389 [DEBUG] #11 15.39 Run `npm audit` for details.
-2026-Mar-01 13:08:49.800389 [DEBUG] #11 15.60 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:08:50.414121 [DEBUG] #11 16.22 npm warn EBADENGINE Unsupported engine {
-2026-Mar-01 13:08:50.414121 [DEBUG] #11 16.22 npm warn EBADENGINE   package: '@vitejs/plugin-react@5.1.3',
-2026-Mar-01 13:08:50.414121 [DEBUG] #11 16.22 npm warn EBADENGINE   required: { node: '^20.19.0 || >=22.12.0' },
-2026-Mar-01 13:08:50.414121 [DEBUG] #11 16.22 npm warn EBADENGINE   current: { node: 'v22.11.0', npm: '10.9.0' }
-2026-Mar-01 13:08:50.414121 [DEBUG] #11 16.22 npm warn EBADENGINE }
-2026-Mar-01 13:08:50.704544 [DEBUG] #11 16.50 npm warn EBADENGINE Unsupported engine {
-2026-Mar-01 13:08:50.704544 [DEBUG] #11 16.50 npm warn EBADENGINE   package: 'vite@7.3.1',
-2026-Mar-01 13:08:50.704544 [DEBUG] #11 16.50 npm warn EBADENGINE   required: { node: '^20.19.0 || >=22.12.0' },
-2026-Mar-01 13:08:50.704544 [DEBUG] #11 16.50 npm warn EBADENGINE   current: { node: 'v22.11.0', npm: '10.9.0' }
-2026-Mar-01 13:08:50.704544 [DEBUG] #11 16.50 npm warn EBADENGINE }
-2026-Mar-01 13:08:54.950794 [DEBUG] #11 20.75
-2026-Mar-01 13:08:54.950794 [DEBUG] #11 20.75 added 274 packages, and audited 275 packages in 5s
-2026-Mar-01 13:08:54.950794 [DEBUG] #11 20.75
-2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.75 59 packages are looking for funding
-2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.75   run `npm fund` for details
-2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77
-2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77 4 vulnerabilities (1 moderate, 3 high)
-2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77
-2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77 To address all issues, run:
-2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77   npm audit fix
-2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77
-2026-Mar-01 13:08:55.119197 [DEBUG] #11 20.77 Run `npm audit` for details.
-2026-Mar-01 13:08:55.521490 [DEBUG] #11 DONE 21.3s
-2026-Mar-01 13:08:55.637382 [DEBUG] #12 [stage-0  8/11] COPY . /app/.
-2026-Mar-01 13:08:55.637382 [DEBUG] #12 DONE 0.1s
-2026-Mar-01 13:08:55.792329 [DEBUG] #13 [stage-0  9/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend
-2026-Mar-01 13:08:55.856160 [DEBUG] #13 0.218 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:08:55.993913 [DEBUG] #13 0.241
-2026-Mar-01 13:08:55.993913 [DEBUG] #13 0.241 > build:frontend
-2026-Mar-01 13:08:55.993913 [DEBUG] #13 0.241 > cd frontend && npm run build
-2026-Mar-01 13:08:55.993913 [DEBUG] #13 0.241
-2026-Mar-01 13:08:55.993913 [DEBUG] #13 0.355 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:08:56.239208 [DEBUG] #13 0.387
-2026-Mar-01 13:08:56.239208 [DEBUG] #13 0.387 > frontend@0.0.1 build
-2026-Mar-01 13:08:56.239208 [DEBUG] #13 0.387 > vite build
-2026-Mar-01 13:08:56.239208 [DEBUG] #13 0.387
-2026-Mar-01 13:08:56.239208 [DEBUG] #13 0.450 You are using Node.js 22.11.0. Vite requires Node.js version 20.19+ or 22.12+. Please upgrade your Node.js version.
-2026-Mar-01 13:08:56.297814 [DEBUG] #13 0.660 vite v7.3.1 building client environment for production...
-2026-Mar-01 13:08:56.516736 [DEBUG] #13 0.727 transforming...
-2026-Mar-01 13:09:00.421261 [DEBUG] #13 4.783 ✓ 989 modules transformed.
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 ✗ Build failed in 4.10s
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 error during build:
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 src/components/chat/InboxFiltersSidebar.jsx (5:4): "PhoneArrowDownIcon" is not exported by "node_modules/@heroicons/react/24/outline/esm/index.js", imported by "src/components/chat/InboxFiltersSidebar.jsx".
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 file: /app/frontend/src/components/chat/InboxFiltersSidebar.jsx:5:4
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 3:     UserIcon,
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 4:     UserMinusIcon,
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 5:     PhoneArrowDownIcon,
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788        ^
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 6:     CpuChipIcon,
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788 7:     PlusIcon,
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at getRollupError (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at error (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at Module.error (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at Module.traceVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at ModuleScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at FunctionScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at FunctionBodyScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at Identifier.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2825:28)
-2026-Mar-01 13:09:00.581581 [DEBUG] #13 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)
-2026-Mar-01 13:09:00.591646 [DEBUG] #13 ERROR: process "/bin/bash -ol pipefail -c npm run build:frontend" did not complete successfully: exit code: 1
-2026-Mar-01 13:09:00.663920 [DEBUG] ------
-2026-Mar-01 13:09:00.663920 [DEBUG] > [stage-0  9/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend:
-2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at getRollupError (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
-2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at error (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
-2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at Module.error (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
-2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at Module.traceVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
-2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at ModuleScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
-2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at FunctionScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
-2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at FunctionBodyScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
-2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at Identifier.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
-2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2825:28)
-2026-Mar-01 13:09:00.663920 [DEBUG] 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)
-2026-Mar-01 13:09:00.663920 [DEBUG] ------
-2026-Mar-01 13:09:00.675588 [DEBUG] 13 warnings found (use docker --debug to expand):
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "JWT_SECRET") (line 11)
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "S3_ACCESS_KEY") (line 12)
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "S3_SECRET_KEY") (line 12)
-2026-Mar-01 13:09:00.675588 [DEBUG] - UndefinedVar: Usage of undefined variable '$NIXPACKS_PATH' (line 18)
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "EVOLUTION_API_KEY") (line 11)
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "REDIS_PASSWORD") (line 11)
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "S3_ACCESS_KEY") (line 11)
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "S3_SECRET_KEY") (line 11)
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "DEEPSEEK_API_KEY") (line 12)
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "EVOLUTION_API_KEY") (line 12)
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "JWT_SECRET") (line 12)
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "REDIS_PASSWORD") (line 12)
-2026-Mar-01 13:09:00.675588 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "DEEPSEEK_API_KEY") (line 11)
-2026-Mar-01 13:09:00.675588 [DEBUG] Dockerfile:24
-2026-Mar-01 13:09:00.675588 [DEBUG] --------------------
-2026-Mar-01 13:09:00.675588 [DEBUG] 22 |     # build phase
-2026-Mar-01 13:09:00.675588 [DEBUG] 23 |     COPY . /app/.
-2026-Mar-01 13:09:00.675588 [DEBUG] 24 | >>> RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend
-2026-Mar-01 13:09:00.675588 [DEBUG] 25 |
-2026-Mar-01 13:09:00.675588 [DEBUG] 26 |
-2026-Mar-01 13:09:00.675588 [DEBUG] --------------------
-2026-Mar-01 13:09:00.675588 [DEBUG] ERROR: failed to build: failed to solve: process "/bin/bash -ol pipefail -c npm run build:frontend" did not complete successfully: exit code: 1
-2026-Mar-01 13:09:00.687770 [DEBUG] exit status 1
-2026-Mar-01 13:09:00.784339 ========================================
-2026-Mar-01 13:09:00.805396 Deployment failed: Command execution failed (exit code 1): docker exec z4gcosgwsg84g808go040s4c bash -c 'bash /artifacts/build.sh'
-2026-Mar-01 13:09:00.805396 Error: #0 building with "default" instance using docker driver
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #1 [internal] load build definition from Dockerfile
-2026-Mar-01 13:09:00.805396 #1 transferring dockerfile: 2.25kB done
-2026-Mar-01 13:09:00.805396 #1 DONE 0.0s
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #2 [internal] load metadata for ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
-2026-Mar-01 13:09:00.805396 #2 DONE 0.4s
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #3 [internal] load .dockerignore
-2026-Mar-01 13:09:00.805396 #3 transferring context: 2B done
-2026-Mar-01 13:09:00.805396 #3 DONE 0.0s
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #4 [stage-0  1/11] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de
-2026-Mar-01 13:09:00.805396 #4 DONE 0.0s
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #5 [internal] load build context
-2026-Mar-01 13:09:00.805396 #5 transferring context: 1.13MB 0.0s done
-2026-Mar-01 13:09:00.805396 #5 DONE 0.0s
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #6 [stage-0  2/11] WORKDIR /app/
-2026-Mar-01 13:09:00.805396 #6 CACHED
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #7 [stage-0  3/11] COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
-2026-Mar-01 13:09:00.805396 #7 CACHED
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #8 [stage-0  4/11] RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d
-2026-Mar-01 13:09:00.805396 #8 CACHED
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #9 [stage-0  5/11] RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends curl wget
-2026-Mar-01 13:09:00.805396 #9 CACHED
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #10 [stage-0  6/11] COPY . /app/.
-2026-Mar-01 13:09:00.805396 #10 DONE 0.1s
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #11 [stage-0  7/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-/root/npm,target=/root/.npm npm run install:all
-2026-Mar-01 13:09:00.805396 #11 0.148 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:09:00.805396 #11 0.174
-2026-Mar-01 13:09:00.805396 #11 0.174 > install:all
-2026-Mar-01 13:09:00.805396 #11 0.174 > npm install && cd backend && npm install && cd ../frontend && npm install
-2026-Mar-01 13:09:00.805396 #11 0.174
-2026-Mar-01 13:09:00.805396 #11 0.270 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:09:00.805396 #11 4.654
-2026-Mar-01 13:09:00.805396 #11 4.654 added 9 packages, and audited 10 packages in 4s
-2026-Mar-01 13:09:00.805396 #11 4.655
-2026-Mar-01 13:09:00.805396 #11 4.655 found 0 vulnerabilities
-2026-Mar-01 13:09:00.805396 #11 4.777 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:09:00.805396 #11 9.130 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
-2026-Mar-01 13:09:00.805396 #11 9.413 npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting <REDACTED>
-2026-Mar-01 13:09:00.805396 #11 15.33
-2026-Mar-01 13:09:00.805396 #11 15.33 added 389 packages, and audited 390 packages in 11s
-2026-Mar-01 13:09:00.805396 #11 15.33
-2026-Mar-01 13:09:00.805396 #11 15.33 58 packages are looking for funding
-2026-Mar-01 13:09:00.805396 #11 15.33   run `npm fund` for details
-2026-Mar-01 13:09:00.805396 #11 15.39
-2026-Mar-01 13:09:00.805396 #11 15.39 25 vulnerabilities (20 low, 4 high, 1 critical)
-2026-Mar-01 13:09:00.805396 #11 15.39
-2026-Mar-01 13:09:00.805396 #11 15.39 To address issues that do not require attention, run:
-2026-Mar-01 13:09:00.805396 #11 15.39   npm audit fix
-2026-Mar-01 13:09:00.805396 #11 15.39
-2026-Mar-01 13:09:00.805396 #11 15.39 To address all issues possible (including breaking changes), run:
-2026-Mar-01 13:09:00.805396 #11 15.39   npm audit fix --force
-2026-Mar-01 13:09:00.805396 #11 15.39
-2026-Mar-01 13:09:00.805396 #11 15.39 Some issues need review, and may require choosing
-2026-Mar-01 13:09:00.805396 #11 15.39 a different dependency.
-2026-Mar-01 13:09:00.805396 #11 15.39
-2026-Mar-01 13:09:00.805396 #11 15.39 Run `npm audit` for details.
-2026-Mar-01 13:09:00.805396 #11 15.60 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:09:00.805396 #11 16.22 npm warn EBADENGINE Unsupported engine {
-2026-Mar-01 13:09:00.805396 #11 16.22 npm warn EBADENGINE   package: '@vitejs/plugin-react@5.1.3',
-2026-Mar-01 13:09:00.805396 #11 16.22 npm warn EBADENGINE   required: { node: '^20.19.0 || >=22.12.0' },
-2026-Mar-01 13:09:00.805396 #11 16.22 npm warn EBADENGINE   current: { node: 'v22.11.0', npm: '10.9.0' }
-2026-Mar-01 13:09:00.805396 #11 16.22 npm warn EBADENGINE }
-2026-Mar-01 13:09:00.805396 #11 16.50 npm warn EBADENGINE Unsupported engine {
-2026-Mar-01 13:09:00.805396 #11 16.50 npm warn EBADENGINE   package: 'vite@7.3.1',
-2026-Mar-01 13:09:00.805396 #11 16.50 npm warn EBADENGINE   required: { node: '^20.19.0 || >=22.12.0' },
-2026-Mar-01 13:09:00.805396 #11 16.50 npm warn EBADENGINE   current: { node: 'v22.11.0', npm: '10.9.0' }
-2026-Mar-01 13:09:00.805396 #11 16.50 npm warn EBADENGINE }
-2026-Mar-01 13:09:00.805396 #11 20.75
-2026-Mar-01 13:09:00.805396 #11 20.75 added 274 packages, and audited 275 packages in 5s
-2026-Mar-01 13:09:00.805396 #11 20.75
-2026-Mar-01 13:09:00.805396 #11 20.75 59 packages are looking for funding
-2026-Mar-01 13:09:00.805396 #11 20.75   run `npm fund` for details
-2026-Mar-01 13:09:00.805396 #11 20.77
-2026-Mar-01 13:09:00.805396 #11 20.77 4 vulnerabilities (1 moderate, 3 high)
-2026-Mar-01 13:09:00.805396 #11 20.77
-2026-Mar-01 13:09:00.805396 #11 20.77 To address all issues, run:
-2026-Mar-01 13:09:00.805396 #11 20.77   npm audit fix
-2026-Mar-01 13:09:00.805396 #11 20.77
-2026-Mar-01 13:09:00.805396 #11 20.77 Run `npm audit` for details.
-2026-Mar-01 13:09:00.805396 #11 DONE 21.3s
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #12 [stage-0  8/11] COPY . /app/.
-2026-Mar-01 13:09:00.805396 #12 DONE 0.1s
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 #13 [stage-0  9/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend
-2026-Mar-01 13:09:00.805396 #13 0.218 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:09:00.805396 #13 0.241
-2026-Mar-01 13:09:00.805396 #13 0.241 > build:frontend
-2026-Mar-01 13:09:00.805396 #13 0.241 > cd frontend && npm run build
-2026-Mar-01 13:09:00.805396 #13 0.241
-2026-Mar-01 13:09:00.805396 #13 0.355 npm warn config production Use `--omit=dev` instead.
-2026-Mar-01 13:09:00.805396 #13 0.387
-2026-Mar-01 13:09:00.805396 #13 0.387 > frontend@0.0.1 build
-2026-Mar-01 13:09:00.805396 #13 0.387 > vite build
-2026-Mar-01 13:09:00.805396 #13 0.387
-2026-Mar-01 13:09:00.805396 #13 0.450 You are using Node.js 22.11.0. Vite requires Node.js version 20.19+ or 22.12+. Please upgrade your Node.js version.
-2026-Mar-01 13:09:00.805396 #13 0.660 vite v7.3.1 building client environment for production...
-2026-Mar-01 13:09:00.805396 #13 0.727 transforming...
-2026-Mar-01 13:09:00.805396 #13 4.783 ✓ 989 modules transformed.
-2026-Mar-01 13:09:00.805396 #13 4.788 ✗ Build failed in 4.10s
-2026-Mar-01 13:09:00.805396 #13 4.788 error during build:
-2026-Mar-01 13:09:00.805396 #13 4.788 src/components/chat/InboxFiltersSidebar.jsx (5:4): "PhoneArrowDownIcon" is not exported by "node_modules/@heroicons/react/24/outline/esm/index.js", imported by "src/components/chat/InboxFiltersSidebar.jsx".
-2026-Mar-01 13:09:00.805396 #13 4.788 file: /app/frontend/src/components/chat/InboxFiltersSidebar.jsx:5:4
-2026-Mar-01 13:09:00.805396 #13 4.788
-2026-Mar-01 13:09:00.805396 #13 4.788 3:     UserIcon,
-2026-Mar-01 13:09:00.805396 #13 4.788 4:     UserMinusIcon,
-2026-Mar-01 13:09:00.805396 #13 4.788 5:     PhoneArrowDownIcon,
-2026-Mar-01 13:09:00.805396 #13 4.788        ^
-2026-Mar-01 13:09:00.805396 #13 4.788 6:     CpuChipIcon,
-2026-Mar-01 13:09:00.805396 #13 4.788 7:     PlusIcon,
-2026-Mar-01 13:09:00.805396 #13 4.788
-2026-Mar-01 13:09:00.805396 #13 4.788     at getRollupError (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
-2026-Mar-01 13:09:00.805396 #13 4.788     at error (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
-2026-Mar-01 13:09:00.805396 #13 4.788     at Module.error (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
-2026-Mar-01 13:09:00.805396 #13 4.788     at Module.traceVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
-2026-Mar-01 13:09:00.805396 #13 4.788     at ModuleScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
-2026-Mar-01 13:09:00.805396 #13 4.788     at FunctionScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
-2026-Mar-01 13:09:00.805396 #13 4.788     at FunctionBodyScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
-2026-Mar-01 13:09:00.805396 #13 4.788     at Identifier.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
-2026-Mar-01 13:09:00.805396 #13 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2825:28)
-2026-Mar-01 13:09:00.805396 #13 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)
-2026-Mar-01 13:09:00.805396 #13 ERROR: process "/bin/bash -ol pipefail -c npm run build:frontend" did not complete successfully: exit code: 1
-2026-Mar-01 13:09:00.805396 ------
-2026-Mar-01 13:09:00.805396 > [stage-0  9/11] RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend:
-2026-Mar-01 13:09:00.805396 4.788     at getRollupError (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
-2026-Mar-01 13:09:00.805396 4.788     at error (file:///app/frontend/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
-2026-Mar-01 13:09:00.805396 4.788     at Module.error (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
-2026-Mar-01 13:09:00.805396 4.788     at Module.traceVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
-2026-Mar-01 13:09:00.805396 4.788     at ModuleScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
-2026-Mar-01 13:09:00.805396 4.788     at FunctionScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
-2026-Mar-01 13:09:00.805396 4.788     at FunctionBodyScope.findVariable (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
-2026-Mar-01 13:09:00.805396 4.788     at Identifier.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
-2026-Mar-01 13:09:00.805396 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2825:28)
-2026-Mar-01 13:09:00.805396 4.788     at CallExpression.bind (file:///app/frontend/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)
-2026-Mar-01 13:09:00.805396 ------
-2026-Mar-01 13:09:00.805396 
-2026-Mar-01 13:09:00.805396 13 warnings found (use docker --debug to expand):
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "JWT_SECRET") (line 11)
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "S3_ACCESS_KEY") (line 12)
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "S3_SECRET_KEY") (line 12)
-2026-Mar-01 13:09:00.805396 - UndefinedVar: Usage of undefined variable '$NIXPACKS_PATH' (line 18)
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "EVOLUTION_API_KEY") (line 11)
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "REDIS_PASSWORD") (line 11)
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "S3_ACCESS_KEY") (line 11)
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "S3_SECRET_KEY") (line 11)
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "DEEPSEEK_API_KEY") (line 12)
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "EVOLUTION_API_KEY") (line 12)
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "JWT_SECRET") (line 12)
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "REDIS_PASSWORD") (line 12)
-2026-Mar-01 13:09:00.805396 - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "DEEPSEEK_API_KEY") (line 11)
-2026-Mar-01 13:09:00.805396 Dockerfile:24
-2026-Mar-01 13:09:00.805396 --------------------
-2026-Mar-01 13:09:00.805396 22 |     # build phase
-2026-Mar-01 13:09:00.805396 23 |     COPY . /app/.
-2026-Mar-01 13:09:00.805396 24 | >>> RUN --mount=type=cache,id=i0kwck044gc80s0osco8w0wg-node_modules/cache,target=/app/node_modules/.cache npm run build:frontend
-2026-Mar-01 13:09:00.805396 25 |
-2026-Mar-01 13:09:00.805396 26 |
-2026-Mar-01 13:09:00.805396 --------------------
-2026-Mar-01 13:09:00.805396 ERROR: failed to build: failed to solve: process "/bin/bash -ol pipefail -c npm run build:frontend" did not complete successfully: exit code: 1
-2026-Mar-01 13:09:00.805396 exit status 1
-2026-Mar-01 13:09:00.828581 [DEBUG] Error type: RuntimeException
-2026-Mar-01 13:09:00.845370 [DEBUG] Error code: 0
-2026-Mar-01 13:09:00.854509 [DEBUG] Location: /var/www/html/app/Traits/ExecuteRemoteCommand.php:243
-2026-Mar-01 13:09:00.867988 [DEBUG] Stack trace (first 5 lines):
-2026-Mar-01 13:09:00.897002 [DEBUG] #0 /var/www/html/app/Traits/ExecuteRemoteCommand.php(104): App\Jobs\ApplicationDeploymentJob->executeCommandWithProcess()
-2026-Mar-01 13:09:00.916231 [DEBUG] #1 /var/www/html/vendor/laravel/framework/src/Illuminate/Collections/Traits/EnumeratesValues.php(271): App\Jobs\ApplicationDeploymentJob->{closure:App\Traits\ExecuteRemoteCommand::execute_remote_command():71}()
-2026-Mar-01 13:09:00.932785 [DEBUG] #2 /var/www/html/app/Traits/ExecuteRemoteCommand.php(71): Illuminate\Support\Collection->each()
-2026-Mar-01 13:09:00.942488 [DEBUG] #3 /var/www/html/app/Jobs/ApplicationDeploymentJob.php(3118): App\Jobs\ApplicationDeploymentJob->execute_remote_command()
-2026-Mar-01 13:09:00.951154 [DEBUG] #4 /var/www/html/app/Jobs/ApplicationDeploymentJob.php(888): App\Jobs\ApplicationDeploymentJob->build_image()
-2026-Mar-01 13:09:00.958004 ========================================
-2026-Mar-01 13:09:00.964381 Deployment failed. Removing the new version of your application.
-2026-Mar-01 13:09:02.896633 Gracefully shutting down build container: z4gcosgwsg84g808go040s4c
-2026-Mar-01 13:09:03.555669 [DEBUG] [CMD]: docker stop -t 30 z4gcosgwsg84g808go040s4c
-2026-Mar-01 13:09:03.555669 [DEBUG] z4gcosgwsg84g808go040s4c
-GIT_SSH_COMMAND
+
+> start:backend
+> cd backend && npm start
+
+
+> valuewats-backend@1.0.1 start
+> prisma migrate deploy && node src/server.js
+
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "postgres", schema "public" at "ic4c04s008gwc8cg4k8skkks:5432"
+
+18 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+🚀 Server running on port 3000
+📊 Environment: production
+[Scheduler] Campaign scheduler started (checking every 30s)
+✅ Redis connected
+[getInstanceStatus] d: {"instance":{"instanceName":"d","state":"close"}}
+[getInstanceStatus] 55: {"instance":{"instanceName":"55","state":"close"}}
+npm warn config production Use `--omit=dev` instead.
+npm warn config production Use `--omit=dev` instead.
+Could not sync status for meky: Failed to get instance status
+Get status error: {
+  status: 404,
+  error: 'Not Found',
+  response: { message: [ 'The "meky" instance does not exist' ] }
+}
+Get status error: {
+  status: 404,
+  error: 'Not Found',
+  response: { message: [ 'The "515" instance does not exist' ] }
+}
+Could not sync status for 515: Failed to get instance status
+Could not sync status for ي: Failed to get instance status
+Creating instance: instance_1772538641356 at http://api-sgwcco4kw80sckwg4c08sgk4:8080
+[getInstanceStatus] d: {"instance":{"instanceName":"d","state":"close"}}
+[getInstanceStatus] 55: {"instance":{"instanceName":"55","state":"close"}}
+Could not sync status for meky: Failed to get instance status
+Could not sync status for 515: Failed to get instance status
+Could not sync status for ي: Failed to get instance status
+Instance created at Evolution API: {"instance":{"instanceName":"instance_1772538641356","instanceId":"7b0f2f6d-e6be-4f70-af74-cdf00703b0b2","integration":"WHATSAPP-BAILEYS","webhookWaBusiness":null,"accessTokenWaBusiness":"","status":"connecting"},"hash":"instance_1772538641356","webhook":{},"websocket":{},"rabbitmq":{},"nats":{},"sqs":{},"settings":{"rejectCall":false,"msgCall":"","groupsIgnore":false,"alwaysOnline":false,"readMessages":false,"readStatus":false,"syncFullHistory":false,"wavoipToken":""},"qrcode":{"pairingCode":null,"code":"2@17uKvsQZwyJUXSPsSn9TH90J0ByHL75YXIwleO6Frrx/yRY3Xy8Zp/JPaMSnxhEFOI2WDQ9DD2phFNrTNrz1hNmEQbdiqYeT05A=,hsgr2u+irNvNl8TrMfa52dC6XWTD9MJNIcnsKeO6ZX8=,Ns9YhDdxRQY36Br/nLAB2GtroWdc+fNZWEm9LbbnaAY=,EMgllRa+K6mKXvG4ltZuUAAt4ZgFysoctnjpcK/4xJ8=","base64":"data:image/png;base64,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JVPI/KSHtdZan3hYa631iYe11lqf+MulkDnpSk5C5iRkpq5kCpmpK5lC5qQrmULmpCuZQmbqSqaQmbqSKWSmruSNkDnpSqauZAqZk65kCpmpK5lC5jd1JSchM3UlU8icdCUnIXOjK5lC5kZXMoXM1JVMITN1JSddyRQyJ13JjZC5ETI3upIpZG50JSddyRQybzystdb6xMNaa61PPKy11vrEX17qSqaQeaMrOelKTrqSKWROupIpZKaQmbqSKWSmrmQKmZOQudGVnITMFDI3QmbqSr7UlUwh80bInHQlJ13JFDI/qSuZQuakKznpSqaQmbqSKWSmruQkZKauZAqZk67kJGSmrmQKmRtdyUnITF3JFDJTV/LGw1prrU88rLXW+sTDWmutT/z5519cCJmpKzkJmf9SVzKFzNSVnITMSVfyRshMXckUMr+pK5lC5qQrOQmZqSu5ETJTV3ISMje6kpOQmbqSKWR+UldyI2RudCU3QmbqSn5SyExdyRQy/6Wu5Dc9rLXW+sTDWmutTzystdb6xF/+Y13JjZCZupIpZKaQmbqSN7qSk5D5SV3JFDJTV3IjZKaQOelKppCZupIbIXMjZKau5I2Q+UldyY2QmUJm6kqmkJm6kilkpq7kJGSmruSNkJm6kpOuZAqZqSuZQuakK7kRMm+EzNSV3HhYa631iYe11lqfeFhrrfWJv1zqSn5TyExdyUnITF3JScjc6EpOQuakK7kRMlNXciNkpq7kpCs5CZkbXclJV3ISMlNXMoXMSVcyhczUlfymkJm6kpOu5KQruREyU1dyEjJTVzKFzElXchIyXwqZqSt5I2SmruSNh7XWWp94WGut9YmHtdZan/jLpZA56UqmrmQKmZOu5I2QOelK3giZk67kJGR+U1dyI2ROupIpZE5C5qQrOelKTrqSG13JFDK/qSu5ETJTVzKFzI2uZAqZk65kCpmf1JWchMxJVzKFzElXcqMruREyU1dy42GttdYnHtZaa33iYa211if+cqkrOQmZqSs5CZk3upKTkJlC5qQrOelKboTMSVcyhcyNkHmjK5lC5qQrudGVTCEzdSVTyNzoSqaQeaMrmULmJGT+S13JSVcyhcwUMiddyUnITF3JFDK/KWR+U1cyhcwbD2uttT7xsNZa6xMPa621PvHnn39xIWROupKfFDL/pa7kJGSmruQkZE66kilkTrqSKWROupKTkHmjK/lJIXPSlZyEzNSVnITM1JXcCJmpK7kRMj+pKzkJmZ/UldwImakrOQmZk65kCpmTruQkZKau5I2HtdZan3hYa631iYe11lqf+MulruQkZKauZAqZqSuZQuakKzkJmZOu5I2QmbqSKWSmruSNrmQKmTdC5kZXMoXMjZCZupIpZKauZOpKflLInHQlN0LmJGRudCVTyJx0JVPI3OhKTkLmpCs5CZmTruRGVzKFzBQyvylkpq7kxsNaa61PPKy11vrEw1prrU/85VLInHQlU8jc6EqmkDkJmakrmUJmCpmpKzkJmZ/UlUwh80bI3OhK3uhKTkLmJGROQuakK3mjK5lC5iRkpq7kRlcyhcxJyNwImakrOQmZN7qSG13JFDInITN1JTe6kpOQudGVTCHzxsNaa61PPKy11vrEw1prrU/85YeFzElXMoXMjZA5CZmpK5lC5iRkTrqSKWSmruQnhczUlUwhM3UlU8i8ETJvdCU3QuYkZKauZAqZqSuZQmbqSk66kilkboTMSVcyhczUlUwhcyNkTrqSKWSmruRGyExdyRshcyNkflNX8sbDWmutTzystdb6xMNaa61P/PnnX7wQMiddyUnITF3JFDJTV3ISMiddyY2QmbqS3xQyU1cyhcxJVzKFzElX8pNC5id1JVPI3OhKppCZupIpZKauZAqZ39SV3AiZk67kJGRudCVTyPykruRGyJx0JVPInHQlJyEzdSU3HtZaa33iYa211ice1lprfeIvL3UlU8jc6EqmkJm6kilkvtSVTCEzdSVTyExdyUnITF3JFDInXcl/KWROupIpZG6EzNSVTCEzdSVTyExdyRQyJyEzdSVTyExdyRQyb4TMGyFzoyuZQmYKmZOuZAqZqSs5CZmTrmTqSt7oSr70sNZa6xMPa621PvGw1lrrE3/5YV3JFDJTV3LSlUwhM3UlU8jcCJmTruRGyPykkJm6kje6khshc9KVnHQlU8icdCVvdCU/qSuZQmYKmRtdyUnInHQlN0Jm6kqmkJm6kilkpq7kJGSmkDkJmakrOelKboTMSVcyhczUlUwh85Me1lprfeJhrbXWJx7WWmt94i8vhczUlZyEzNSVTCEzdSVTyLzRlZyEzNSVnHQlJyEzdSVTV3ISMlNXchIyU1cyhcyNrmQKmZOQOelKflLI/L8kZKauZAqZGyFzEjJTV3ISMlNXMoXM1JWchMxJyJx0JVNXMoXMFDJTV/Klh7XWWp94WGut9YmHtdZan/jzz7+4EDInXclPCpmTruS/FDI3upKTkJm6kilkpq7kjZCZupKTkDnpSqaQudGVvBEyU1cyhcxJV3IjZKau5EbI/KauZAqZqSs5CZmpK5lC5qQrOQmZN7qSGyHzk7qSGw9rrbU+8bDWWusTD2uttT7x559/8ULI3OhKppA56UqmkDnpSk5CZupKflLITF3JFDJTV3ISMm90JVPInHQlU8hMXckUMlNXchIyU1dyEjInXclJyExdyU8KmTe6kilkpq7kJGROupIpZH5TV3ISMlNXciNkbnQlU8hMXclJyExdyRsPa621PvGw1lrrEw9rrbU+8eeff/GhkDnpSqaQOelKTkJm6kpOQuZGVzKFzG/qSqaQ+UldyRQyJ13JSchMXckUMlNXMoXMG13JFDInXclJyExdyRshc9KVTCHzk7qSKWRudCVTyExdyRQyN7qSk5CZupKfFDJTV/LGw1prrU88rLXW+sTDWmutT/z5519cCJmpKzkJmakrmULmRldyEjK/qSuZQmbqSqaQmbqSKWSmrmQKmZOu5CRkpq5kCpmpK3kjZN7oSm6EzElXchIyN7qSk5CZupI3QmbqSqaQOelKflLITF3JFDInXckUMlNX8pNCZupK3giZqSu58bDWWusTD2uttT7xsNZa6xN//vkXL4TM1JWchMxJV3ISMiddyUnITF3JFDInXckUMje6kjdC5qQruREyU1cyhczUlUwhc9KVTCFz0pVMIXOjKzkJmakrmUJm6kqmkHmjK3kjZE66kilkpq5kCpk3upIpZKauZAqZN7qSN0Jm6kqmkLnRldx4WGut9YmHtdZan3hYa631ib9cCpkbIXPSlUwhM3UlN0LmpCuZQmbqSm50JSchM4XMT+pKflNXcqMrudGV3OhKppCZQmbqSm50JVPITF3JScichMzUlbzRlZx0JVPITF3JGyEzdSW/KWROupIpZKau5L/0sNZa6xMPa621PvGw1lrrE395qSs56UpOQmbqSqaQOelKTkLmpCt5I2SmrmTqSk5CZupKppCZupKTkJm6kilkpq7kJGSmruQkZKau5EbInITMSVcyhczUlZyEzNSVTCEzdSUnXcmNkJm6khsh86WuZAqZN7qSn9SVTCEzdSVTVzKFzE96WGut9YmHtdZan3hYa631ib+8FDInXcmNkLkRMlNXchIyJ13JFDJTV3IjZE66khsh85tCZupKppC5ETJTV3LSlZyEzEnITF3JFDJTVzJ1JW90JTdC5o2QmbqSKWSmrmQKmZOuZAqZG13JSchMIXPSlUwh85NCZupKftLDWmutTzystdb6xMNaa61P/OWlrmQKmSlkTrqSnxQyJ13JT+pKTrqSKWRudCU3QuaNruRGVzKFzNSVTCHzm7qSk67kJGRuhMyNruSkK5lC5kbInITMG13JFDJTVzKFzBtdyY2uZAqZk5CZupKTkJm6khsPa621PvGw1lrrEw9rrbU+8ZdLXcmNruRGyExdyRtdyRQyJ13J1JVMITN1JSchcyNk/kshc9KV3AiZqSs5CZmpK7kRMr+pK7kRMlPITF3JSVcyhczUlUwhM3UlJyEzdSUnIfObupIpZKauZOpKppCZupI3QuYnPay11vrEw1prrU88rLXW+sSff/7FhZA56UqmkLnRlUwhM3UlU8jc6EpuhMxJV/JGyLzRlUwhM3UlPylkpq5kCpmpK5lC5kZX8kbI3OhKppA56UqmkHmjK5lCZupKppCZupKTkJm6kilkpq7kJGRudCU3QmbqSk5C5qQrmUJm6kpOQmbqSm48rLXW+sTDWmutTzystdb6xJ9//sWFkJm6khsh85O6kilkflNXMoXM1JXcCJmpKzkJmZ/UlUwhM3UlJyFz0pVMITN1JVPITF3JjZC50ZVMITN1JVPI/Kau5I2QmbqSKWSmruSNkJm6kpOQmbqSk5D5TV3JScicdCU3HtZaa33iYa211ice1lprfeIvl7qSGyFz0pXcCJmTruQkZG50JVPInITMGyEzdSUnXcmNkDnpSk5CZupKppC5ETI3QmbqSqau5EbITF3JFDInXcmNkJm6kjdCZupKppB5I2RuhMzUlZyEzNSV3OhKboTMScj8poe11lqfeFhrrfWJh7XWWp/4y0shM3UlU1cyhcxJyExdyRshM3UlN0Jm6kpuhMzUlZyEzBQyN0Jm6kpuhMyNkLnRlUwhM3UlJ13JSchMXclJV3LSlUwhcxIyU1dyEjJTVzKFzI2QmbqSKWSmkLnRlUwhM3UlU8hMXckUMlPIvBEyU1dyEjJTV/KbHtZaa33iYa211ice1lprfeIvl0Jm6kqmkJm6khtdyY2Q+UkhcxIyU1dy0pW80ZVMIXPSlbzRlUwh85u6kilkpq7kJGSmruQkZE66kilkbnQlX+pKppB5oyu50ZWcdCVTyJx0JSchc9KV3OhKTkLmpCu58bDWWusTD2uttT7xsNZa6xN//vkXL4TM1JVMIfObupIpZKau5CRkTrqSKWROupI3QmbqSqaQ+VJXMoXM1JXcCJmpK5lC5kZXMoXM1JX8pJD5TV3JFDJvdCUnITN1JSchc9KVTCEzdSVTyPyXupKTkDnpSm48rLXW+sTDWmutTzystdb6xJ9//sULITN1JTdCZupKTkLmpCuZQuakK5lCZupKboTMja5kCpmTruSNkJm6kilkpq7kJGSmruRGyExdyRQyU1dyI2SmrmQKmakruREyb3QlN0LmpCs5CZmTrmQKmakreSNkbnQlU8hMXckUMlNXchIyN7qSNx7WWmt94mGttdYnHtZaa33izz//4kLITF3JSchMXclJyJx0JSchM3UlU8jc6EpuhMyNruQkZG50JVPITF3JjZCZupIbITN1JVPInHQlU8hMXckbITN1JVPI3OhKflLITF3JFDJTV3ISMlNXchIyN7qSKWTe6EpOQua/1JXceFhrrfWJh7XWWp94WGut9Yk///yLD4XM1JW8ETJTV3ISMlNXMoXMja7kRsjc6EpuhMxJV3ISMlNXMoXM1JVMIXPSlUwhc6MrmULmpCv5L4XM1JWchMyNrmQKmRtdyRQyU1dyEjInXckUMlNXchIyU1cyhcxJVzKFzNSVnITM1JW88bDWWusTD2uttT7xsNZa6xN/uRQyU1cyhcxJVzKFzElXMoXMScj8LwmZk67kjZCZupKTkHmjK5lCZupKppB5oyuZQuakK5lCZupKppCZupIbITN1JVNX8kZX8qWu5Dd1JVPITF3JScicdCU3QuakK/lJD2uttT7xsNZa6xMPa621PvGXS13Jja7kpCu50ZVMITN1JVPITF3JFDInXckUMm90JV8KmakrOQmZKWRuhMyNruRGVzKFzBtdyRQyJ13JjZD5SSFz0pVMIXMSMlNXchIyJ13JScichMwbITN1JVNX8kbITF3JjYe11lqfeFhrrfWJh7XWWp/488+/uBAyU1dyEjJvdCU3QuY3dSVvhMyNrmQKmZOu5CRkpq7kRshMXckUMlNXciNkpq5kCpmTrmQKmakrOQmZ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","count":1}}
+Setting webhook for instance: instance_1772538641356 URL: https://app.muhammedmekky.com/api/webhooks/receive
+✅ Webhook configured for instance_1772538641356 → https://app.muhammedmekky.com/api/webhooks/receive
+[ChatSync] Syncing for instance: meky
+[getInstanceStatus] instance_1772538641356: {"instance":{"instanceName":"instance_1772538641356","state":"connecting"}}
+[getInstanceStatus] d: {"instance":{"instanceName":"d","state":"close"}}
+[getInstanceStatus] 55: {"instance":{"instanceName":"55","state":"close"}}
+Could not sync status for meky: Failed to get instance status
+Could not sync status for 515: Failed to get instance status
+Could not sync status for ي: Failed to get instance status
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: messages.upsert for instance: 011
+[Webhook] 📩 Message from 201099664601, fromMe: false, type: text
+[Webhook] 💬 Text: شركة سعودية تحتاج مدير تسويق او فريق تسويق للعمل معهم، ولكن لا يحتاجون لشركة عشان ذاقوا الامرين من ا
+[Webhook] ✅ Instance found: aefe82db-4979-4fbb-b077-0f6210f3e981 (tenant: 0d6e7316-bf16-4d9d-bf78-a3865ba47df6)
+[Webhook] 💾 Saving to chat inbox...
+[Webhook] ✅ Conversation upserted: 42793012-8f6e-485b-9036-7ab9c6ca0e04
+[Webhook] ✅ ChatMessage saved: f9afc226-848b-4d8c-92be-aee46e6eabd2
+[Webhook] ✅ Socket event emitted
+[Webhook] 🤖 Processing automations for: شركة سعودية تحتاج مدير تسويق او فريق تسويق للعمل م
+[Webhook] 🤖 Sending to Agent Service...
+[Webhook] 🔵 Received event: messages.upsert for instance: 011
+[Webhook] 📩 Message from 201099664601, fromMe: false, type: text
+[Webhook] 💬 Text: هل متاح معاك ادخلك معاهم؟
+[Webhook] ✅ Instance found: aefe82db-4979-4fbb-b077-0f6210f3e981 (tenant: 0d6e7316-bf16-4d9d-bf78-a3865ba47df6)
+[Webhook] 💾 Saving to chat inbox...
+[Webhook] ✅ Conversation upserted: 42793012-8f6e-485b-9036-7ab9c6ca0e04
+[Webhook] ✅ ChatMessage saved: 028169e3-3d2f-4ed5-afe3-98fea594a8a4
+[Webhook] ✅ Socket event emitted
+[Webhook] 🤖 Processing automations for: هل متاح معاك ادخلك معاهم؟
+[Webhook] 🤖 Sending to Agent Service...
+[Webhook] 🔵 Received event: connection.update for instance: instance_1772538641356
+[Webhook] 🔌 Connection update for instance_1772538641356: State=connecting, Reason=none
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: connection.update for instance: instance_1772538641356
+[Webhook] 🔌 Connection update for instance_1772538641356: State=connecting, Reason=none
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: connection.update for instance: instance_1772538641356
+[Webhook] 🔌 Connection update for instance_1772538641356: State=connecting, Reason=none
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: connection.update for instance: instance_1772538641356
+[Webhook] 🔌 Connection update for instance_1772538641356: State=connecting, Reason=none
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: connection.update for instance: instance_1772538641356
+[Webhook] 🔌 Connection update for instance_1772538641356: State=connecting, Reason=none
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: connection.update for instance: instance_1772538641356
+[Webhook] 🔌 Connection update for instance_1772538641356: State=connecting, Reason=none
+[Webhook] 🔵 Received event: qrcode.updated for instance: instance_1772538641356
+[Webhook] Ignoring event: qrcode.updated
+[Webhook] 🔵 Received event: connection.update for instance: instance_1772538641356
+[Webhook] 🔌 Connection update for instance_1772538641356: State=refused, Reason=none
+Get status error: {
+  status: 404,
+  error: 'Not Found',
+  response: { message: [ 'The "ي" instance does not exist' ] }
+}
+Get status error: {
+  status: 404,
+  error: 'Not Found',
+  response: { message: [ 'The "meky" instance does not exist' ] }
+}
+Get status error: {
+  status: 404,
+  error: 'Not Found',
+  response: { message: [ 'The "515" instance does not exist' ] }
+}
+Get status error: {
+  status: 404,
+  error: 'Not Found',
+  response: { message: [ 'The "ي" instance does not exist' ] }
+}
+[fetchConversations] Error for meky: {
+  status: 404,
+  error: 'Not Found',
+  response: { message: [ 'Cannot GET /chat/findChat/meky' ] }
+}
+Get status error: {
+  status: 404,
+  error: 'Not Found',
+  response: { message: [ 'The "meky" instance does not exist' ] }
+}
+Get status error: {
+  status: 404,
+  error: 'Not Found',
+  response: { message: [ 'The "515" instance does not exist' ] }
+}
+Get status error: {
+  status: 404,
+  error: 'Not Found',
+  response: { message: [ 'The "ي" instance does not exist' ] }
+}
+[AgentService] No active default agent found for tenant: 0d6e7316-bf16-4d9d-bf78-a3865ba47df6
+[AgentService] No active default agent found for tenant: 0d6e7316-bf16-4d9d-bf78-a3865ba47df6
+[Webhook] ⚠️ Instance instance_1772538641356 connection refused. Reason: none
