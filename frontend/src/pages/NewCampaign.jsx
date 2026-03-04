@@ -16,7 +16,8 @@ import {
   TableCellsIcon,
   TagIcon,
   ClockIcon,
-  SparklesIcon
+  SparklesIcon,
+  MegaphoneIcon
 } from '@heroicons/react/24/outline';
 
 export default function NewCampaign() {

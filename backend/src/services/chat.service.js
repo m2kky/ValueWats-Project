@@ -143,7 +143,7 @@ class ChatService {
         include: {
           notes: {
             orderBy: { createdAt: 'desc' },
-            include: { user: { select: { id: true, name: true, email: true } } }
+            include: { user: { select: { id: true, email: true } } }
           }
         }
       });
