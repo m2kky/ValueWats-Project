@@ -264,6 +264,7 @@ export default function Onboarding() {
                                             return (
                                                 <label
                                                     key={purpose}
+                                                    onClick={() => toggleChatPurpose(purpose)}
                                                     className={`flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer transition-all ${isChecked
                                                         ? 'bg-indigo-500/10 border border-indigo-500/30'
                                                         : 'hover:bg-white/5 border border-transparent'
