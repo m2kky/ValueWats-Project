@@ -6,6 +6,76 @@ This document tracks all production bugs encountered, their root causes, and the
 
 ---
 
+## ERR-028: Onboarding API 500 Internal Server Error
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-03-04 |
+| **Severity** | 🔴 Critical |
+| **Error** | `Invalid prisma.user.update() invocation: Argument where of type UserWhereUniqueInput needs at least one of id or email` |
+| **Impact** | Users get a 500 when finishing the onboarding wizard, locking them out of the app. |
+
+### Root Cause
+The `tenantContext` middleware attaches the user object to `req.user`. Specifically, it uses `req.user.id` and `req.user.tenantId`. The onboarding route was incorrectly accessing `req.user.userId`. Since this was `undefined`, Prisma threw a validation error during the update.
+
+### Fix
+Changed `where: { id: req.user.userId }` to `where: { id: req.user.id }` in `backend/src/routes/onboarding.js`.
+
+### Lesson Learned
+> Always verify the exact shape of the object attached by custom middleware. `tenantContext` provides `.id`, not `.userId`.
+
+---
+
+## ERR-027: Google OAuth Popup Frozen on gsi/transform
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-03-04 |
+| **Severity** | 🔴 Critical |
+| **Error** | Google Sign-in popup opens, redirects to `gsi/transform`, then gets stuck indefinitely with a blank white screen. |
+| **Impact** | Users cannot sign in or register using Google. |
+
+### Root Cause
+The `helmet` middleware in the Express backend sets a strict `Cross-Origin-Opener-Policy` by default (`same-origin`). This security header prevents the popup window from communicating back to the main window to pass the parsed Google OAuth token.
+
+### Fix
+Explicitly allowed popups in the backend `server.js` helmet configuration:
+```javascript
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }
+}));
+```
+
+### Lesson Learned
+> When utilizing third-party OAuth popup flows frontend-side, ensure the backend security headers (specifically COOP) allow cross-origin popup messaging.
+
+---
+
+## ERR-026: Prisma Shadow DB Migration Failure (P1014)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-03-04 |
+| **Severity** | 🔴 Critical |
+| **Error** | `P1014: The underlying table for model Tenant does not exist` and later `model contacts does not exist` |
+| **Impact** | Unable to apply new migrations or spin up local development, as the shadow DB fails to build. |
+
+### Root Cause
+Two separate older migration files contained invalid SQL targeting tables that Prisma dynamically maps or hasn't created yet at that absolute point in history:
+1. `20260215175500_add_multi_agent_system`: Referenced `"Tenant"` instead of the mapped table name `"tenants"`.
+2. `20260304000000_add_plans_and_blacklist`: Tried to `ALTER TABLE contacts`, but the `contacts` table wasn't created until a later migration (`20260724000000_add_crm_system`).
+
+This passes in production via `migrate deploy` if the tables already happen to exist from manual interference, but destroys the idempotent shadow database rebuild needed for `migrate dev`.
+
+### Fix
+1. Fixed case-sensitivity `Tenant` -> `tenants` in the first migration file.
+2. Moved the `ALTER TABLE contacts` statements directly into the `CREATE TABLE` inside the CRM migration where the table is originally born.
+
+### Lesson Learned
+> Do not manually edit migration files to execute DDL on tables that don't yet exist in the strict chronological order of the `prisma/migrations` folder layout.
+
+---
+
 ## ERR-025: Frontend Build Failure — Unexpected end of file
 
 | Field | Value |

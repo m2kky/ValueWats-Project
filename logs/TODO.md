@@ -1,7 +1,7 @@
 # TODO — Active Tasks & Backlog
 
 > This file is the single source of truth for what needs to be done. Update it after every session.
-> Last updated: 2026-02-17
+> Last updated: 2026-03-04
 
 ## 🔴 High Priority
 
@@ -9,7 +9,7 @@
 - [x] 2. **Resolve Evolution API DNS/Instance Issues** (Monitoring needed)
 - [x] 3. **Implement CRM System** (Contacts, Labels, Notes, Lifecycle Stages) — Schema + Backend + Frontend
 - [x] 4. **Implement Agent Actions** (8 distinct actions like respond.io) - Premium single-page UI & backend injection
-- [ ] 5. **Implement Agent Tools** (Email, Google Calendar, WhatsApp Notifications)
+- [ ] 5. **Implement Agent Tools** (Google Calendar, Google Sheets, Google Drive, Email, WhatsApp Notifications)
 - [ ] 6. **Implement Activity Feed** (Chat Banner & CRM Timeline)
 - [ ] 7. **Implement Saved Segments & Retargeting** (Smart filtering)
 - [ ] 8. **Implement Analytics Dashboard** (Campaigns, Agents, Funnel)
@@ -36,6 +36,9 @@
 
 ## ✅ Done
 
+- [x] Phase 12: Onboarding Wizard (3-step data collection & redirects) — 2026-03-04
+- [x] Phase 11: Auth Pages Redesign & Google OAuth integration — 2026-03-04
+- [x] Redesigned OTP & Team Invitation Email Templates (Dark theme + Base64 SVG) — 2026-03-04
 - [x] Fix Backend Startup Express 5 wildcard `PathError` crash — 2026-02-21
 - [x] Fix Backend Startup crash (fixed invalid `knowledge.routes` import) — 2026-02-17
 - [x] Fix Frontend Build failure (added `@headlessui/react`) — 2026-02-17
