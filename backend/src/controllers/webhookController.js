@@ -3,8 +3,7 @@ const evolutionApi = require('../services/evolutionApi');
 const chatService = require('../services/chat.service');
 const agentService = require('../agents/agent.service');
 const socketService = require('../services/socketService');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database');
 
 const handleIncomingMessage = async (req, res) => {
   try {
@@ -216,6 +215,42 @@ const handleIncomingMessage = async (req, res) => {
 
       console.log(`[Webhook] ✅ Conversation upserted: ${conversation.id}`);
 
+      // ====== AUTO-CREATE & LINK CONTACT ======
+      // Ensure a CRM Contact record exists and link it to the conversation
+      if (!fromMe && !isGroup) {
+        try {
+          const contact = await prisma.contact.upsert({
+            where: {
+              tenantId_phoneNumber: {
+                tenantId: instance.tenantId,
+                phoneNumber: contactNumber
+              }
+            },
+            update: {
+              // Only update name if we have a pushName and existing name is null
+              ...(pushName ? { name: pushName } : {})
+            },
+            create: {
+              tenantId: instance.tenantId,
+              phoneNumber: contactNumber,
+              name: pushName || null,
+              source: 'whatsapp'
+            }
+          });
+
+          // Link contact to conversation if not already linked
+          if (!conversation.contactId) {
+            await prisma.conversation.update({
+              where: { id: conversation.id },
+              data: { contactId: contact.id }
+            });
+            console.log(`[Webhook] 🔗 Linked Contact ${contact.id} to Conversation ${conversation.id}`);
+          }
+        } catch (contactErr) {
+          console.error('[Webhook] Contact auto-create error:', contactErr.message);
+        }
+      }
+
       const chatMsg = await chatService.saveMessage(conversation.id, {
         instanceId: instance.id,
         fromMe,
@@ -356,11 +391,11 @@ const handleIncomingMessage = async (req, res) => {
           );
 
           // Save AI response to database
-          await prisma.chatMessage.create({
+          const aiChatMsg = await prisma.chatMessage.create({
             data: {
               conversationId: conversation.id,
-              content: aiResult.response, // User code used 'body', schema uses 'content'
-              direction: 'outgoing',      // User code used 'fromMe=true', schema uses 'direction'
+              content: aiResult.response,
+              direction: 'outgoing',
               senderNumber: instanceName,
               recipientNumber: contactNumber,
               messageType: 'text',
@@ -369,16 +404,12 @@ const handleIncomingMessage = async (req, res) => {
             }
           });
 
-          // Emit socket event for the AI response
-          const aiMessage = await prisma.chatMessage.findFirst({
-            where: { wamid: `ai-${Date.now()}` }, // This might be racy, better to use the return of create
-            orderBy: { createdAt: 'desc' }
+          // Emit real-time socket event for the AI response
+          socketService.emitChatMessage(instance.tenantId, 'chat:message_received', {
+            conversation,
+            message: aiChatMsg
           });
-          // actually create returns the object
-          // But I can't assign it in the snippet easily without valid return
-          // I will just emit what I have or skip socket for now (User didn't ask for socket here, but good for UI)
-          // I'll skip socket emission to keep it simple and safe, avoiding race conditions.
-          // UI will update on next poll or via standard mechanism if implemented elsewhere.
+          console.log(`[Webhook] 📡 AI response emitted via Socket.io`);
         }
       } catch (error) {
         console.error('[Webhook] AI processing error:', error);

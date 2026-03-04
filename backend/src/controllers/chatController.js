@@ -1,6 +1,7 @@
 const chatService = require('../services/chat.service');
 const socketService = require('../services/socketService');
 const storageService = require('../services/storageService');
+const prisma = require('../config/database');
 
 // GET /api/chat/conversations
 const getConversations = async (req, res) => {
@@ -167,8 +168,7 @@ module.exports = {
   // PUT /api/chat/conversations/:id/status
   updateConversationStatus: async (req, res) => {
     try {
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
+
       const tenantId = req.user.tenantId;
       const { id } = req.params;
       const { status } = req.body; // 'open', 'closed', 'pending'
@@ -201,8 +201,7 @@ module.exports = {
   getLifecycleStages: async (req, res) => {
     try {
       const tenantId = req.user.tenantId;
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
+
 
       const stages = await prisma.lifecycleStage.findMany({
         where: { tenantId },
@@ -219,8 +218,7 @@ module.exports = {
   // GET /api/chat/labels
   getLabels: async (req, res) => {
     try {
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
+
       const tenantId = req.user.tenantId;
 
       // Fetch all label arrays from conversations and flatten to unique values

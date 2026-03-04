@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database');
 const tenantContext = require('../middleware/tenantContext');
 
 // Get all lifecycle stages
@@ -27,7 +26,7 @@ router.get('/', tenantContext, async (req, res) => {
 router.post('/', tenantContext, async (req, res) => {
   try {
     const { name, emoji, color, order } = req.body;
-    
+
     // Default order if not provided
     let newOrder = order;
     if (newOrder === undefined) {
@@ -58,15 +57,15 @@ router.post('/', tenantContext, async (req, res) => {
 router.put('/:id', tenantContext, async (req, res) => {
   try {
     const stage = await prisma.lifecycleStage.updateMany({
-      where: { 
+      where: {
         id: req.params.id,
         tenantId: req.user.tenantId
       },
       data: req.body
     });
-    
+
     if (stage.count === 0) return res.status(404).json({ error: 'Stage not found' });
-    
+
     const updated = await prisma.lifecycleStage.findUnique({ where: { id: req.params.id } });
     res.json(updated);
   } catch (error) {

@@ -508,7 +508,20 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
                     key={t.id}
                     onClick={() => {
                       const cName = conversation.contactName || conversation.contactNumber || '';
-                      const parsedContent = t.content.replace(/\{\{name\}\}/gi, cName);
+                      const cPhone = conversation.contactNumber || '';
+                      const cEmail = '';  // Will be populated when contact fields are loaded
+                      const cDate = new Date().toLocaleDateString('ar-EG');
+
+                      let parsedContent = t.content;
+                      // Unified variable replacement engine
+                      parsedContent = parsedContent.replace(/\{\{name\}\}/gi, cName);
+                      parsedContent = parsedContent.replace(/\{\{phone\}\}/gi, cPhone);
+                      parsedContent = parsedContent.replace(/\{\{email\}\}/gi, cEmail);
+                      parsedContent = parsedContent.replace(/\{\{date\}\}/gi, cDate);
+                      // Support $contact.field syntax (respond.io style)
+                      parsedContent = parsedContent.replace(/\$contact\.name/gi, cName);
+                      parsedContent = parsedContent.replace(/\$contact\.phone/gi, cPhone);
+
                       setMessage(prev => prev ? prev + ' ' + parsedContent : parsedContent);
                       setShowTemplates(false);
                       inputRef.current?.focus();

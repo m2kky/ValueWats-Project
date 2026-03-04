@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database');
 const deepseekService = require('../ai/deepseek.service');
 const toolService = require('../services/toolService');
 

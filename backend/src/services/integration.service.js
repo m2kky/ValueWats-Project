@@ -1,10 +1,9 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database');
 const { encrypt, decrypt } = require('../utils/encryption');
 const axios = require('axios');
 
 class IntegrationService {
-  
+
   /**
    * List all integrations for a tenant
    */
@@ -13,7 +12,7 @@ class IntegrationService {
       where: { tenantId },
       orderBy: { createdAt: 'desc' }
     });
-    
+
     // Do not return full credentials, just mask them or return status
     return integrations.map(i => ({
       ...i,
@@ -26,7 +25,7 @@ class IntegrationService {
    */
   async upsertIntegration(tenantId, type, name, credentials) {
     const encryptedCreds = encrypt(credentials);
-    
+
     // Check if exists by name/type preference? unique constraint is not on name, but let's assume multiple allowed
     // For now, simple create
     const integration = await prisma.integration.create({
@@ -48,7 +47,7 @@ class IntegrationService {
   async getIntegrationInternal(id) {
     const integration = await prisma.integration.findUnique({ where: { id } });
     if (!integration) throw new Error('Integration not found');
-    
+
     return {
       ...integration,
       credentials: decrypt(integration.credentials)
@@ -63,7 +62,7 @@ class IntegrationService {
    */
   async executeAction(integrationId, action, params) {
     const integration = await this.getIntegrationInternal(integrationId);
-    
+
     try {
       if (integration.type === 'google_sheets') {
         return await this.handleGoogleSheetsAction(integration, action, params);
@@ -112,21 +111,21 @@ class IntegrationService {
         throw new Error(`Google Sheets API Error: ${error.message}`);
       }
     }
-    
+
     throw new Error(`Unknown Google Sheets action: ${action}`);
   }
 
   async handleWebhookAction(integration, action, params) {
     const { url, method = 'POST', headers = {}, body } = params;
     // 'credentials' might store a default Token/API Key if needed
-    
+
     const response = await axios({
       method,
       url,
       headers,
       data: body
     });
-    
+
     return response.data;
   }
 }

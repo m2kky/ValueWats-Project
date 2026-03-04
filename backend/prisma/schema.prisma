@@ -59,9 +59,10 @@ model Tenant {
   integrations    Integration[]
   workflows       Workflow[]
 
-  contacts      Contact[]
-  contactLabels ContactLabel[]
-  activityLogs  ActivityLog[]
+  contacts                Contact[]
+  contactLabels           ContactLabel[]
+  activityLogs            ActivityLog[]
+  contactFieldDefinitions ContactFieldDefinition[]
 
   @@map("tenants")
 }
@@ -261,6 +262,10 @@ model Conversation {
   unreadCount   Int       @default(0) @map("unread_count")
   status        String    @default("open") // open, closed, pending
   labels        String[] // "vip", "new", "spam", etc.
+
+  // Link to CRM Contact (optional, populated on webhook arrival or sidebar save)
+  contactId String?  @map("contact_id")
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
   tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   messages ChatMessage[]
@@ -514,9 +519,10 @@ model Contact {
   lifecycleStageId String?         @map("lifecycle_stage_id")
   lifecycleStage   LifecycleStage? @relation(fields: [lifecycleStageId], references: [id])
 
-  labels       ContactLabelAssignment[]
-  notes        ContactNote[]
-  activityLogs ActivityLog[]
+  labels        ContactLabelAssignment[]
+  notes         ContactNote[]
+  activityLogs  ActivityLog[]
+  conversations Conversation[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -630,6 +636,30 @@ model ContactField {
 
   @@unique([tenantId, contactNumber, fieldName])
   @@index([tenantId, contactNumber])
+}
+
+// Global Contact Field Definitions (respond.io-style)
+model ContactFieldDefinition {
+  id       String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String // Display name: "Birthday", "Company"
+  key         String // Programmatic key: "birthday", "company"
+  description String?  @db.Text
+  fieldType   String   @default("text") @map("field_type") // text, number, date, dropdown, url, email, phone
+  options     String[] @default([]) // For dropdown type
+  isRequired  Boolean  @default(false) @map("is_required")
+  isDefault   Boolean  @default(false) @map("is_default") // System-defined fields
+  visibility  String   @default("always_show") // always_show, hide_when_empty
+  sortOrder   Int      @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, key])
+  @@index([tenantId, sortOrder])
+  @@map("contact_field_definitions")
 }
 
 // Integrations (Google Sheets, SMTP, etc.)

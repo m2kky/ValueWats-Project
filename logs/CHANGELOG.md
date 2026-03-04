@@ -4,6 +4,24 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-04] — Architecture & Data Integrity Overhaul
+
+### Fixed
+- **Prisma Client Connection Leak**: Replaced `new PrismaClient()` with shared singleton from `config/database.js` across 17 files (controllers, services, routes). Prevents connection pool exhaustion under load.
+
+### Added
+- **`ContactFieldDefinition` model**: New Prisma model for centralized "Global Field" definitions (respond.io-style). Supports field types: text, number, date, dropdown, url, email, phone.
+- **`contactId` FK on `Conversation`**: Links conversations to CRM contacts with a real foreign key instead of implicit `contactNumber` matching.
+- **Contact auto-creation on webhook**: `webhookController.js` now auto-creates a `Contact` record and links it to the `Conversation` when a new WhatsApp message arrives.
+- **`/api/contact-fields/definitions`**: New CRUD API route for managing global contact field definitions, including a seed endpoint for default fields.
+- **Template Variable Engine**: Expanded template replacement in `ChatWindow.jsx` to support `{{name}}`, `{{phone}}`, `{{email}}`, `{{date}}`, and `$contact.*` syntax.
+- **AI Agent Real-time Responses**: Fixed `webhookController.js` to capture `prisma.chatMessage.create()` return value and emit via `socketService.emitChatMessage()` so AI replies appear instantly in Inbox.
+
+### Changed
+- **Schema**: Added `conversations` relation on `Contact`, `contactFieldDefinitions` on `Tenant`.
+
+---
+
 ## [2026-03-04] — Inbox Core Bug Fixes
 
 ### Fixed

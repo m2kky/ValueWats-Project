@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database');
 const embeddingService = require('./embeddingService');
 const { uploadFile } = require('./storageService');
 const fs = require('fs');

@@ -1,8 +1,7 @@
 const Queue = require('bull');
 const { redisConfig } = require('../config/redis');
 const evolutionApi = require('./evolutionApi');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database');
 
 
 

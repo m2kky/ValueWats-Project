@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database');
 
 class CrmService {
   async listContacts(tenantId, { search, lifecycleStageId, labelIds, governorate, source, page = 1, limit = 50 }) {

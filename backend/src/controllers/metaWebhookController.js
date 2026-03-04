@@ -2,8 +2,7 @@ const metaApi = require('../services/metaApi');
 const chatService = require('../services/chat.service');
 const agentService = require('../agents/agent.service');
 const socketService = require('../services/socketService');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database');
 
 // GET: Meta webhook verification
 const verifyWebhook = (req, res) => {
@@ -13,14 +12,14 @@ const verifyWebhook = (req, res) => {
     url: req.url,
     userAgent: req.get('User-Agent')
   });
-  
+
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
-  
+
   console.log('[MetaWebhook] Verification params:', { mode, token, challenge });
   console.log('[MetaWebhook] Expected token:', process.env.META_WEBHOOK_VERIFY_TOKEN);
-  
+
   // Verify the mode and token
   if (mode && token) {
     if (mode === 'subscribe' && token === process.env.META_WEBHOOK_VERIFY_TOKEN) {
@@ -69,12 +68,12 @@ const handleMetaWebhook = async (req, res) => {
         await prisma.message.updateMany({
           where: { wamid: s.id },
           data: { status: statusString, ...(statusString === 'DELIVERED' ? { deliveredAt: new Date() } : {}) }
-        }).catch(() => {});
+        }).catch(() => { });
 
         await prisma.chatMessage.updateMany({
           where: { wamid: s.id },
           data: { status: s.status }
-        }).catch(() => {});
+        }).catch(() => { });
       }
       return;
     }

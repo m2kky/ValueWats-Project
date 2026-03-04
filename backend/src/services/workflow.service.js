@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database');
 const integrationService = require('./integration.service');
 
 class WorkflowService {
@@ -22,7 +21,7 @@ class WorkflowService {
         workflowId,
         conversationId: context.conversation?.id,
         status: 'pending',
-        input: JSON.stringify({ 
+        input: JSON.stringify({
           contactName: context.contact?.name,
           contactNumber: context.contact?.number,
           agentName: context.agent?.name
@@ -51,7 +50,7 @@ class WorkflowService {
         );
 
         results[step.id] = result;
-        
+
         // Log step success
         await prisma.workflowLog.create({
           data: {
@@ -72,12 +71,12 @@ class WorkflowService {
           output: JSON.stringify(results)
         }
       });
-      
+
       console.log(`[Workflow] Execution ${execution.id} completed successfully`);
 
     } catch (error) {
       console.error(`[Workflow] Execution ${execution.id} failed:`, error);
-      
+
       await prisma.workflowLog.create({
         data: {
           executionId: execution.id,
@@ -103,7 +102,7 @@ class WorkflowService {
    */
   replaceVariables(params, context, previousResults) {
     if (!params) return {};
-    
+
     const jsonStr = JSON.stringify(params);
     const replacedStr = jsonStr.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
       const value = this.getValueByPath(path.trim(), { ...context, steps: previousResults });
