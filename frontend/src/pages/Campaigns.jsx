@@ -16,12 +16,12 @@ import {
 
 const CampaignStatus = ({ status }) => {
   const styles = {
-    PROCESSING: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.2)]',
-    COMPLETED: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]',
-    FAILED: 'bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.2)]',
-    PENDING: 'bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]',
-    PAUSED: 'bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.2)]',
-    SCHEDULED: 'bg-violet-500/10 text-violet-400 border border-violet-500/20 shadow-[0_0_10px_rgba(139,92,246,0.2)]'
+    PROCESSING: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/20',
+    COMPLETED: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20',
+    FAILED: 'bg-rose-500/20 text-rose-400 border border-rose-500/20',
+    PENDING: 'bg-amber-500/20 text-amber-400 border border-amber-500/20',
+    PAUSED: 'bg-orange-500/20 text-orange-400 border border-orange-500/20',
+    SCHEDULED: 'bg-violet-500/20 text-violet-400 border border-violet-500/20'
   };
 
   return (
@@ -99,10 +99,10 @@ export default function Campaigns() {
       </div>
 
       {/* Campaign List */}
-      <div className="glass-card overflow-hidden">
+      <div className="bg-zinc-900 border border-white/10 rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
           </div>
         ) : campaigns.length === 0 ? (
           <div className="text-center py-20 px-6">
@@ -123,12 +123,12 @@ export default function Campaigns() {
           <ul className="divide-y divide-white/5">
             {campaigns.map((campaign) => (
               <li key={campaign.id} className="group relative">
-                <Link to={`/campaigns/${campaign.id}`} className="block hover:bg-white/[0.02] transition-colors rounded-xl m-2">
+                <Link to={`/campaigns/${campaign.id}`} className="block hover:bg-white/[0.03] transition-colors rounded-xl m-2">
                   <div className="px-5 py-5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 min-w-0 pr-4">
-                        <div className="bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 p-3 rounded-xl border border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.1)] group-hover:scale-110 transition-transform duration-300 shrink-0">
-                          <MegaphoneIcon className="h-6 w-6 text-indigo-400" />
+                        <div className="bg-zinc-800 p-3 rounded-xl border border-white/5 shrink-0">
+                          <MegaphoneIcon className="h-6 w-6 text-zinc-400" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-base font-bold text-white truncate tracking-tight">{campaign.name}</p>
