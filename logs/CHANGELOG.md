@@ -24,6 +24,9 @@ All notable changes to the ValueWats project, tracked by date.
 - **Password Strength Validator**: Signup form now enforces 5 password requirements with real-time visual feedback (8+ chars, uppercase, lowercase, number, special char).
 - **Show/Hide Password Toggle**: Both Login and Register pages have eye icon toggles for password visibility.
 
+### Fixed
+- **Google OAuth Popup Crash**: Fixed `Cross-Origin-Opener-Policy` block caused by `helmet.js` in the backend preventing Google Sign-In popup from completing the transform redirect.
+
 ### Changed
 - **Login & Register UI Overhaul**: Redesigned both pages from light/white theme to a premium dark glassmorphic theme (`#0f0f12` background, indigo accents, `#7d8cf0` CTA buttons).
 - **Backend auth route**: New `POST /api/auth/google` endpoint verifies Google ID tokens, finds or creates users automatically.

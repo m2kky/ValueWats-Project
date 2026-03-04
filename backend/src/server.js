@@ -29,7 +29,8 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: false,  // Disable CSP — frontend inline scripts (crypto polyfill) need to run
-  crossOriginEmbedderPolicy: false  // Allow loading cross-origin resources (fonts, images)
+  crossOriginEmbedderPolicy: false,  // Allow loading cross-origin resources (fonts, images)
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' } // Allow Google OAuth popup
 }));
 // ✅ Increase payload limit to 50MB
 app.use(express.json({ limit: '50mb' }));
