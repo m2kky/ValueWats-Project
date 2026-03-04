@@ -1,5 +1,6 @@
 const chatService = require('../services/chat.service');
 const socketService = require('../services/socketService');
+const storageService = require('../services/storageService');
 
 // GET /api/chat/conversations
 const getConversations = async (req, res) => {
@@ -83,6 +84,54 @@ module.exports = {
   getConversations,
   getConversation,
   sendMessage,
+
+  uploadMessageFile: async (req, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const { conversationId, instanceId } = req.body;
+      const file = req.file;
+
+      if (!conversationId || !instanceId || !file) {
+        return res.status(400).json({ error: 'conversationId, instanceId, and file are required' });
+      }
+
+      // Upload to MinIO
+      const mediaUrl = await storageService.uploadFile(file);
+
+      // Determine message type based on mimetype
+      let messageType = 'document';
+      if (file.mimetype.startsWith('image/')) messageType = 'image';
+      else if (file.mimetype.startsWith('video/')) messageType = 'video';
+      else if (file.mimetype.startsWith('audio/')) messageType = 'audio';
+
+      const messageData = {
+        conversationId,
+        instanceId,
+        content: file.originalname, // Fallback content
+        mediaUrl,
+        messageType,
+        userId: req.user.id
+      };
+
+      const message = await chatService.sendMessage(tenantId, messageData);
+
+      // Emit real-time event
+      try {
+        const io = socketService.getIo();
+        io.to(`tenant_${tenantId}`).emit('chat:message_sent', {
+          conversationId,
+          message
+        });
+      } catch (e) {
+        // Socket not initialized, skip
+      }
+
+      res.status(201).json({ message });
+    } catch (error) {
+      console.error('Upload message file error:', error);
+      res.status(500).json({ error: error.message || 'Failed to upload file' });
+    }
+  },
 
   updateContact: async (req, res) => {
     try {
