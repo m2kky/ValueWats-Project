@@ -4,13 +4,18 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-04] — Phase 4: Agent Assignment & Campaigns Redesign
+
+### Added & Changed
+- **Campaigns UI Redesign**: Completely overhauled `Campaigns.jsx` to match the premium "Respond.io" glassmorphic CRM theme. Features table-view, dynamic status pills, and backdrop-blur styling.
+- **AI Agent Assignment**: `Inbox.jsx` assign dropdown now successfully renders AI Agents alongside human team members.
+- **Agent Session Tracking**: `chat.service.js` successfully creates and tracks `ConversationAgent` records (start/end) when manual human-to-AI or AI-to-human assignments happen via the Inbox UI.
+
+---
+
 ## [2026-03-04] — Phase 3: Respond.io AI & Settings Completion
 
 ### Added
-- **Snippets Management UI**: New Settings page `/settings/snippets` for CRUD operations on pre-written response templates with variable support.
-- **Snippets API**: New backend CRUD routes at `/api/snippets` and Prisma `Snippet` model.
-- **AI Knowledge Settings**: Global view of all AI module knowledge (text chunks and files) across the workspace at `/settings/ai-knowledge`.
-- **Agent Publish/Draft State**: Added `isPublished` to AIAgent model. AI Agents now visually display a highlighted "DRAFT" badge when offline, with explicit "SAVE DRAFT" and "PUBLISH MODULE" buttons in the configuration editor.
 - **Automatic Lifecycle Transitions**: Added `/settings/automation` to define `LifecycleRule` entities. System now tracks trigger actions (add tag, update field) to automate transitioning contacts to a target stage.
 - **Lifecycle Rules API**: New backend CRUD routes at `/api/lifecycle-rules` and Prisma `LifecycleRule` model.
 

@@ -126,10 +126,13 @@ export default function Inbox() {
   const fetchSupportData = async () => {
     try {
       const [agentsRes, teamRes] = await Promise.all([
-        api.get('/agents').catch(() => ({ data: { agents: [] } })),
+        api.get('/agents').catch(() => ({ data: [] })),
         api.get('/team').catch(() => ({ data: { users: [] } }))
       ]);
-      if (agentsRes.data?.agents) setAgents(agentsRes.data.agents);
+
+      const fetchedAgents = Array.isArray(agentsRes.data) ? agentsRes.data : (agentsRes.data?.agents || []);
+      setAgents(fetchedAgents.filter(a => a.isActive));
+
       if (teamRes.data?.users) setUsers(teamRes.data.users);
     } catch (error) {
       console.error('Failed to fetch support data:', error);

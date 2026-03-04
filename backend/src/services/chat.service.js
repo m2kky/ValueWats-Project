@@ -244,6 +244,21 @@ class ChatService {
         escalated: false,
         aiEnabled: true
       };
+
+      // End any other agent session
+      await prisma.conversationAgent.updateMany({
+        where: { conversationId, endedAt: null },
+        data: { endedAt: new Date(), handoffReason: 'user_reassigned' }
+      });
+
+      // Start new agent session
+      await prisma.conversationAgent.create({
+        data: {
+          conversationId,
+          agentId,
+          startedAt: new Date()
+        }
+      });
     } else if (type === 'user' || type === 'me') {
       updateData = {
         currentAgentId: null,
@@ -251,6 +266,12 @@ class ChatService {
         escalated: true,
         aiEnabled: false
       };
+
+      // End AI sessions if taken over by human
+      await prisma.conversationAgent.updateMany({
+        where: { conversationId, endedAt: null },
+        data: { endedAt: new Date(), handoffReason: 'human_takeover' }
+      });
     } else if (type === 'unassign') {
       updateData = {
         currentAgentId: null,
