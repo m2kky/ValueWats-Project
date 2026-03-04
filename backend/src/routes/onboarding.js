@@ -47,7 +47,7 @@ router.post('/', tenantContext, async (req, res) => {
 
         // Update user profile
         await prisma.user.update({
-            where: { id: req.user.userId },
+            where: { id: req.user.id },
             data: {
                 name: name || null,
                 phone: phone || null,
