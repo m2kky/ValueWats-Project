@@ -21,7 +21,7 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
   const [assignDropdownOpen, setAssignDropdownOpen] = useState(false);
   const [stageDropdownOpen, setStageDropdownOpen] = useState(false);
   const [lifecycleStages, setLifecycleStages] = useState([]);
-  
+
   // Labels state
   const [labels, setLabels] = useState([]);
   const [allLabels, setAllLabels] = useState([]);
@@ -33,7 +33,7 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
   useEffect(() => {
     if (conversation) {
       setFormData({ contactName: conversation.contactName || '' });
-      
+
       // Load labels from conversation
       setLabels(conversation.labels || []);
 
@@ -81,8 +81,8 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
     setLoading(true);
     try {
       const fieldsToSave = customFields
-        .filter(f => f.name && f.value)
-        .map(f => ({ name: f.name.toLowerCase(), value: f.value }));
+        .filter(f => f.name && f.name.trim() !== '')
+        .map(f => ({ name: f.name.toLowerCase().trim(), value: f.value || '' }));
 
       const { data } = await api.put(`/chat/conversations/${conversation.id}/contact`, {
         contactName: formData.contactName,
@@ -532,14 +532,10 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
                     </div>
                   ) : (
                     <>
-                      {(field.value || ['email', 'country', 'language'].includes(field.name.toLowerCase())) && (
-                        <>
-                          <div className="text-xs text-zinc-500 mb-1 capitalize tracking-wider">{field.name}</div>
-                          <div className="text-sm text-zinc-300">
-                            {field.value || <span className="text-zinc-600 italic">No {field.name}</span>}
-                          </div>
-                        </>
-                      )}
+                      <div className="text-xs text-zinc-500 mb-1 capitalize tracking-wider">{field.name}</div>
+                      <div className="text-sm text-zinc-300 break-all">
+                        {field.value || <span className="text-zinc-600 italic">No {field.name}</span>}
+                      </div>
                     </>
                   )}
                 </div>

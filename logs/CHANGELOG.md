@@ -4,6 +4,16 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-04] — Inbox Core Bug Fixes
+
+### Fixed
+- **Sender Name Overwrite**: Fixed `webhookController.js` so it doesn't overwrite the contact's name with the agent's (`pushName`) when an outgoing message is sent.
+- **Custom Fields Empty States**: Fixed `ContactSidebar.jsx` so global custom fields aren't deleted if saved with empty values. They are now persistently rendered.
+- **Template Variables**: Fixed `ChatWindow.jsx` templates picker so `{{name}}` variables automatically compile and replace with the contact's actual name.
+- **Media Output Rendering**: Added 'sticker' media type parsing in `webhookController.js` and fixed `ChatWindow.jsx` so stickers, videos, and images don't render as an ugly fallback `[Media Content]` but display their respective UI elements natively.
+
+---
+
 ## [2026-03-04] — Campaigns UI Redesign
 
 ### Changed

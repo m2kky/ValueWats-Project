@@ -427,11 +427,21 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
                         : 'bg-[#18181b] border border-white/5 text-zinc-200 rounded-tl-sm'
                       }`}>
 
-                      {msg.content || '[Media Content]'}
+                      {msg.content || (['image', 'video', 'document', 'audio', 'sticker'].includes(msg.messageType) ? '' : <span className="italic opacity-60">Unsupported or reaction</span>)}
 
-                      {msg.mediaUrl && msg.messageType === 'image' && (
+                      {msg.mediaUrl && (msg.messageType === 'image' || msg.messageType === 'sticker') && (
                         <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
-                          <img src={msg.mediaUrl} alt="" className="max-w-full" />
+                          <img src={msg.mediaUrl} alt="media" className="max-w-full max-h-[300px] object-contain" />
+                        </div>
+                      )}
+                      {msg.mediaUrl && msg.messageType === 'video' && (
+                        <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
+                          <video src={msg.mediaUrl} controls className="max-w-full max-h-[300px]" />
+                        </div>
+                      )}
+                      {msg.mediaUrl && msg.messageType === 'audio' && (
+                        <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
+                          <audio src={msg.mediaUrl} controls className="max-w-[240px]" />
                         </div>
                       )}
                       {msg.mediaUrl && msg.messageType === 'document' && (
@@ -496,7 +506,13 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
                 templates.map(t => (
                   <button
                     key={t.id}
-                    onClick={() => { setMessage(t.content); setShowTemplates(false); inputRef.current?.focus(); }}
+                    onClick={() => {
+                      const cName = conversation.contactName || conversation.contactNumber || '';
+                      const parsedContent = t.content.replace(/\{\{name\}\}/gi, cName);
+                      setMessage(prev => prev ? prev + ' ' + parsedContent : parsedContent);
+                      setShowTemplates(false);
+                      inputRef.current?.focus();
+                    }}
                     className="w-full text-left px-4 py-3 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors"
                   >
                     <div className="font-semibold text-sm text-white mb-0.5">{t.name}</div>

@@ -166,7 +166,8 @@ const handleIncomingMessage = async (req, res) => {
     const messageType = messageContent?.imageMessage ? 'image' :
       messageContent?.videoMessage ? 'video' :
         messageContent?.audioMessage ? 'audio' :
-          messageContent?.documentMessage ? 'document' : 'text';
+          messageContent?.documentMessage ? 'document' :
+            messageContent?.stickerMessage ? 'sticker' : 'text';
 
     console.log(`[Webhook] 📩 Message from ${contactNumber}, fromMe: ${fromMe}, type: ${messageType}`);
     console.log(`[Webhook] 💬 Text: ${text?.substring(0, 100) || '[no text]'}`);
@@ -199,7 +200,7 @@ const handleIncomingMessage = async (req, res) => {
         // Try to get real group name — fallback to existing conversation name or null
         resolvedContactName = await evolutionApi.getGroupInfo(instanceName, remoteJid);
       } else {
-        resolvedContactName = pushName;
+        resolvedContactName = fromMe ? undefined : pushName;
       }
 
       conversation = await chatService.upsertConversation(
@@ -222,7 +223,11 @@ const handleIncomingMessage = async (req, res) => {
         recipientNumber: fromMe ? contactNumber : instanceName,
         messageType,
         content: text || null,
-        mediaUrl: messageContent?.imageMessage?.url || messageContent?.videoMessage?.url || null,
+        mediaUrl: messageContent?.imageMessage?.url ||
+          messageContent?.videoMessage?.url ||
+          messageContent?.audioMessage?.url ||
+          messageContent?.documentMessage?.url ||
+          messageContent?.stickerMessage?.url || null,
         wamid,
         status: fromMe ? 'sent' : 'delivered'
       });
