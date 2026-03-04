@@ -21,6 +21,8 @@ export default function Contacts() {
   const [selected, setSelected] = useState(new Set());
   const [showAddModal, setShowAddModal] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
+  const [showBulkTagMenu, setShowBulkTagMenu] = useState(false);
+  const [showBulkStageMenu, setShowBulkStageMenu] = useState(false);
   const [newContact, setNewContact] = useState({ phoneNumber: '', name: '', email: '', governorate: '' });
   const [newLabel, setNewLabel] = useState({ name: '', color: '#6366f1' });
   const LIMIT = 50;
@@ -46,8 +48,8 @@ export default function Contacts() {
   useEffect(() => { fetchContacts(); }, [fetchContacts]);
 
   useEffect(() => {
-    api.get('/lifecycle').then(r => setStages(r.data)).catch(() => {});
-    api.get('/contacts/labels').then(r => setLabels(r.data)).catch(() => {});
+    api.get('/lifecycle').then(r => setStages(r.data)).catch(() => { });
+    api.get('/contacts/labels').then(r => setLabels(r.data)).catch(() => { });
   }, []);
 
   const handleCreate = async () => {
@@ -73,6 +75,24 @@ export default function Contacts() {
     await Promise.all([...selected].map(id => api.delete(`/contacts/${id}`)));
     setSelected(new Set());
     fetchContacts();
+  };
+
+  const handleBulkAssignLabel = async (labelId) => {
+    try {
+      await Promise.all([...selected].map(id => api.post(`/contacts/${id}/labels`, { labelId })));
+      setShowBulkTagMenu(false);
+      setSelected(new Set());
+      fetchContacts();
+    } catch (e) { console.error(e); }
+  };
+
+  const handleBulkChangeStage = async (stageId) => {
+    try {
+      await Promise.all([...selected].map(id => api.put(`/contacts/${id}`, { lifecycleStageId: stageId })));
+      setShowBulkStageMenu(false);
+      setSelected(new Set());
+      fetchContacts();
+    } catch (e) { console.error(e); }
   };
 
   const handleImport = async (e) => {
@@ -167,9 +187,36 @@ export default function Contacts() {
           {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         {selected.size > 0 && (
-          <button onClick={handleBulkDelete} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 text-xs font-black uppercase tracking-widest transition-all">
-            <TrashIcon className="w-4 h-4" /> Delete {selected.size}
-          </button>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-600/10 border border-indigo-500/30">
+            <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">{selected.size} selected</span>
+            <div className="w-px h-5 bg-white/10" />
+            <div className="relative">
+              <button onClick={() => setShowBulkTagMenu(!showBulkTagMenu)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-300 hover:bg-white/5 transition-all">+ Tag</button>
+              {showBulkTagMenu && (
+                <div className="absolute top-full left-0 mt-1 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 p-2 space-y-1">
+                  {labels.map(l => (
+                    <button key={l.id} onClick={() => handleBulkAssignLabel(l.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-white hover:bg-white/5 transition-all text-left">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: l.color }} />
+                      {l.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="relative">
+              <button onClick={() => setShowBulkStageMenu(!showBulkStageMenu)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-300 hover:bg-white/5 transition-all">Stage</button>
+              {showBulkStageMenu && (
+                <div className="absolute top-full left-0 mt-1 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 p-2 space-y-1">
+                  {stages.map(s => (
+                    <button key={s.id} onClick={() => handleBulkChangeStage(s.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-white hover:bg-white/5 transition-all text-left">
+                      {s.emoji} {s.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button onClick={handleBulkDelete} className="px-3 py-1.5 rounded-lg text-xs font-bold text-rose-400 hover:bg-rose-500/10 transition-all">Delete</button>
+          </div>
         )}
       </div>
 

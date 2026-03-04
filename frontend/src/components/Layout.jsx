@@ -12,7 +12,8 @@ import {
   MagnifyingGlassIcon,
   BellIcon,
   UsersIcon,
-  DocumentDuplicateIcon
+  DocumentDuplicateIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
@@ -56,8 +57,7 @@ export default function Layout({ children }) {
     { name: 'AI Agents', path: '/agents', icon: CpuChipIcon },
     { name: 'Instances', path: '/instances', icon: DevicePhoneMobileIcon },
     { name: 'Automations', path: '/automations', icon: BoltIcon },
-    { name: 'Integrations', path: '/integrations', icon: AdjustmentsHorizontalIcon },
-    { name: 'Team', path: '/team', icon: UserGroupIcon },
+    { name: 'Settings', path: '/settings', icon: Cog6ToothIcon },
   ];
 
   const isActive = (path) => location.pathname.startsWith(path);

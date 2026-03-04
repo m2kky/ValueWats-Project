@@ -4,6 +4,8 @@ import api from '../api/client';
 import {
   ArrowLeftIcon, PencilIcon, CheckIcon, XMarkIcon,
   PlusIcon, TrashIcon, ChatBubbleLeftRightIcon,
+  ClockIcon, TagIcon, ArrowPathIcon,
+  UserIcon, BoltIcon,
 } from '@heroicons/react/24/outline';
 
 const GENDERS = ['male', 'female'];
@@ -20,6 +22,8 @@ export default function ContactProfile() {
   const [form, setForm] = useState({});
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [customFieldDefs, setCustomFieldDefs] = useState([]);
+  const [customFieldValues, setCustomFieldValues] = useState({});
 
   useEffect(() => {
     Promise.all([
@@ -33,6 +37,18 @@ export default function ContactProfile() {
       setAllLabels(l.data);
     }).catch(() => navigate('/contacts'))
       .finally(() => setLoading(false));
+
+    // Fetch custom field definitions
+    api.get('/contact-fields').then(r => {
+      setCustomFieldDefs(r.data || []);
+    }).catch(() => { });
+
+    // Fetch custom field values for the contact
+    api.get(`/contacts/${id}/fields`).then(r => {
+      const vals = {};
+      (r.data || []).forEach(f => { vals[f.fieldName] = f.fieldValue; });
+      setCustomFieldValues(vals);
+    }).catch(() => { });
   }, [id]);
 
   const buildForm = (c) => ({
@@ -205,17 +221,73 @@ export default function ContactProfile() {
           </div>
 
           {/* Activity Log */}
-          {contact.activityLogs?.length > 0 && (
-            <div className="glass-card border border-white/5 bg-zinc-900/40 rounded-2xl p-6 space-y-4">
-              <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Activity Timeline</h2>
-              <div className="space-y-3">
-                {contact.activityLogs.map(log => (
-                  <div key={log.id} className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-indigo-500 mt-2 shrink-0" />
-                    <div>
-                      <p className="text-sm text-zinc-300">{log.description}</p>
-                      <p className="text-xs text-zinc-600">{new Date(log.createdAt).toLocaleString()}</p>
+          <div className="glass-card border border-white/5 bg-zinc-900/40 rounded-2xl p-6 space-y-4">
+            <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+              <ClockIcon className="w-4 h-4" /> Activity Timeline
+            </h2>
+            {(!contact.activityLogs || contact.activityLogs.length === 0) ? (
+              <div className="text-center py-6">
+                <ClockIcon className="w-10 h-10 text-zinc-700 mx-auto mb-2" />
+                <p className="text-zinc-600 text-sm">No activity recorded yet</p>
+                <p className="text-zinc-700 text-xs">Changes to lifecycle stages, labels, and assignments will appear here</p>
+              </div>
+            ) : (
+              <div className="space-y-3 relative pl-6 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-white/5 before:rounded-full">
+                {contact.activityLogs.map(log => {
+                  const actionIcons = {
+                    lifecycle_change: <ArrowPathIcon className="w-3.5 h-3.5" />,
+                    label_added: <TagIcon className="w-3.5 h-3.5" />,
+                    label_removed: <TagIcon className="w-3.5 h-3.5" />,
+                    assigned: <UserIcon className="w-3.5 h-3.5" />,
+                    closed: <CheckIcon className="w-3.5 h-3.5" />,
+                    note_added: <PencilIcon className="w-3.5 h-3.5" />,
+                  };
+                  const icon = actionIcons[log.actionType] || <BoltIcon className="w-3.5 h-3.5" />;
+                  return (
+                    <div key={log.id} className="flex items-start gap-3 relative">
+                      <div className="absolute -left-6 top-1 w-4 h-4 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
+                        {icon}
+                      </div>
+                      <div>
+                        <p className="text-sm text-zinc-300">{log.description}</p>
+                        <p className="text-xs text-zinc-600">{new Date(log.createdAt).toLocaleString()}</p>
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Dynamic Custom Fields */}
+          {customFieldDefs.length > 0 && (
+            <div className="glass-card border border-white/5 bg-zinc-900/40 rounded-2xl p-6 space-y-4">
+              <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Custom Fields</h2>
+              <div className="grid grid-cols-2 gap-4">
+                {customFieldDefs.map(def => (
+                  <div key={def.id}>
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{def.name}</label>
+                    {editing ? (
+                      def.fieldType === 'LIST' ? (
+                        <select
+                          value={customFieldValues[def.key] || ''}
+                          onChange={e => setCustomFieldValues(v => ({ ...v, [def.key]: e.target.value }))}
+                          className="mt-1 w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500/30"
+                        >
+                          <option value="">—</option>
+                          {(def.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                      ) : (
+                        <input
+                          type={def.fieldType === 'NUMBER' ? 'number' : def.fieldType === 'DATE' ? 'date' : 'text'}
+                          value={customFieldValues[def.key] || ''}
+                          onChange={e => setCustomFieldValues(v => ({ ...v, [def.key]: e.target.value }))}
+                          className="mt-1 w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500/30"
+                        />
+                      )
+                    ) : (
+                      <p className="mt-1 text-sm text-white">{customFieldValues[def.key] || <span className="text-zinc-600">—</span>}</p>
+                    )}
                   </div>
                 ))}
               </div>

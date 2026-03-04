@@ -4,6 +4,26 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-04] — Phase 2: Respond.io UI Replication
+
+### Added
+- **Unified Settings Module**: Implemented a multi-tab sidebar layout at `/settings` grouping: General, Users & Roles, Contact Fields, Tags, Lifecycle Stages, and Integrations.
+- **`SettingsLayout.jsx`**: New internal layout component with sidebar navigation for the Settings module.
+- **Contact Fields Settings UI**: Full CRUD management page for global `ContactFieldDefinition` entries.
+- **Tag Management UI & Backend**: New `/api/tags` backend CRUD routes and a dedicated Settings page for managing global contact labels.
+- **Lifecycle Stages Settings**: Visual pipeline management page with emoji-coded stage cards.
+- **Bulk Tag Assignment**: Contacts list now supports multi-select → bulk assign tags via a floating toolbar dropdown.
+- **Bulk Lifecycle Stage Change**: Contacts list supports multi-select → bulk change lifecycle stages.
+- **Per-Contact Label Assignment API**: New `POST /contacts/:id/labels` endpoint enabling label assignment from bulk actions.
+- **Contact Custom Field Values API**: New `GET /contacts/:id/fields` endpoint to retrieve field values for the contact profile.
+- **Dynamic Custom Fields in Contact Profile**: `ContactProfile.jsx` now renders all `ContactFieldDefinition` entries with type-aware inputs (text, number, date, dropdown).
+- **Enhanced Activity Timeline**: Always-visible timeline with typed icons (lifecycle, tag, assignment, note) and proper empty state messaging.
+
+### Changed
+- **Sidebar Navigation**: Replaced separate "Team" and "Integrations" sidebar items with a unified "Settings" entry. Legacy routes redirect automatically.
+
+---
+
 ## [2026-03-04] — Architecture & Data Integrity Overhaul
 
 ### Fixed

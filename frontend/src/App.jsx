@@ -8,14 +8,19 @@ import NewInstance from './pages/NewInstance';
 import Instances from './pages/Instances';
 import CampaignDetails from './pages/CampaignDetails';
 import Automations from './pages/Automations';
-import Team from './pages/Team';
 import Inbox from './pages/Inbox';
 import Agents from './pages/Agents';
 import Templates from './pages/Templates';
-import Integrations from './pages/Integrations';
 import Workflows from './pages/Workflows';
 import Contacts from './pages/Contacts';
 import ContactProfile from './pages/ContactProfile';
+import Team from './pages/Team';
+import Integrations from './pages/Integrations';
+import SettingsLayout from './components/SettingsLayout';
+import WorkspaceSettings from './pages/settings/WorkspaceSettings';
+import ContactFieldsSettings from './pages/settings/ContactFieldsSettings';
+import LifecycleSettings from './pages/settings/LifecycleSettings';
+import TagSettings from './pages/settings/TagSettings';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -78,7 +83,7 @@ function App() {
 
         <Route path="/team" element={
           <PrivateRoute>
-            <Team />
+            <Navigate to="/settings/users" replace />
           </PrivateRoute>
         } />
 
@@ -102,9 +107,23 @@ function App() {
 
         <Route path="/integrations" element={
           <PrivateRoute>
-            <Integrations />
+            <Navigate to="/settings/integrations" replace />
           </PrivateRoute>
         } />
+
+        <Route path="/settings" element={
+          <PrivateRoute>
+            <SettingsLayout />
+          </PrivateRoute>
+        }>
+          <Route index element={<Navigate to="/settings/general" replace />} />
+          <Route path="general" element={<WorkspaceSettings />} />
+          <Route path="users" element={<Team />} />
+          <Route path="contact-fields" element={<ContactFieldsSettings />} />
+          <Route path="tags" element={<TagSettings />} />
+          <Route path="lifecycle" element={<LifecycleSettings />} />
+          <Route path="integrations" element={<Integrations />} />
+        </Route>
 
         <Route path="/workflows" element={
           <PrivateRoute>
