@@ -28,7 +28,7 @@ export default function ContactFieldsSettings() {
 
     const fetchFields = async () => {
         try {
-            const { data } = await api.get('/contact-fields');
+            const { data } = await api.get('/contact-fields/definitions');
             setFields(data);
         } catch (error) {
             console.error('Failed to fetch contact fields:', error);
@@ -50,9 +50,9 @@ export default function ContactFieldsSettings() {
 
         try {
             if (editingField) {
-                await api.put(`/contact-fields/${editingField.id}`, payload);
+                await api.put(`/contact-fields/definitions/${editingField.id}`, payload);
             } else {
-                await api.post('/contact-fields', payload);
+                await api.post('/contact-fields/definitions', payload);
             }
             setShowModal(false);
             resetForm();
@@ -86,7 +86,7 @@ export default function ContactFieldsSettings() {
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure? This will hide the field from all contact profiles.')) return;
         try {
-            await api.delete(`/contact-fields/${id}`);
+            await api.delete(`/contact-fields/definitions/${id}`);
             fetchFields();
         } catch (error) {
             alert('Error deleting field');

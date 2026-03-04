@@ -468,3 +468,9 @@ All notable changes to the ValueWats project, tracked by date.
 - Updated left Sidebar (Inbox Filters) toggle to use an expand/collapse SVG dynamically.
 - Added thin vertical menu panel to the far right specifically for toggling the Contact Details menu (emulating Zendesk UX).
 - Refined Dashboard calculations using actual database records and identified the migration deployment issue.
+### Fixed
+- Fixed General Settings page crash by implementing the missing `GET /api/auth/me` endpoint to supply tenant information.
+- Fixed AI Knowledge Settings page by creating a workspace-wide `GET /api/agents/knowledge` endpoint to consolidate all AI agent knowledge sources.
+- Fixed `LifecycleRules.jsx` UI bugs where rule triggers weren't correctly parsing assigned tags due to missing properties.
+- Fixed `ContactFieldsSettings.jsx` API routes to match the `GET /api/contact-fields/definitions` route mapped in the backend.
+- Registered the missing `/api/integrations` route in `server.js` preventing the Integrations settings page from fetching connected tools.

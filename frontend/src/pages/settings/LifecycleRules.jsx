@@ -25,12 +25,12 @@ export default function LifecycleRules() {
                 api.get('/lifecycle-rules'),
                 api.get('/lifecycle/stages'),
                 api.get('/tags'),
-                api.get('/contact-fields')
+                api.get('/contact-fields/definitions')
             ]);
             setRules(rulesRes.data);
             setStages(stagesRes.data.stages || []);
             setTags(tagsRes.data.tags || []);
-            setFields(fieldsRes.data.fields || []);
+            setFields(fieldsRes.data || []);
         } catch (e) { console.error('Failed to load rules data', e); }
         finally { setLoading(false); }
     };

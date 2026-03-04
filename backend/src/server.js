@@ -94,6 +94,7 @@ app.use('/api/contact-fields', require('./routes/contactFields.routes'));
 app.use('/api/tags', require('./routes/tags.routes'));
 app.use('/api/snippets', require('./routes/snippets.routes'));
 app.use('/api/lifecycle-rules', require('./routes/lifecycleRules.routes'));
+app.use('/api/integrations', tenantContext, require('./routes/integrations'));
 
 // Public routes (Webhooks)
 app.use('/api/webhooks', webhookRoutes);

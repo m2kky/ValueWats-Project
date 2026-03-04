@@ -21,6 +21,41 @@ const upload = multer({
   }
 });
 
+// List ALL knowledge sources across all agents in the workspace
+router.get('/knowledge', tenantContext, async (req, res) => {
+  try {
+    const sources = await prisma.$queryRawUnsafe(`
+      SELECT 
+        MIN(AK.id) as id,
+        AK.title,
+        AK."sourceType",
+        AK."sourceUrl",
+        AK."fileKey",
+        AK.category,
+        A.name as "agentName",
+        A.id as "agentId",
+        COUNT(*) as "chunkCount",
+        MIN(AK."createdAt") as "createdAt",
+        BOOL_AND(AK."isActive") as "isActive"
+      FROM "AgentKnowledge" AK
+      JOIN "AIAgent" A ON AK."agentId" = A.id
+      WHERE A."tenantId" = $1
+      GROUP BY AK.title, AK."sourceType", AK."sourceUrl", AK."fileKey", AK.category, A.name, A.id
+      ORDER BY MIN(AK."createdAt") DESC
+    `, req.user.tenantId);
+
+    const parsedSources = sources.map(s => ({
+      ...s,
+      chunkCount: Number(s.chunkCount)
+    }));
+
+    res.json({ sources: parsedSources });
+  } catch (error) {
+    console.error('[Knowledge] List all error:', error);
+    res.status(500).json({ error: 'Failed to list knowledge sources' });
+  }
+});
+
 // List knowledge sources for an agent
 router.get('/:agentId/knowledge', tenantContext, async (req, res) => {
   try {
