@@ -12,6 +12,12 @@ All notable changes to the ValueWats project, tracked by date.
 - **Backend Flow**: New `POST /api/onboarding` endpoint to save wizard progress securely.
 - **Auth Redirects**: Intelligent routing in `App.jsx`, `Login.jsx` and `Register.jsx` to intercept users who haven't completed onboarding and redirect them transparently to the wizard.
 
+### Fixed
+- **Onboarding UI Behaviors**: Fixed unclickable Checkboxes and Radio buttons in "Org Size" and "Chat Purposes" selections within the wizard.
+
+### Changed
+- **Email Templates Redesigned**: Switched to a sleek dark theme (`#0f0f12`) inline HTML structure. Embedded the branded `valuewats-animated-loader.svg` as a central Base64 logo. Applied to OTP and Team Invitation emails.
+
 ### Changed
 - **Campaigns UI**: Replaced generic loading spinners with the branded `ValueWatsLoader` and updated the header megaphone icon to use `valuewats-broadcast.svg`.
 
