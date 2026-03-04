@@ -10,7 +10,8 @@ import {
   PencilSquareIcon,
   CheckIcon,
   PlusIcon,
-  TagIcon
+  TagIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 
 export default function ContactSidebar({ conversation, agents, users, onToggle, onUpdate }) {
@@ -29,6 +30,10 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
   const [newLabel, setNewLabel] = useState('');
   const [savingLabel, setSavingLabel] = useState(false);
   const labelInputRef = useRef(null);
+
+  // Notes state
+  const [newNote, setNewNote] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
 
   useEffect(() => {
     if (conversation) {
@@ -180,6 +185,45 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
       console.error('Failed to remove label:', error);
     } finally {
       setSavingLabel(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim() || !conversation?.contact?.id) return;
+    setSavingNote(true);
+    try {
+      const { data } = await api.post(`/contacts/${conversation.contact.id}/notes`, {
+        content: newNote.trim()
+      });
+      // Append new note to conversation.contact.notes
+      const updatedContact = {
+        ...conversation.contact,
+        notes: [data, ...(conversation.contact.notes || [])]
+      };
+      if (onUpdate) {
+        onUpdate({ ...conversation, contact: updatedContact });
+      }
+      setNewNote('');
+    } catch (error) {
+      console.error('Failed to add note:', error);
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    if (!conversation?.contact?.id) return;
+    try {
+      await api.delete(`/contacts/${conversation.contact.id}/notes/${noteId}`);
+      const updatedContact = {
+        ...conversation.contact,
+        notes: (conversation.contact.notes || []).filter(n => n.id !== noteId)
+      };
+      if (onUpdate) {
+        onUpdate({ ...conversation, contact: updatedContact });
+      }
+    } catch (error) {
+      console.error('Failed to delete note:', error);
     }
   };
 
@@ -552,6 +596,53 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
             )}
           </div>
         </div>
+
+        {/* Internal Notes */}
+        {conversation?.contact && (
+          <div className="mt-6 pt-6 border-t border-white/5">
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3 block">Internal Notes</label>
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={newNote}
+                onChange={e => setNewNote(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddNote()}
+                placeholder="Add a note..."
+                className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+              />
+              <button
+                onClick={handleAddNote}
+                disabled={!newNote.trim() || savingNote}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors flex items-center justify-center"
+              >
+                <PlusIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {(!conversation.contact.notes || conversation.contact.notes.length === 0) ? (
+                <p className="text-zinc-600 text-xs italic text-center py-2">No internal notes yet.</p>
+              ) : (
+                conversation.contact.notes.map(note => (
+                  <div key={note.id} className="p-3 bg-white/5 rounded-lg border border-white/5 group relative">
+                    <p className="text-sm text-zinc-300 break-words pr-6 whitespace-pre-wrap">{note.content}</p>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-500">
+                      <span>{note.user?.name || note.user?.email?.split('@')[0] || 'Unknown'}</span>
+                      <span>{new Date(note.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteNote(note.id)}
+                      className="absolute top-2 right-2 text-zinc-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <TrashIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

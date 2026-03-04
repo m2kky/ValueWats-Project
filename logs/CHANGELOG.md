@@ -4,7 +4,13 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
-## [2026-03-04] — Phase 4: Agent Assignment & Campaigns Redesign
+## [2026-03-04] — Phase 6: Internal Notes
+
+### Added
+- **Internal Notes (Inbox)**: Added the ability for team members to leave internal notes on a contact directly from the Inbox Chat Sidebar. These notes are attached to the contact profile and visible to all users.
+- Updated `getConversation` backend to attach contact notes and handle user attribution.
+
+---
 
 ### Added & Changed
 - **Campaigns UI Redesign**: Completely overhauled `Campaigns.jsx` to match the premium "Respond.io" glassmorphic CRM theme. Features table-view, dynamic status pills, and backdrop-blur styling.

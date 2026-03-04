@@ -134,6 +134,21 @@ class ChatService {
     });
 
     if (conversation) {
+      // Fetch associated contact with notes
+      const contact = await prisma.contact.findFirst({
+        where: {
+          tenantId,
+          phoneNumber: conversation.contactNumber
+        },
+        include: {
+          notes: {
+            orderBy: { createdAt: 'desc' },
+            include: { user: { select: { id: true, name: true, email: true } } }
+          }
+        }
+      });
+      conversation.contact = contact;
+
       // Fetch contact fields
       const contactFields = await prisma.contactField.findMany({
         where: {
