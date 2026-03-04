@@ -9,7 +9,10 @@ router.get('/conversations/:id', chatController.getConversation);
 router.post('/messages/send', chatController.sendMessage);
 router.put('/conversations/:id/contact', chatController.updateContact);
 router.put('/conversations/:id/assign', chatController.assignConversation);
+router.put('/conversations/:id/status', chatController.updateConversationStatus);
 router.get('/lifecycle-stages', chatController.getLifecycleStages);
+router.get('/labels', chatController.getLabels);
+router.post('/ai-assist', chatController.aiAssist);
 router.post('/sync', chatController.syncConversations);
 
 module.exports = router;

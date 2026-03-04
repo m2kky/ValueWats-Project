@@ -4,6 +4,43 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-04] — Inbox Feature Audit & Complete Fix
+
+### Added
+- **Emoji Picker**: Inline emoji grid (4 category groups, no external deps) in `ChatWindow.jsx` composer
+- **Formatting Toolbar**: WhatsApp markdown buttons (Bold `*`, Italic `_`, Strike `~`, Mono `` ` ``) with toggleable format bar
+- **File Attach**: Hidden file input in composer → calls `POST /api/chat/messages/upload`. Supports images, video, PDF, docs
+- **AI Assist**: Full DeepSeek integration in `POST /api/chat/ai-assist`. Shows suggestion banner with "Use" button in composer
+- **Templates Panel**: Floating panel above composer shows all templates from `/api/templates`. Click to insert content
+- **Quick Reply**: Typing `/` auto-triggers the templates panel
+- **Conversation Search**: 🔍 in ChatWindow header toggles inline search bar that highlights matching messages
+- **3-dot Menu**: Dropdown in ChatWindow header — Close Conversation, Reopen, Copy Number, Mark as Unread
+- **Labels Feature**: Full labels system in `ContactSidebar.jsx` — add/remove colored label chips, suggestions from existing labels, persisted to `conversation.labels[]` via `PUT /contact`
+- **Labels Filter**: `InboxFiltersSidebar.jsx` now fetches all tenant labels and shows them as filter buttons
+- **Closed Conversation Banner**: Yellow banner shown in ChatWindow when `conversation.status === 'closed'` with Reopen button
+- **Team Inbox Filter**: New filter showing conversations assigned to any human user
+- **AI Bot Chats Filter**: New filter (renamed from "AI Instance Emulator") showing conversations with an AI agent assigned
+- **Backend `GET /api/chat/labels`**: Returns all unique label values across tenant's conversations
+- **Backend `POST /api/chat/ai-assist`**: DeepSeek reply suggestion endpoint
+- **Backend `PUT /api/chat/conversations/:id/status`**: Close/open/pending status toggle
+
+### Fixed
+- **`dangerouslySetLabel` Bug**: `ContactSidebar.jsx` line 250 had wrong prop name → fixed to render emoji as plain text
+- **`PlusIcon` Missing**: Was used but not imported in `ContactSidebar.jsx`
+- **`ChatBubbleLeftRightIcon` Missing**: Was used in `ChatWindow.jsx` empty state but not imported → would crash on empty conversation
+- **Lifecycle Stage Crash**: The above `dangerouslySetLabel` bug was preventing the stage dropdown from rendering at all
+- **Search Bar Not Connected**: `ConversationList.jsx` MagnifyingGlassIcon button did nothing → now toggles search input that filters conversations
+- **Create AI Agent Button**: Was a dummy button → now navigates to `/agents` via `useNavigate`
+- **AI Instance Emulator**: Renamed to "AI Bot Chats" and now works as an actual filter
+
+### Changed
+- `InboxFiltersSidebar.jsx` — Restructured into proper sections with real filter logic. Added labels section. Custom Inbox shows "Coming Soon"
+- `ConversationList.jsx` — Labels now shown as colored chips in conversation preview. Search is a real input. `label_` filter prefix added
+- `ContactSidebar.jsx` — Name edit moved into dedicated input row. Labels section fully redesigned with color hash system
+- `ChatWindow.jsx` — Fully rewritten. Instance selector now a `<select>` when multiple instances exist. Closed banner added
+
+---
+
 ## [2026-03-04] — WhatsApp Anti-Ban System (Phases 1-3)
 
 ### Added

@@ -1,52 +1,63 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../../api/client';
 import { formatPhoneNumber } from '../../utils/formatters';
 import {
   UserCircleIcon,
   PhoneIcon,
-  EnvelopeIcon,
   GlobeAltIcon,
-  LanguageIcon,
   ChevronDownIcon,
   XMarkIcon,
   PencilSquareIcon,
-  CheckIcon
+  CheckIcon,
+  PlusIcon,
+  TagIcon
 } from '@heroicons/react/24/outline';
 
 export default function ContactSidebar({ conversation, agents, users, onToggle, onUpdate }) {
   const [loading, setLoading] = useState(false);
   const [editingFields, setEditingFields] = useState(false);
-  const [formData, setFormData] = useState({
-    contactName: conversation?.contactName || ''
-  });
-
+  const [formData, setFormData] = useState({ contactName: conversation?.contactName || '' });
   const [customFields, setCustomFields] = useState([]);
   const [assignDropdownOpen, setAssignDropdownOpen] = useState(false);
   const [stageDropdownOpen, setStageDropdownOpen] = useState(false);
   const [lifecycleStages, setLifecycleStages] = useState([]);
+  
+  // Labels state
+  const [labels, setLabels] = useState([]);
+  const [allLabels, setAllLabels] = useState([]);
+  const [showLabelInput, setShowLabelInput] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [savingLabel, setSavingLabel] = useState(false);
+  const labelInputRef = useRef(null);
 
   useEffect(() => {
     if (conversation) {
-      setFormData({
-        contactName: conversation.contactName || ''
-      });
+      setFormData({ contactName: conversation.contactName || '' });
+      
+      // Load labels from conversation
+      setLabels(conversation.labels || []);
 
-      // Load standard and custom fields into dynamic array
+      // Load custom fields
       const existingFields = conversation.contactFields || [];
-      // Ensure we always have at least Email, Country, Language visible for quick editing
+      const mergedFields = existingFields.map(f => ({ name: f.fieldName, value: f.fieldValue }));
       const standardKeys = ['email', 'country', 'language'];
-      const mergedFields = [...existingFields.map(f => ({ name: f.fieldName, value: f.fieldValue }))];
-
       standardKeys.forEach(key => {
         if (!mergedFields.find(f => f.name.toLowerCase() === key)) {
           mergedFields.push({ name: key, value: '' });
         }
       });
-
       setCustomFields(mergedFields);
+
       fetchStages();
+      fetchAllLabels();
     }
-  }, [conversation]);
+  }, [conversation?.id]);
+
+  useEffect(() => {
+    if (showLabelInput && labelInputRef.current) {
+      labelInputRef.current.focus();
+    }
+  }, [showLabelInput]);
 
   const fetchStages = async () => {
     try {
@@ -57,17 +68,27 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
     }
   };
 
+  const fetchAllLabels = async () => {
+    try {
+      const { data } = await api.get('/chat/labels');
+      setAllLabels(data.labels || []);
+    } catch (error) {
+      // Non-fatal
+    }
+  };
+
   const handleSaveFields = async () => {
     setLoading(true);
     try {
-      const fieldsToSave = customFields.filter(f => f.name && f.value).map(f => ({ name: f.name.toLowerCase(), value: f.value }));
+      const fieldsToSave = customFields
+        .filter(f => f.name && f.value)
+        .map(f => ({ name: f.name.toLowerCase(), value: f.value }));
 
       const { data } = await api.put(`/chat/conversations/${conversation.id}/contact`, {
         contactName: formData.contactName,
         customFields: fieldsToSave
       });
 
-      // Update local state without losing standard empty keys
       const savedFields = data.conversation?.contactFields?.map(f => ({ name: f.fieldName, value: f.fieldValue })) || fieldsToSave;
       const standardKeys = ['email', 'country', 'language'];
       standardKeys.forEach(key => {
@@ -91,12 +112,11 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
     setAssignDropdownOpen(false);
     setLoading(true);
     try {
-      const payload = { type }; // 'agent', 'me', 'unassign', 'user'
+      const payload = { type };
       if (id) {
         if (type === 'agent') payload.agentId = id;
         else if (type === 'user') payload.userId = id;
       }
-
       const { data } = await api.put(`/chat/conversations/${conversation.id}/assign`, payload);
       if (onUpdate) onUpdate(data.conversation);
     } catch (error) {
@@ -122,10 +142,51 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
     }
   };
 
+  const handleAddLabel = async (labelToAdd) => {
+    const lbl = (labelToAdd || newLabel).trim();
+    if (!lbl || labels.includes(lbl)) {
+      setNewLabel('');
+      setShowLabelInput(false);
+      return;
+    }
+    setSavingLabel(true);
+    try {
+      const updatedLabels = [...labels, lbl];
+      const { data } = await api.put(`/chat/conversations/${conversation.id}/contact`, {
+        labels: updatedLabels
+      });
+      setLabels(updatedLabels);
+      setNewLabel('');
+      setShowLabelInput(false);
+      if (!allLabels.includes(lbl)) setAllLabels(prev => [...prev, lbl].sort());
+      if (onUpdate) onUpdate(data.conversation);
+    } catch (error) {
+      console.error('Failed to add label:', error);
+    } finally {
+      setSavingLabel(false);
+    }
+  };
+
+  const handleRemoveLabel = async (lbl) => {
+    setSavingLabel(true);
+    try {
+      const updatedLabels = labels.filter(l => l !== lbl);
+      const { data } = await api.put(`/chat/conversations/${conversation.id}/contact`, {
+        labels: updatedLabels
+      });
+      setLabels(updatedLabels);
+      if (onUpdate) onUpdate(data.conversation);
+    } catch (error) {
+      console.error('Failed to remove label:', error);
+    } finally {
+      setSavingLabel(false);
+    }
+  };
+
   if (!conversation) return null;
 
-  // Determine current assignment status
-  let assignmentLabel = "Unassigned";
+  // Assignment display
+  let assignmentLabel = 'Unassigned';
   let assignmentIcon = <UserCircleIcon className="w-5 h-5 text-zinc-400" />;
 
   if (conversation.currentAgentId) {
@@ -141,11 +202,25 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
       assignmentIcon = <UserCircleIcon className="w-5 h-5 text-indigo-400" />;
     }
   } else if (!conversation.aiEnabled && conversation.escalated) {
-    assignmentLabel = "Assigned to team";
+    assignmentLabel = 'Assigned to team';
     assignmentIcon = <UserCircleIcon className="w-5 h-5 text-indigo-400" />;
   }
 
   const currentStage = lifecycleStages.find(s => s.id === conversation.lifecycleStageId);
+
+  // Label color based on hash
+  const getLabelColor = (label) => {
+    const colors = [
+      { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/25' },
+      { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/25' },
+      { bg: 'bg-purple-500/15', text: 'text-purple-400', border: 'border-purple-500/25' },
+      { bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/25' },
+      { bg: 'bg-rose-500/15', text: 'text-rose-400', border: 'border-rose-500/25' },
+      { bg: 'bg-cyan-500/15', text: 'text-cyan-400', border: 'border-cyan-500/25' },
+    ];
+    const hash = label.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
 
   return (
     <div className="w-80 min-w-[320px] h-full bg-[#0f0f11] border-l border-white/5 flex flex-col overflow-y-auto custom-scrollbar">
@@ -159,9 +234,7 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
             <path d="M10 16l4-4-4-4"></path>
           </svg>
         </button>
-        <h3 className="font-bold text-white flex items-center gap-2">
-          Contact details
-        </h3>
+        <h3 className="font-bold text-white flex items-center gap-2">Contact details</h3>
       </div>
 
       {/* Profile Overview */}
@@ -172,8 +245,9 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
         <h2 className="text-lg font-bold text-white text-center break-all">
           {conversation.contactName || conversation.contactNumber}
         </h2>
+        <p className="text-xs text-zinc-500 mt-1">{formatPhoneNumber(conversation.contactNumber)}</p>
 
-        {/* Assignment Button */}
+        {/* Assignment Dropdown */}
         <div className="relative mt-4 w-full">
           <button
             onClick={() => setAssignDropdownOpen(!assignDropdownOpen)}
@@ -209,7 +283,6 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
                 className="w-full text-left px-4 py-2 text-sm text-zinc-200 hover:bg-white/5 flex items-center justify-between"
               >
                 <span className="flex items-center gap-2">👤 Assign to me</span>
-                {(!conversation.aiEnabled && conversation.escalated && !conversation.assignedUserId) && <CheckIcon className="w-4 h-4 text-indigo-400" />}
               </button>
               {users?.map(user => (
                 <button
@@ -234,7 +307,7 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
         </div>
       </div>
 
-      {/* Stage & Contact Fields */}
+      {/* Stage, Labels & Contact Fields */}
       <div className="p-5 flex flex-col gap-6">
 
         {/* Lifecycle Stage */}
@@ -247,8 +320,8 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
             <div className="flex items-center gap-2">
               {currentStage ? (
                 <>
-                  <span dangerouslySetLabel={{ __html: currentStage.emoji || '📌' }} />
-                  <span>{currentStage.name}</span>
+                  <span>{currentStage.emoji || '📌'}</span>
+                  <span style={{ color: currentStage.color || '#6366f1' }}>{currentStage.name}</span>
                 </>
               ) : (
                 <span className="text-zinc-500">Select Stage...</span>
@@ -259,16 +332,21 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
 
           {stageDropdownOpen && (
             <div className="absolute top-full left-0 w-full mt-1 bg-zinc-800 border border-white/10 rounded-lg shadow-xl z-20 py-1">
-              {lifecycleStages.map(stage => (
-                <button
-                  key={stage.id}
-                  onClick={() => handleSetStage(stage.id)}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 flex items-center gap-2"
-                >
-                  <span dangerouslySetInnerHTML={{ __html: stage.emoji || '📌' }} />
-                  {stage.name}
-                </button>
-              ))}
+              {lifecycleStages.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-zinc-500 italic">No stages created yet</p>
+              ) : (
+                lifecycleStages.map(stage => (
+                  <button
+                    key={stage.id}
+                    onClick={() => handleSetStage(stage.id)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 flex items-center gap-2"
+                  >
+                    <span>{stage.emoji || '📌'}</span>
+                    <span style={{ color: stage.color || '#6366f1' }}>{stage.name}</span>
+                    {conversation.lifecycleStageId === stage.id && <CheckIcon className="w-4 h-4 text-indigo-400 ml-auto" />}
+                  </button>
+                ))
+              )}
               <button
                 onClick={() => handleSetStage(null)}
                 className="w-full text-left px-3 py-2 text-sm text-zinc-500 hover:bg-white/5 border-t border-white/5"
@@ -279,23 +357,133 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
           )}
         </div>
 
+        {/* Labels Section */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+              <TagIcon className="w-3.5 h-3.5" /> Labels
+            </label>
+            <button
+              onClick={() => setShowLabelInput(true)}
+              className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+            >
+              <PlusIcon className="w-3 h-3" /> Add
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 min-h-[24px]">
+            {labels.map(lbl => {
+              const clr = getLabelColor(lbl);
+              return (
+                <span
+                  key={lbl}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${clr.bg} ${clr.text} ${clr.border}`}
+                >
+                  {lbl}
+                  <button
+                    onClick={() => handleRemoveLabel(lbl)}
+                    disabled={savingLabel}
+                    className="hover:opacity-70 transition-opacity ml-0.5"
+                  >
+                    <XMarkIcon className="w-3 h-3" />
+                  </button>
+                </span>
+              );
+            })}
+            {labels.length === 0 && !showLabelInput && (
+              <span className="text-xs text-zinc-600 italic">No labels</span>
+            )}
+          </div>
+
+          {showLabelInput && (
+            <div className="mt-2 flex flex-col gap-2">
+              <input
+                ref={labelInputRef}
+                type="text"
+                value={newLabel}
+                onChange={e => setNewLabel(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleAddLabel();
+                  if (e.key === 'Escape') { setShowLabelInput(false); setNewLabel(''); }
+                }}
+                placeholder="Type label name..."
+                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+              />
+              {/* Suggestions from existing labels */}
+              {allLabels.filter(l => !labels.includes(l) && l.toLowerCase().includes(newLabel.toLowerCase())).length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {allLabels
+                    .filter(l => !labels.includes(l) && l.toLowerCase().includes(newLabel.toLowerCase()))
+                    .slice(0, 6)
+                    .map(l => {
+                      const clr = getLabelColor(l);
+                      return (
+                        <button
+                          key={l}
+                          onClick={() => handleAddLabel(l)}
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${clr.bg} ${clr.text} ${clr.border} hover:opacity-80 transition-opacity`}
+                        >
+                          {l}
+                        </button>
+                      );
+                    })}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleAddLabel()}
+                  disabled={!newLabel.trim() || savingLabel}
+                  className="flex-1 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors"
+                >
+                  {savingLabel ? 'Saving...' : 'Add Label'}
+                </button>
+                <button
+                  onClick={() => { setShowLabelInput(false); setNewLabel(''); }}
+                  className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Contact Fields */}
         <div>
           <div className="flex justify-between items-center mb-3">
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Contact Fields</label>
             {!editingFields ? (
-              <button onClick={() => setEditingFields(true)} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+              <button onClick={() => setEditingFields(true)} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
                 <PencilSquareIcon className="w-3 h-3" /> Edit
               </button>
             ) : (
-              <button onClick={handleSaveFields} disabled={loading} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-bold">
-                {loading ? 'Saving...' : 'Save'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={handleSaveFields} disabled={loading} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-bold">
+                  {loading ? 'Saving...' : 'Save'}
+                </button>
+                <button onClick={() => setEditingFields(false)} className="text-xs text-zinc-500 hover:text-zinc-300">
+                  Cancel
+                </button>
+              </div>
             )}
           </div>
 
+          {/* Name field (always editable when in edit mode) */}
+          {editingFields && (
+            <div className="mb-3 pb-3 border-b border-white/5">
+              <div className="text-xs text-zinc-500 mb-1">Display Name</div>
+              <input
+                type="text"
+                value={formData.contactName}
+                onChange={e => setFormData({ ...formData, contactName: e.target.value })}
+                className="w-full bg-zinc-900 border border-white/10 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
+                placeholder="Contact name"
+              />
+            </div>
+          )}
+
           <div className="space-y-4">
-            {/* Phone (Always fixed) */}
+            {/* Phone (always fixed) */}
             <div className="flex gap-3">
               <PhoneIcon className="w-5 h-5 text-zinc-500 mt-1 shrink-0" />
               <div className="flex-1">
@@ -336,7 +524,7 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
                         />
                         <button
                           onClick={() => setCustomFields(customFields.filter((_, i) => i !== idx))}
-                          className="text-zinc-500 hover:text-red-400"
+                          className="text-zinc-500 hover:text-red-400 transition-colors"
                         >
                           <XMarkIcon className="w-4 h-4" />
                         </button>
@@ -344,7 +532,6 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
                     </div>
                   ) : (
                     <>
-                      {/* Hide empty standard fields in view mode to keep UI clean, unless there is a value */}
                       {(field.value || ['email', 'country', 'language'].includes(field.name.toLowerCase())) && (
                         <>
                           <div className="text-xs text-zinc-500 mb-1 capitalize tracking-wider">{field.name}</div>

@@ -57,7 +57,7 @@ const sendMessage = async (req, res) => {
       content,
       mediaUrl,
       messageType,
-      userId: req.user.id // inject the user ID that is making the request
+      userId: req.user.id
     };
     const message = await chatService.sendMessage(tenantId, messageData);
 
@@ -83,6 +83,7 @@ module.exports = {
   getConversations,
   getConversation,
   sendMessage,
+
   updateContact: async (req, res) => {
     try {
       const tenantId = req.user.tenantId;
@@ -101,7 +102,7 @@ module.exports = {
     try {
       const tenantId = req.user.tenantId;
       const { id } = req.params;
-      const assignmentData = req.body; // { type, agentId, userId }
+      const assignmentData = req.body;
       if (assignmentData.type === 'me') {
         assignmentData.userId = req.user.id;
       }
@@ -111,6 +112,40 @@ module.exports = {
     } catch (error) {
       console.error('Assign conversation error:', error);
       res.status(500).json({ error: 'Failed to assign conversation' });
+    }
+  },
+
+  // PUT /api/chat/conversations/:id/status
+  updateConversationStatus: async (req, res) => {
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+      const tenantId = req.user.tenantId;
+      const { id } = req.params;
+      const { status } = req.body; // 'open', 'closed', 'pending'
+
+      if (!['open', 'closed', 'pending'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status. Use: open, closed, pending' });
+      }
+
+      const conversation = await prisma.conversation.updateMany({
+        where: { id, tenantId },
+        data: { status, ...(status === 'closed' ? { unreadCount: 0 } : {}) }
+      });
+
+      if (conversation.count === 0) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+
+      const updated = await prisma.conversation.findFirst({
+        where: { id, tenantId },
+        include: { lifecycleStage: true, assignedUser: { select: { id: true, email: true } } }
+      });
+
+      res.json({ success: true, conversation: updated });
+    } catch (error) {
+      console.error('Update conversation status error:', error);
+      res.status(500).json({ error: 'Failed to update conversation status' });
     }
   },
 
@@ -129,6 +164,86 @@ module.exports = {
     } catch (error) {
       console.error('Get stages error:', error);
       res.status(500).json({ error: 'Failed to fetch stages' });
+    }
+  },
+
+  // GET /api/chat/labels
+  getLabels: async (req, res) => {
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+      const tenantId = req.user.tenantId;
+
+      // Fetch all label arrays from conversations and flatten to unique values
+      const conversations = await prisma.conversation.findMany({
+        where: { tenantId },
+        select: { labels: true }
+      });
+
+      const allLabels = conversations.flatMap(c => c.labels || []);
+      const uniqueLabels = [...new Set(allLabels)].filter(Boolean).sort();
+
+      res.json({ labels: uniqueLabels });
+    } catch (error) {
+      console.error('Get labels error:', error);
+      res.status(500).json({ error: 'Failed to fetch labels' });
+    }
+  },
+
+  // POST /api/chat/ai-assist
+  aiAssist: async (req, res) => {
+    try {
+      const { messages, contactName, instruction } = req.body;
+
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: 'messages array is required' });
+      }
+
+      const axios = require('axios');
+      const apiKey = process.env.DEEPSEEK_API_KEY;
+
+      if (!apiKey) {
+        return res.status(400).json({ error: 'AI service not configured' });
+      }
+
+      // Build a conversation context for DeepSeek
+      const systemPrompt = `You are a helpful customer support agent assistant. 
+The customer's name is: ${contactName || 'Unknown'}.
+${instruction ? `Special instruction: ${instruction}` : ''}
+Based on the conversation history, suggest ONE SHORT professional reply in the same language the customer is using.
+Reply with ONLY the suggested message text, no quotes, no explanations.`;
+
+      const conversationContext = messages.slice(-10).map(m => ({
+        role: m.direction === 'outgoing' ? 'assistant' : 'user',
+        content: m.content || '[Media]'
+      }));
+
+      const response = await axios.post(
+        'https://api.deepseek.com/v1/chat/completions',
+        {
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...conversationContext,
+            { role: 'user', content: 'Suggest a reply for the last message.' }
+          ],
+          temperature: 0.7,
+          max_tokens: 200
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 15000
+        }
+      );
+
+      const suggestion = response.data.choices?.[0]?.message?.content?.trim();
+      res.json({ suggestion });
+    } catch (error) {
+      console.error('AI assist error:', error?.response?.data || error.message);
+      res.status(500).json({ error: 'AI assist failed. Please try again.' });
     }
   },
 

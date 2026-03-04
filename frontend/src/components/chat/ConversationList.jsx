@@ -1,33 +1,45 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { formatPhoneNumber } from '../../utils/formatters';
-import { ArrowPathIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 export default function ConversationList({ conversations, selectedId, onSelect, loading, onSync, syncing, activeFilter = 'all', showFilters, onToggleFilters }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showUnread, setShowUnread] = useState(false);
+  const [showSearchBar, setShowSearchBar] = useState(false);
+  const searchRef = useRef(null);
+
+  useEffect(() => {
+    if (showSearchBar && searchRef.current) {
+      searchRef.current.focus();
+    }
+  }, [showSearchBar]);
 
   const filtered = conversations.filter(conv => {
-    // 1. Search Term filter
     const matchesSearch = (conv.contactName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       conv.contactNumber.includes(searchTerm);
     if (!matchesSearch) return false;
 
-    // 2. Unread filter
     if (showUnread && conv.unreadCount === 0) return false;
 
-    // 3. Sidebar active filters
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (activeFilter === 'mine') {
       return conv.assignedUserId === user.id;
     } else if (activeFilter === 'unassigned') {
       return !conv.assignedUserId && !conv.currentAgentId;
+    } else if (activeFilter === 'team') {
+      return !!conv.assignedUserId;
+    } else if (activeFilter === 'bot') {
+      return !!conv.currentAgentId;
     } else if (activeFilter.startsWith('stage_')) {
       const stageId = activeFilter.replace('stage_', '');
       return conv.lifecycleStageId === stageId;
+    } else if (activeFilter.startsWith('label_')) {
+      const label = activeFilter.replace('label_', '');
+      return (conv.labels || []).includes(label);
     }
 
-    return true; // 'all' or default
+    return true;
   });
 
   if (loading && conversations.length === 0) {
@@ -67,7 +79,7 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
           <div className="flex items-center gap-1 text-zinc-400">
             <button
               onClick={onToggleFilters}
-              title={showFilters ? "Close Filters" : "Open Filters"}
+              title={showFilters ? 'Close Filters' : 'Open Filters'}
               className={`p-1.5 rounded-lg hover:bg-white/5 transition-all flex items-center justify-center ${showFilters ? 'text-indigo-400 bg-white/5' : ''}`}
             >
               {showFilters ? (
@@ -93,11 +105,37 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
             >
               <ArrowPathIcon className="w-5 h-5" />
             </button>
-            <button className="p-1.5 rounded-full hover:bg-white/5 text-zinc-400 transition-all">
+            <button
+              onClick={() => { setShowSearchBar(!showSearchBar); setSearchTerm(''); }}
+              title="Search conversations"
+              className={`p-1.5 rounded-full hover:bg-white/5 transition-all ${showSearchBar ? 'text-white bg-white/5' : 'text-zinc-400'}`}
+            >
               <MagnifyingGlassIcon className="w-5 h-5" />
             </button>
           </div>
         </div>
+
+        {/* Search Input */}
+        {showSearchBar && (
+          <div className="px-3 pb-2 flex items-center gap-2">
+            <div className="flex-1 flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5">
+              <MagnifyingGlassIcon className="w-4 h-4 text-zinc-500 shrink-0" />
+              <input
+                ref={searchRef}
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search contacts..."
+                className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-600"
+              />
+              {searchTerm && (
+                <button onClick={() => setSearchTerm('')} className="text-zinc-500 hover:text-white">
+                  <XMarkIcon className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between px-4 py-3 bg-zinc-950/20">
           <button className="flex items-center gap-1 text-xs font-semibold text-zinc-400 hover:text-white transition-colors">
@@ -138,22 +176,18 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
                   : 'hover:bg-white/[0.03] border border-transparent'
                 }`}
             >
-              {/* Selected Indicator (left edge line) */}
               {selectedId === conv.id && (
                 <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r-full shadow-[0_0_10px_rgba(71,37,244,0.5)]"></div>
               )}
 
-              {/* Avatar */}
               <div className="relative shrink-0 mt-0.5 ml-2">
                 <div className={`w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold shrink-0 transition-transform group-hover:scale-105 shadow-md
                   ${selectedId === conv.id ? 'bg-gradient-to-tr from-indigo-500 to-purple-500 text-white' : 'bg-white/10 text-white'}`}>
                   <span>{(conv.contactName || conv.contactNumber)?.[0]?.toUpperCase() || '?'}</span>
                 </div>
-                {/* Online indicator */}
                 <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[#18181b] rounded-full"></div>
               </div>
 
-              {/* Info */}
               <div className="flex-1 min-w-0 flex flex-col pt-0.5">
                 <div className="flex justify-between items-baseline mb-0.5 w-full">
                   <span className={`text-[15px] font-semibold truncate tracking-tight
@@ -170,7 +204,6 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
                   <div className="flex flex-col gap-1.5 overflow-hidden flex-1">
                     <p className={`text-[13px] truncate flex items-center gap-1.5
                       ${conv.unreadCount > 0 ? 'text-white font-semibold' : 'text-zinc-400'}`}>
-                      {/* Read Receipt Mock */}
                       {conv.unreadCount === 0 && (
                         <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -178,9 +211,7 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
                       )}
                       <span className="truncate">{conv.lastMessage || 'No discussion yet'}</span>
                     </p>
-                    {/* Badges Container */}
                     <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      {/* Lifecycle Stage / New Lead */}
                       {conv.lifecycleStage ? (
                         <span
                           className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium border"
@@ -200,21 +231,25 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
                         </span>
                       )}
 
-                      {/* Group Label */}
+                      {/* Labels */}
+                      {(conv.labels || []).slice(0, 2).map(lbl => (
+                        <span key={lbl} className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          {lbl}
+                        </span>
+                      ))}
+
                       {conv.isGroup && (
                         <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
                           👥 Group
                         </span>
                       )}
 
-                      {/* Instance Label */}
                       {conv.instanceName && (
                         <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800/80 text-zinc-400 border border-zinc-700/80 max-w-[100px] truncate" title={`Instance: ${conv.instanceName}`}>
                           📱 {conv.instanceName}
                         </span>
                       )}
 
-                      {/* Assignee / Bot Label */}
                       {conv.assignedUser ? (
                         <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800/80 text-zinc-400 border border-zinc-700/80">
                           {conv.assignedUser.email.split('@')[0]}
