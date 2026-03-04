@@ -219,9 +219,10 @@ export default function Onboarding() {
                                         {ORG_SIZES.map((size) => (
                                             <label
                                                 key={size}
+                                                onClick={() => setOrgSize(size)}
                                                 className={`flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer transition-all ${orgSize === size
-                                                        ? 'bg-indigo-500/10 border border-indigo-500/30'
-                                                        : 'hover:bg-white/5 border border-transparent'
+                                                    ? 'bg-indigo-500/10 border border-indigo-500/30'
+                                                    : 'hover:bg-white/5 border border-transparent'
                                                     }`}
                                             >
                                                 <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${orgSize === size ? 'border-indigo-500' : 'border-zinc-600'
@@ -264,13 +265,13 @@ export default function Onboarding() {
                                                 <label
                                                     key={purpose}
                                                     className={`flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer transition-all ${isChecked
-                                                            ? 'bg-indigo-500/10 border border-indigo-500/30'
-                                                            : 'hover:bg-white/5 border border-transparent'
+                                                        ? 'bg-indigo-500/10 border border-indigo-500/30'
+                                                        : 'hover:bg-white/5 border border-transparent'
                                                         }`}
                                                 >
                                                     <div className={`w-4 h-4 rounded flex items-center justify-center transition-all border ${isChecked
-                                                            ? 'bg-indigo-500 border-indigo-500'
-                                                            : 'border-zinc-600 bg-transparent'
+                                                        ? 'bg-indigo-500 border-indigo-500'
+                                                        : 'border-zinc-600 bg-transparent'
                                                         }`}>
                                                         {isChecked && (
                                                             <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
