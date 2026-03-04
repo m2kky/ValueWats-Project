@@ -12,12 +12,15 @@ CREATE TABLE "contacts" (
     "address" TEXT,
     "source" TEXT NOT NULL DEFAULT 'manual',
     "custom_fields" JSONB,
+    "blacklisted" BOOLEAN NOT NULL DEFAULT false,
+    "blacklisted_at" TIMESTAMP(3),
     "lifecycle_stage_id" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "contacts_pkey" PRIMARY KEY ("id")
 );
+
 
 -- CreateTable
 CREATE TABLE "contact_labels" (

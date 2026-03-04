@@ -29,8 +29,8 @@ ALTER TABLE "tenants" ADD CONSTRAINT "tenants_plan_id_fkey"
     FOREIGN KEY ("plan_id") REFERENCES "plans"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- Phase 3: Add opt-out blacklist fields to contacts
-ALTER TABLE "contacts" ADD COLUMN "blacklisted" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "contacts" ADD COLUMN "blacklisted_at" TIMESTAMP(3);
+-- NOTE: blacklisted columns are added in 20260724000000_add_crm_system which creates the contacts table
+
 
 -- Seed default plans (idempotent)
 INSERT INTO "plans" ("id", "name", "maxMessagesPerDay", "maxContactsPerCampaign", "maxInstances", "workingHoursEnabled", "workingHoursStart", "workingHoursEnd", "price")
