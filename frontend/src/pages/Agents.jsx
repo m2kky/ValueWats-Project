@@ -171,6 +171,7 @@ export default function Agents() {
         outOfHoursMessage: full.outOfHoursMessage || '',
         isActive: full.isActive ?? true,
         priority: full.priority ?? 0,
+        isPublished: full.isPublished ?? false,
         aiModel: full.aiModel || full.model || 'deepseek-chat',
 
         // Phase 4
@@ -186,9 +187,10 @@ export default function Agents() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (publishStatus = form.isPublished) => {
     const data = {
       ...form,
+      isPublished: publishStatus,
       priority: Number(form.priority),
       temperature: Number(form.temperature),
       maxTokens: Number(form.maxTokens),
@@ -328,11 +330,18 @@ export default function Agents() {
               ABORT
             </button>
             <button
-              onClick={handleSave}
+              onClick={() => handleSave(false)}
+              disabled={saving || !form.name || !form.instructions}
+              className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest transition-all active:scale-95"
+            >
+              SAVE DRAFT
+            </button>
+            <button
+              onClick={() => handleSave(true)}
               disabled={saving || !form.name || !form.instructions}
               className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-lg shadow-indigo-500/10 transition-all active:scale-95"
             >
-              {saving ? 'UPLOADING...' : editingId ? 'DEPLOY MODULE' : 'INITIALIZE'}
+              {saving ? 'UPLOADING...' : (form.isPublished ? 'UPDATE PUBLISHED' : 'PUBLISH MODULE')}
             </button>
           </div>
         </div>
@@ -1067,11 +1076,18 @@ export default function Agents() {
                       <div className="min-w-0 pr-12">
                         <div className="flex flex-col gap-1">
                           <h3 className="text-xl font-black text-white truncate uppercase italic tracking-tighter leading-none">{agent.name}</h3>
-                          {agent.templateType && agent.templateType !== 'custom' && (
-                            <span className="inline-flex text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em] py-0.5 border-b border-indigo-500/20 w-fit">
-                              {agent.templateType}
-                            </span>
-                          )}
+                          <div className="flex gap-2 items-center">
+                            {agent.templateType && agent.templateType !== 'custom' && (
+                              <span className="inline-flex text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em] py-0.5 border-b border-indigo-500/20 w-fit">
+                                {agent.templateType}
+                              </span>
+                            )}
+                            {!agent.isPublished && (
+                              <span className="inline-flex text-[8px] font-black text-amber-500 bg-amber-500/10 rounded px-1.5 py-0.5 uppercase tracking-[0.2em] border border-amber-500/20 w-fit">
+                                DRAFT
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

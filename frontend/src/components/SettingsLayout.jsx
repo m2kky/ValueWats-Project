@@ -5,7 +5,10 @@ import {
     TagIcon,
     QueueListIcon,
     AdjustmentsVerticalIcon,
-    ArrowPathRoundedSquareIcon
+    ArrowPathRoundedSquareIcon,
+    DocumentTextIcon,
+    BookOpenIcon,
+    BoltIcon
 } from '@heroicons/react/24/outline';
 
 const settingsNav = [
@@ -14,6 +17,9 @@ const settingsNav = [
     { name: 'Contact Fields', path: '/settings/contact-fields', icon: AdjustmentsVerticalIcon },
     { name: 'Tags', path: '/settings/tags', icon: TagIcon },
     { name: 'Lifecycle Stages', path: '/settings/lifecycle', icon: QueueListIcon },
+    { name: 'Stage Automation', path: '/settings/automation', icon: BoltIcon },
+    { name: 'Snippets', path: '/settings/snippets', icon: DocumentTextIcon },
+    { name: 'AI Knowledge', path: '/settings/ai-knowledge', icon: BookOpenIcon },
     { name: 'Integrations', path: '/settings/integrations', icon: ArrowPathRoundedSquareIcon },
 ];
 

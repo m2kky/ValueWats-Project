@@ -63,6 +63,8 @@ model Tenant {
   contactLabels           ContactLabel[]
   activityLogs            ActivityLog[]
   contactFieldDefinitions ContactFieldDefinition[]
+  snippets                Snippet[]
+  lifecycleRules          LifecycleRule[]
 
   @@map("tenants")
 }
@@ -384,8 +386,9 @@ model AIAgent {
   workingHours        Json?
   outOfHoursMessage   String? @db.Text
 
-  isActive Boolean @default(true)
-  priority Int     @default(0)
+  isActive    Boolean @default(true)
+  isPublished Boolean @default(false)
+  priority    Int     @default(0)
 
   // Phase 4: Action & Group Extensions
   actionConfig       Json?
@@ -616,7 +619,8 @@ model LifecycleStage {
   conversations Conversation[]
   contacts      Contact[]
 
-  createdAt DateTime @default(now())
+  createdAt      DateTime        @default(now())
+  lifecycleRules LifecycleRule[]
 
   @@index([tenantId, order])
 }
@@ -733,4 +737,42 @@ model WorkflowLog {
   timestamp DateTime @default(now())
 
   @@index([executionId])
+}
+
+// Snippets — Pre-written response templates
+model Snippet {
+  id       String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  title    String
+  content  String  @db.Text
+  shortcut String? // e.g. "/thanks", "/greeting"
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, shortcut])
+  @@index([tenantId])
+  @@map("snippets")
+}
+
+// Lifecycle Transition Rules — Auto-move contacts between stages
+model LifecycleRule {
+  id       String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  triggerType  String // "tag_added", "tag_removed", "field_updated", "conversation_closed"
+  triggerValue String // tag name, field key, etc.
+
+  targetStageId String         @map("target_stage_id")
+  targetStage   LifecycleStage @relation(fields: [targetStageId], references: [id], onDelete: Cascade)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, triggerType])
+  @@map("lifecycle_rules")
 }

@@ -21,6 +21,9 @@ import WorkspaceSettings from './pages/settings/WorkspaceSettings';
 import ContactFieldsSettings from './pages/settings/ContactFieldsSettings';
 import LifecycleSettings from './pages/settings/LifecycleSettings';
 import TagSettings from './pages/settings/TagSettings';
+import SnippetsSettings from './pages/settings/SnippetsSettings';
+import AIKnowledgeSettings from './pages/settings/AIKnowledgeSettings';
+import LifecycleRules from './pages/settings/LifecycleRules';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }) {
@@ -122,6 +125,9 @@ function App() {
           <Route path="contact-fields" element={<ContactFieldsSettings />} />
           <Route path="tags" element={<TagSettings />} />
           <Route path="lifecycle" element={<LifecycleSettings />} />
+          <Route path="automation" element={<LifecycleRules />} />
+          <Route path="snippets" element={<SnippetsSettings />} />
+          <Route path="ai-knowledge" element={<AIKnowledgeSettings />} />
           <Route path="integrations" element={<Integrations />} />
         </Route>
 
