@@ -43,6 +43,15 @@ model Tenant {
   planId String? @map("plan_id")
   plan   Plan?   @relation(fields: [planId], references: [id])
 
+  // Onboarding wizard data
+  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
+  industry            String?
+  website             String?
+  orgSize             String?  @map("org_size")
+  customerType        String?  @map("customer_type")
+  chatPurposes        String[] @default([]) @map("chat_purposes")
+  referralSource      String?  @map("referral_source")
+
   users           User[]
   instances       Instance[]
   campaigns       Campaign[]
@@ -77,6 +86,11 @@ model User {
   role          String // 'admin', 'agent', 'viewer'
   emailVerified Boolean  @default(false) @map("email_verified")
   createdAt     DateTime @default(now()) @map("created_at")
+
+  // Onboarding profile data
+  name    String?
+  phone   String?
+  orgRole String? @map("org_role")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 

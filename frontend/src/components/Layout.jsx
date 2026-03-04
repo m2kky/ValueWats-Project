@@ -70,9 +70,7 @@ export default function Layout({ children }) {
       <aside className={`border-r border-white/5 bg-[#0f0f11] flex flex-col z-50 transition-all duration-300 ${isInboxRoute ? 'w-[60px] items-center py-4' : 'w-64'}`}>
         <div className={`p-4 ${isInboxRoute ? 'px-0 pb-6' : 'p-6'}`}>
           <Link to="/dashboard" className={`flex items-center ${isInboxRoute ? 'justify-center' : 'gap-3'}`}>
-            <div className={`bg-indigo-600 rounded-xl shadow-[0_0_15px_rgba(71,37,244,0.4)] flex items-center justify-center text-white font-bold tracking-tighter ${isInboxRoute ? 'w-8 h-8 text-[10px]' : 'p-2'}`}>
-              {!isInboxRoute ? <ChatBubbleLeftRightIcon className="w-6 h-6" /> : "VW"}
-            </div>
+            <img src="/valuewats-transparent.png" alt="ValueWats" className={`${isInboxRoute ? 'w-8 h-8' : 'w-9 h-9'}`} />
             {!isInboxRoute && (
               <span className="text-xl font-black tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
                 ValueWats

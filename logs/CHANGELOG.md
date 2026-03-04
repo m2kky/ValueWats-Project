@@ -4,6 +4,54 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-04] — Phase 12: Onboarding Wizard
+
+### Added
+- **Onboarding Pipeline**: New 3-step mandatory onboarding wizard (`Onboarding.jsx`) for new signups collecting Organization, Role, and Survey data.
+- **Database Schema**: Added `onboardingCompleted`, `industry`, `website`, `orgSize`, `customerType`, `chatPurposes`, `referralSource` to `Tenant` model, and `name`, `phone`, `orgRole` to `User` model.
+- **Backend Flow**: New `POST /api/onboarding` endpoint to save wizard progress securely.
+- **Auth Redirects**: Intelligent routing in `App.jsx`, `Login.jsx` and `Register.jsx` to intercept users who haven't completed onboarding and redirect them transparently to the wizard.
+
+### Changed
+- **Campaigns UI**: Replaced generic loading spinners with the branded `ValueWatsLoader` and updated the header megaphone icon to use `valuewats-broadcast.svg`.
+
+---
+
+## [2026-03-04] — Phase 11: Auth Pages Redesign & Google OAuth
+
+### Added
+- **Google OAuth Sign-In/Sign-Up**: Full Google authentication flow using `@react-oauth/google` (frontend) and `google-auth-library` (backend). Users can now sign in or create accounts with one click via Google.
+- **Password Strength Validator**: Signup form now enforces 5 password requirements with real-time visual feedback (8+ chars, uppercase, lowercase, number, special char).
+- **Show/Hide Password Toggle**: Both Login and Register pages have eye icon toggles for password visibility.
+
+### Changed
+- **Login & Register UI Overhaul**: Redesigned both pages from light/white theme to a premium dark glassmorphic theme (`#0f0f12` background, indigo accents, `#7d8cf0` CTA buttons).
+- **Backend auth route**: New `POST /api/auth/google` endpoint verifies Google ID tokens, finds or creates users automatically.
+- **Frontend Provider**: App wrapped with `GoogleOAuthProvider` in `main.jsx`.
+
+---
+
+## [2026-03-04] — Phase 10 & 6.2: Marketing & Legal Pages
+
+### Added
+- **Landing Page Enchancements**: Completely rebuilt the landing page to feature high-conversion sections inspired by Respond.io.
+  - Added Interactive Demo placeholder video area.
+  - Added "Capture, Convert, Retain" three pillars strategy workflow section.
+  - Added ROI metrics ribbon (Higher Conversion, Faster Resolutions).
+  - Added Unified Omnichannel Inbox visualizer syncing WhatsApp, Meta, & Instagram in one screen.
+  - Added G2 Badges / Social Proof trust ribbon.
+  - Added 6-card Bento Grid presenting core features with user-provided high-quality screenshots (Neural Lab, Module Configuration, Lifecycle Stages, Dashboard, Smart Inbox, Visual Automations).
+- **Pitch Deck README**: Created a new `PITCH_README.md` and updated the main repository `README.md` with an investor-ready pitch including the 6-card feature screenshots, problem/solution statement, architecture map, and ROI metrics.
+- **Public Layout & Mega Menu**: Added `PublicLayout.jsx` with an interactive, scroll-aware, glassmorphic navbar including desktop Mega Menus for "Product" and "Resources".
+- **Marketing Shell Pages**: Stubbed out routes and React components for Pricing, About Us, Roadmap, Contact Us, and Why Us.
+- **Resources Hub shells**: Stubbed routes and React components for Blog, Support Center, and Free Tools.
+- **Legal Stub Pages**: Stubbed out routes and React components for Privacy Policy, ToS, Cookie Policy, Security, Subprocessors, and DPA.
+
+### Fixed
+- **React Router Navigation**: Added a `ScrollManager` wrapper inside `BrowserRouter` in `App.jsx` to smoothly scroll anchor hashes `#features` and `#ai`. Added fallback routing `/*` mapping to the landing page. Fixed unhandled links pointing to absent pages.
+
+---
+
 ## [2026-03-04] — Phase 6: Internal Notes
 
 ### Added
@@ -59,6 +107,7 @@ All notable changes to the ValueWats project, tracked by date.
 - **Mega Menu Navigation**: Built a respond.io-style Mega Menu in `PublicLayout` with dropdowns for Product, Resources, and Company.
 - **Resources Hub**: Implemented resource pages including `Support` (Help Center), `Learn` (Blog/Guides), and `Tools`.
 - **Legal Trust Center**: Developed a comprehensive suite of legal pages (`PrivacyPolicy`, `TermsOfService`, `CookiePolicy`, `Security`, `Subprocessors`, `DPA`) accessible via a structured `LegalLayout` sidebar.
+- **Orbiting Circles Integration**: Added the MagicUI OrbitingCircles animation component to visually represent AI agent integrations on the Landing page.
 
 ### Fixed
 - **Inbox Crash Error**: Fixed a 500 error preventing WhatsApp threads from loading properly. Root cause was an invalid invalid field `name` queried inside the `ContactNote` prisma include block in `chat.service.js`.

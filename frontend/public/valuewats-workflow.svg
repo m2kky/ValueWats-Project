@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+    <defs>
+        <mask id="gap-mask-wf">
+            <rect width="100%" height="100%" fill="white"></rect>
+            <path d="M 261 226 L 361 226 Q 391 226 391 256 L 391 316 Q 391 346 361 346 L 291 346 L 241 386 L 261 346 Q 231 346 231 316 L 231 256 Q 231 226 261 226 Z" fill="black" stroke="black" stroke-width="52" stroke-linejoin="round" stroke-linecap="round"></path>
+        </mask>
+        <style>
+            .flow-line {
+                stroke-dasharray: 10 10;
+                animation: flow-anim 1s linear infinite;
+            }
+            @keyframes flow-anim {
+                to { stroke-dashoffset: -20; }
+            }
+            .node { 
+                animation: pulse-node 2s infinite; 
+            }
+            @keyframes pulse-node {
+                0%, 100% { r: 8px; opacity: 1; }
+                50% { r: 12px; opacity: 0.7; }
+            }
+        </style>
+    </defs>
+    <!-- Background Grid -->
+    <rect width="512" height="512" rx="115" ry="115" fill="#0f172a"></rect>
+    <path d="M 0 128 L 512 128 M 0 256 L 512 256 M 0 384 L 512 384 M 128 0 L 128 512 M 256 0 L 256 512 M 384 0 L 384 512" stroke="#1e293b" stroke-width="2"></path>
+    
+    <!-- Flow Lines & Nodes connecting to Chat -->
+    <path d="M 64 166 L 121 166" class="flow-line" stroke="#8b5cf6" stroke-width="4" fill="none"></path>
+    <circle cx="64" cy="166" class="node" fill="#8b5cf6"></circle>
+    
+    <path d="M 64 346 L 151 346 L 151 286" class="flow-line" stroke="#3b82f6" stroke-width="4" fill="none"></path>
+    <circle cx="64" cy="346" class="node" fill="#3b82f6" style="animation-delay: 0.5s"></circle>
+    
+    <path d="M 448 316 L 391 316" class="flow-line" stroke="#10b981" stroke-width="4" fill="none"></path>
+    <circle cx="448" cy="316" class="node" fill="#10b981" style="animation-delay: 1s"></circle>
+
+    <!-- Chat Bubbles -->
+    <path d="M 161 126 L 301 126 Q 341 126 341 166 L 341 246 Q 341 286 301 286 L 191 286 L 141 336 L 161 286 Q 121 286 121 246 L 121 166 Q 121 126 161 126 Z" fill="#1e293b" stroke="#8b5cf6" stroke-width="24" stroke-linejoin="round" stroke-linecap="round" mask="url(#gap-mask-wf)"></path>
+    
+    <path d="M 261 226 L 361 226 Q 391 226 391 256 L 391 316 Q 391 346 361 346 L 291 346 L 241 386 L 261 346 Q 231 346 231 316 L 231 256 Q 231 226 261 226 Z" fill="#1e293b" stroke="#3b82f6" stroke-width="24" stroke-linejoin="round" stroke-linecap="round"></path>
+</svg>

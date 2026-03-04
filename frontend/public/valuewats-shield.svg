@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+    <defs>
+        <linearGradient id="shield-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#1e293b"></stop> <!-- Slate 800 -->
+            <stop offset="100%" stop-color="#0f172a"></stop> <!-- Slate 900 -->
+        </linearGradient>
+        <linearGradient id="shield-border" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#3b82f6"></stop> <!-- Blue 500 -->
+            <stop offset="100%" stop-color="#8b5cf6"></stop> <!-- Violet 500 -->
+        </linearGradient>
+        <mask id="gap-mask-sh">
+            <rect width="100%" height="100%" fill="white"></rect>
+            <path d="M 261 226 L 361 226 Q 391 226 391 256 L 391 316 Q 391 346 361 346 L 291 346 L 241 386 L 261 346 Q 231 346 231 316 L 231 256 Q 231 226 261 226 Z" fill="black" stroke="black" stroke-width="52" stroke-linejoin="round" stroke-linecap="round"></path>
+        </mask>
+        <style>
+            .shield-pulse {
+                animation: s-pulse 3s infinite alternate ease-in-out;
+            }
+            @keyframes s-pulse {
+                0% { filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.3)); }
+                100% { filter: drop-shadow(0 0 25px rgba(59, 130, 246, 0.7)); }
+            }
+        </style>
+    </defs>
+    <!-- Background -->
+    <rect width="512" height="512" rx="115" ry="115" fill="#030712"></rect>
+
+    <!-- Shield Shape -->
+    <path class="shield-pulse" d="M 256 40 L 440 100 L 440 260 C 440 380 256 470 256 470 C 256 470 72 380 72 260 L 72 100 Z" fill="url(#shield-grad)" stroke="url(#shield-border)" stroke-width="12" stroke-linejoin="round"></path>
+    
+    <!-- Inner subtle shield line -->
+    <path d="M 256 60 L 420 115 L 420 260 C 420 365 256 445 256 445 C 256 445 92 365 92 260 L 92 115 Z" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"></path>
+
+    <!-- Logo Scaled down to fit shield -->
+    <g transform="translate(64, 60) scale(0.75)">
+        <path d="M 161 126 L 301 126 Q 341 126 341 166 L 341 246 Q 341 286 301 286 L 191 286 L 141 336 L 161 286 Q 121 286 121 246 L 121 166 Q 121 126 161 126 Z" fill="none" stroke="#ffffff" stroke-width="32" stroke-linejoin="round" stroke-linecap="round" mask="url(#gap-mask-sh)"></path>
+        <path d="M 261 226 L 361 226 Q 391 226 391 256 L 391 316 Q 391 346 361 346 L 291 346 L 241 386 L 261 346 Q 231 346 231 316 L 231 256 Q 231 226 261 226 Z" fill="none" stroke="#ffffff" stroke-width="32" stroke-linejoin="round" stroke-linecap="round"></path>
+    </g>
+</svg>

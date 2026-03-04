@@ -104,8 +104,90 @@ export default function Landing() {
                 </div>
             </section>
 
+            {/* Interactive Video Tour */}
+            <section className="relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto -mt-10 mb-20 z-20">
+                <div className="rounded-2xl border border-white/10 bg-black/50 overflow-hidden shadow-2xl backdrop-blur-xl group cursor-pointer relative aspect-video flex items-center justify-center transition-transform hover:scale-[1.01] duration-500">
+                    <video
+                        className="w-full h-full object-cover"
+                        src="/Seraphina Room 0304.mp4"
+                        controls
+                        playsInline
+                        disablePictureInPicture
+                    />
+                    <div className="absolute inset-0 bg-indigo-500/10 group-hover:bg-indigo-500/0 transition-colors flex flex-col items-center justify-center z-10 pointer-events-none">
+                        {/* Optional overlay play button or text can go here if needed, but video auto-plays */}
+                    </div>
+                </div>
+            </section>
+
+            {/* 3 Pillars Strategy */}
+            <section className="py-24 relative bg-[#0a0a0c]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">Conversation-Led Growth</h2>
+                        <p className="text-lg text-zinc-400 max-w-2xl mx-auto">Turn conversations into revenue across the entire customer lifecycle.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {/* Capture */}
+                        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 hover:bg-white/[0.07] transition-colors relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-[50px] rounded-full p-4"></div>
+                            <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-6 text-blue-400">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-3">1. Capture</h3>
+                            <p className="text-zinc-400 leading-relaxed">Generate more leads from every channel. Use WhatsApp widgets, QR codes, and click-to-chat links to ingest prospects instantly.</p>
+                        </div>
+
+                        {/* Convert */}
+                        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 hover:bg-white/[0.07] transition-colors relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 blur-[50px] rounded-full p-4"></div>
+                            <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-6 text-purple-400">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-3">2. Convert</h3>
+                            <p className="text-zinc-400 leading-relaxed">Qualify and route leads at lightning speed using AI agents and visual workflows. Close deals faster in a shared team inbox.</p>
+                        </div>
+
+                        {/* Retain */}
+                        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 hover:bg-white/[0.07] transition-colors relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/20 blur-[50px] rounded-full p-4"></div>
+                            <div className="w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-6 text-emerald-400">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-3">3. Retain</h3>
+                            <p className="text-zinc-400 leading-relaxed">Build loyalty with automated updates, proactive outreach, and 24/7 AI-driven support that resolves tickets instantly.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ROI Metrics */}
+            <section className="py-20 border-y border-white/5 bg-[#0d0d0f]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-white/5">
+                        <div className="text-center px-4">
+                            <p className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400 mb-2">3x</p>
+                            <p className="text-zinc-400 font-medium">Higher Conversion</p>
+                        </div>
+                        <div className="text-center px-4">
+                            <p className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 mb-2">60%</p>
+                            <p className="text-zinc-400 font-medium">Faster Resolutions</p>
+                        </div>
+                        <div className="text-center px-4">
+                            <p className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">40+</p>
+                            <p className="text-zinc-400 font-medium">Hours Saved/Wk</p>
+                        </div>
+                        <div className="text-center px-4">
+                            <p className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400 mb-2">24/7</p>
+                            <p className="text-zinc-400 font-medium">AI Support</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Marquee Logos */}
-            <section className="py-20 border-y border-white/5 bg-[#0d0d0f] overflow-hidden">
+            <section className="pt-20 pb-32 border-y border-white/5 bg-[#0d0d0f] overflow-hidden">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-10 text-center">
                     <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Connects seamlessly with your favorite tools</p>
                 </div>
@@ -128,6 +210,139 @@ export default function Landing() {
                 </div>
             </section>
 
+            {/* Social Proof Badges */}
+            <section className="py-20 border-y border-white/5 bg-[#0a0a0c]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-12">
+                        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Recognized as an Industry Leader</h2>
+                        <p className="text-zinc-500">Trusted by modern teams worldwide.</p>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-8 md:gap-16 opacity-80">
+                        <div className="flex flex-col items-center">
+                            <div className="w-24 h-32 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-t-full rounded-b-xl border border-orange-500/30 flex items-center justify-center text-white font-bold text-xl mb-3 shadow-[0_0_20px_rgba(249,115,22,0.1)] backdrop-blur-sm relative overflow-hidden">
+                                <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-orange-500/40 to-transparent"></div>
+                                <span className="relative z-10 text-orange-400">G2</span>
+                            </div>
+                            <span className="text-xs text-zinc-400 uppercase tracking-widest font-bold">High Performer</span>
+                            <span className="text-xs text-zinc-500">Spring 2026</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <div className="w-24 h-32 bg-gradient-to-br from-indigo-500/20 to-blue-500/20 rounded-t-full rounded-b-xl border border-indigo-500/30 flex flex-col items-center justify-center text-white font-bold text-lg mb-3 shadow-[0_0_20px_rgba(99,102,241,0.1)] backdrop-blur-sm relative overflow-hidden">
+                                <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-indigo-500/40 to-transparent"></div>
+                                <span className="relative z-10 text-xs text-indigo-300">Leader</span>
+                                <span className="relative z-10 text-indigo-400">CRM</span>
+                            </div>
+                            <span className="text-xs text-zinc-400 uppercase tracking-widest font-bold">Leader</span>
+                            <span className="text-xs text-zinc-500">Spring 2026</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <div className="w-24 h-32 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-t-full rounded-b-xl border border-emerald-500/30 flex items-center justify-center text-white font-bold text-center leading-tight p-2 mb-3 shadow-[0_0_20px_rgba(16,185,129,0.1)] backdrop-blur-sm relative overflow-hidden">
+                                <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-emerald-500/40 to-transparent"></div>
+                                <span className="relative z-10 text-emerald-400 text-sm">Users<br />Love Us</span>
+                            </div>
+                            <span className="text-xs text-zinc-400 uppercase tracking-widest font-bold">Customer Choice</span>
+                            <span className="text-xs text-zinc-500">2026</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <div className="w-24 h-32 bg-gradient-to-br from-pink-500/20 to-rose-500/20 rounded-t-full rounded-b-xl border border-pink-500/30 flex items-center justify-center text-white font-bold text-center leading-tight p-2 mb-3 shadow-[0_0_20px_rgba(244,63,94,0.1)] backdrop-blur-sm relative overflow-hidden">
+                                <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-pink-500/40 to-transparent"></div>
+                                <span className="relative z-10 text-pink-400 text-sm">Best<br />Support</span>
+                            </div>
+                            <span className="text-xs text-zinc-400 uppercase tracking-widest font-bold">Best Support</span>
+                            <span className="text-xs text-zinc-500">Winter 2026</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Unified Omnichannel Inbox Visualization */}
+            <section className="py-32 relative overflow-hidden">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                        <div className="order-2 lg:order-1 relative">
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-transparent blur-[80px] rounded-full pointer-events-none -z-10"></div>
+
+                            <div className="relative h-[400px] w-full rounded-2xl border border-white/10 bg-[#0a0a0c] overflow-hidden shadow-2xl flex items-center p-8">
+                                {/* Left side: Channels */}
+                                <div className="flex flex-col gap-4 w-1/3 z-10">
+                                    <div className="bg-[#111116] border border-white/5 p-3 rounded-lg flex items-center gap-3 animate-[pulse_3s_ease-in-out_infinite]">
+                                        <svg className="w-5 h-5 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" /></svg>
+                                        <span className="text-sm font-medium text-white">WhatsApp</span>
+                                    </div>
+                                    <div className="bg-[#111116] border border-white/5 p-3 rounded-lg flex items-center gap-3 animate-[pulse_3s_ease-in-out_infinite_500ms]">
+                                        <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.898 1.498 5.485 3.824 7.151-.157 1.488-.707 3.03-2.181 4.545 1.554 0 3.031-.15 4.383-.448C9.284 23.361 10.603 23.516 12 23.516c5.523 0 10-4.145 10-9.258S17.523 2 12 2zm1.758 13.064l-2.098-2.227-4.045 2.227 4.441-4.717 2.142 2.227 3.999-2.227-4.439 4.717z" /></svg>
+                                        <span className="text-sm font-medium text-white">Messenger</span>
+                                    </div>
+                                    <div className="bg-[#111116] border border-white/5 p-3 rounded-lg flex items-center gap-3 animate-[pulse_3s_ease-in-out_infinite_1000ms]">
+                                        <svg className="w-5 h-5 text-pink-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" /></svg>
+                                        <span className="text-sm font-medium text-white">Instagram</span>
+                                    </div>
+                                </div>
+
+                                {/* Connection Lines */}
+                                <div className="absolute inset-0 flex items-center justify-center p-8 pointer-events-none">
+                                    <svg className="w-full h-full stroke-white/20" fill="none">
+                                        <path d="M 33% 25% C 50% 25%, 50% 50%, 66% 50%" strokeWidth="2" strokeDasharray="4 4" className="animate-[dash_20s_linear_infinite]" />
+                                        <path d="M 33% 50% C 50% 50%, 50% 50%, 66% 50%" strokeWidth="2" strokeDasharray="4 4" className="animate-[dash_20s_linear_infinite]" />
+                                        <path d="M 33% 75% C 50% 75%, 50% 50%, 66% 50%" strokeWidth="2" strokeDasharray="4 4" className="animate-[dash_20s_linear_infinite]" />
+                                    </svg>
+                                </div>
+
+                                {/* Right side: Unified Inbox */}
+                                <div className="flex-1 bg-white/[0.03] backdrop-blur-md border border-white/5 rounded-xl h-full p-4 flex flex-col shadow-inner z-10 ml-8">
+                                    <div className="border-b border-white/5 pb-3 mb-3 flex items-center gap-3">
+                                        <span className="font-bold text-white">Unified Inbox</span>
+                                        <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 text-[10px] font-semibold uppercase tracking-wider">Live</span>
+                                    </div>
+                                    <div className="flex-1 flex flex-col gap-3">
+                                        {/* Mock Messages */}
+                                        <div className="flex gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 text-xs font-bold">W</div>
+                                            <div className="bg-white/5 rounded-r-xl rounded-bl-xl p-3 text-sm text-zinc-300">I need help with my order #12345.</div>
+                                        </div>
+                                        <div className="flex gap-3 self-end flex-row-reverse">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 text-xs font-bold">AI</div>
+                                            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-l-xl rounded-br-xl p-3 text-sm text-indigo-200">Hello! I've located your order. It is currently in transit and will arrive tomorrow by 5 PM.</div>
+                                        </div>
+                                        <div className="flex gap-3 mt-auto opacity-50">
+                                            <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 text-xs font-bold">M</div>
+                                            <div className="bg-white/5 rounded-r-xl rounded-bl-xl p-3 text-sm text-zinc-300">Is this item in stock?</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="order-1 lg:order-2">
+                            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">One Inbox. <br />Every Channel.</h2>
+                            <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
+                                Stop switching tabs. ValueWats brings WhatsApp, Instagram, Messenger, and more into a single, collaborative workspace.
+                                Equip your team with customer context from your CRM, auto-assign conversations, and resolve issues faster.
+                            </p>
+                            <ul className="space-y-4">
+                                {['Unified Omnichannel Context', 'AI-Assisted Drafting', 'Internal Team Collaboration', 'CRM Data Syncing'].map((feature, idx) => (
+                                    <li key={idx} className="flex items-center gap-3 text-zinc-300 font-medium">
+                                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                        </div>
+                                        {feature}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    @keyframes dash {
+                      to {
+                        stroke-dashoffset: -1000;
+                      }
+                    }
+                  `}} />
+            </section>
+
             {/* Features Bento Grid */}
             <section id="features" className="py-32 relative">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -137,52 +352,70 @@ export default function Landing() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="md:col-span-2 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 border border-white/10 rounded-3xl p-10 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[80px] rounded-full group-hover:bg-indigo-500/30 transition-colors"></div>
-                            <h3 className="text-2xl font-bold text-white mb-4 relative z-10">Agentic AI Workflows</h3>
-                            <p className="text-zinc-400 leading-relaxed mb-8 relative z-10 max-w-md">Train AI models on your own knowledge base to handle customer queries, qualify leads, and close tickets entirely autonomously.</p>
-
-                            {/* Orbiting Circles Visual */}
-                            <div className="relative flex h-[350px] w-full flex-col items-center justify-center overflow-hidden z-10 mt-8 rounded-2xl bg-[#0a0a0a]/50 border border-white/5 backdrop-blur-sm">
-                                {/* Inner circle */}
-                                <OrbitingCircles iconSize={30} radius={65} speed={1.5} duration={15}>
-                                    <Icons.whatsapp />
-                                    <Icons.notion />
-                                    <Icons.openai />
-                                    <Icons.googleDrive />
-                                </OrbitingCircles>
-
-                                {/* Outer circle (reverse) */}
-                                <OrbitingCircles iconSize={40} radius={120} reverse speed={1.5} duration={20}>
-                                    <Icons.whatsapp />
-                                    <Icons.notion />
-                                    <Icons.gitHub />
-                                    <Icons.googleDrive />
-                                </OrbitingCircles>
-
-                                {/* Center logo */}
-                                <div className="absolute flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-[0_0_40px_rgba(59,130,246,0.3)] z-20">
-                                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                </div>
+                        {/* Row 1: Agentic AI Workflows (col-2) + Smart Inbox (col-1) */}
+                        <div className="md:col-span-2 bg-[#0f0f12] border border-white/10 rounded-3xl p-10 flex flex-col md:flex-row gap-8 relative overflow-hidden group hover:border-indigo-500/30 transition-colors">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[80px] rounded-full group-hover:bg-indigo-500/30 transition-colors pointer-events-none"></div>
+                            <div className="md:w-1/2 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-white mb-4 relative z-10">Agentic AI Workflows</h3>
+                                <p className="text-zinc-400 leading-relaxed mb-8 relative z-10">Train AI models on your own knowledge base to handle customer queries, qualify leads, and close tickets entirely autonomously.</p>
+                            </div>
+                            <div className="md:w-1/2 relative rounded-xl overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-[1.02] transition-transform duration-500 group-hover:shadow-indigo-500/20 mt-8 md:mt-0">
+                                <img src="/neural-lab-page.png" alt="Neural Lab AI" className="w-full h-full object-cover object-left-top opacity-80 group-hover:opacity-100 transition-opacity" />
                             </div>
                         </div>
 
-                        <div className="bg-white/5 border border-white/10 rounded-3xl p-10 relative overflow-hidden group hover:border-indigo-500/30 transition-colors">
-                            <h3 className="text-2xl font-bold text-white mb-4">Smart Inbox</h3>
-                            <p className="text-zinc-400 leading-relaxed mb-8">A collaborative workspace to manage WhatsApp threads as a team. Tag, assign, and resolve.</p>
+                        <div className="bg-white/5 border border-white/10 rounded-3xl p-10 flex flex-col justify-between relative overflow-hidden group hover:border-indigo-500/30 transition-colors">
+                            <div>
+                                <h3 className="text-2xl font-bold text-white mb-4 z-10 relative">Smart Inbox</h3>
+                                <p className="text-zinc-400 leading-relaxed mb-8 z-10 relative">A collaborative workspace to manage WhatsApp threads as a team. Tag, assign, and resolve seamlessly.</p>
+                            </div>
+                            <div className="mt-auto relative rounded-xl overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-[1.03] transition-transform duration-500 group-hover:shadow-indigo-500/20">
+                                <img src="/contacts-page.png" alt="Smart Inbox" className="w-full h-auto object-cover object-top opacity-80 group-hover:opacity-100 transition-opacity" />
+                            </div>
                         </div>
 
-                        <div className="bg-white/5 border border-white/10 rounded-3xl p-10 relative overflow-hidden group hover:border-purple-500/30 transition-colors">
-                            <h3 className="text-2xl font-bold text-white mb-4">Visual Automations</h3>
-                            <p className="text-zinc-400 leading-relaxed mb-8">Drag-and-drop workflow builder. React to triggers, send templates, and sync with your CRM.</p>
+                        {/* Row 2: Visual Automations (col-1) + Powerful Dashboard (col-2) */}
+                        <div className="bg-white/5 border border-white/10 rounded-3xl p-10 flex flex-col justify-between relative overflow-hidden group hover:border-purple-500/30 transition-colors">
+                            <div>
+                                <h3 className="text-2xl font-bold text-white mb-4 z-10 relative">Visual Automations</h3>
+                                <p className="text-zinc-400 leading-relaxed mb-8 z-10 relative">Build complex AI workflows and agents. React to triggers, send templates, and sync with your CRM without coding.</p>
+                            </div>
+                            <div className="mt-auto relative rounded-xl overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-[1.03] transition-transform duration-500 group-hover:shadow-purple-500/20">
+                                <img src="/Automations-page.png" alt="Visual Automations & AI" className="w-full h-auto object-cover object-left-top opacity-80 group-hover:opacity-100 transition-opacity" />
+                            </div>
                         </div>
 
-                        <div className="md:col-span-2 bg-[#0f0f12] border border-white/10 rounded-3xl p-10 relative overflow-hidden group">
-                            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-emerald-500/10 to-transparent blur-[50px] pointer-events-none"></div>
-                            <h3 className="text-2xl font-bold text-white mb-4">Bulk Campaigns that Convert</h3>
-                            <p className="text-zinc-400 leading-relaxed max-w-lg">Send personalized broadcast messages to segments of thousands. Track delivery, reads, and replies in real-time without risking bans.</p>
+                        <div className="md:col-span-2 bg-[#0f0f12] border border-white/10 rounded-3xl p-10 flex flex-col md:flex-row gap-8 relative overflow-hidden group hover:border-emerald-500/30 transition-colors">
+                            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-emerald-500/10 to-transparent blur-[50px] pointer-events-none text-emerald-500/30 group-hover:text-emerald-500/40"></div>
+                            <div className="md:w-1/2 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-white mb-4 relative z-10">Powerful Dashboard & Analytics</h3>
+                                <p className="text-zinc-400 leading-relaxed relative z-10">Get a bird's eye view of your entire operation. Track campaign deliveries, AI performance, and team metrics in real-time.</p>
+                            </div>
+                            <div className="md:w-1/2 relative rounded-xl overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-[1.02] transition-transform duration-500 group-hover:shadow-emerald-500/20 mt-8 md:mt-0">
+                                <img src="/dashboard.png" alt="Analytics Dashboard" className="w-full h-full object-cover object-left-top opacity-80 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                        </div>
+
+                        {/* Row 3: Advanced Module Configuration (col-2) + Dynamic CRM (col-1) */}
+                        <div className="md:col-span-2 bg-[#0f0f12] border border-white/10 rounded-3xl p-10 flex flex-col md:flex-row gap-8 relative overflow-hidden group hover:border-blue-500/30 transition-colors">
+                            <div className="absolute top-0 left-0 w-64 h-64 bg-blue-500/10 blur-[80px] rounded-full group-hover:bg-blue-500/20 transition-colors pointer-events-none"></div>
+                            <div className="md:w-1/2 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-white mb-4 relative z-10">Advanced AI Module Configuration</h3>
+                                <p className="text-zinc-400 leading-relaxed relative z-10">Fine-tune your AI Agent behaviors, instructions, and module handoffs. Total control over exactly how your AI represents your business.</p>
+                            </div>
+                            <div className="md:w-1/2 relative rounded-xl overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-[1.02] transition-transform duration-500 group-hover:shadow-blue-500/20 mt-8 md:mt-0">
+                                <img src="/module-configuration.png" alt="AI Module Configuration" className="w-full h-full object-cover object-left-top opacity-80 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                        </div>
+
+                        <div className="bg-white/5 border border-white/10 rounded-3xl p-10 flex flex-col justify-between relative overflow-hidden group hover:border-pink-500/30 transition-colors">
+                            <div>
+                                <h3 className="text-2xl font-bold text-white mb-4 z-10 relative">Dynamic CRM</h3>
+                                <p className="text-zinc-400 leading-relaxed mb-8 z-10 relative">Every chat is tied to a rich contact profile with custom fields, tags, and lifecycle stages (Lead → Customer).</p>
+                            </div>
+                            <div className="mt-auto relative rounded-xl overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)] group-hover:scale-[1.03] transition-transform duration-500 group-hover:shadow-pink-500/20">
+                                <img src="/lifecycle-stages.png" alt="Dynamic CRM & Lifecycle Stages" className="w-full h-auto object-cover object-left-top opacity-80 group-hover:opacity-100 transition-opacity" />
+                            </div>
                         </div>
                     </div>
                 </div>

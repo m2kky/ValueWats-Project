@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
+import ValueWatsLoader from '../components/ValueWatsLoader';
 import {
   PlusIcon,
   MegaphoneIcon,
@@ -12,7 +13,6 @@ import {
   TrashIcon,
   EllipsisVerticalIcon,
   CalendarDaysIcon,
-  PaperAirplaneIcon
 } from '@heroicons/react/24/outline';
 
 const CampaignStatus = ({ status }) => {
@@ -88,8 +88,8 @@ export default function Campaigns() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                <PaperAirplaneIcon className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 p-2">
+                <img src="/valuewats-broadcast.svg" alt="Broadcast" className="w-full h-full rounded-lg" />
               </div>
               <div>
                 <h1 className="text-3xl font-black tracking-tight text-white">Campaigns</h1>
@@ -117,11 +117,7 @@ export default function Campaigns() {
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32">
-              <div className="relative w-16 h-16">
-                <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-full"></div>
-                <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
-              </div>
-              <p className="mt-4 text-sm font-bold text-zinc-500 uppercase tracking-widest animate-pulse">Loading Campaigns...</p>
+              <ValueWatsLoader size={72} text="Loading Campaigns..." />
             </div>
           ) : campaigns.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 px-6 text-center z-10 relative">

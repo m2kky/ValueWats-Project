@@ -75,6 +75,9 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/auth', authRoutes); // Fallback for stripped /api prefix
 
+// Onboarding (protected but separate from tenant-scoped routes)
+app.use('/api/onboarding', require('./routes/onboarding'));
+
 // Serve uploads directory statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

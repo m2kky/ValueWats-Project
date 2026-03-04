@@ -189,6 +189,7 @@ const verifyOtp = async (req, res) => {
         id: result.tenant.id,
         name: result.tenant.name,
         subscriptionPlan: result.tenant.subscriptionPlan,
+        onboardingCompleted: result.tenant.onboardingCompleted,
       },
     });
   } catch (error) {
@@ -325,6 +326,7 @@ const login = async (req, res) => {
         id: user.tenant.id,
         name: user.tenant.name,
         subscriptionPlan: user.tenant.subscriptionPlan,
+        onboardingCompleted: user.tenant.onboardingCompleted,
       },
     });
   } catch (error) {
@@ -353,11 +355,13 @@ const me = async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        name: user.name,
         tenant: {
           id: user.tenant.id,
           name: user.tenant.name,
           subscriptionPlan: user.tenant.subscriptionPlan,
           status: user.tenant.status,
+          onboardingCompleted: user.tenant.onboardingCompleted,
         },
       }
     });
@@ -373,5 +377,92 @@ router.post('/verify-otp', verifyOtp);
 router.post('/resend-otp', resendOtp);
 router.post('/login', login);
 router.get('/me', tenantContext, me);
+
+// ─── Google OAuth ──────────────────────────────────────────
+const { OAuth2Client } = require('google-auth-library');
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+/**
+ * Google Sign-In / Sign-Up
+ * Receives a Google credential (ID token) from the frontend,
+ * verifies it, then either logs in an existing user or creates
+ * a new tenant + user automatically.
+ */
+const googleAuth = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ error: 'Google credential is required' });
+    }
+
+    // Verify the Google ID token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, sub: googleId } = payload;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Could not retrieve email from Google' });
+    }
+
+    // Check if user already exists
+    let user = await prisma.user.findUnique({
+      where: { email },
+      include: { tenant: true },
+    });
+
+    if (user) {
+      // User exists → check tenant status
+      if (user.tenant.status !== 'active' && user.tenant.status !== 'trial') {
+        return res.status(403).json({ error: 'Account is suspended' });
+      }
+    } else {
+      // User doesn't exist → create new tenant + user
+      const tenantName = name || email.split('@')[0];
+      const randomPassword = require('crypto').randomBytes(32).toString('hex');
+      const passwordHash = await bcrypt.hash(randomPassword, 10);
+
+      const result = await createNewTenant(tenantName, email, passwordHash);
+      user = { ...result.user, tenant: result.tenant };
+    }
+
+    // Generate JWT
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenant.id || user.tenantId,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+
+    res.json({
+      message: 'Google authentication successful',
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      tenant: {
+        id: user.tenant.id,
+        name: user.tenant.name,
+        subscriptionPlan: user.tenant.subscriptionPlan,
+        onboardingCompleted: user.tenant.onboardingCompleted,
+      },
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(500).json({ error: 'Google authentication failed. Please try again.' });
+  }
+};
+
+router.post('/google', googleAuth);
 
 module.exports = router;
