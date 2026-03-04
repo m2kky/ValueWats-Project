@@ -156,5 +156,5 @@ ALTER TABLE "ConversationAgent" ADD CONSTRAINT "ConversationAgent_conversationId
 ALTER TABLE "ConversationAgent" ADD CONSTRAINT "ConversationAgent_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "AIAgent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "conversations" ADD CONSTRAINT "Conversation_currentAgentId_fkey" FOREIGN KEY ("currentAgentId") REFERENCES "AIAgent"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "conversations" ADD CONSTRAINT "Conversation_lifecycleStageId_fkey" FOREIGN KEY ("lifecycleStageId") REFERENCES "LifecycleStage"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "LifecycleStage" ADD CONSTRAINT "LifecycleStage_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "ContactField" ADD CONSTRAINT "ContactField_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "LifecycleStage" ADD CONSTRAINT "LifecycleStage_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ContactField" ADD CONSTRAINT "ContactField_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
