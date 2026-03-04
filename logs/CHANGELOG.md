@@ -14,6 +14,7 @@ All notable changes to the ValueWats project, tracked by date.
 
 ### Added & Changed
 - **Campaigns UI Redesign**: Completely overhauled `Campaigns.jsx` to match the premium "Respond.io" glassmorphic CRM theme. Features table-view, dynamic status pills, and backdrop-blur styling.
+- **New Campaign UI Redesign**: Completely overhauled `NewCampaign.jsx` with the same premium glassmorphic CRM theme, restyling input forms, variants, and scheduler blocks.
 - **AI Agent Assignment**: `Inbox.jsx` assign dropdown now successfully renders AI Agents alongside human team members.
 - **Agent Session Tracking**: `chat.service.js` successfully creates and tracks `ConversationAgent` records (start/end) when manual human-to-AI or AI-to-human assignments happen via the Inbox UI.
 
