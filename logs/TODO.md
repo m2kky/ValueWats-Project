@@ -54,3 +54,4 @@
 - [x] Premium Inbox Redesign (4-Column Layout, Dark Theme, Custom Filters) — 2026-03-01
 - [x] Inbox Chat Assignment to Team Members — 2026-03-01
 - [x] Dashboard Team Insights for messages replied to by staff — 2026-03-01
+- [x] Campaigns UI Redesign (Premium Dark Theme with Glassmorphism) — 2026-03-04

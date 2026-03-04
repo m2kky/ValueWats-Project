@@ -4,6 +4,14 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-04] — Campaigns UI Redesign
+
+### Changed
+- **Campaigns List page** (`/campaigns`): Redesigned to premium dark theme (`bg-zinc-900`), replacing white cards with sleek glassmorphic ones. Updated empty state UI and CampaignStatus badges to elegant solid colors.
+- **Campaign Details page** (`/campaigns/:id`): Migrated to the unified dark theme. Upgraded stats grid with glass background and solid progress bars. Modernized the action buttons (`btn-premium`, `btn-glass`), created a sleek message preview, and restyled the failed messages table and edit modal to seamlessly fit the dark interface.
+
+---
+
 ## [2026-03-04] — Inbox Feature Audit & Complete Fix
 
 ### Added
