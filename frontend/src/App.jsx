@@ -26,6 +26,27 @@ import AIKnowledgeSettings from './pages/settings/AIKnowledgeSettings';
 import LifecycleRules from './pages/settings/LifecycleRules';
 import Layout from './components/Layout';
 
+// Public Pages
+import Landing from './pages/public/Landing';
+import About from './pages/public/About';
+import Roadmap from './pages/public/Roadmap';
+import Contact from './pages/public/Contact';
+import Pricing from './pages/public/Pricing';
+import WhyUs from './pages/public/WhyUs';
+
+// Resources Pages
+import Support from './pages/public/resources/Support';
+import Learn from './pages/public/resources/Learn';
+import Tools from './pages/public/resources/Tools';
+
+// Legal Pages
+import PrivacyPolicy from './pages/public/legal/PrivacyPolicy';
+import TermsOfService from './pages/public/legal/TermsOfService';
+import CookiePolicy from './pages/public/legal/CookiePolicy';
+import Security from './pages/public/legal/Security';
+import Subprocessors from './pages/public/legal/Subprocessors';
+import DPA from './pages/public/legal/DPA';
+
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('token');
   return token ? (
@@ -39,6 +60,27 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/roadmap" element={<Roadmap />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/why-us" element={<WhyUs />} />
+
+        {/* Resource Routes */}
+        <Route path="/resources/support" element={<Support />} />
+        <Route path="/resources/learn" element={<Learn />} />
+        <Route path="/resources/tools" element={<Tools />} />
+
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/cookie-policy" element={<CookiePolicy />} />
+        <Route path="/security" element={<Security />} />
+        <Route path="/subprocessors" element={<Subprocessors />} />
+        <Route path="/dpa" element={<DPA />} />
+
+        {/* Auth Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
@@ -148,10 +190,8 @@ function App() {
             <ContactProfile />
           </PrivateRoute>
         } />
-
-        <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
-    </BrowserRouter>
+    </BrowserRouter >
   );
 }
 

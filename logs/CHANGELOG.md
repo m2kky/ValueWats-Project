@@ -52,6 +52,22 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-04]
+
+### Added
+- **Public Marketing Site**: Created a robust public-facing marketing site (`Landing`, `About`, `Roadmap`, `Contact`, `Pricing`, `Why Us`) featuring dark-mode glassmorphism and stunning aesthetics.
+- **Mega Menu Navigation**: Built a respond.io-style Mega Menu in `PublicLayout` with dropdowns for Product, Resources, and Company.
+- **Resources Hub**: Implemented resource pages including `Support` (Help Center), `Learn` (Blog/Guides), and `Tools`.
+- **Legal Trust Center**: Developed a comprehensive suite of legal pages (`PrivacyPolicy`, `TermsOfService`, `CookiePolicy`, `Security`, `Subprocessors`, `DPA`) accessible via a structured `LegalLayout` sidebar.
+
+### Fixed
+- **Inbox Crash Error**: Fixed a 500 error preventing WhatsApp threads from loading properly. Root cause was an invalid invalid field `name` queried inside the `ContactNote` prisma include block in `chat.service.js`.
+
+### Changed
+- Re-routed the base URL `/` to the new `Landing` page and moved the authenticated dashboard to a protected wrapper.
+
+---
+
 ## [2026-03-04] — Architecture & Data Integrity Overhaul
 
 ### Fixed

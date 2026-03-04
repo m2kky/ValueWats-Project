@@ -55,3 +55,4 @@
 - [x] Inbox Chat Assignment to Team Members — 2026-03-01
 - [x] Dashboard Team Insights for messages replied to by staff — 2026-03-01
 - [x] Campaigns UI Redesign (Premium Dark Theme with Glassmorphism) — 2026-03-04
+- [x] Public marketing site, Mega Menu, and Legal hub pages — 2026-03-04

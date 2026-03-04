@@ -29,6 +29,11 @@ frontend/src/
 | `/contacts` | `pages/Contacts.jsx` | CRM contacts |
 | `/agents` | `pages/Agents.jsx` | AI agent config |
 | `/analytics` | `pages/Analytics.jsx` | Reports + click tracking |
+| `/` | `pages/public/Landing.jsx` | Public marketing landing page |
+| `/about`, `/roadmap`, `/contact` | `pages/public/*` | Public company pages |
+| `/pricing`, `/why-us` | `pages/public/*` | Marketing and competitive pages |
+| `/resources/*` | `pages/public/resources/*` | Resources (Support, Learn, Tools) |
+| `/privacy`, `/terms`, etc. | `pages/public/legal/*` | Legal trust center pages |
 
 ## Anti-Ban UI Notes
 
