@@ -740,5 +740,6 @@ export default function NewCampaign() {
           </div>
         </div>
       </div>
-      );
+    </div>
+  );
 }

@@ -82,6 +82,7 @@ model User {
 
   assignedConversations Conversation[] @relation("AssignedUser")
   sentMessages          ChatMessage[]  @relation("SentMessage")
+  contactNotes          ContactNote[]
 
   @@map("users")
 }
@@ -572,7 +573,9 @@ model ContactNote {
   contactId String  @map("contact_id")
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  userId  String @map("user_id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
   content String @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")

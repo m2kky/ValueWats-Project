@@ -18,6 +18,10 @@ All notable changes to the ValueWats project, tracked by date.
 - **AI Agent Assignment**: `Inbox.jsx` assign dropdown now successfully renders AI Agents alongside human team members.
 - **Agent Session Tracking**: `chat.service.js` successfully creates and tracks `ConversationAgent` records (start/end) when manual human-to-AI or AI-to-human assignments happen via the Inbox UI.
 
+### Fixed
+- **Inbox**: Fixed an issue where clicking on a chat would not open the conversation due to a missing Prisma Schema relation `user` in `ContactNote`.
+- **Campaigns**: Fixed a React build syntax error (missing closing tags) in the `NewCampaign.jsx` page.
+
 ---
 
 ## [2026-03-04] — Phase 3: Respond.io AI & Settings Completion

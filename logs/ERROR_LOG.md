@@ -6,6 +6,44 @@ This document tracks all production bugs encountered, their root causes, and the
 
 ---
 
+## ERR-025: Frontend Build Failure — Unexpected end of file
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-03-03 |
+| **Severity** | 🔴 Critical |
+| **Error** | `Unexpected end of file before a closing "div" tag` in `NewCampaign.jsx` |
+| **Impact** | Frontend build failed in Coolify deployment pipeline. |
+
+### Root Cause
+A closing `</div>` tag was stripped accidentally during the UI redesign.
+
+### Fix
+Re-added the missing closing `</div>` tag in `NewCampaign.jsx` line 745.
+
+### Lesson Learned
+> Always verify React component closing tags run `npm run build` after major structural updates.
+
+---
+
+## ERR-024: Inbox Chat Click 500 — Missing user relation
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-03-03 |
+| **Severity** | 🔴 Critical |
+| **Error** | `Prisma runtime error` 500 Internal Server error on `GET /api/chat/conversations/:id` |
+| **Impact** | Unable to select/open any conversation in the Inbox |
+
+### Root Cause
+In Phase 6, `ContactNote` model had a `userId: String` mapping but failed to define the Prisma relation map `user: User`. `chat.service.js` attempts to `include: { user: ... }` when pulling notes. Because it wasn't defined in the Prisma client, fetching crashed.
+
+### Fix
+Added `user User @relation(fields: [userId], references: [id])` to `ContactNote` in `schema.prisma`.
+
+### Lesson Learned
+> A relationship ID key is not enough; the actual relation property MUST be mapped in Prisma to satisfy the TS client includes.
+
 ## ERR-001: Webhook 405 Method Not Allowed
 
 | Field | Value |
@@ -227,13 +265,6 @@ EVOLUTION_API_URL=http://api-sgwcco4kw80sckwg4c08sgk4:8080
 
 ---
 
-
-Copy this template when logging a new error:
-
-```markdown
-## ERR-XXX: [Short Title]
-
-| Field | Value |
 |-------|-------|
 | **Date** | YYYY-MM-DD |
 | **Severity** | 🔴 Critical / 🟡 High / 🟢 Low |
