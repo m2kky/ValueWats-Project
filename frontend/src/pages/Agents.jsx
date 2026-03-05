@@ -713,8 +713,8 @@ export default function Agents() {
                   />
 
                   <ActionCard
-                    title="IDENTITY INDEXING"
-                    description="EXTRACT ENTITIES AND UPDATE CONTACT METADATA IN REAL-TIME."
+                    title="Update contact information"
+                    description="ALLOW AGENT TO UPDATE CONTACT INFORMATION IN REAL-TIME."
                     enabled={form.actionConfig?.updateFields?.enabled || false}
                     setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateFields: { ...f.actionConfig.updateFields, enabled: val } } }))}
                     config={form.actionConfig?.updateFields?.instructions || ''}
@@ -727,8 +727,8 @@ export default function Agents() {
                   />
 
                   <ActionCard
-                    title="STAGE TRANSITION"
-                    description="AUTONOMOUSLY SHIFT CONTACTS THROUGH THE CONVERSION PIPELINE."
+                    title="Update contact lifecycle stage"
+                    description="ALLOW AGENT TO UPDATE CONTACT LIFECYCLE STAGE IN REAL-TIME."
                     enabled={form.actionConfig?.updateLifecycle?.enabled || false}
                     setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, enabled: val } } }))}
                     config={form.actionConfig?.updateLifecycle?.instructions || ''}
@@ -757,8 +757,8 @@ export default function Agents() {
                   </ActionCard>
 
                   <ActionCard
-                    title="WORKFLOW INJECTION"
-                    description="TRIGGER EXTERNAL AUTOMATION CHAINS (WEBHOOKS/ZAPIER)."
+                    title="Trigger workflow"
+                    description="ALLOW AGENT TO TRIGGER EXTERNAL AUTOMATION CHAINS (WEBHOOKS/ZAPIER)."
                     enabled={form.actionConfig?.triggerWorkflow?.enabled || false}
                     setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, triggerWorkflow: { ...f.actionConfig.triggerWorkflow, enabled: val } } }))}
                     config={form.actionConfig?.triggerWorkflow?.instructions || ''}
@@ -771,8 +771,8 @@ export default function Agents() {
                   />
 
                   <ActionCard
-                    title="TAG MODIFICATION"
-                    description="APPEND OR REMOVE LABELS/TAGS BASED ON CONVERSATION CONTEXT."
+                    title="Tag modification"
+                    description="ALLOW AGENT TO APPEND OR REMOVE LABELS/TAGS BASED ON CONVERSATION CONTEXT."
                     enabled={form.actionConfig?.updateTags?.enabled || false}
                     setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateTags: { ...f.actionConfig.updateTags, enabled: val } } }))}
                     config={form.actionConfig?.updateTags?.instructions || ''}
@@ -785,8 +785,8 @@ export default function Agents() {
                   />
 
                   <ActionCard
-                    title="INTERNAL CONTEXT"
-                    description="ADD INTERNAL COMMENTS FOR AGENT HANDOFF OR AUDIT LOGS."
+                    title="Internal comments"
+                    description="ALLOW AGENT TO ADD INTERNAL COMMENTS FOR AGENT HANDOFF OR AUDIT LOGS."
                     enabled={form.actionConfig?.addComment?.enabled || false}
                     setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, addComment: { ...f.actionConfig.addComment, enabled: val } } }))}
                     config={form.actionConfig?.addComment?.instructions || ''}
