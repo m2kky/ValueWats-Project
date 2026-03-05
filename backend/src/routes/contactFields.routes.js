@@ -3,6 +3,20 @@ const router = express.Router();
 const prisma = require('../config/database');
 const tenantContext = require('../middleware/tenantContext');
 
+// GET /api/contact-fields (Fallback for root path, same as /definitions)
+router.get('/', tenantContext, async (req, res) => {
+    try {
+        const definitions = await prisma.contactFieldDefinition.findMany({
+            where: { tenantId: req.user.tenantId },
+            orderBy: { sortOrder: 'asc' }
+        });
+        res.json(definitions);
+    } catch (error) {
+        console.error('[ContactFields] List definitions error:', error);
+        res.status(500).json({ error: 'Failed to fetch field definitions' });
+    }
+});
+
 // GET /api/contact-fields/definitions — List all field definitions for tenant
 router.get('/definitions', tenantContext, async (req, res) => {
     try {

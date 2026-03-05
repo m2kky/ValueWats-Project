@@ -74,4 +74,32 @@ router.put('/:id', tenantContext, async (req, res) => {
   }
 });
 
+// Delete lifecycle stage
+router.delete('/:id', tenantContext, async (req, res) => {
+  try {
+    // Unassign contacts from this stage first
+    await prisma.conversation.updateMany({
+      where: { lifecycleStageId: req.params.id },
+      data: { lifecycleStageId: null }
+    });
+    await prisma.contact.updateMany({
+      where: { lifecycleStageId: req.params.id },
+      data: { lifecycleStageId: null }
+    });
+
+    const deleted = await prisma.lifecycleStage.deleteMany({
+      where: {
+        id: req.params.id,
+        tenantId: req.user.tenantId
+      }
+    });
+
+    if (deleted.count === 0) return res.status(404).json({ error: 'Stage not found' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete lifecycle stage error:', error);
+    res.status(500).json({ error: 'Failed to delete stage' });
+  }
+});
+
 module.exports = router;

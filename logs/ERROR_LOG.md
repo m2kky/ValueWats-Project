@@ -1,8 +1,54 @@
-# Error Log — Known Issues & Fixes
+# Critical Error Log & Technical Debt
 
-This document tracks all production bugs encountered, their root causes, and the applied fixes. Use this as a reference to avoid repeating the same mistakes.
+Document all critical errors, their root causes, fixes, and lessons learned. When fixing an issue, **FIRST check this file** to see if it's already documented. After fixing an issue, **ADD it here**.
+
+## ERR-030: Contact Fields Not Appearing in Inbox and Contact Details
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-03-05 |
+| **Severity** | 🟡 Medium |
+| **Error** | Contact fields added in "General Settings" do not show up for contacts in the Inbox sidebar or Contact Details page. |
+| **Impact** | Users cannot effectively view or use custom field definitions they've created; definitions appear missing. |
+
+### Root Cause
+1. `ContactProfile.jsx` had an incorrect API call pointing to `/api/contact-fields` instead of `/api/contact-fields/definitions`.
+2. `ContactSidebar.jsx` (Inbox) was only mapping existing filled field values and standard keys (`email`, `country`, `language`) instead of fetching the global field definitions and merging them with the specific contact's values.
+3. Key mismatches when saving/loading in sidebar. Sidebar saved field names lowercased rather than using `key` which caused mismatches on the details page.
+
+### Fix
+- Added missing `fieldDefinitions` fetch (`/api/contact-fields/definitions`) in `ContactSidebar.jsx` `useEffect`.
+- Integrated global definitions merging with local values while maintaining backwards compatibility for orphaned values not part of definitions.
+- Adjusted sidebar saving logic to save dynamically using the `key` from the field definition rather than the lowercased display name.
+- Added root route fallback `router.get('/', ...)` in `contactFields.routes.js` matching standard expectation.
+- Updated `ContactProfile.jsx` to fetch definitions from `/api/contact-fields/definitions`.
+
+### Lesson Learned
+> When building field/schema configurations, ensure UI components that collect or visualize data always sync with the central metadata/definitions endpoint rather than inferring structure on the fly from partial instance data.
+
+---
 
 > **Environment**: Coolify on VPS `72.62.50.238` — all testing happens directly on production.
+
+---
+
+## ERR-029: Frontend Dependency Reference Error — Missing @react-oauth/google
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-03-05 |
+| **Severity** | 🔴 Critical |
+| **Error** | `[plugin:vite:import-analysis] Failed to resolve import "@react-oauth/google" from "src/main.jsx"` |
+| **Impact** | Frontend fails to start or build, blocking the entire UI. |
+
+### Root Cause
+The `@react-oauth/google` package was listed in `package.json` but was not present in the `node_modules` directory. This can happen after a fresh clone, a partial installation, or if the package was added to `package.json` manually without running `npm install`.
+
+### Fix
+Ran `npm install` in the `frontend` directory to synchronize `node_modules` with `package.json`.
+
+### Lesson Learned
+> Always verify that `node_modules` is fully synchronized with `package.json` after updates, especially when new third-party providers are introduced in `main.jsx`.
 
 ---
 

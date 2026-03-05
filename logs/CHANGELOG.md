@@ -4,6 +4,20 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-05]
+
+### Added
+- **Google Integrations**: Added manual connection options for Google Drive, Google Calendar, and Gmail to the Integrations page (`Integrations.jsx`). Users can now provide Service Account JSONs or App Passwords to link these services.
+
+### Fixed
+- **Missing Dependency**: Resolved a Vite import-analysis error by running `npm install` to restore the missing `@react-oauth/google` package.
+- **Contact Fields UI**: Fixed issue where custom fields were not rendering or improperly saving in the Inbox sidebar (`ContactSidebar.jsx`) and Contact Details page (`ContactProfile.jsx`) by syncing components with the global definitions API endpoints.
+- **Lifecycle Stages Settings**: Rewrote `LifecycleSettings.jsx` from hardcoded static data to a fully functional CRUD page connected to `/api/lifecycle`. Added missing `DELETE /api/lifecycle/:id` route.
+- **AI Knowledge Base Buttons**: Fixed non-functional "Upload Document" and "Add Text Source" buttons in `AIKnowledgeSettings.jsx` by adding modal forms connected to the backend knowledge API.
+- **Tags in Inbox**: Connected Tags from Settings to the Inbox sidebar label suggestions, so pre-created tags now appear as options when adding labels to contacts.
+- **UI Unification**: Renamed "Labels" to "Tags" everywhere in the user interface (`ContactSidebar.jsx`, `ContactProfile.jsx`) to align with the central Settings menu terminology.
+---
+
 ## [2026-03-04] — Phase 12: Onboarding Wizard
 
 ### Added

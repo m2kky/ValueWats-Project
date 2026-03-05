@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { 
-  PlusIcon, 
-  TrashIcon, 
-  CheckCircleIcon, 
+import {
+  PlusIcon,
+  TrashIcon,
+  CheckCircleIcon,
   ExclamationCircleIcon,
   CircleStackIcon,
-  GlobeAltIcon
+  GlobeAltIcon,
+  DocumentIcon,
+  CalendarIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import api from '../api/client';
 
@@ -13,7 +16,7 @@ export default function Integrations() {
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  
+
   // Form State
   const [type, setType] = useState('google_sheets');
   const [name, setName] = useState('');
@@ -64,6 +67,9 @@ export default function Integrations() {
   const getIcon = (type) => {
     switch (type) {
       case 'google_sheets': return <CircleStackIcon className="h-8 w-8 text-green-600" />;
+      case 'google_drive': return <DocumentIcon className="h-8 w-8 text-blue-500" />;
+      case 'google_calendar': return <CalendarIcon className="h-8 w-8 text-indigo-500" />;
+      case 'gmail': return <EnvelopeIcon className="h-8 w-8 text-red-500" />;
       case 'webhook': return <GlobeAltIcon className="h-8 w-8 text-blue-600" />;
       default: return <CircleStackIcon className="h-8 w-8 text-gray-400" />;
     }
@@ -95,21 +101,20 @@ export default function Integrations() {
                 <div className="p-2 bg-gray-50 rounded-lg">
                   {getIcon(int.type)}
                 </div>
-                <button 
+                <button
                   onClick={() => handleDelete(int.id)}
                   className="text-gray-400 hover:text-red-500 transition-colors"
                 >
                   <TrashIcon className="h-5 w-5" />
                 </button>
               </div>
-              
+
               <h3 className="font-semibold text-gray-900 mb-1">{int.name}</h3>
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
                 <span className="capitalize">{int.type.replace('_', ' ')}</span>
                 <span>•</span>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                  int.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${int.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
                   {int.status}
                 </span>
               </div>
@@ -119,7 +124,7 @@ export default function Integrations() {
               </div>
             </div>
           ))}
-          
+
           {integrations.length === 0 && (
             <div className="col-span-full text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
               <p className="text-gray-500">No integrations connected yet.</p>
@@ -133,16 +138,19 @@ export default function Integrations() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-md w-full p-6">
             <h2 className="text-xl font-bold mb-4">Connect Integration</h2>
-            
+
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <select 
-                  value={type} 
+                <select
+                  value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white"
                 >
                   <option value="google_sheets">Google Sheets (Service Account)</option>
+                  <option value="google_drive">Google Drive (Service Account)</option>
+                  <option value="google_calendar">Google Calendar (Service Account)</option>
+                  <option value="gmail">Gmail (App Password)</option>
                   <option value="webhook">Webhook (Generic)</option>
                 </select>
               </div>
@@ -164,17 +172,19 @@ export default function Integrations() {
                   Credentials (JSON)
                 </label>
                 <p className="text-xs text-gray-500 mb-2">
-                  {type === 'google_sheets' 
-                    ? 'Paste the full Service Account JSON here.' 
-                    : 'Paste headers/auth token JSON here.'}
+                  {type === 'gmail'
+                    ? 'Paste JSON: {"email": "...", "appPassword": "..."}'
+                    : type.startsWith('google_')
+                      ? 'Paste the full Service Account JSON here.'
+                      : 'Paste headers/auth token JSON here.'}
                 </p>
                 <textarea
                   required
                   rows={6}
                   value={credentials}
                   onChange={(e) => setCredentials(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-xs"
-                  placeholder='{"type": "service_account", ...}'
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-xs p-2.5"
+                  placeholder={type === 'gmail' ? '{"email": "you@gmail.com", "appPassword": "xxxx"}' : '{"type": "service_account", ...}'}
                 />
               </div>
 

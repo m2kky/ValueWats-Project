@@ -39,7 +39,7 @@ export default function ContactProfile() {
       .finally(() => setLoading(false));
 
     // Fetch custom field definitions
-    api.get('/contact-fields').then(r => {
+    api.get('/contact-fields/definitions').then(r => {
       setCustomFieldDefs(r.data || []);
     }).catch(() => { });
 
@@ -229,7 +229,7 @@ export default function ContactProfile() {
               <div className="text-center py-6">
                 <ClockIcon className="w-10 h-10 text-zinc-700 mx-auto mb-2" />
                 <p className="text-zinc-600 text-sm">No activity recorded yet</p>
-                <p className="text-zinc-700 text-xs">Changes to lifecycle stages, labels, and assignments will appear here</p>
+                <p className="text-zinc-700 text-xs">Changes to lifecycle stages, tags, and assignments will appear here</p>
               </div>
             ) : (
               <div className="space-y-3 relative pl-6 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-white/5 before:rounded-full">
@@ -331,7 +331,7 @@ export default function ContactProfile() {
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {currentLabels.length === 0 && <p className="text-zinc-600 text-sm">No labels</p>}
+                {currentLabels.length === 0 && <p className="text-zinc-600 text-sm">No tags</p>}
                 {currentLabels.map(l => (
                   <span key={l.id} className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: l.color + '20', color: l.color }}>
                     {l.name}

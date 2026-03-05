@@ -19,6 +19,7 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
   const [editingFields, setEditingFields] = useState(false);
   const [formData, setFormData] = useState({ contactName: conversation?.contactName || '' });
   const [customFields, setCustomFields] = useState([]);
+  const [fieldDefinitions, setFieldDefinitions] = useState([]);
   const [assignDropdownOpen, setAssignDropdownOpen] = useState(false);
   const [stageDropdownOpen, setStageDropdownOpen] = useState(false);
   const [lifecycleStages, setLifecycleStages] = useState([]);
@@ -36,6 +37,18 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
   const [savingNote, setSavingNote] = useState(false);
 
   useEffect(() => {
+    const fetchDefinitions = async () => {
+      try {
+        const { data } = await api.get('/contact-fields/definitions');
+        setFieldDefinitions(data || []);
+      } catch (error) {
+        console.error('Failed to fetch field definitions', error);
+      }
+    };
+    fetchDefinitions();
+  }, []);
+
+  useEffect(() => {
     if (conversation) {
       setFormData({ contactName: conversation.contactName || '' });
 
@@ -44,19 +57,35 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
 
       // Load custom fields
       const existingFields = conversation.contactFields || [];
-      const mergedFields = existingFields.map(f => ({ name: f.fieldName, value: f.fieldValue }));
-      const standardKeys = ['email', 'country', 'language'];
-      standardKeys.forEach(key => {
-        if (!mergedFields.find(f => f.name.toLowerCase() === key)) {
-          mergedFields.push({ name: key, value: '' });
-        }
-      });
+      const mergedFields = [];
+
+      if (fieldDefinitions.length > 0) {
+        fieldDefinitions.forEach(def => {
+          const existing = existingFields.find(f => f.fieldName === def.key || f.fieldName.toLowerCase() === def.name.toLowerCase() || f.fieldName === def.name);
+          mergedFields.push({ name: def.name, key: def.key, value: existing ? existing.fieldValue : '' });
+        });
+
+        existingFields.forEach(ef => {
+          if (!fieldDefinitions.find(def => def.key === ef.fieldName || def.name.toLowerCase() === ef.fieldName.toLowerCase() || def.name === ef.fieldName)) {
+            mergedFields.push({ name: ef.fieldName, key: ef.fieldName, value: ef.fieldValue });
+          }
+        });
+      } else {
+        mergedFields.push(...existingFields.map(f => ({ name: f.fieldName, key: f.fieldName, value: f.fieldValue })));
+        const standardKeys = ['email', 'country', 'language'];
+        standardKeys.forEach(key => {
+          if (!mergedFields.find(f => f.name.toLowerCase() === key || f.key === key)) {
+            mergedFields.push({ name: key, key: key, value: '' });
+          }
+        });
+      }
+
       setCustomFields(mergedFields);
 
       fetchStages();
       fetchAllLabels();
     }
-  }, [conversation?.id]);
+  }, [conversation?.id, fieldDefinitions]);
 
   useEffect(() => {
     if (showLabelInput && labelInputRef.current) {
@@ -75,8 +104,15 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
 
   const fetchAllLabels = async () => {
     try {
-      const { data } = await api.get('/chat/labels');
-      setAllLabels(data.labels || []);
+      const [chatLabelsRes, tagsRes] = await Promise.all([
+        api.get('/chat/labels').catch(() => ({ data: { labels: [] } })),
+        api.get('/tags').catch(() => ({ data: { tags: [] } })),
+      ]);
+      const chatLabels = chatLabelsRes.data.labels || [];
+      const tagNames = (tagsRes.data.tags || []).map(t => t.name);
+      // Merge unique label names
+      const merged = [...new Set([...chatLabels, ...tagNames])].sort();
+      setAllLabels(merged);
     } catch (error) {
       // Non-fatal
     }
@@ -87,22 +123,37 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
     try {
       const fieldsToSave = customFields
         .filter(f => f.name && f.name.trim() !== '')
-        .map(f => ({ name: f.name.toLowerCase().trim(), value: f.value || '' }));
+        .map(f => ({ name: f.key || f.name.toLowerCase().trim().replace(/\s+/g, '_'), value: f.value || '' }));
 
       const { data } = await api.put(`/chat/conversations/${conversation.id}/contact`, {
         contactName: formData.contactName,
         customFields: fieldsToSave
       });
 
-      const savedFields = data.conversation?.contactFields?.map(f => ({ name: f.fieldName, value: f.fieldValue })) || fieldsToSave;
-      const standardKeys = ['email', 'country', 'language'];
-      standardKeys.forEach(key => {
-        if (!savedFields.find(f => f.name.toLowerCase() === key)) {
-          savedFields.push({ name: key, value: '' });
-        }
-      });
+      const savedExistingFields = data.conversation?.contactFields || [];
+      const newMerged = [];
 
-      setCustomFields(savedFields);
+      if (fieldDefinitions.length > 0) {
+        fieldDefinitions.forEach(def => {
+          const existing = savedExistingFields.find(f => f.fieldName === def.key || f.fieldName.toLowerCase() === def.name.toLowerCase() || f.fieldName === def.name);
+          newMerged.push({ name: def.name, key: def.key, value: existing ? existing.fieldValue : '' });
+        });
+        savedExistingFields.forEach(ef => {
+          if (!fieldDefinitions.find(def => def.key === ef.fieldName || def.name.toLowerCase() === ef.fieldName.toLowerCase() || def.name === ef.fieldName)) {
+            newMerged.push({ name: ef.fieldName, key: ef.fieldName, value: ef.fieldValue });
+          }
+        });
+      } else {
+        newMerged.push(...savedExistingFields.map(f => ({ name: f.fieldName, key: f.fieldName, value: f.fieldValue })));
+        const standardKeys = ['email', 'country', 'language'];
+        standardKeys.forEach(key => {
+          if (!newMerged.find(f => f.name.toLowerCase() === key || f.key === key)) {
+            newMerged.push({ name: key, key: key, value: '' });
+          }
+        });
+      }
+
+      setCustomFields(newMerged);
       setEditingFields(false);
       if (onUpdate) onUpdate(data.conversation);
     } catch (error) {
@@ -401,11 +452,11 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
           )}
         </div>
 
-        {/* Labels Section */}
+        {/* Tags Section */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
-              <TagIcon className="w-3.5 h-3.5" /> Labels
+              <TagIcon className="w-3.5 h-3.5" /> Tags
             </label>
             <button
               onClick={() => setShowLabelInput(true)}
@@ -435,7 +486,7 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
               );
             })}
             {labels.length === 0 && !showLabelInput && (
-              <span className="text-xs text-zinc-600 italic">No labels</span>
+              <span className="text-xs text-zinc-600 italic">No tags</span>
             )}
           </div>
 
@@ -450,10 +501,10 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
                   if (e.key === 'Enter') handleAddLabel();
                   if (e.key === 'Escape') { setShowLabelInput(false); setNewLabel(''); }
                 }}
-                placeholder="Type label name..."
+                placeholder="Type tag name..."
                 className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500"
               />
-              {/* Suggestions from existing labels */}
+              {/* Suggestions from existing tags */}
               {allLabels.filter(l => !labels.includes(l) && l.toLowerCase().includes(newLabel.toLowerCase())).length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {allLabels
@@ -479,7 +530,7 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
                   disabled={!newLabel.trim() || savingLabel}
                   className="flex-1 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors"
                 >
-                  {savingLabel ? 'Saving...' : 'Add Label'}
+                  {savingLabel ? 'Saving...' : 'Add Tag'}
                 </button>
                 <button
                   onClick={() => { setShowLabelInput(false); setNewLabel(''); }}
