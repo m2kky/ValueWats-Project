@@ -103,7 +103,7 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
           temperature: agent.temperature,
           max_tokens: agent.maxTokens,
           model: agent.aiModel || 'deepseek-chat',
-          tools: toolService.getToolDefinitions()
+          tools: toolService.getToolDefinitions(agent.actionConfig)
         });
 
         chatMessages.push(responseMessage);
@@ -115,7 +115,7 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
             const result = await toolService.execute(
               toolCall.function.name,
               JSON.parse(toolCall.function.arguments),
-              { tenantId, conversationId }
+              { tenantId, conversationId, actionConfig: agent.actionConfig }
             );
 
             chatMessages.push({
@@ -253,6 +253,14 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
 
       if (actions.triggerWorkflow?.enabled) {
         actionPrompts.push(`- TRIGGER WORKFLOW: If ${actions.triggerWorkflow.instructions}, append [ACTION: TRIGGER_WORKFLOW: <WorkflowID>] to your response.`);
+      }
+
+      if (actions.addTag?.enabled) {
+        actionPrompts.push(`- ADD TAG: If ${actions.addTag.instructions}, append [ACTION: ADD_TAG: <TagName>] to your response.`);
+      }
+
+      if (actions.removeTag?.enabled) {
+        actionPrompts.push(`- REMOVE TAG: If ${actions.removeTag.instructions}, append [ACTION: REMOVE_TAG: <TagName>] to your response.`);
       }
 
       if (actionPrompts.length > 0) {
@@ -536,6 +544,98 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
           workflowService.executeWorkflow(workflowId, context).catch(err => {
             console.error(`[AgentService] Workflow trigger failed:`, err);
           });
+        }
+
+        // ADD TAG
+        else if (actionString.startsWith('ADD_TAG:')) {
+          const tagName = actionString.replace('ADD_TAG:', '').trim();
+
+          // 1. Get or create the tag (ContactLabel)
+          const label = await prisma.contactLabel.upsert({
+            where: { tenantId_name: { tenantId: agent.tenantId, name: tagName } },
+            update: {},
+            create: { tenantId: agent.tenantId, name: tagName, color: '#6366f1' }
+          });
+
+          // 2. Ensure Contact exists
+          let contact = conversation.contactId ? await prisma.contact.findUnique({ where: { id: conversation.contactId } }) : null;
+
+          if (!contact) {
+            contact = await prisma.contact.upsert({
+              where: { tenantId_phoneNumber: { tenantId: agent.tenantId, phoneNumber: conversation.contactNumber } },
+              update: {},
+              create: {
+                tenantId: agent.tenantId,
+                phoneNumber: conversation.contactNumber,
+                name: conversation.contactName || 'Unknown'
+              }
+            });
+            await prisma.conversation.update({
+              where: { id: conversation.id },
+              data: { contactId: contact.id }
+            });
+          }
+
+          // 3. Assign tag
+          await prisma.contactLabelAssignment.upsert({
+            where: {
+              contactId_labelId: {
+                contactId: contact.id,
+                labelId: label.id
+              }
+            },
+            update: {},
+            create: {
+              contactId: contact.id,
+              labelId: label.id
+            }
+          });
+
+          // Log Activity
+          await prisma.activityLog.create({
+            data: {
+              tenantId: agent.tenantId,
+              contactId: contact.id,
+              conversationId: conversation.id,
+              actionType: 'label_added',
+              description: `AI Agent added tag "${tagName}"`,
+              agentId: agent.id
+            }
+          });
+          console.log(`[AgentService] Action: Added tag ${tagName}`);
+        }
+
+        // REMOVE TAG
+        else if (actionString.startsWith('REMOVE_TAG:')) {
+          const tagName = actionString.replace('REMOVE_TAG:', '').trim();
+
+          if (conversation.contactId) {
+            const label = await prisma.contactLabel.findUnique({
+              where: { tenantId_name: { tenantId: agent.tenantId, name: tagName } }
+            });
+
+            if (label) {
+              await prisma.contactLabelAssignment.deleteMany({
+                where: {
+                  contactId: conversation.contactId,
+                  labelId: label.id
+                }
+              });
+
+              // Log Activity
+              await prisma.activityLog.create({
+                data: {
+                  tenantId: agent.tenantId,
+                  contactId: conversation.contactId,
+                  conversationId: conversation.id,
+                  actionType: 'label_removed',
+                  description: `AI Agent removed tag "${tagName}"`,
+                  agentId: agent.id
+                }
+              });
+              console.log(`[AgentService] Action: Removed tag ${tagName}`);
+            }
+          }
         }
 
       } catch (err) {

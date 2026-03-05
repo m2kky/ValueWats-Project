@@ -10,6 +10,10 @@ All notable changes to the ValueWats project, tracked by date.
 - **Google Integrations**: Added manual connection options for Google Drive, Google Calendar, and Gmail to the Integrations page (`Integrations.jsx`). Users can now provide Service Account JSONs or App Passwords to link these services.
 - **Integrations UI Redesign**: Fully completely revamped `Integrations.jsx` to adopt the platform's standard `glass-card` look with vibrant type-specific colors, hover effects, and a modern dark theme add-service modal.
 - **Inbox Snippets Integration**: Unified Snippets and Templates in the Inbox (`ChatWindow.jsx`). Typing `/` now brings up a combined picker with visual badges to easily deploy both snippet shortcuts and dynamic templates into messages.
+- **Agent Tag Actions**: AI Agents can now add (`ADD_TAG`) and remove (`REMOVE_TAG`) contact tags/labels autonomously based on conversation context. Tags are created automatically if they don't exist.
+- **Agent Google Calendar Tools**: AI Agents can create events and list upcoming events on Google Calendar via DeepSeek function calls. Tools are dynamically loaded based on `actionConfig` and linked to tenant Integrations.
+- **Agent Tool Integration Linking**: New `integrationId` field on `AgentAction` model links agent tools to authenticated Integration credentials (Prisma schema update).
+- **Agent Action UI Expansion**: Added 4 new ActionCards in the Agent Editor: Tag Injection, Tag Removal, Calendar Create Event, and Calendar Read Events — each with integration selector dropdowns.
 
 ### Fixed
 - **Missing Dependency**: Resolved a Vite import-analysis error by running `npm install` to restore the missing `@react-oauth/google` package.

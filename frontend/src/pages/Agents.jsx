@@ -110,8 +110,20 @@ export default function Agents() {
   const [kbContent, setKbContent] = useState('');
   const [kbFile, setKbFile] = useState(null);
 
+  // Integrations for tool linking
+  const [tenantIntegrations, setTenantIntegrations] = useState([]);
+
   useEffect(() => {
     fetchAgents();
+    // Fetch integrations for tool dropdowns
+    const loadIntegrations = async () => {
+      try {
+        const { default: api } = await import('../api/client');
+        const { data } = await api.get('/integrations');
+        setTenantIntegrations(data.integrations || []);
+      } catch (e) { console.warn('Could not load integrations', e); }
+    };
+    loadIntegrations();
   }, [fetchAgents]);
 
   useEffect(() => {
@@ -687,6 +699,95 @@ export default function Agents() {
                     config={form.actionConfig?.triggerWorkflow?.instructions || ''}
                     placeholder="POST-ONBOARDING: TRIGGER GOOGLE_SHEET_APPEND..."
                   />
+
+                  <ActionCard
+                    title="TAG INJECTION"
+                    description="APPEND LABELS/TAGS TO CONTACTS BASED ON CONVERSATION CONTEXT."
+                    enabled={form.actionConfig?.addTag?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, addTag: { ...f.actionConfig.addTag, enabled: val } } }))}
+                    config={form.actionConfig?.addTag?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, addTag: { ...f.actionConfig.addTag, instructions: val } } }))}
+                    placeholder="IF: USER EXPRESSES PURCHASE INTENT -> ADD_TAG: hot_lead..."
+                  />
+
+                  <ActionCard
+                    title="TAG REMOVAL"
+                    description="REMOVE LABELS/TAGS FROM CONTACTS WHEN CONDITIONS ARE MET."
+                    enabled={form.actionConfig?.removeTag?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, removeTag: { ...f.actionConfig.removeTag, enabled: val } } }))}
+                    config={form.actionConfig?.removeTag?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, removeTag: { ...f.actionConfig.removeTag, instructions: val } } }))}
+                    placeholder="IF: ISSUE RESOLVED -> REMOVE_TAG: needs_support..."
+                  />
+
+                  {/* ─── GOOGLE CALENDAR TOOLS ─── */}
+                  <ActionCard
+                    title="CALENDAR — CREATE EVENT"
+                    description="CREATE EVENTS ON GOOGLE CALENDAR VIA AI TOOL CALL."
+                    enabled={form.actionConfig?.google_calendar_create?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, google_calendar_create: { ...f.actionConfig.google_calendar_create, enabled: val } } }))}
+                    config={form.actionConfig?.google_calendar_create?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, google_calendar_create: { ...f.actionConfig.google_calendar_create, instructions: val } } }))}
+                    placeholder="WHEN USER WANTS TO BOOK A MEETING, CREATE CALENDAR EVENT..."
+                  />
+                  {form.actionConfig?.google_calendar_create?.enabled && (
+                    <div className="glass-card p-4 border border-indigo-500/20 bg-zinc-900/40 -mt-4 rounded-t-none">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-2">LINKED INTEGRATION</label>
+                      <select
+                        value={form.actionConfig?.google_calendar_create?.integrationId || ''}
+                        onChange={(e) => setForm(f => ({
+                          ...f,
+                          actionConfig: {
+                            ...f.actionConfig,
+                            google_calendar_create: {
+                              ...f.actionConfig.google_calendar_create,
+                              integrationId: e.target.value
+                            }
+                          }
+                        }))}
+                        className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/30 transition-all font-bold cursor-pointer"
+                      >
+                        <option value="" className="bg-zinc-900">— SELECT GOOGLE CALENDAR INTEGRATION —</option>
+                        {tenantIntegrations.filter(i => i.type === 'google_calendar').map(i => (
+                          <option key={i.id} value={i.id} className="bg-zinc-900">{i.name} ({i.status})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <ActionCard
+                    title="CALENDAR — READ EVENTS"
+                    description="LIST UPCOMING EVENTS FROM GOOGLE CALENDAR VIA AI TOOL CALL."
+                    enabled={form.actionConfig?.google_calendar_read?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, google_calendar_read: { ...f.actionConfig.google_calendar_read, enabled: val } } }))}
+                    config={form.actionConfig?.google_calendar_read?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, google_calendar_read: { ...f.actionConfig.google_calendar_read, instructions: val } } }))}
+                    placeholder="WHEN USER ASKS ABOUT AVAILABILITY, LIST CALENDAR EVENTS..."
+                  />
+                  {form.actionConfig?.google_calendar_read?.enabled && (
+                    <div className="glass-card p-4 border border-indigo-500/20 bg-zinc-900/40 -mt-4 rounded-t-none">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-2">LINKED INTEGRATION</label>
+                      <select
+                        value={form.actionConfig?.google_calendar_read?.integrationId || ''}
+                        onChange={(e) => setForm(f => ({
+                          ...f,
+                          actionConfig: {
+                            ...f.actionConfig,
+                            google_calendar_read: {
+                              ...f.actionConfig.google_calendar_read,
+                              integrationId: e.target.value
+                            }
+                          }
+                        }))}
+                        className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/30 transition-all font-bold cursor-pointer"
+                      >
+                        <option value="" className="bg-zinc-900">— SELECT GOOGLE CALENDAR INTEGRATION —</option>
+                        {tenantIntegrations.filter(i => i.type === 'google_calendar').map(i => (
+                          <option key={i.id} value={i.id} className="bg-zinc-900">{i.name} ({i.status})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
 

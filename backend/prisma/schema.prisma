@@ -430,9 +430,13 @@ model AgentAction {
   agentId String
   agent   AIAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
-  type         String // "close_conversation", "assign_to_agent", "assign_to_team", "update_lifecycle", "add_tag"
+  // Link to integration credentials (e.g., Google OAuth)
+  integrationId String?      @map("integration_id")
+  integration   Integration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+
+  type         String // "close_conversation", "assign_to_agent", "assign_to_team", "update_lifecycle", "add_tag", "remove_tag", "update_field", "google_calendar_create", etc.
   isEnabled    Boolean @default(true)
-  config       Json // Action-specific configuration
+  config       Json // Action-specific configuration (e.g., Calendar ID)
   instructions String  @db.Text
 
   createdAt DateTime @default(now())
@@ -694,8 +698,9 @@ model Integration {
   credentials String @db.Text // Encrypted JSON
   status      String @default("active") // active, error, revoked
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  agentActions AgentAction[]
 
   @@index([tenantId, type])
 }
