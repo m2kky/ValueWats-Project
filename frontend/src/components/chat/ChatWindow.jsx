@@ -86,10 +86,19 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
     if (templates.length > 0) return; // already cached
     setTemplatesLoading(true);
     try {
-      const { data } = await api.get('/templates');
-      setTemplates(data.templates || data || []);
+      const [templatesRes, snippetsRes] = await Promise.all([
+        api.get('/templates').catch(() => ({ data: { templates: [] } })),
+        api.get('/snippets').catch(() => ({ data: { snippets: [] } }))
+      ]);
+
+      const combined = [
+        ...(templatesRes.data?.templates || templatesRes.data || []).map(t => ({ ...t, _itemType: 'template' })),
+        ...(snippetsRes.data?.snippets || []).map(s => ({ ...s, name: s.title, _itemType: 'snippet' }))
+      ];
+
+      setTemplates(combined);
     } catch (e) {
-      console.error('Failed to load templates', e);
+      console.error('Failed to load templates and snippets', e);
     } finally {
       setTemplatesLoading(false);
     }
@@ -101,9 +110,7 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
       setTemplates(prev => prev); // keep cache
       setShowTemplates(true);
       if (templates.length === 0) {
-        api.get('/templates')
-          .then(({ data }) => setTemplates(data.templates || data || []))
-          .catch(() => { });
+        handleLoadTemplates();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -491,46 +498,72 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
       <footer className="px-6 pb-6 pt-2 bg-transparent shrink-0" onClick={e => e.stopPropagation()}>
         <div className="bg-[#18181b] border border-white/5 rounded-xl overflow-visible flex flex-col focus-within:border-white/10 transition-colors shadow-lg relative">
 
-          {/* Templates Panel */}
+          {/* Templates/Snippets Panel */}
           {showTemplates && (
             <div className="absolute bottom-full left-0 right-0 mb-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-40 max-h-64 overflow-y-auto custom-scrollbar">
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Templates</span>
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-zinc-950/50 sticky top-0 backdrop-blur-sm z-10">
+                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Snippets & Templates</span>
                 <button onClick={() => setShowTemplates(false)} className="text-zinc-500 hover:text-white"><XMarkIcon className="w-4 h-4" /></button>
               </div>
               {templatesLoading ? (
                 <div className="p-4 text-center text-zinc-500 text-sm">Loading...</div>
               ) : templates.length === 0 ? (
-                <div className="p-4 text-center text-zinc-500 text-sm">No templates found</div>
+                <div className="p-4 text-center text-zinc-500 text-sm">No items found. Create some in Settings!</div>
               ) : (
                 templates.map(t => (
                   <button
-                    key={t.id}
+                    key={t._itemType + '-' + t.id}
                     onClick={() => {
-                      const cName = conversation.contactName || conversation.contactNumber || '';
-                      const cPhone = conversation.contactNumber || '';
-                      const cEmail = '';  // Will be populated when contact fields are loaded
-                      const cDate = new Date().toLocaleDateString('ar-EG');
-
                       let parsedContent = t.content;
-                      // Unified variable replacement engine
-                      parsedContent = parsedContent.replace(/\{\{name\}\}/gi, cName);
-                      parsedContent = parsedContent.replace(/\{\{phone\}\}/gi, cPhone);
-                      parsedContent = parsedContent.replace(/\{\{email\}\}/gi, cEmail);
-                      parsedContent = parsedContent.replace(/\{\{date\}\}/gi, cDate);
-                      // Support $contact.field syntax (respond.io style)
-                      parsedContent = parsedContent.replace(/\$contact\.name/gi, cName);
-                      parsedContent = parsedContent.replace(/\$contact\.phone/gi, cPhone);
 
-                      setMessage(prev => prev ? prev + ' ' + parsedContent : parsedContent);
+                      // Only apply dynamic user variables to templates
+                      // Snippets are meant for static or quick-reply content
+                      if (t._itemType === 'template') {
+                        const cName = conversation.contactName || conversation.contactNumber || '';
+                        const cPhone = conversation.contactNumber || '';
+                        const cEmail = '';  // Will be populated when contact fields are loaded
+                        const cDate = new Date().toLocaleDateString('ar-EG');
+
+                        // Unified variable replacement engine
+                        parsedContent = parsedContent.replace(/\{\{name\}\}/gi, cName);
+                        parsedContent = parsedContent.replace(/\{\{phone\}\}/gi, cPhone);
+                        parsedContent = parsedContent.replace(/\{\{email\}\}/gi, cEmail);
+                        parsedContent = parsedContent.replace(/\{\{date\}\}/gi, cDate);
+                        // Support $contact.field syntax (respond.io style)
+                        parsedContent = parsedContent.replace(/\$contact\.name/gi, cName);
+                        parsedContent = parsedContent.replace(/\$contact\.phone/gi, cPhone);
+                      }
+
+                      setMessage(prev => {
+                        // If user typed exactly "/" or "/something", replace or append accordingly
+                        if (prev === '/' || prev.startsWith('/')) return parsedContent;
+                        return prev ? prev + ' ' + parsedContent : parsedContent;
+                      });
+
                       setShowTemplates(false);
                       inputRef.current?.focus();
                     }}
-                    className="w-full text-left px-4 py-3 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors"
+                    className="w-full text-left px-4 py-3 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors group"
                   >
-                    <div className="font-semibold text-sm text-white mb-0.5">{t.name}</div>
-                    <div className="text-xs text-zinc-500 truncate">{t.content}</div>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="font-semibold text-sm text-white flex items-center gap-2">
+                        {t.name}
+                        {t._itemType === 'snippet' && t.shortcut && (
+                          <span className="text-[10px] text-zinc-500 font-mono bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                            {t.shortcut}
+                          </span>
+                        )}
+                      </div>
+                      <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${t._itemType === 'snippet'
+                          ? 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20'
+                          : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                        }`}>
+                        {t._itemType}
+                      </span>
+                    </div>
+                    <div className="text-xs text-zinc-500 truncate group-hover:text-zinc-400 transition-colors">{t.content}</div>
                   </button>
+
                 ))
               )}
             </div>
