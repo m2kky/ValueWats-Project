@@ -1,4 +1,3 @@
-# Changelog
 
 All notable changes to the ValueWats project, tracked by date.
 
@@ -14,11 +13,11 @@ All notable changes to the ValueWats project, tracked by date.
 - **Agent Google Calendar Tools**: AI Agents can create events and list upcoming events on Google Calendar via DeepSeek function calls. Tools are dynamically loaded based on `actionConfig` and linked to tenant Integrations.
 - **Agent Tool Integration Linking**: New `integrationId` field on `AgentAction` model links agent tools to authenticated Integration credentials (Prisma schema update).
 - **Agent Action UI Expansion**: Added 4 new ActionCards in the Agent Editor: Tag Injection, Tag Removal, Calendar Create Event, and Calendar Read Events — each with integration selector dropdowns.
-- **AI Agent Action Overhaul (Respond.io Replica)**: Completely redesigned the AI Agent actions system.
+- **AI Agent Action Overhaul (Respond.io Replica)**: Completely redesigned the AI Agent actions system. 
   - New `RichTextarea` component with real-time `@mention`, `{{variable}}`, and `%tag` suggestions.
-  - Standardized 8 core actions: Terminate Session, Routing Protocol, Identity Indexing, Stage Transition, Workflow Injection, Tag Modification, Internal Context (ADD_COMMENT), and Network Command Center (HTTP Requests).
-  - Integrated `HttpRequestSideSheet` for advanced multi-action HTTP request configuration (up to 10 per agent) with URL/Body variable substitution.
-  - Backend `agent.service.js` updated to enforce action protocols in system prompts and execute the 8 actions in real-time.
+  - Standardized 8 core actions with real-time backend execution.
+  - **Agent Preview Tabs**: Added "Chat" and "Contact fields" tabs to the preview mode for real-time action verification.
+  - **Real-time Sync**: Agent actions (tags, lifecycle, assignee) now update the mock contact fields instantly in the preview window.
 
 ### Fixed
 - **Missing Dependency**: Resolved a Vite import-analysis error by running `npm install` to restore the missing `@react-oauth/google` package.
@@ -26,7 +25,9 @@ All notable changes to the ValueWats project, tracked by date.
 - **Lifecycle Stages Settings**: Rewrote `LifecycleSettings.jsx` from hardcoded static data to a fully functional CRUD page connected to `/api/lifecycle`. Added missing `DELETE /api/lifecycle/:id` route.
 - **AI Knowledge Base Buttons**: Fixed non-functional "Upload Document" and "Add Text Source" buttons in `AIKnowledgeSettings.jsx` by adding modal forms connected to the backend knowledge API.
 - **Tags in Inbox**: Connected Tags from Settings to the Inbox sidebar label suggestions, so pre-created tags now appear as options when adding labels to contacts.
-- **UI Unification**: Renamed "Labels" to "Tags" everywhere in the user interface (`ContactSidebar.jsx`, `ContactProfile.jsx`) to align with the central Settings menu terminology.
+- **UI Unification**: Renamed "Labels" to "Tags" everywhere.
+- **Group Response Removal**: Removed all "MULTI-CHANNEL SYNC" and group response logic to focus on 1-on-1 CRM interactions.
+- **Improved Rich Editor**: Refined trigger detection and fixed suggestion list clipping in ActionCards.
 ---
 
 ## [2026-03-04] — Phase 12: Onboarding Wizard

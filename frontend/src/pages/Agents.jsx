@@ -21,6 +21,7 @@ import {
   ShieldCheckIcon,
   CloudArrowUpIcon,
   DocumentIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 import ActionCard from '../components/ActionCard';
 import HttpRequestSideSheet from '../components/HttpRequestSideSheet';
@@ -76,10 +77,6 @@ const defaultForm = {
   priority: 0,
   aiModel: 'deepseek-chat',
 
-  // Phase 4: Groups & Actions
-  allowGroupResponse: false,
-  allowedGroups: [], // as array
-  allowedGroupsText: '', // for textarea input
   // Phase 1 Redesign: 8 Respond.io Actions
   actionConfig: {
     closeConversation: { enabled: false, instructions: '' },
@@ -113,6 +110,18 @@ export default function Agents() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
+
+  // Agent Preview Context (Mocking Respond.io behavior)
+  const [previewTab, setPreviewTab] = useState('chat'); // 'chat' | 'fields'
+  const [mockContact, setMockContact] = useState({
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'john.doe@example.com',
+    phone: '+201234567890',
+    lifecycleStage: 'New Lead',
+    assignee: 'Unassigned',
+    tags: ['%new_lead'],
+  });
 
   // editorTab removed — all sections on single page
 
@@ -219,10 +228,6 @@ export default function Agents() {
         isPublished: full.isPublished ?? false,
         aiModel: full.aiModel || full.model || 'deepseek-chat',
 
-        // Phase 4
-        allowGroupResponse: full.allowGroupResponse ?? false,
-        allowedGroups: full.allowedGroups || [],
-        allowedGroupsText: (full.allowedGroups || []).join('\n'),
         actionConfig: full.actionConfig || {},
       });
       setEditingId(full.id);
@@ -239,8 +244,8 @@ export default function Agents() {
       priority: Number(form.priority),
       temperature: Number(form.temperature),
       maxTokens: Number(form.maxTokens),
+      maxTokens: Number(form.maxTokens),
       followUpDelay: Number(form.followUpDelay),
-      allowedGroups: form.allowedGroupsText.split('\n').map(g => g.trim()).filter(g => g),
     };
     delete data.allowedGroupsText; // don't send to API
 
@@ -273,7 +278,52 @@ export default function Agents() {
     setChatLoading(true);
     try {
       const res = await testChat(editingId, userMsg);
-      setChatMessages(prev => [...prev, { role: 'assistant', content: res.response || res.message || 'No response' }]);
+      const content = res.response || res.message || 'No response';
+      setChatMessages(prev => [...prev, { role: 'assistant', content }]);
+
+      // Real-time Action Sync for Preview Mode
+      const actions = content.match(/\[ACTION:\s*([^\]]+)\]/g);
+      if (actions) {
+        setMockContact(prev => {
+          let next = { ...prev };
+          actions.forEach(actStr => {
+            const inner = actStr.replace('[ACTION:', '').replace(']', '').trim();
+            if (inner.startsWith('ADD_TAG:')) {
+              const tag = inner.replace('ADD_TAG:', '').trim();
+              if (!next.tags.includes(tag)) next.tags = [...next.tags, tag];
+            }
+            else if (inner.startsWith('REMOVE_TAG:')) {
+              const tag = inner.replace('REMOVE_TAG:', '').trim();
+              next.tags = next.tags.filter(t => t !== tag);
+            }
+            else if (inner.startsWith('ASSIGN_AGENT:')) {
+              next.assignee = inner.replace('ASSIGN_AGENT:', '').trim();
+            }
+            else if (inner.startsWith('UPDATE_LIFECYCLE:')) {
+              next.lifecycleStage = inner.replace('UPDATE_LIFECYCLE:', '').trim();
+            }
+            else if (inner.startsWith('SET_FIELD:')) {
+              try {
+                const json = JSON.parse(inner.replace('SET_FIELD:', '').trim());
+                if (json.firstName) next.firstName = json.firstName;
+                if (json.lastName) next.lastName = json.lastName;
+                if (json.email) next.email = json.email;
+                if (json.phone) next.phone = json.phone;
+              } catch (e) {
+                // simple key:value fallback
+                const parts = inner.replace('SET_FIELD:', '').split(':');
+                if (parts.length === 2) {
+                  const key = parts[0].trim();
+                  const val = parts[1].trim();
+                  if (key === 'name') next.firstName = val;
+                  else if (next.hasOwnProperty(key)) next[key] = val;
+                }
+              }
+            }
+          });
+          return next;
+        });
+      }
     } catch {
       setChatMessages(prev => [...prev, { role: 'assistant', content: '❌ Error getting response' }]);
     } finally {
@@ -550,45 +600,6 @@ export default function Agents() {
                 </div>
               </div>
 
-              {/* Group Chat Control (Phase 4) */}
-              <div className={`glass-card p-6 border transition-all duration-500 bg-zinc-900/40 ${form.allowGroupResponse ? 'border-indigo-500/30' : 'border-white/5'}`}>
-                <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-1 h-4 rounded-full shadow-[0_0_8px_rgba(71,37,244,0.5)] transition-colors ${form.allowGroupResponse ? 'bg-indigo-500' : 'bg-zinc-700'}`}></div>
-                    <h3 className="text-xs font-black text-white uppercase tracking-widest italic flex items-center gap-2">
-                      <UserGroupIcon className="h-4 w-4 text-indigo-400" /> MULTI-CHANNEL SYNC
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, allowGroupResponse: !form.allowGroupResponse })}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${form.allowGroupResponse ? 'bg-indigo-600 shadow-[0_0_15px_rgba(71,37,244,0.4)]' : 'bg-zinc-800'
-                      }`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-xl transition-transform duration-300 ${form.allowGroupResponse ? 'translate-x-6' : 'translate-x-1'
-                      }`} />
-                  </button>
-                </div>
-                {form.allowGroupResponse && (
-                  <div className="space-y-5 animate-in slide-in-from-top-2 duration-300">
-                    <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 text-[10px] font-bold text-indigo-300 uppercase tracking-widest flex gap-3">
-                      <span className="text-indigo-400">⚡</span>
-                      <span>HYPER-VOLUME MODE: ENSURE WHITELIST COMPLIANCE TO PREVENT BUFFER OVERFLOW</span>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block">Allowed Channel IDs (JIDS)</label>
-                      <textarea
-                        value={form.allowedGroupsText}
-                        onChange={e => setForm({ ...form, allowedGroupsText: e.target.value })}
-                        rows={3}
-                        className="w-full bg-zinc-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-indigo-500/30 transition-all font-mono custom-scrollbar"
-                        placeholder={`123456789@g.us\n987654321@g.us`}
-                      />
-                      <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-tighter">Enter one Group JID per line. Empty = Global Unrestricted (NOT RECOMMENDED)</p>
-                    </div>
-                  </div>
-                )}
-              </div>
 
               {/* Follow Up */}
               <div className={`glass-card p-6 border transition-all duration-500 bg-zinc-900/40 ${form.followUpEnabled ? 'border-amber-500/30' : 'border-white/5'}`}>
@@ -1048,80 +1059,184 @@ export default function Agents() {
 
           {/* ─── RIGHT PANEL: Live Test Chat ─── */}
           <div className="w-2/5 flex flex-col bg-[#08080a]">
-            {/* Chat Header */}
-            < div className="h-20 flex items-center justify-between px-8 border-b border-white/5 bg-zinc-950/40 backdrop-blur-xl" >
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-0.5">
-                    <div className="w-full h-full rounded-[10px] bg-[#0c0c0e] flex items-center justify-center">
-                      <CpuChipIcon className="h-5 w-5 text-indigo-400" />
-                    </div>
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0c0c0e] shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-                </div>
-                <div>
-                  <h3 className="text-xs font-black text-white uppercase tracking-widest italic truncate max-w-[150px]">
-                    {form.name || 'UNNAMED_ENTITY'}
-                  </h3>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-tighter bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">PREVIEW_MODE</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse border border-red-500/50"></div>
-                <span className="text-[10px] font-black text-zinc-500 tracking-widest uppercase">STAGING</span>
-              </div>
-            </div >
-
-            {/* Chat Messages */}
-            < div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-[radial-gradient(circle_at_50%_50%,rgba(71,37,244,0.03),transparent)]" >
-              {
-                chatMessages.length === 0 && (
-                  <div className="flex flex-col items-center justify-center h-full text-center max-w-xs mx-auto">
-                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center mb-6 shadow-2xl">
-                      <ChatBubbleLeftRightIcon className="h-8 w-8 text-indigo-500/40" />
-                    </div>
-                    <h4 className="text-xs font-black text-white uppercase tracking-widest mb-2">NEURAL LINK STANDBY</h4>
-                    <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter leading-relaxed">
-                      DEPLOY MODULE OR SAVE ASSETS TO INITIALIZE LIVE INTERFACING PROTOCOL.
-                    </p>
-                  </div>
-                )
-              }
-              {
-                chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                    <div className={`relative max-w-[85%] px-5 py-3.5 text-xs font-medium leading-relaxed
-                    ${msg.role === 'user'
-                        ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-none shadow-lg shadow-indigo-500/10 border border-indigo-400/20'
-                        : 'bg-[#121215] border border-white/5 text-zinc-300 rounded-2xl rounded-tl-none'
-                      }`}>
-                      {msg.role === 'assistant' && (
-                        <div className="absolute -left-2 -top-2 w-4 h-4 rounded-full bg-[#121215] border border-white/10 flex items-center justify-center">
-                          <CpuChipIcon className="w-2 h-2 text-indigo-400" />
-                        </div>
-                      )}
-                      {msg.content}
-                    </div>
-                  </div>
-                ))
-              }
-              {
-                chatLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-[#121215] border border-white/5 rounded-2xl rounded-tl-none px-5 py-4">
-                      <div className="flex gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-300 animate-bounce" style={{ animationDelay: '300ms' }} />
+            {/* Preview Header & Tabs */}
+            <div className="border-b border-white/5 bg-zinc-950/40 backdrop-blur-xl shrink-0">
+              <div className="h-20 flex items-center justify-between px-8">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-0.5">
+                      <div className="w-full h-full rounded-[10px] bg-[#0c0c0e] flex items-center justify-center">
+                        <CpuChipIcon className="h-5 w-5 text-indigo-400" />
                       </div>
                     </div>
+                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0c0c0e] shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
                   </div>
-                )
-              }
-              <div ref={chatEndRef} />
-            </div >
+                  <div>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest italic truncate max-w-[150px]">
+                      {form.name || 'UNNAMED_ENTITY'}
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-tighter bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">PREVIEW_MODE</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setChatMessages([]);
+                      setMockContact({
+                        firstName: 'John',
+                        lastName: 'Doe',
+                        email: 'test@example.com',
+                        phone: '+201234567890',
+                        lifecycleStage: 'New Lead',
+                        assignee: 'Sales agent',
+                        tags: ['%new_lead'],
+                      });
+                    }}
+                    className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-xl transition-all flex items-center gap-2"
+                    title="Reset Neural Pulse"
+                  >
+                    <ArrowPathIcon className="h-4 w-4" />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Reset Chat</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* TABS */}
+              <div className="flex px-8 -mb-px">
+                <button
+                  onClick={() => setPreviewTab('chat')}
+                  className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${previewTab === 'chat'
+                    ? 'border-indigo-500 text-white'
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                    }`}
+                >
+                  Chat
+                </button>
+                <button
+                  onClick={() => setPreviewTab('fields')}
+                  className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${previewTab === 'fields'
+                    ? 'border-indigo-500 text-white'
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                    }`}
+                >
+                  Contact fields
+                </button>
+              </div>
+            </div>
+
+            {/* Chat Messages */}
+            {previewTab === 'chat' ? (
+              < div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-[radial-gradient(circle_at_50%_50%,rgba(71,37,244,0.03),transparent)]" >
+                {
+                  chatMessages.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-center max-w-xs mx-auto">
+                      <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center mb-6 shadow-2xl">
+                        <ChatBubbleLeftRightIcon className="h-8 w-8 text-indigo-500/40" />
+                      </div>
+                      <h4 className="text-xs font-black text-white uppercase tracking-widest mb-2">NEURAL LINK STANDBY</h4>
+                      <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter leading-relaxed">
+                        DEPLOY MODULE OR SAVE ASSETS TO INITIALIZE LIVE INTERFACING PROTOCOL.
+                      </p>
+                    </div>
+                  )
+                }
+                {
+                  chatMessages.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                      <div className={`relative max-w-[85%] px-5 py-3.5 text-xs font-medium leading-relaxed
+                    ${msg.role === 'user'
+                          ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-none shadow-lg shadow-indigo-500/10 border border-indigo-400/20'
+                          : 'bg-[#121215] border border-white/5 text-zinc-300 rounded-2xl rounded-tl-none'
+                        }`}>
+                        {msg.role === 'assistant' && (
+                          <div className="absolute -left-2 -top-2 w-4 h-4 rounded-full bg-[#121215] border border-white/10 flex items-center justify-center">
+                            <CpuChipIcon className="w-2 h-2 text-indigo-400" />
+                          </div>
+                        )}
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))
+                }
+                {
+                  chatLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-[#121215] border border-white/5 rounded-2xl rounded-tl-none px-5 py-4">
+                        <div className="flex gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-300 animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                <div ref={chatEndRef} />
+              </div >
+            ) : (
+              /* Contact Fields View */
+              <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar bg-zinc-950/20">
+                <div className="space-y-6">
+                  {/* Lifecycle */}
+                  <div>
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-2">Lifecycle</label>
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 group transition-all hover:bg-white/10">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] p-1 bg-indigo-500/20 text-indigo-400 rounded leading-none">NEW</span>
+                        <span className="text-xs font-bold text-white uppercase">{mockContact.lifecycleStage}</span>
+                      </div>
+                      <ChevronDownIcon className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400" />
+                    </div>
+                  </div>
+
+                  {/* Assignee */}
+                  <div>
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-2">Assignee</label>
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 group transition-all hover:bg-white/10">
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center text-[10px]">👨‍💼</div>
+                        <span className="text-xs font-bold text-white uppercase">{mockContact.assignee}</span>
+                      </div>
+                      <ChevronDownIcon className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400" />
+                    </div>
+                  </div>
+
+                  {/* Standard Fields */}
+                  <div className="grid gap-4">
+                    {[
+                      { label: 'First Name', value: mockContact.firstName },
+                      { label: 'Last Name', value: mockContact.lastName },
+                      { label: 'Phone Number', value: mockContact.phone },
+                      { label: 'Email Address', value: mockContact.email },
+                    ].map(field => (
+                      <div key={field.label}>
+                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-1">
+                          {field.label} <span className="text-zinc-700 italic ml-1">i</span>
+                        </label>
+                        <p className="text-sm font-bold text-white ml-0.5">{field.value || '—'}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Tags Section */}
+                  <div className="pt-6 border-t border-white/5">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-3">Active Tags</label>
+                    <div className="flex flex-wrap gap-2">
+                      {mockContact.tags.map(tag => (
+                        <span key={tag} className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black text-indigo-400 uppercase tracking-widest">
+                          {tag}
+                        </span>
+                      ))}
+                      {mockContact.tags.length === 0 && (
+                        <span className="text-[10px] font-bold text-zinc-700 uppercase italic">No tags assigned</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Chat Input */}
             < div className="p-6 border-t border-white/5 bg-zinc-950/40 backdrop-blur-xl" >
