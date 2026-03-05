@@ -16,6 +16,11 @@ frontend/src/
   hooks/           ← Custom React hooks
 ```
 
+## Reusable Components
+- `RichTextarea.jsx`: Premium input component with autocomplete suggestions for `@` (agents/teams), `{{` (variables), and `%` (tags). Supports AI optimization.
+- `ActionCard.jsx`: Standardized card for AI agent actions, configurable with `RichTextarea` and optional footer inputs.
+- `HttpRequestSideSheet.jsx`: Side sheet for configuring custom API calls (Method, URL, Headers, Body, Params). Supports variable injection.
+
 ## Pages
 | Route | File | Description |
 |---|---|---|

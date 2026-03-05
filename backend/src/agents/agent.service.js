@@ -230,41 +230,57 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
       prompt += `\n\nGreeting (use this for first interaction): ${agent.greeting}`;
     }
 
-    // Phase 4: Inject Action Instructions
+    // AI Agent Redesign: 8 Respond.io Actions
     if (agent.actionConfig) {
       const actions = agent.actionConfig;
       let actionPrompts = [];
 
+      // 1. Close Conversation
       if (actions.closeConversation?.enabled) {
-        actionPrompts.push(`- CLOSE CONVERSATION: If ${actions.closeConversation.instructions}, append [ACTION: CLOSE_CONVERSATION] to your response.`);
+        actionPrompts.push(`- TERMINATE_SESSION: When ${actions.closeConversation.instructions}, output [ACTION: CLOSE_CONVERSATION]`);
       }
 
+      // 2. Assign Agent/Team
       if (actions.assignAgent?.enabled) {
-        actionPrompts.push(`- ASSIGN AGENT: If ${actions.assignAgent.instructions}, append [ACTION: ASSIGN: <AgentName or HUMAN>] to your response.`);
+        actionPrompts.push(`- ROUTING_PROTOCOL: When ${actions.assignAgent.instructions}, output [ACTION: ASSIGN: <AgentName or TEAM:TeamName>]`);
       }
 
+      // 3. Update Contact Fields
       if (actions.updateFields?.enabled) {
-        actionPrompts.push(`- UPDATE CONTACT: If ${actions.updateFields.instructions}, append [ACTION: UPDATE_CONTACT: {"field": "value"}] to your response.`);
+        actionPrompts.push(`- IDENTITY_INDEXING: When ${actions.updateFields.instructions}, output [ACTION: UPDATE_CONTACT: {"field": "value"}]`);
       }
 
+      // 4. Update Lifecycle
       if (actions.updateLifecycle?.enabled) {
-        actionPrompts.push(`- UPDATE LIFECYCLE: If ${actions.updateLifecycle.instructions}, append [ACTION: UPDATE_LIFECYCLE: <StageName>] to your response.`);
+        actionPrompts.push(`- STAGE_TRANSITION: When ${actions.updateLifecycle.instructions}, output [ACTION: UPDATE_LIFECYCLE: <StageName>]`);
       }
 
+      // 5. Trigger Workflow
       if (actions.triggerWorkflow?.enabled) {
-        actionPrompts.push(`- TRIGGER WORKFLOW: If ${actions.triggerWorkflow.instructions}, append [ACTION: TRIGGER_WORKFLOW: <WorkflowID>] to your response.`);
+        actionPrompts.push(`- WORKFLOW_INJECTION: When ${actions.triggerWorkflow.instructions}, output [ACTION: TRIGGER_WORKFLOW: <WorkflowName>]`);
       }
 
-      if (actions.addTag?.enabled) {
-        actionPrompts.push(`- ADD TAG: If ${actions.addTag.instructions}, append [ACTION: ADD_TAG: <TagName>] to your response.`);
+      // 6. Update Tags (Unified)
+      if (actions.updateTags?.enabled) {
+        actionPrompts.push(`- TAG_MODIFICATION: When ${actions.updateTags.instructions}, output [ACTION: ADD_TAG: <TagName>] or [ACTION: REMOVE_TAG: <TagName>]`);
       }
 
-      if (actions.removeTag?.enabled) {
-        actionPrompts.push(`- REMOVE TAG: If ${actions.removeTag.instructions}, append [ACTION: REMOVE_TAG: <TagName>] to your response.`);
+      // 7. Add Internal Comment
+      if (actions.addComment?.enabled) {
+        actionPrompts.push(`- INTERNAL_CONTEXT: When ${actions.addComment.instructions}, output [ACTION: ADD_COMMENT: "your internal note here"]`);
+      }
+
+      // 8. HTTP Requests (Multiple)
+      if (actions.httpRequests?.enabled && actions.httpRequests.actions?.length > 0) {
+        actions.httpRequests.actions.forEach(req => {
+          actionPrompts.push(`- NETWORK_COMMAND (${req.name}): When ${req.instructions}, output [ACTION: HTTP_REQUEST: ${req.name}]`);
+        });
       }
 
       if (actionPrompts.length > 0) {
-        prompt += `\n\nCAPABILITIES & ACTIONS:\nYou can perform the following actions by appending the specific tag to your response:\n${actionPrompts.join('\n')}`;
+        prompt += `\n\nDYNAMIC CAPABILITIES (PROTOCOL ENFORCED):\nYou are authorized to execute the following actions by appending the exact command tag to your final response. 
+Actions must be performed BEFORE or DURING your response to the user.
+${actionPrompts.join('\n')}`;
       }
     }
 
@@ -638,9 +654,104 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
           }
         }
 
+        // ADD_COMMENT (Internal Context)
+        else if (actionString.startsWith('ADD_COMMENT:')) {
+          const comment = actionString.replace('ADD_COMMENT:', '').trim();
+          try {
+            await prisma.contactNote.create({
+              data: {
+                tenantId: agent.tenantId,
+                contactNumber: conversation.contactNumber,
+                content: comment,
+                type: 'ai_agent'
+              }
+            });
+          } catch (e) {
+            console.log(`[AgentService] AI Comment: ${comment}`);
+          }
+        }
+
+        // HTTP_REQUEST (Network Command)
+        else if (actionString.startsWith('HTTP_REQUEST:')) {
+          const requestName = actionString.replace('HTTP_REQUEST:', '').trim();
+          const httpActions = agent.actionConfig?.httpRequests?.actions || [];
+          const reqConfig = httpActions.find(r => r.name === requestName);
+
+          if (reqConfig) {
+            console.log(`[AgentService] Executing HTTP Action: ${requestName}`);
+            this.executeHttpRequest(reqConfig, { conversation, agent, message }).catch(err => {
+              console.error(`[AgentService] HTTP Action \${requestName} failed:`, err.message);
+            });
+          }
+        }
+
       } catch (err) {
         console.error(`[AgentService] Failed to execute action "${actionString}":`, err);
       }
+    }
+  }
+
+  /**
+   * Execute custom HTTP Request from Agent Config
+   */
+  async executeHttpRequest(config, { conversation, agent, message }) {
+    const axios = require('axios');
+
+    // 1. Variable Substitution
+    let url = config.url;
+    let body = config.body || '';
+
+    const context = {
+      contact: {
+        name: conversation.contactName,
+        number: conversation.contactNumber,
+        id: conversation.contactId
+      },
+      agent: {
+        name: agent.name,
+        id: agent.id
+      },
+      message: {
+        content: message
+      }
+    };
+
+    // Simple placeholder replacement: {{contact.name}} -> context.contact.name
+    const replaceVars = (str) => {
+      return str.replace(/\{\{(.*?)\}\}/g, (match, path) => {
+        const parts = path.trim().split('.');
+        let val = context;
+        for (const part of parts) {
+          val = val?.[part];
+        }
+        return val !== undefined ? val : match;
+      });
+    };
+
+    url = replaceVars(url);
+    if (typeof body === 'string') body = replaceVars(body);
+
+    const headers = {};
+    (config.headers || []).forEach(h => { if (h.key) headers[h.key] = replaceVars(h.value); });
+
+    const params = {};
+    (config.params || []).forEach(p => { if (p.key) params[p.key] = replaceVars(p.value); });
+
+    // 2. Perform Request
+    try {
+      const response = await axios({
+        method: config.method || 'POST',
+        url,
+        headers,
+        params,
+        data: (config.method !== 'GET') ? (typeof body === 'string' ? JSON.parse(body) : body) : undefined,
+        timeout: 10000
+      });
+
+      console.log(`[AgentService] HTTP Action ${config.name} success:`, response.status);
+      return response.data;
+    } catch (error) {
+      throw new Error(`HTTP ${config.method} to ${url} failed: ${error.message}`);
     }
   }
 

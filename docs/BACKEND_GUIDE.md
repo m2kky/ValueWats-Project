@@ -27,6 +27,24 @@ All routes are prefixed with `/api`. Nginx proxies `/api` to `localhost:3000`.
 | `src/agents/` | AI agent system |
 | `prisma/schema.prisma` | Full database schema (26 models) |
 
+## AI Agent Action System
+The AI Agent executes actions by outputting specific `[ACTION: TYPE: DATA]` tags.
+
+### Standard Actions (Respond.io Protocol)
+1. **`CLOSE_CONVERSATION`**: Sets status to closed.
+2. **`ASSIGN`**: Routes to agent or team (`TEAM:GroupName`).
+3. **`UPDATE_CONTACT`**: Updates CRM fields via JSON payload.
+4. **`UPDATE_LIFECYCLE`**: Changes contact stage in pipeline.
+5. **`TRIGGER_WORKFLOW`**: Fires an internal automation workflow.
+6. **`ADD_TAG` / `REMOVE_TAG`**: Manages contact labels.
+7. **`ADD_COMMENT`**: Adds an internal note (Agent Context).
+8. **`HTTP_REQUEST`**: Executes a custom configured tool/API call.
+
+### Universal HTTP Connector
+- Handled by `executeHttpRequest` in `agent.service.js`.
+- Supports variable substitution in URLs and Body using `{{contact.field}}` or `{{agent.name}}`.
+- Uses `axios` for network calls with a 10s timeout.
+
 ## Anti-Ban System (Implemented)
 All outbound campaign messages pass through `queueService.js` with these protections:
 

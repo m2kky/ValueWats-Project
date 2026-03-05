@@ -8,7 +8,7 @@
 - [x] 1. **Resolve AI Agent Response Issues** (Harmonized field names and fixed Prisma validation) - 2026-02-27
 - [x] 2. **Resolve Evolution API DNS/Instance Issues** (Monitoring needed)
 - [x] 3. **Implement CRM System** (Contacts, Labels, Notes, Lifecycle Stages) — Schema + Backend + Frontend
-- [x] 4. **Implement Agent Actions** (8 distinct actions like respond.io) - Premium single-page UI & backend injection
+- [x] 4. **Implement Agent Actions** (8 distinct actions like respond.io) - Premium single-page UI, RichTextarea, and universal HTTP connector.
 - [ ] 5. **Implement Agent Tools** (Google Calendar, Google Sheets, Google Drive, Email, WhatsApp Notifications)
 - [ ] 6. **Implement Activity Feed** (Chat Banner & CRM Timeline)
 - [ ] 7. **Implement Saved Segments & Retargeting** (Smart filtering)

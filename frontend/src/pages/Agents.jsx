@@ -23,6 +23,7 @@ import {
   DocumentIcon,
 } from '@heroicons/react/24/outline';
 import ActionCard from '../components/ActionCard';
+import HttpRequestSideSheet from '../components/HttpRequestSideSheet';
 
 // ─── Template metadata (emoji + descriptions) ───
 const templateMeta = {
@@ -79,7 +80,17 @@ const defaultForm = {
   allowGroupResponse: false,
   allowedGroups: [], // as array
   allowedGroupsText: '', // for textarea input
-  actionConfig: {},
+  // Phase 1 Redesign: 8 Respond.io Actions
+  actionConfig: {
+    closeConversation: { enabled: false, instructions: '' },
+    assignAgent: { enabled: false, instructions: '' },
+    updateLifecycle: { enabled: false, instructions: '', stageId: null },
+    updateFields: { enabled: false, instructions: '' },
+    updateTags: { enabled: true, instructions: '', type: 'add' }, // unified
+    triggerWorkflow: { enabled: false, instructions: '' },
+    addComment: { enabled: false, instructions: '' },
+    httpRequests: { enabled: false, actions: [] }, // Multiple actions support
+  },
 };
 
 export default function Agents() {
@@ -110,20 +121,42 @@ export default function Agents() {
   const [kbContent, setKbContent] = useState('');
   const [kbFile, setKbFile] = useState(null);
 
-  // Integrations for tool linking
-  const [tenantIntegrations, setTenantIntegrations] = useState([]);
+  // HTTP Request Side Sheet
+  const [httpActionToEdit, setHttpActionToEdit] = useState(null); // null for new
+  const [isHttpSheetOpen, setIsHttpSheetOpen] = useState(false);
+  const [editingHttpIndex, setEditingHttpIndex] = useState(-1);
+
+  // ─── State for RichTextarea Lookups ───
+  const [availableTags, setAvailableTags] = useState([]);
+  const [availableAgents, setAvailableAgents] = useState([]);
+  const [availableTeams, setAvailableTeams] = useState([]);
+  const [availableLifecycleStages, setAvailableLifecycleStages] = useState([]);
 
   useEffect(() => {
     fetchAgents();
-    // Fetch integrations for tool dropdowns
-    const loadIntegrations = async () => {
+    // Fetch lookups for actions
+    const loadLookups = async () => {
       try {
         const { default: api } = await import('../api/client');
-        const { data } = await api.get('/integrations');
-        setTenantIntegrations(data.integrations || []);
-      } catch (e) { console.warn('Could not load integrations', e); }
+
+        // Use Promise.all if endpoint exists. Fallback to empty if not.
+        const [tagsRes, usersRes, teamsRes, stagesRes] = await Promise.allSettled([
+          api.get('/tags'),
+          api.get('/users/all'),
+          api.get('/teams'),
+          api.get('/lifecycle-stages'),
+        ]);
+
+        if (tagsRes.status === 'fulfilled') setAvailableTags((tagsRes.value.data.tags || []).map(t => ({ label: t.name, value: `%${t.name}` })));
+        if (usersRes.status === 'fulfilled') setAvailableAgents((usersRes.value.data.users || []).map(u => ({ label: u.name, value: `@${u.name}` })));
+        if (teamsRes.status === 'fulfilled') setAvailableTeams((teamsRes.value.data.teams || []).map(t => ({ label: t.name, value: `@${t.name}` })));
+        if (stagesRes.status === 'fulfilled') setAvailableLifecycleStages(stagesRes.value.data.stages || []);
+
+        const integrationsRes = await api.get('/integrations');
+        setTenantIntegrations(integrationsRes.data.integrations || []);
+      } catch (e) { console.warn('Could not load lookups', e); }
     };
-    loadIntegrations();
+    loadLookups();
   }, [fetchAgents]);
 
   useEffect(() => {
@@ -659,6 +692,7 @@ export default function Agents() {
                     config={form.actionConfig?.closeConversation?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, closeConversation: { ...f.actionConfig.closeConversation, instructions: val } } }))}
                     placeholder="CRITERIA: USER SIGN-OFF, RESOLVED QUERY, OR END-OF-FLOW..."
+                    variables={availableTags} // Just in case
                   />
 
                   <ActionCard
@@ -669,6 +703,8 @@ export default function Agents() {
                     config={form.actionConfig?.assignAgent?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, assignAgent: { ...f.actionConfig.assignAgent, instructions: val } } }))}
                     placeholder="IF: TECHNICAL ANOMALY DETECTED -> ROUTE TO SUPPORT_TIER_2..."
+                    mentions={[...availableAgents, ...availableTeams]}
+                    showMentions={true}
                   />
 
                   <ActionCard
@@ -689,7 +725,23 @@ export default function Agents() {
                     config={form.actionConfig?.updateLifecycle?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, instructions: val } } }))}
                     placeholder="UPON HIGH_INTENT DETECTION -> TRIGGER STAGE: QUALIFIED_LEAD..."
-                  />
+                  >
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {availableLifecycleStages.map(stage => (
+                        <button
+                          key={stage.id}
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, stageId: stage.id } } }))}
+                          className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${form.actionConfig?.updateLifecycle?.stageId === stage.id
+                            ? 'bg-indigo-600 border-indigo-500 text-white shadow-[0_0_10px_rgba(71,37,244,0.3)]'
+                            : 'bg-white/5 border-white/5 text-zinc-500 hover:border-white/10'
+                            }`}
+                        >
+                          {stage.name}
+                        </button>
+                      ))}
+                    </div>
+                  </ActionCard>
 
                   <ActionCard
                     title="WORKFLOW INJECTION"
@@ -697,97 +749,97 @@ export default function Agents() {
                     enabled={form.actionConfig?.triggerWorkflow?.enabled || false}
                     setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, triggerWorkflow: { ...f.actionConfig.triggerWorkflow, enabled: val } } }))}
                     config={form.actionConfig?.triggerWorkflow?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, triggerWorkflow: { ...f.actionConfig.triggerWorkflow, instructions: val } } }))}
                     placeholder="POST-ONBOARDING: TRIGGER GOOGLE_SHEET_APPEND..."
                   />
 
                   <ActionCard
-                    title="TAG INJECTION"
-                    description="APPEND LABELS/TAGS TO CONTACTS BASED ON CONVERSATION CONTEXT."
-                    enabled={form.actionConfig?.addTag?.enabled || false}
-                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, addTag: { ...f.actionConfig.addTag, enabled: val } } }))}
-                    config={form.actionConfig?.addTag?.instructions || ''}
-                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, addTag: { ...f.actionConfig.addTag, instructions: val } } }))}
-                    placeholder="IF: USER EXPRESSES PURCHASE INTENT -> ADD_TAG: hot_lead..."
+                    title="TAG MODIFICATION"
+                    description="APPEND OR REMOVE LABELS/TAGS BASED ON CONVERSATION CONTEXT."
+                    enabled={form.actionConfig?.updateTags?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateTags: { ...f.actionConfig.updateTags, enabled: val } } }))}
+                    config={form.actionConfig?.updateTags?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateTags: { ...f.actionConfig.updateTags, instructions: val } } }))}
+                    placeholder="IF: ISSUE RESOLVED -> REMOVE_TAG: %needs_support..."
+                    tags={availableTags}
+                    showTags={true}
                   />
 
                   <ActionCard
-                    title="TAG REMOVAL"
-                    description="REMOVE LABELS/TAGS FROM CONTACTS WHEN CONDITIONS ARE MET."
-                    enabled={form.actionConfig?.removeTag?.enabled || false}
-                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, removeTag: { ...f.actionConfig.removeTag, enabled: val } } }))}
-                    config={form.actionConfig?.removeTag?.instructions || ''}
-                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, removeTag: { ...f.actionConfig.removeTag, instructions: val } } }))}
-                    placeholder="IF: ISSUE RESOLVED -> REMOVE_TAG: needs_support..."
+                    title="INTERNAL CONTEXT"
+                    description="ADD INTERNAL COMMENTS FOR AGENT HANDOFF OR AUDIT LOGS."
+                    enabled={form.actionConfig?.addComment?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, addComment: { ...f.actionConfig.addComment, enabled: val } } }))}
+                    config={form.actionConfig?.addComment?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, addComment: { ...f.actionConfig.addComment, instructions: val } } }))}
+                    placeholder="NOTE: USER IS UPSET. PRIORITIZE IMMEDIATE RETENTION FLOW..."
                   />
 
-                  {/* ─── GOOGLE CALENDAR TOOLS ─── */}
-                  <ActionCard
-                    title="CALENDAR — CREATE EVENT"
-                    description="CREATE EVENTS ON GOOGLE CALENDAR VIA AI TOOL CALL."
-                    enabled={form.actionConfig?.google_calendar_create?.enabled || false}
-                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, google_calendar_create: { ...f.actionConfig.google_calendar_create, enabled: val } } }))}
-                    config={form.actionConfig?.google_calendar_create?.instructions || ''}
-                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, google_calendar_create: { ...f.actionConfig.google_calendar_create, instructions: val } } }))}
-                    placeholder="WHEN USER WANTS TO BOOK A MEETING, CREATE CALENDAR EVENT..."
-                  />
-                  {form.actionConfig?.google_calendar_create?.enabled && (
-                    <div className="glass-card p-4 border border-indigo-500/20 bg-zinc-900/40 -mt-4 rounded-t-none">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-2">LINKED INTEGRATION</label>
-                      <select
-                        value={form.actionConfig?.google_calendar_create?.integrationId || ''}
-                        onChange={(e) => setForm(f => ({
-                          ...f,
-                          actionConfig: {
-                            ...f.actionConfig,
-                            google_calendar_create: {
-                              ...f.actionConfig.google_calendar_create,
-                              integrationId: e.target.value
-                            }
-                          }
-                        }))}
-                        className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/30 transition-all font-bold cursor-pointer"
+                  <div className={`glass-card p-6 border transition-all duration-500 bg-zinc-900/40 relative overflow-hidden ${form.actionConfig?.httpRequests?.enabled ? 'border-indigo-500/30' : 'border-white/5 opacity-80'}`}>
+                    {form.actionConfig?.httpRequests?.enabled && (
+                      <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-600"></div>
+                    )}
+
+                    <div className={`flex items-center justify-between ${form.actionConfig?.httpRequests?.enabled ? 'mb-4 border-b border-white/5 pb-4' : ''}`}>
+                      <div>
+                        <h3 className={`text-sm font-black uppercase italic tracking-widest ${form.actionConfig?.httpRequests?.enabled ? 'text-indigo-400' : 'text-zinc-500'}`}>NETWORK COMMAND CENTER</h3>
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">EXECUTE CUSTOM HTTP REQUESTS TO EXTERNAL APIS.</p>
+                      </div>
+                      <button
+                        onClick={() => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, httpRequests: { ...f.actionConfig.httpRequests, enabled: !f.actionConfig.httpRequests?.enabled } } }))}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${form.actionConfig?.httpRequests?.enabled ? 'bg-indigo-600' : 'bg-zinc-800'}`}
                       >
-                        <option value="" className="bg-zinc-900">— SELECT GOOGLE CALENDAR INTEGRATION —</option>
-                        {tenantIntegrations.filter(i => i.type === 'google_calendar').map(i => (
-                          <option key={i.id} value={i.id} className="bg-zinc-900">{i.name} ({i.status})</option>
-                        ))}
-                      </select>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${form.actionConfig?.httpRequests?.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
                     </div>
-                  )}
 
-                  <ActionCard
-                    title="CALENDAR — READ EVENTS"
-                    description="LIST UPCOMING EVENTS FROM GOOGLE CALENDAR VIA AI TOOL CALL."
-                    enabled={form.actionConfig?.google_calendar_read?.enabled || false}
-                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, google_calendar_read: { ...f.actionConfig.google_calendar_read, enabled: val } } }))}
-                    config={form.actionConfig?.google_calendar_read?.instructions || ''}
-                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, google_calendar_read: { ...f.actionConfig.google_calendar_read, instructions: val } } }))}
-                    placeholder="WHEN USER ASKS ABOUT AVAILABILITY, LIST CALENDAR EVENTS..."
-                  />
-                  {form.actionConfig?.google_calendar_read?.enabled && (
-                    <div className="glass-card p-4 border border-indigo-500/20 bg-zinc-900/40 -mt-4 rounded-t-none">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-2">LINKED INTEGRATION</label>
-                      <select
-                        value={form.actionConfig?.google_calendar_read?.integrationId || ''}
-                        onChange={(e) => setForm(f => ({
-                          ...f,
-                          actionConfig: {
-                            ...f.actionConfig,
-                            google_calendar_read: {
-                              ...f.actionConfig.google_calendar_read,
-                              integrationId: e.target.value
-                            }
-                          }
-                        }))}
-                        className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/30 transition-all font-bold cursor-pointer"
-                      >
-                        <option value="" className="bg-zinc-900">— SELECT GOOGLE CALENDAR INTEGRATION —</option>
-                        {tenantIntegrations.filter(i => i.type === 'google_calendar').map(i => (
-                          <option key={i.id} value={i.id} className="bg-zinc-900">{i.name} ({i.status})</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+                    {form.actionConfig?.httpRequests?.enabled && (
+                      <div className="space-y-4 animate-in slide-in-from-top-4 duration-300">
+                        <div className="space-y-3">
+                          {(form.actionConfig?.httpRequests?.actions || []).map((action, index) => (
+                            <div key={index} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 group hover:border-white/10 transition-all">
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
+                                  <CommandLineIcon className="h-5 w-5 text-indigo-400" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-black text-white uppercase tracking-tight italic">{action.name}</p>
+                                  <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{action.method} • {action.url.slice(0, 30)}...</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => { setHttpActionToEdit(action); setEditingHttpIndex(index); setIsHttpSheetOpen(true); }}
+                                  className="p-2 text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all"
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const newActions = form.actionConfig.httpRequests.actions.filter((_, i) => i !== index);
+                                    setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, httpRequests: { ...f.actionConfig.httpRequests, actions: newActions } } }));
+                                  }}
+                                  className="p-2 text-zinc-600 hover:text-rose-500 transition-colors"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+
+                          {(form.actionConfig?.httpRequests?.actions || []).length < 10 && (
+                            <button
+                              onClick={() => { setHttpActionToEdit(null); setEditingHttpIndex(-1); setIsHttpSheetOpen(true); }}
+                              className="w-full py-4 border-2 border-dashed border-white/5 rounded-xl text-[10px] font-black text-zinc-500 hover:text-indigo-400 hover:border-indigo-500/20 transition-all flex flex-col items-center gap-2 bg-white/5 active:scale-95"
+                            >
+                              <PlusIcon className="h-5 w-5" />
+                              ADD NEW NETWORK COMMAND
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1082,6 +1134,25 @@ export default function Agents() {
             </div >
           </div >
         </div >
+
+        <HttpRequestSideSheet
+          isOpen={isHttpSheetOpen}
+          onClose={() => { setIsHttpSheetOpen(false); setHttpActionToEdit(null); }}
+          action={httpActionToEdit}
+          availableTags={availableTags}
+          availableAgents={[...availableAgents, ...availableTeams]}
+          onSave={(data) => {
+            const currentActions = form.actionConfig.httpRequests?.actions || [];
+            let newActions;
+            if (editingHttpIndex >= 0) {
+              newActions = [...currentActions];
+              newActions[editingHttpIndex] = data;
+            } else {
+              newActions = [...currentActions, data];
+            }
+            setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, httpRequests: { ...f.actionConfig.httpRequests, actions: newActions } } }));
+          }}
+        />
       </div >
     );
   }
@@ -1231,6 +1302,25 @@ export default function Agents() {
           </div>
         )}
       </div>
+
+      <HttpRequestSideSheet
+        isOpen={isHttpSheetOpen}
+        onClose={() => { setIsHttpSheetOpen(false); setHttpActionToEdit(null); }}
+        action={httpActionToEdit}
+        availableTags={availableTags}
+        availableAgents={[...availableAgents, ...availableTeams]}
+        onSave={(data) => {
+          const currentActions = form.actionConfig.httpRequests?.actions || [];
+          let newActions;
+          if (editingHttpIndex >= 0) {
+            newActions = [...currentActions];
+            newActions[editingHttpIndex] = data;
+          } else {
+            newActions = [...currentActions, data];
+          }
+          setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, httpRequests: { ...f.actionConfig.httpRequests, actions: newActions } } }));
+        }}
+      />
     </div>
   );
 }

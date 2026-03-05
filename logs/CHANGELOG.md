@@ -14,6 +14,11 @@ All notable changes to the ValueWats project, tracked by date.
 - **Agent Google Calendar Tools**: AI Agents can create events and list upcoming events on Google Calendar via DeepSeek function calls. Tools are dynamically loaded based on `actionConfig` and linked to tenant Integrations.
 - **Agent Tool Integration Linking**: New `integrationId` field on `AgentAction` model links agent tools to authenticated Integration credentials (Prisma schema update).
 - **Agent Action UI Expansion**: Added 4 new ActionCards in the Agent Editor: Tag Injection, Tag Removal, Calendar Create Event, and Calendar Read Events — each with integration selector dropdowns.
+- **AI Agent Action Overhaul (Respond.io Replica)**: Completely redesigned the AI Agent actions system.
+  - New `RichTextarea` component with real-time `@mention`, `{{variable}}`, and `%tag` suggestions.
+  - Standardized 8 core actions: Terminate Session, Routing Protocol, Identity Indexing, Stage Transition, Workflow Injection, Tag Modification, Internal Context (ADD_COMMENT), and Network Command Center (HTTP Requests).
+  - Integrated `HttpRequestSideSheet` for advanced multi-action HTTP request configuration (up to 10 per agent) with URL/Body variable substitution.
+  - Backend `agent.service.js` updated to enforce action protocols in system prompts and execute the 8 actions in real-time.
 
 ### Fixed
 - **Missing Dependency**: Resolved a Vite import-analysis error by running `npm install` to restore the missing `@react-oauth/google` package.
