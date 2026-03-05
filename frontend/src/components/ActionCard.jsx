@@ -18,7 +18,7 @@ export default function ActionCard({
   children // For extra config fields like chips or dropdowns
 }) {
   return (
-    <div className={`glass-card p-6 border transition-all duration-500 bg-zinc-900/40 relative overflow-hidden ${enabled ? 'border-indigo-500/30 shadow-[0_0_15px_rgba(79,70,229,0.05)]' : 'border-white/5 opacity-80'}`}>
+    <div className={`glass-card p-6 border transition-all duration-500 bg-zinc-900/40 relative ${enabled ? 'border-indigo-500/30 shadow-[0_0_15px_rgba(79,70,229,0.05)]' : 'border-white/5 opacity-80'}`}>
 
       {/* Decorative gradient for enabled state */}
       {enabled && (

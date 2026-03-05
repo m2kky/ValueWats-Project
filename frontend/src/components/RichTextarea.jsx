@@ -29,6 +29,10 @@ export default function RichTextarea({
     const getTriggerInfo = (text, cursorPosition) => {
         const textBeforeCursor = text.substring(0, cursorPosition);
 
+        // Check for Variables ({{) - Check this first because it's double char
+        const varMatch = textBeforeCursor.match(/\{\{([^}]*)$/);
+        if (varMatch) return { type: 'variable', filter: varMatch[1], start: varMatch.index };
+
         // Check for Mentions (@)
         const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
         if (mentionMatch) return { type: 'mention', filter: mentionMatch[1], start: mentionMatch.index };
@@ -36,10 +40,6 @@ export default function RichTextarea({
         // Check for Tags (%)
         const tagMatch = textBeforeCursor.match(/%(\w*)$/);
         if (tagMatch) return { type: 'tag', filter: tagMatch[1], start: tagMatch.index };
-
-        // Check for Variables ({{)
-        const varMatch = textBeforeCursor.match(/\{\{([\w.]*)$/);
-        if (varMatch) return { type: 'variable', filter: varMatch[1], start: varMatch.index };
 
         return null;
     };
@@ -138,7 +138,7 @@ export default function RichTextarea({
 
                 {/* Floating Suggestions */}
                 {suggestion && filteredOptions.length > 0 && (
-                    <div className="absolute z-50 bottom-full left-0 mb-2 w-64 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="absolute z-[9999] bottom-full left-0 mb-3 w-64 bg-[#18181b] border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <div className="px-3 py-2 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-white/5 bg-zinc-950/50 flex items-center gap-2">
                             {suggestion.type === 'mention' && <UserGroupIcon className="h-3 w-3" />}
                             {suggestion.type === 'tag' && <TagIcon className="h-3 w-3" />}

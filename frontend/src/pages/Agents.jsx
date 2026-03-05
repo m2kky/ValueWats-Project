@@ -685,19 +685,22 @@ export default function Agents() {
 
                 <div className="grid grid-cols-1 gap-6">
                   <ActionCard
-                    title="TERMINATE SESSION"
-                    description="ALLOW MODULE TO CLOSE CONVERSATIONS UPON OBJECTIVE COMPLETION."
+                    title="Close conversations"
+                    description="ALLOW AGENT TO CLOSE CONVERSATIONS UPON OBJECTIVE COMPLETION."
                     enabled={form.actionConfig?.closeConversation?.enabled || false}
                     setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, closeConversation: { ...f.actionConfig.closeConversation, enabled: val } } }))}
                     config={form.actionConfig?.closeConversation?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, closeConversation: { ...f.actionConfig.closeConversation, instructions: val } } }))}
                     placeholder="CRITERIA: USER SIGN-OFF, RESOLVED QUERY, OR END-OF-FLOW..."
-                    variables={availableTags} // Just in case
+                    mentions={[...availableAgents, ...availableTeams]}
+                    showMentions={true}
+                    tags={availableTags}
+                    showTags={true}
                   />
 
                   <ActionCard
-                    title="ROUTING PROTOCOL"
-                    description="ENABLE HAND-OFF TO HUMAN OPERATORS OR SPECIALIZED SUB-MODULES."
+                    title="Assign conversations"
+                    description="ALLOW AGENT TO ASSIGN CONVERSATIONS TO HUMAN OPERATORS OR SPECIALIZED SUB-MODULES."
                     enabled={form.actionConfig?.assignAgent?.enabled || false}
                     setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, assignAgent: { ...f.actionConfig.assignAgent, enabled: val } } }))}
                     config={form.actionConfig?.assignAgent?.instructions || ''}
@@ -705,6 +708,8 @@ export default function Agents() {
                     placeholder="IF: TECHNICAL ANOMALY DETECTED -> ROUTE TO SUPPORT_TIER_2..."
                     mentions={[...availableAgents, ...availableTeams]}
                     showMentions={true}
+                    tags={availableTags}
+                    showTags={true}
                   />
 
                   <ActionCard
@@ -715,6 +720,10 @@ export default function Agents() {
                     config={form.actionConfig?.updateFields?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateFields: { ...f.actionConfig.updateFields, instructions: val } } }))}
                     placeholder="FIELDS TO SYNC: EMAIL, PHONE_ORIGIN, CORPORATE_ID..."
+                    mentions={[...availableAgents, ...availableTeams]}
+                    showMentions={true}
+                    tags={availableTags}
+                    showTags={true}
                   />
 
                   <ActionCard
@@ -725,6 +734,10 @@ export default function Agents() {
                     config={form.actionConfig?.updateLifecycle?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, instructions: val } } }))}
                     placeholder="UPON HIGH_INTENT DETECTION -> TRIGGER STAGE: QUALIFIED_LEAD..."
+                    mentions={[...availableAgents, ...availableTeams]}
+                    showMentions={true}
+                    tags={availableTags}
+                    showTags={true}
                   >
                     <div className="flex flex-wrap gap-2 mb-2">
                       {availableLifecycleStages.map(stage => (
@@ -751,6 +764,10 @@ export default function Agents() {
                     config={form.actionConfig?.triggerWorkflow?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, triggerWorkflow: { ...f.actionConfig.triggerWorkflow, instructions: val } } }))}
                     placeholder="POST-ONBOARDING: TRIGGER GOOGLE_SHEET_APPEND..."
+                    mentions={[...availableAgents, ...availableTeams]}
+                    showMentions={true}
+                    tags={availableTags}
+                    showTags={true}
                   />
 
                   <ActionCard
@@ -763,6 +780,8 @@ export default function Agents() {
                     placeholder="IF: ISSUE RESOLVED -> REMOVE_TAG: %needs_support..."
                     tags={availableTags}
                     showTags={true}
+                    mentions={[...availableAgents, ...availableTeams]}
+                    showMentions={true}
                   />
 
                   <ActionCard
@@ -773,6 +792,10 @@ export default function Agents() {
                     config={form.actionConfig?.addComment?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, addComment: { ...f.actionConfig.addComment, instructions: val } } }))}
                     placeholder="NOTE: USER IS UPSET. PRIORITIZE IMMEDIATE RETENTION FLOW..."
+                    mentions={[...availableAgents, ...availableTeams]}
+                    showMentions={true}
+                    tags={availableTags}
+                    showTags={true}
                   />
 
                   <div className={`glass-card p-6 border transition-all duration-500 bg-zinc-900/40 relative overflow-hidden ${form.actionConfig?.httpRequests?.enabled ? 'border-indigo-500/30' : 'border-white/5 opacity-80'}`}>
