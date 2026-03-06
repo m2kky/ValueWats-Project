@@ -255,9 +255,30 @@ export default function ConnectChannel() {
                     {/* WhatsApp Cloud API specific fields */}
                     {isCloudAPI && (
                       <>
-                        <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-5 space-y-1">
-                          <h4 className="text-sm font-bold text-indigo-400">Meta Cloud API Setup</h4>
-                          <p className="text-xs text-zinc-500">You'll need your Phone Number ID, Business Account ID, and a Permanent Access Token from the <a href="https://business.facebook.com/" target="_blank" rel="noreferrer" className="text-indigo-400 underline">Meta Business Suite</a>.</p>
+                        <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-5 space-y-4">
+                          <div>
+                            <h4 className="text-sm font-bold text-indigo-400">1. Meta Cloud API Setup</h4>
+                            <p className="text-xs text-zinc-500">You'll need your Phone Number ID, Business Account ID, and a Permanent Access Token from the <a href="https://business.facebook.com/" target="_blank" rel="noreferrer" className="text-indigo-400 underline">Meta Business Suite</a>.</p>
+                          </div>
+                          <div className="pt-3 border-t border-indigo-500/10">
+                            <h4 className="text-sm font-bold text-indigo-400 mb-2">2. Webhook Configuration</h4>
+                            <p className="text-xs text-zinc-500 mb-2">Configure these in your Meta App Dashboard under WhatsApp &gt; Configuration:</p>
+                            <div className="space-y-2">
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-zinc-500">Callback URL</span>
+                                <div className="bg-[#1c1f26] border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between">
+                                  <code className="text-xs text-emerald-400 font-mono select-all">https://your-domain.com/api/webhooks/meta</code>
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-zinc-500">Verify Token</span>
+                                <div className="bg-[#1c1f26] border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between">
+                                  <code className="text-xs text-emerald-400 font-mono select-all">valuewats_secure_webhook_token_2026</code>
+                                </div>
+                                <p className="text-[10px] text-zinc-600 mt-1">Make sure Subscribe to `messages` webhook fields.</p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">Phone Number ID</label>
@@ -301,8 +322,30 @@ export default function ConnectChannel() {
                     {/* Messenger / Instagram specific fields */}
                     {isMetaChannel && (
                       <>
+                        <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-5 space-y-4 mb-4 mt-2">
+                          <div>
+                            <h4 className="text-sm font-bold text-indigo-400">1. {config.name} Webhook Setup</h4>
+                            <p className="text-xs text-zinc-500 mb-2">Configure Webhooks in your Meta App Dashboard under {config.name} &gt; Configuration:</p>
+                            <div className="space-y-2">
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-zinc-500">Callback URL</span>
+                                <div className="bg-[#1c1f26] border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between">
+                                  <code className="text-xs text-emerald-400 font-mono select-all">https://your-domain.com/api/webhooks/meta</code>
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-zinc-500">Verify Token</span>
+                                <div className="bg-[#1c1f26] border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between">
+                                  <code className="text-xs text-emerald-400 font-mono select-all">valuewats_secure_webhook_token_2026</code>
+                                </div>
+                                <p className="text-[10px] text-zinc-600 mt-1">Make sure you subscribe to the `messages` and `messaging_postbacks` events.</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
                         <div>
-                          <label className="block text-xs font-medium text-zinc-400 mb-2">We have found {config.name} page(s) managed by you.</label>
+                          <label className="block text-xs font-medium text-zinc-400 mb-2 mt-4">2. Select the {config.name} page from below list</label>
                           <div className="relative group">
                             <select
                               className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all cursor-pointer"
