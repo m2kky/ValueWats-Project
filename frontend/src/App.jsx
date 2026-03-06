@@ -40,6 +40,8 @@ const Roadmap = React.lazy(() => import('./pages/public/Roadmap'));
 const Contact = React.lazy(() => import('./pages/public/Contact'));
 const Pricing = React.lazy(() => import('./pages/public/Pricing'));
 const WhyUs = React.lazy(() => import('./pages/public/WhyUs'));
+const Learn = React.lazy(() => import('./pages/public/resources/Learn'));
+const Tools = React.lazy(() => import('./pages/public/resources/Tools'));
 
 // Help Center Pages
 const HelpCenter = React.lazy(() => import('./pages/public/help/HelpCenter'));
