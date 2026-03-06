@@ -263,11 +263,11 @@ export default function ConnectChannel() {
                           <div className="pt-3 border-t border-indigo-500/10">
                             <h4 className="text-sm font-bold text-indigo-400 mb-2">2. Webhook Configuration</h4>
                             <p className="text-xs text-zinc-500 mb-2">Configure these in your Meta App Dashboard under WhatsApp &gt; Configuration:</p>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               <div>
                                 <span className="text-[10px] uppercase font-bold text-zinc-500">Callback URL</span>
                                 <div className="bg-[#1c1f26] border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between">
-                                  <code className="text-xs text-emerald-400 font-mono select-all">https://your-domain.com/api/webhooks/meta</code>
+                                  <code className="text-xs text-emerald-400 font-mono select-all break-all">{window.location.origin}/api/webhooks/meta</code>
                                 </div>
                               </div>
                               <div>
@@ -275,7 +275,12 @@ export default function ConnectChannel() {
                                 <div className="bg-[#1c1f26] border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between">
                                   <code className="text-xs text-emerald-400 font-mono select-all">valuewats_secure_webhook_token_2026</code>
                                 </div>
-                                <p className="text-[10px] text-zinc-600 mt-1">Make sure Subscribe to `messages` webhook fields.</p>
+                                <div className="mt-1.5 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
+                                  <p className="text-[11px] text-yellow-500 leading-snug">
+                                    <strong>Important:</strong> If you get a verification error in Meta, ensure <code className="text-white px-1">META_WEBHOOK_VERIFY_TOKEN</code> is set to the value above in your Coolify Environment Variables.
+                                  </p>
+                                </div>
+                                <p className="text-[10px] text-zinc-600 mt-2">Make sure to Subscribe to `messages` webhook fields.</p>
                               </div>
                             </div>
                           </div>
@@ -326,11 +331,11 @@ export default function ConnectChannel() {
                           <div>
                             <h4 className="text-sm font-bold text-indigo-400">1. {config.name} Webhook Setup</h4>
                             <p className="text-xs text-zinc-500 mb-2">Configure Webhooks in your Meta App Dashboard under {config.name} &gt; Configuration:</p>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               <div>
                                 <span className="text-[10px] uppercase font-bold text-zinc-500">Callback URL</span>
                                 <div className="bg-[#1c1f26] border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between">
-                                  <code className="text-xs text-emerald-400 font-mono select-all">https://your-domain.com/api/webhooks/meta</code>
+                                  <code className="text-xs text-emerald-400 font-mono select-all break-all">{window.location.origin}/api/webhooks/meta</code>
                                 </div>
                               </div>
                               <div>
@@ -338,46 +343,46 @@ export default function ConnectChannel() {
                                 <div className="bg-[#1c1f26] border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between">
                                   <code className="text-xs text-emerald-400 font-mono select-all">valuewats_secure_webhook_token_2026</code>
                                 </div>
-                                <p className="text-[10px] text-zinc-600 mt-1">Make sure you subscribe to the `messages` and `messaging_postbacks` events.</p>
+                                <div className="mt-1.5 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
+                                  <p className="text-[11px] text-yellow-500 leading-snug">
+                                    <strong>Important:</strong> If you get a verification error in Meta, ensure <code className="text-white px-1">META_WEBHOOK_VERIFY_TOKEN</code> is set to the value above in your Coolify Environment Variables.
+                                  </p>
+                                </div>
+                                <p className="text-[10px] text-zinc-600 mt-2">Make sure you subscribe to the `messages` and `messaging_postbacks` events.</p>
                               </div>
                             </div>
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-zinc-400 mb-2 mt-4">2. Select the {config.name} page from below list</label>
-                          <div className="relative group">
-                            <select
-                              className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all cursor-pointer"
-                              value={phoneNumberId}
-                              onChange={(e) => setPhoneNumberId(e.target.value)}
-                              required
-                            >
-                              <option value="">Select a {config.name} Page from the list</option>
-                              <option value="temp">Example Page (Testing Only)</option>
-                            </select>
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
-                              <ChevronDownIcon className="w-4 h-4" />
+                          <label className="block text-xs font-medium text-zinc-400 mb-2 mt-4">2. Identify Output Channel ({config.name})</label>
+                          <div className="space-y-4">
+                            <div>
+                                <label className="block text-[11px] font-bold text-zinc-500 mb-1 uppercase tracking-wider">{config.name} ID (Page/Account ID)</label>
+                                <input
+                                  type="text"
+                                  className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
+                                  value={phoneNumberId}
+                                  onChange={(e) => setPhoneNumberId(e.target.value)}
+                                  placeholder={`Enter your ${config.name} ID`}
+                                  required
+                                />
+                                <p className="text-[11px] text-zinc-600 mt-1.5">You can find the App ID / Page ID / Account ID in your Meta Developer Dashboard.</p>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-[11px] font-bold text-zinc-500 mb-1 uppercase tracking-wider">Page Access Token</label>
+                              <input
+                                type="password"
+                                className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
+                                value={accessToken}
+                                onChange={(e) => setAccessToken(e.target.value)}
+                                placeholder="Paste your Page Access Token here"
+                                required
+                              />
                             </div>
                           </div>
                         </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-zinc-400 mb-2">Page Access Token</label>
-                          <input
-                            type="password"
-                            className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
-                            value={accessToken}
-                            onChange={(e) => setAccessToken(e.target.value)}
-                            placeholder="Paste your access token here"
-                            required
-                          />
-                        </div>
-
-                        <button type="button" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm font-bold py-2 group">
-                           <ArrowPathIcon className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
-                           Refresh List
-                        </button>
                       </>
                     )}
 

@@ -1,0 +1,534 @@
+[Video Guides](https://respond.io/video-tutorials)
+[Developer Hub](https://developers.respond.io)
+-  [English](https://respond.io/help/facebook-messenger) 
+-  [Spanish](https://respond.io/es/help/facebook-messenger) 
+-  [Arabic](https://respond.io/ar/help/facebook-messenger) 
+-  [Chinese (Simplified)](https://respond.io/zh/help/facebook-messenger) 
+-  [Chinese (Traditional)](https://respond.io/tw/help/facebook-messenger) 
+-  [French](https://respond.io/fr/help/facebook-messenger) 
+-  [German](https://respond.io/de/help/facebook-messenger) 
+-  [Indonesian](https://respond.io/id/help/facebook-messenger) 
+-  [Italian](https://respond.io/it/help/facebook-messenger) 
+-  [Portuguese](https://respond.io/pt/help/facebook-messenger) 
+-  [Russian](https://respond.io/ru/help/facebook-messenger) 
+-  [Thai](https://respond.io/th/help/facebook-messenger) 
+-  [Vietnamese](https://respond.io/vi/help/facebook-messenger) 
+[English](https://respond.io/help/facebook-messenger)
+[Spanish](https://respond.io/es/help/facebook-messenger)
+[Arabic](https://respond.io/ar/help/facebook-messenger)
+[Chinese (Simplified)](https://respond.io/zh/help/facebook-messenger)
+[Chinese (Traditional)](https://respond.io/tw/help/facebook-messenger)
+[French](https://respond.io/fr/help/facebook-messenger)
+[German](https://respond.io/de/help/facebook-messenger)
+[Indonesian](https://respond.io/id/help/facebook-messenger)
+[Italian](https://respond.io/it/help/facebook-messenger)
+[Portuguese](https://respond.io/pt/help/facebook-messenger)
+[Russian](https://respond.io/ru/help/facebook-messenger)
+[Thai](https://respond.io/th/help/facebook-messenger)
+[Vietnamese](https://respond.io/vi/help/facebook-messenger)
+[Login](https://app.respond.io/user/login?lang=en)
+[Talk to Sales](https://respond.io/demo)
+[Start Free Trial](https://app.respond.io/user/register?lang=en)
+[Video Guides](https://respond.io/video-tutorials)
+[Developer Hub](https://developers.respond.io)
+[Login](https://app.respond.io/user/login?lang=en)
+[Talk to Sales](https://respond.io/demo?lang=en)
+[New🌍 WhatsApp API Calling is now available globally! Start making calls with respond.io today. Learn more](https://respond.io/whatsapp-business-calling-api)
+- .builder-702d931061804d0280699138f7ab8d82 {
+    display: flex;
+flex-direction: column;
+position: relative;
+flex-shrink: 0;
+box-sizing: border-box;
+line-height: normal;
+height: auto;
+cursor: pointer;
+pointer-events: auto;
+  }    [All Collections >](https://respond.io/help)
+- .builder-96126c233a9e4be6a38c6ca3fbbffe5f {
+    display: flex;
+flex-direction: column;
+position: relative;
+flex-shrink: 0;
+box-sizing: border-box;
+line-height: normal;
+height: auto;
+cursor: pointer;
+pointer-events: auto;
+  }    [Channels >](https://respond.io/help/channels)
+- .builder-dcc467614e694a61aa814e9a9100f317 {
+    display: flex;
+flex-direction: column;
+position: relative;
+box-sizing: border-box;
+line-height: normal;
+height: auto;
+color: #121213;
+cursor: pointer;
+pointer-events: auto;
+  }    [Facebook Messenger](https://respond.io/help/facebook-messenger)
+[All Collections >](https://respond.io/help)
+All Collections >
+[Channels >](https://respond.io/help/channels)
+[Facebook Messenger](https://respond.io/help/facebook-messenger)
+
+# Facebook Messenger
+
+Learn how to connect a Facebook Page to chat with customers over Facebook Messenger.
+
+## Related articles 👩‍💻
+
+- .builder-c7fa03c3db3d49edbe26cf26950dff8f {
+    display: flex;
+flex-direction: column;
+position: relative;
+flex-shrink: 0;
+box-sizing: border-box;
+  }    .builder-14f26ddd322d44bbb7d5cbe5644d78a4 {
+    display: flex;
+align-items: center;
+gap: 16px;
+cursor: pointer;
+padding: 8px;
+border-radius: 8px;
+pointer-events: auto;
+background-color: white;
+border-width: 1px;
+border-style: solid;
+border-color: #E1E1E3;
+padding-left: 12px;
+padding-right: 12px;
+  }  @media (max-width: 640px) {
+      .builder-14f26ddd322d44bbb7d5cbe5644d78a4 {
+    background-color: white;
+  }
+    }  [.builder-04ec423154e447cab42101a0af3865b4 {
+    display: flex;
+flex-direction: column;
+align-items: flex-start;
+gap: 4px;
+flex: 1;
+  }  @media (max-width: 640px) {
+      .builder-04ec423154e447cab42101a0af3865b4 {
+    gap: 0px;
+  }
+    }  .builder-8cff28156c82470fbb83bb9f59a6c8a0 {
+    flex: 1;
+overflow: hidden;
+color: #212123;
+font-size: 16px;
+font-weight: 600;
+line-height: 24px;
+font-family: Inter;
+  }    Facebook Message Templates.builder-aa0949938cc04333b380f6163608cccf {
+    width: 100%;
+overflow: hidden;
+color: #65656A;
+font-size: 16px;
+font-weight: 400;
+line-height: 24px;
+font-family: Inter;
+  }    Learn more about Facebook Message Templates, why they replace message tags on respond.io, and how to use them to send compliant utility messages outside the 24-hour Messenger window under Meta’s latest policies.](https://respond.io/help/facebook-messenger/facebook-message-templates)
+- .builder-c7fa03c3db3d49edbe26cf26950dff8f {
+    display: flex;
+flex-direction: column;
+position: relative;
+flex-shrink: 0;
+box-sizing: border-box;
+  }    .builder-14f26ddd322d44bbb7d5cbe5644d78a4 {
+    display: flex;
+align-items: center;
+gap: 16px;
+cursor: pointer;
+padding: 8px;
+border-radius: 8px;
+pointer-events: auto;
+background-color: white;
+border-width: 1px;
+border-style: solid;
+border-color: #E1E1E3;
+padding-left: 12px;
+padding-right: 12px;
+  }  @media (max-width: 640px) {
+      .builder-14f26ddd322d44bbb7d5cbe5644d78a4 {
+    background-color: white;
+  }
+    }  [.builder-04ec423154e447cab42101a0af3865b4 {
+    display: flex;
+flex-direction: column;
+align-items: flex-start;
+gap: 4px;
+flex: 1;
+  }  @media (max-width: 640px) {
+      .builder-04ec423154e447cab42101a0af3865b4 {
+    gap: 0px;
+  }
+    }  .builder-8cff28156c82470fbb83bb9f59a6c8a0 {
+    flex: 1;
+overflow: hidden;
+color: #212123;
+font-size: 16px;
+font-weight: 600;
+line-height: 24px;
+font-family: Inter;
+  }    Facebook Private Replies.builder-aa0949938cc04333b380f6163608cccf {
+    width: 100%;
+overflow: hidden;
+color: #65656A;
+font-size: 16px;
+font-weight: 400;
+line-height: 24px;
+font-family: Inter;
+  }    Automatically send a private message to users that comment on your Facebook Post.](https://respond.io/help/facebook-messenger/private-replies)
+- .builder-c7fa03c3db3d49edbe26cf26950dff8f {
+    display: flex;
+flex-direction: column;
+position: relative;
+flex-shrink: 0;
+box-sizing: border-box;
+  }    .builder-14f26ddd322d44bbb7d5cbe5644d78a4 {
+    display: flex;
+align-items: center;
+gap: 16px;
+cursor: pointer;
+padding: 8px;
+border-radius: 8px;
+pointer-events: auto;
+background-color: white;
+border-width: 1px;
+border-style: solid;
+border-color: #E1E1E3;
+padding-left: 12px;
+padding-right: 12px;
+  }  @media (max-width: 640px) {
+      .builder-14f26ddd322d44bbb7d5cbe5644d78a4 {
+    background-color: white;
+  }
+    }  [.builder-04ec423154e447cab42101a0af3865b4 {
+    display: flex;
+flex-direction: column;
+align-items: flex-start;
+gap: 4px;
+flex: 1;
+  }  @media (max-width: 640px) {
+      .builder-04ec423154e447cab42101a0af3865b4 {
+    gap: 0px;
+  }
+    }  .builder-8cff28156c82470fbb83bb9f59a6c8a0 {
+    flex: 1;
+overflow: hidden;
+color: #212123;
+font-size: 16px;
+font-weight: 600;
+line-height: 24px;
+font-family: Inter;
+  }    Facebook Chat Plugin.builder-aa0949938cc04333b380f6163608cccf {
+    width: 100%;
+overflow: hidden;
+color: #65656A;
+font-size: 16px;
+font-weight: 400;
+line-height: 24px;
+font-family: Inter;
+  }    Learn how to add a Facebook Customer Chat Plugin to your website.](https://respond.io/help/facebook-messenger/facebook-chat-plugin)
+- .builder-c7fa03c3db3d49edbe26cf26950dff8f {
+    display: flex;
+flex-direction: column;
+position: relative;
+flex-shrink: 0;
+box-sizing: border-box;
+  }    .builder-14f26ddd322d44bbb7d5cbe5644d78a4 {
+    display: flex;
+align-items: center;
+gap: 16px;
+cursor: pointer;
+padding: 8px;
+border-radius: 8px;
+pointer-events: auto;
+background-color: white;
+border-width: 1px;
+
+## Related articles 👩‍💻
+
+border-style: solid;
+border-color: #E1E1E3;
+padding-left: 12px;
+padding-right: 12px;
+  }  @media (max-width: 640px) {
+      .builder-14f26ddd322d44bbb7d5cbe5644d78a4 {
+    background-color: white;
+  }
+    }  [.builder-04ec423154e447cab42101a0af3865b4 {
+    display: flex;
+flex-direction: column;
+align-items: flex-start;
+gap: 4px;
+flex: 1;
+  }  @media (max-width: 640px) {
+      .builder-04ec423154e447cab42101a0af3865b4 {
+    gap: 0px;
+  }
+    }  .builder-8cff28156c82470fbb83bb9f59a6c8a0 {
+    flex: 1;
+overflow: hidden;
+color: #212123;
+font-size: 16px;
+font-weight: 600;
+line-height: 24px;
+font-family: Inter;
+  }    Facebook Messenger Quick Start.builder-aa0949938cc04333b380f6163608cccf {
+    width: 100%;
+overflow: hidden;
+color: #65656A;
+font-size: 16px;
+font-weight: 400;
+line-height: 24px;
+font-family: Inter;
+  }    Connect a Facebook Page to chat with customers over Facebook Messenger.](https://respond.io/help/facebook-messenger/facebook-messenger-quick-start)
+- .builder-c7fa03c3db3d49edbe26cf26950dff8f {
+    display: flex;
+flex-direction: column;
+position: relative;
+flex-shrink: 0;
+box-sizing: border-box;
+  }    .builder-14f26ddd322d44bbb7d5cbe5644d78a4 {
+    display: flex;
+align-items: center;
+gap: 16px;
+cursor: pointer;
+padding: 8px;
+border-radius: 8px;
+pointer-events: auto;
+background-color: white;
+border-width: 1px;
+border-style: solid;
+border-color: #E1E1E3;
+padding-left: 12px;
+padding-right: 12px;
+  }  @media (max-width: 640px) {
+      .builder-14f26ddd322d44bbb7d5cbe5644d78a4 {
+    background-color: white;
+  }
+    }  [.builder-04ec423154e447cab42101a0af3865b4 {
+    display: flex;
+flex-direction: column;
+align-items: flex-start;
+gap: 4px;
+flex: 1;
+  }  @media (max-width: 640px) {
+      .builder-04ec423154e447cab42101a0af3865b4 {
+    gap: 0px;
+  }
+    }  .builder-8cff28156c82470fbb83bb9f59a6c8a0 {
+    flex: 1;
+overflow: hidden;
+color: #212123;
+font-size: 16px;
+font-weight: 600;
+line-height: 24px;
+font-family: Inter;
+  }    Facebook Messenger Overview.builder-aa0949938cc04333b380f6163608cccf {
+    width: 100%;
+overflow: hidden;
+color: #65656A;
+font-size: 16px;
+font-weight: 400;
+line-height: 24px;
+font-family: Inter;
+  }    Get an overview of the Facebook Messenger channel and its capabilities.](https://respond.io/help/facebook-messenger/facebook-messenger-overview)
+[.builder-04ec423154e447cab42101a0af3865b4 {
+    display: flex;
+flex-direction: column;
+align-items: flex-start;
+gap: 4px;
+flex: 1;
+  }  @media (max-width: 640px) {
+      .builder-04ec423154e447cab42101a0af3865b4 {
+    gap: 0px;
+  }
+    }  .builder-8cff28156c82470fbb83bb9f59a6c8a0 {
+    flex: 1;
+overflow: hidden;
+color: #212123;
+font-size: 16px;
+font-weight: 600;
+line-height: 24px;
+font-family: Inter;
+  }    Facebook Message Templates.builder-aa0949938cc04333b380f6163608cccf {
+    width: 100%;
+overflow: hidden;
+color: #65656A;
+font-size: 16px;
+font-weight: 400;
+line-height: 24px;
+font-family: Inter;
+  }    Learn more about Facebook Message Templates, why they replace message tags on respond.io, and how to use them to send compliant utility messages outside the 24-hour Messenger window under Meta’s latest policies.](https://respond.io/help/facebook-messenger/facebook-message-templates)
+
+### Facebook Message Templates
+[.builder-04ec423154e447cab42101a0af3865b4 {
+    display: flex;
+flex-direction: column;
+align-items: flex-start;
+gap: 4px;
+flex: 1;
+  }  @media (max-width: 640px) {
+      .builder-04ec423154e447cab42101a0af3865b4 {
+    gap: 0px;
+  }
+    }  .builder-8cff28156c82470fbb83bb9f59a6c8a0 {
+    flex: 1;
+overflow: hidden;
+color: #212123;
+font-size: 16px;
+font-weight: 600;
+line-height: 24px;
+font-family: Inter;
+  }    Facebook Private Replies.builder-aa0949938cc04333b380f6163608cccf {
+    width: 100%;
+overflow: hidden;
+color: #65656A;
+font-size: 16px;
+font-weight: 400;
+line-height: 24px;
+font-family: Inter;
+  }    Automatically send a private message to users that comment on your Facebook Post.](https://respond.io/help/facebook-messenger/private-replies)
+
+### Facebook Private Replies
+[.builder-04ec423154e447cab42101a0af3865b4 {
+    display: flex;
+flex-direction: column;
+align-items: flex-start;
+gap: 4px;
+flex: 1;
+  }  @media (max-width: 640px) {
+      .builder-04ec423154e447cab42101a0af3865b4 {
+    gap: 0px;
+  }
+    }  .builder-8cff28156c82470fbb83bb9f59a6c8a0 {
+    flex: 1;
+overflow: hidden;
+color: #212123;
+font-size: 16px;
+font-weight: 600;
+line-height: 24px;
+font-family: Inter;
+  }    Facebook Chat Plugin.builder-aa0949938cc04333b380f6163608cccf {
+    width: 100%;
+overflow: hidden;
+color: #65656A;
+font-size: 16px;
+font-weight: 400;
+line-height: 24px;
+font-family: Inter;
+  }    Learn how to add a Facebook Customer Chat Plugin to your website.](https://respond.io/help/facebook-messenger/facebook-chat-plugin)
+
+### Facebook Chat Plugin
+[.builder-04ec423154e447cab42101a0af3865b4 {
+    display: flex;
+flex-direction: column;
+align-items: flex-start;
+gap: 4px;
+flex: 1;
+  }  @media (max-width: 640px) {
+      .builder-04ec423154e447cab42101a0af3865b4 {
+    gap: 0px;
+  }
+    }  .builder-8cff28156c82470fbb83bb9f59a6c8a0 {
+    flex: 1;
+overflow: hidden;
+color: #212123;
+font-size: 16px;
+font-weight: 600;
+line-height: 24px;
+font-family: Inter;
+  }    Facebook Messenger Quick Start.builder-aa0949938cc04333b380f6163608cccf {
+    width: 100%;
+overflow: hidden;
+color: #65656A;
+font-size: 16px;
+font-weight: 400;
+line-height: 24px;
+font-family: Inter;
+  }    Connect a Facebook Page to chat with customers over Facebook Messenger.](https://respond.io/help/facebook-messenger/facebook-messenger-quick-start)
+
+### Facebook Messenger Quick Start
+[.builder-04ec423154e447cab42101a0af3865b4 {
+    display: flex;
+flex-direction: column;
+align-items: flex-start;
+gap: 4px;
+flex: 1;
+  }  @media (max-width: 640px) {
+      .builder-04ec423154e447cab42101a0af3865b4 {
+    gap: 0px;
+  }
+    }  .builder-8cff28156c82470fbb83bb9f59a6c8a0 {
+    flex: 1;
+overflow: hidden;
+color: #212123;
+font-size: 16px;
+font-weight: 600;
+line-height: 24px;
+font-family: Inter;
+  }    Facebook Messenger Overview.builder-aa0949938cc04333b380f6163608cccf {
+    width: 100%;
+overflow: hidden;
+color: #65656A;
+font-size: 16px;
+font-weight: 400;
+line-height: 24px;
+font-family: Inter;
+  }    Get an overview of the Facebook Messenger channel and its capabilities.](https://respond.io/help/facebook-messenger/facebook-messenger-overview)
+
+### Facebook Messenger Overview
+Can't find what you're looking for? 🔎
+[Contact Support](https://respond.io/contact-us)
+
+## Footer
+
+-  [Read llms.txt](https://respond.io/llms.txt) 
+-  [Read llms-full.txt](https://respond.io/llms-full.txt) 
+-  [Read FAQs.md](https://respond.io/faqs.md) 
+-  [FAQs Directory](https://respond.io/faqs-directory) 
+[Read llms.txt](https://respond.io/llms.txt)
+[Read llms-full.txt](https://respond.io/llms-full.txt)
+[Read FAQs.md](https://respond.io/faqs.md)
+[FAQs Directory](https://respond.io/faqs-directory)
+-  [About Us](https://respond.io/about) 
+-  [Roadmap](https://roadmap.respond.io) 
+-  [Partner Program](https://respond.io/reseller) 
+-  [Partner Directory](https://respond.io/partner-directory) 
+-  [Careers](https://respond.io/careers) 
+-  [Press](https://respond.io/press) 
+-  [Contact Us](https://respond.io/contact) 
+-  [Read llms.txt](https://respond.io/llms.txt) 
+[About Us](https://respond.io/about)
+[Roadmap](https://roadmap.respond.io)
+[Partner Program](https://respond.io/reseller)
+[Partner Directory](https://respond.io/partner-directory)
+[Careers](https://respond.io/careers)
+[Press](https://respond.io/press)
+[Contact Us](https://respond.io/contact)
+[Read llms.txt](https://respond.io/llms.txt)
+-  [WhatsApp Pricing Calculator](https://respond.io/whatsapp-pricing-calculator) 
+-  [WhatsApp Link Generator](https://respond.io/whatsapp-link-generator) 
+-  [WhatsApp QR Generator](https://respond.io/whatsapp-qr-code-generator) 
+-  [Learning Center](https://respond.io/learn) 
+-  [Help Center](https://help.respond.io/l/en) 
+-  [Developer's Hub](https://developers.respond.io) 
+-  [Status](https://status.respond.io/posts/dashboard) 
+[WhatsApp Pricing Calculator](https://respond.io/whatsapp-pricing-calculator)
+[WhatsApp Link Generator](https://respond.io/whatsapp-link-generator)
+[WhatsApp QR Generator](https://respond.io/whatsapp-qr-code-generator)
+[Learning Center](https://respond.io/learn)
+[Help Center](https://help.respond.io/l/en)
+[Developer's Hub](https://developers.respond.io)
+[Status](https://status.respond.io/posts/dashboard)
+-  [Privacy Policy](https://respond.io/privacy-policy) 
+-  [Cookie Policy](https://respond.io/cookie-policy) 
+-  [Terms of Service](https://respond.io/terms-of-service) 
+-  [Security](https://respond.io/security) 
+[Privacy Policy](https://respond.io/privacy-policy)
+[Cookie Policy](https://respond.io/cookie-policy)
+[Terms of Service](https://respond.io/terms-of-service)
+[Security](https://respond.io/security)

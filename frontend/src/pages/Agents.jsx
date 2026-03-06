@@ -244,7 +244,6 @@ export default function Agents() {
       priority: Number(form.priority),
       temperature: Number(form.temperature),
       maxTokens: Number(form.maxTokens),
-      maxTokens: Number(form.maxTokens),
       followUpDelay: Number(form.followUpDelay),
     };
     delete data.allowedGroupsText; // don't send to API
@@ -255,6 +254,7 @@ export default function Agents() {
     } else {
       result = await createAgent({ ...data });
     }
+
     if (result) {
       await fetchAgents();
       setView('list');
