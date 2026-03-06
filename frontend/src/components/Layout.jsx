@@ -65,15 +65,17 @@ export default function Layout({ children }) {
   const isActive = (path) => location.pathname.startsWith(path);
 
   const isInboxRoute = location.pathname.startsWith('/inbox');
+  const isConnectRoute = location.pathname.startsWith('/channels/connect');
+  const isFullWidth = isInboxRoute || isConnectRoute;
 
   return (
     <div className="flex h-screen bg-[#09090b] text-zinc-100 overflow-hidden">
       {/* Premium Sidebar */}
-      <aside className={`border-r border-white/5 bg-[#0f0f11] flex flex-col z-50 transition-all duration-300 ${isInboxRoute ? 'w-[60px] items-center py-4' : 'w-64'}`}>
-        <div className={`p-4 ${isInboxRoute ? 'px-0 pb-6' : 'p-6'}`}>
-          <Link to="/dashboard" className={`flex items-center ${isInboxRoute ? 'justify-center' : 'gap-3'}`}>
-            <img src="/valuewats-transparent.png" alt="ValueWats" className={`${isInboxRoute ? 'w-8 h-8' : 'w-9 h-9'}`} />
-            {!isInboxRoute && (
+      <aside className={`border-r border-white/5 bg-[#0f0f11] flex flex-col z-50 transition-all duration-300 ${isFullWidth ? 'w-[60px] items-center py-4' : 'w-64'}`}>
+        <div className={`p-4 ${isFullWidth ? 'px-0 pb-6' : 'p-6'}`}>
+          <Link to="/dashboard" className={`flex items-center ${isFullWidth ? 'justify-center' : 'gap-3'}`}>
+            <img src="/valuewats-transparent.png" alt="ValueWats" className={`${isFullWidth ? 'w-8 h-8' : 'w-9 h-9'}`} />
+            {!isFullWidth && (
               <span className="text-xl font-black tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
                 ValueWats
               </span>
@@ -94,15 +96,15 @@ export default function Layout({ children }) {
                   : `px-3 py-2.5 gap-3 ${active ? 'bg-indigo-600/10 text-indigo-400 font-bold' : 'text-zinc-400 hover:bg-white/5 hover:text-white font-medium'}`
                   }`}
               >
-                <item.icon className={`transition-colors ${isInboxRoute ? 'w-[22px] h-[22px]' : 'w-5 h-5'} ${active ? 'text-indigo-400' : 'group-hover:text-white'}`} />
-                {!isInboxRoute && <span>{item.name}</span>}
+                <item.icon className={`transition-colors ${isFullWidth ? 'w-[22px] h-[22px]' : 'w-5 h-5'} ${active ? 'text-indigo-400' : 'group-hover:text-white'}`} />
+                {!isFullWidth && <span>{item.name}</span>}
               </Link>
             )
           })}
         </nav>
 
-        <div className={`border-t border-white/5 mt-auto flex flex-col ${isInboxRoute ? 'p-2 items-center gap-4 py-4' : 'p-4'}`}>
-          {!isInboxRoute ? (
+        <div className={`border-t border-white/5 mt-auto flex flex-col ${isFullWidth ? 'p-2 items-center gap-4 py-4' : 'p-4'}`}>
+          {!isFullWidth ? (
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 mb-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg">
                 {user?.email?.[0].toUpperCase()}
@@ -120,19 +122,19 @@ export default function Layout({ children }) {
 
           <button
             onClick={handleLogout}
-            title={isInboxRoute ? "Sign Out" : undefined}
-            className={`flex items-center justify-center text-zinc-500 hover:text-rose-400 transition-all ${isInboxRoute ? 'w-10 h-10 rounded-xl hover:bg-rose-500/10' : 'w-full gap-2 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20'}`}
+            title={isFullWidth ? "Sign Out" : undefined}
+            className={`flex items-center justify-center text-zinc-500 hover:text-rose-400 transition-all ${isFullWidth ? 'w-10 h-10 rounded-xl hover:bg-rose-500/10' : 'w-full gap-2 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20'}`}
           >
-            <LogoutIcon className={isInboxRoute ? "w-5 h-5 ml-1" : "w-4 h-4"} />
-            {!isInboxRoute && "Sign Out"}
+            <LogoutIcon className={isFullWidth ? "w-5 h-5 ml-1" : "w-4 h-4"} />
+            {!isFullWidth && "Sign Out"}
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        {/* Top bar (Hidden in Inbox Mode for Full Screen Immersion) */}
-        {!isInboxRoute && (
+        {/* Top bar (Hidden in Inbox/Connect Mode for Full Screen Immersion) */}
+        {!isFullWidth && (
           <header className="h-16 border-b border-white/5 bg-zinc-950/30 backdrop-blur-md flex items-center justify-between px-8 z-40 shrink-0">
             <div className="flex-1 max-w-xl">
               <div className="relative group">
@@ -158,12 +160,12 @@ export default function Layout({ children }) {
           </header>
         )}
 
-        {isInboxRoute ? (
-          <main className="flex-1 h-full overflow-hidden bg-[#000000]">
+        {isFullWidth ? (
+          <main className="flex-1 h-full overflow-hidden bg-[#09090b]">
             {children}
           </main>
         ) : (
-          <main className="flex-1 p-8 overflow-y-auto w-full">
+          <main className="flex-1 p-8 overflow-y-auto w-full bg-[#09090b]">
             <div className="max-w-7xl mx-auto">
               {children}
             </div>

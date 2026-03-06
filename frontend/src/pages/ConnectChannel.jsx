@@ -12,11 +12,12 @@ import {
 const channelConfigs = {
   whatsapp: {
     name: 'WhatsApp',
-    description: 'Connect WhatsApp Business API via Facebook to engage with your customers.',
+    description: 'Connect your WhatsApp account using Evolution API. You only need to scan a QR code to start automating your messages.',
     color: 'emerald',
     resources: [
-      { name: 'Everything you need to know about WhatsApp', link: '/help/whatsapp' },
-      { name: 'How to connect WhatsApp Business API', link: '/help/whatsapp-connect' }
+      { name: 'Everything you need to know about WhatsApp Instances', link: '/help/channels/whatsapp' },
+      { name: 'How to scan the QR code safely', link: '/help/channels/whatsapp#qr-scan' },
+      { name: 'WhatsApp Automation Best Practices', link: '/help/channels/whatsapp#best-practices' }
     ],
     icon: (
       <svg className="w-24 h-24 text-emerald-500" viewBox="0 0 24 24" fill="currentColor">
@@ -29,7 +30,8 @@ const channelConfigs = {
     description: 'Connect Facebook Messenger to engage with your customers on the world\'s largest social media platform.',
     color: 'blue',
     resources: [
-      { name: 'Everything you need to know about Facebook Messenger', link: '/help/messenger' }
+      { name: 'Everything you need to know about Facebook Messenger', link: '/help/channels/messenger' },
+      { name: 'Connecting your Facebook Page', link: '/help/channels/messenger#setup' }
     ],
     icon: (
       <svg className="w-24 h-24 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
@@ -42,7 +44,8 @@ const channelConfigs = {
     description: 'Connect Instagram to reply to private messages and build strong brand connections.',
     color: 'rose',
     resources: [
-      { name: 'Everything you need to know about Instagram', link: '/help/instagram' }
+      { name: 'Everything you need to know about Instagram', link: '/help/channels/instagram' },
+      { name: 'Connecting your Instagram Professional account', link: '/help/channels/instagram#setup' }
     ],
     icon: (
       <svg className="w-24 h-24 text-rose-500" viewBox="0 0 24 24" fill="currentColor">
@@ -123,9 +126,9 @@ export default function ConnectChannel() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#0d0f14] text-white">
+    <div className="flex flex-col md:flex-row h-full text-white">
       {/* LEFT SIDEBAR - Informative */}
-      <aside className="w-full md:w-[320px] bg-[#14171c] border-r border-white/5 p-8 flex flex-col shrink-0">
+      <aside className="w-full md:w-[320px] bg-[#0c0c0e] border-r border-white/5 p-8 flex flex-col shrink-0">
         <div className="mb-8">
            <div className={`w-24 h-24 mb-6`}>
               {config.icon}
@@ -138,12 +141,12 @@ export default function ConnectChannel() {
 
         <div className="space-y-8 mt-auto">
           {/* Tutorial Link */}
-          <div className="group cursor-pointer">
+          <Link to={`/help/videos/${type}`} className="group block cursor-pointer">
             <div className="flex items-center gap-3 text-[#6366f1] mb-2">
                <VideoCameraIcon className="w-4 h-4" />
-               <span className="text-xs font-black uppercase tracking-widest">Step-by-step Video Tutorial</span>
+               <span className="text-xs font-black uppercase tracking-widest hover:underline">Step-by-step Video Tutorial</span>
             </div>
-          </div>
+          </Link>
 
           {/* Resources */}
           <div>

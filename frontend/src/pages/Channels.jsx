@@ -16,10 +16,10 @@ const categories = [
 
 const catalog = [
   {
-    id: 'whatsapp-api',
+    id: 'whatsapp-instance',
     type: 'whatsapp',
-    name: 'WhatsApp Business Platform (API)',
-    description: 'Connect WhatsApp Business API via Facebook to enable seamless customer engagement and support.',
+    name: 'WhatsApp',
+    description: 'Connect your WhatsApp account by scanning a QR code to start sending and receiving messages instantly.',
     category: 'messaging',
     badge: 'Popular',
     color: 'emerald',
@@ -169,15 +169,19 @@ export default function Channels() {
   }, [activeTab, searchQuery]);
 
   return (
-    <div className="font-sans min-h-screen bg-[#0d0f14]">
+    <div className="font-sans">
       {/* Header Area */}
       <div className="mb-10">
         <div className="flex items-start gap-4 mb-2">
-          <div className="p-2 border border-white/5 rounded-lg bg-white/5 shadow-inner">
-             <Squares2X2Icon className="w-6 h-6 text-zinc-400" />
+          <div className="p-2 border border-white/10 rounded-lg bg-white/5 shadow-inner">
+             <div className="w-6 h-6 text-zinc-400">
+               <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" />
+               </svg>
+             </div>
           </div>
           <div>
-            <h1 className="text-[28px] font-bold text-white tracking-tight leading-tight">Channel Catalog</h1>
+            <h1 className="text-[32px] font-bold text-white tracking-tight leading-tight">Channel Catalog</h1>
             <p className="text-zinc-500 text-sm mt-1 max-w-2xl font-medium">
               Manage your messaging channels and discover new ones to help you acquire more customers.
             </p>

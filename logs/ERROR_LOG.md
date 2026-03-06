@@ -2,6 +2,60 @@
 
 Document all critical errors, their root causes, fixes, and lessons learned. When fixing an issue, **FIRST check this file** to see if it's already documented. After fixing an issue, **ADD it here**.
 
+## ERR-033: Prisma Crash — Missing channel_type Column
+
+| Field        | Value                                                   |
+| ------------ | ------------------------------------------------------- |
+| **Date**     | 2026-03-07                                              |
+| **Severity** | 🔴 Critical                                             |
+| **Source**   | `backend/prisma/schema.prisma`                          |
+| **Trigger**  | Accessing `/api/instances` (POST) or querying instances |
+
+### Description
+
+The application crashed with `Invalid prisma.instance.findFirst() invocation: The column instances.channel_type does not exist`.
+
+### Root Cause
+
+A previous update added the `channelType` field to the Prisma schema, but the corresponding SQL migration was never generated or applied to the production database. The Prisma Client was generated with the new field, creating a mismatch with the runtime database table structure.
+
+### Fix
+
+Created a manual SQL migration in `backend/prisma/migrations/20260306110000_add_channel_type/migration.sql` that adds `channel_type` to `instances`, `conversations`, and `chat_messages` tables, and updates the unique constraint on `conversations`.
+
+### Lesson Learned
+
+Schema changes MUST always be accompanied by a generated migration file. Pushing a changed `schema.prisma` without a matching migration folder will cause runtime failures in production when using `prisma migrate deploy`.
+
+---
+
+## ERR-032: Frontend Crash — ReferenceError: Learn is not defined
+
+| Field        | Value                                                       |
+| ------------ | ----------------------------------------------------------- |
+| **Date**     | 2026-03-07                                                  |
+| **Severity** | 🔴 Critical                                                 |
+| **Source**   | `frontend/src/App.jsx`                                      |
+| **Trigger**  | Loading the dashboard or navigating to routes using `Learn` |
+
+### Description
+
+The frontend application crashed with `Uncaught ReferenceError: Learn is not defined`. This happened because the `Learn` and `Tools` components were being used in the routing table (JSX) but were not properly imported or declared via `React.lazy`.
+
+### Root Cause
+
+A previous refactor of the Help Center and Resource paths added the components to the `Routes` but failed to include the corresponding `const Learn = React.lazy(...)` import statements at the top of `App.jsx`.
+
+### Fix
+
+Added the missing `React.lazy` imports for `Learn` and `Tools` in `App.jsx`.
+
+### Lesson Learned
+
+The minified production build will fail instantly if any component used in the JSX tree is undefined. Always verify that routing additions have matching lazy-load imports.
+
+---
+
 ## ERR-031: Backend Crash — Missing Auth Middleware in Segments Route
 
 | Field        | Value                                                                   |
@@ -739,6 +793,36 @@ This migration will auto-run on next deploy via `prisma migrate deploy`.
 ### Lesson Learned
 
 > After adding a field to `schema.prisma`, ALWAYS create and test the migration. Use `npx prisma migrate dev --name <name>` locally, then verify with `prisma migrate deploy` in production.
+
+---
+
+## ERR-017: Campaign Creation Fails — Missing `channel_type` Column
+
+| Field        | Value                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------- |
+| **Date**     | 2026-02-21                                                                                              |
+| **Severity** | 🔴 Critical                                                                                             |
+| **Error**    | `PrismaClientKnownRequestError P2022: The column 'channel_type' does not exist in the current database` |
+| **Impact**   | Cannot create any campaigns, specifically those using new channel types.                                |
+
+### Root Cause
+
+The `channel_type String?` field was added to the `Campaign` and `Message` models in `schema.prisma` to support multi-channel campaigns, but no corresponding Prisma migration was ever created or applied to add the `channel_type` column to the production `campaigns` and `messages` tables. This caused database write operations involving these models to fail.
+
+### Fix
+
+Created manual migration `20260221203301_add_channel_type_to_campaign_and_message`:
+
+```sql
+ALTER TABLE "campaigns" ADD COLUMN IF NOT EXISTS "channel_type" TEXT;
+ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "channel_type" TEXT;
+```
+
+This migration will auto-run on next deploy via `prisma migrate deploy`.
+
+### Lesson Learned
+
+> After adding a field to `schema.prisma`, ALWAYS create and test the migration. Use `npx prisma migrate dev --name <name>` locally, then verify with `prisma migrate deploy` in production. This was a repeat of ERR-016, indicating a need for stricter migration discipline.
 
 ---
 
