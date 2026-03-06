@@ -907,19 +907,7 @@ This migration will auto-run on next deploy via `prisma migrate deploy`.
 
 ---
 
-## ERR-018: Nginx Proxy 405/Crash — Cross-Container Communication Failure (Resolved via Service Merger)
-
-### [ERR-018] Nginx Proxy 405/Crash — Cross-Container Communication Failure
-
-- **Error**: API requests `/api/*` returning `index.html` or 405 Method Not Allowed.
-- **Root Cause**: Frontend (Nginx) and Backend (Express) in separate containers could not communicate via `localhost:3000`. Nginx fell back to `index.html` due to `try_files`.
-- **Fix**: Merged frontend and backend into a single Coolify service. Backend handles static file serving and API.
-- **Lesson**: For simple multi-container deployments in Coolify, serving the frontend from the backend simplifies networking and prevents proxy issues.
-
-| Field        | Value      |
-| ------------ | ---------- |
-| **Date**     | 2026-02-21 |
-| **Severity** | 🟡 Medium  |
+| **Severity** | 🟡 Medium |
 
 ## ERR-017: Dashboard TypeError — Cannot Read 'sent' of Undefined (Fixed)
 
@@ -1084,6 +1072,7 @@ Added the missing `React.lazy` import for `ChannelsList` in `App.jsx`.
 Always ensure that every component used in the routing configuration has a corresponding import (or lazy import). The production build will fail if a referenced identifier is not defined in the scope.
 
 ## Error: Channels API crashing on inaccessible WhatsApp QR instances
+
 **Date:** 2026-03-05
 **Component:** Backend (`instances.js`)
 
