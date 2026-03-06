@@ -2,6 +2,7 @@ import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import ValueWatsLoader from './components/ValueWatsLoader';
 import Layout from './components/Layout';
+import PublicLayout from './components/public/PublicLayout';
 
 // Auth (keep eager — first screens the user sees)
 import Login from './pages/Login';
