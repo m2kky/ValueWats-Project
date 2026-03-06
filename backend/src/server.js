@@ -101,6 +101,9 @@ app.use('/api/lifecycle-rules', require('./routes/lifecycleRules.routes'));
 app.use('/api/integrations', tenantContext, require('./routes/integrations'));
 app.use('/api/segments', require('./routes/segments'));
 
+// Super Admin Routes (Protected internally by isAdmin middleware)
+app.use('/api/admin', require('./routes/admin'));
+
 // Public routes (Webhooks)
 app.use('/api/webhooks', webhookRoutes);
 

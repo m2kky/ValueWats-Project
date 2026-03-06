@@ -27,6 +27,14 @@ const ContactProfile = React.lazy(() => import('./pages/ContactProfile'));
 const Team = React.lazy(() => import('./pages/Team'));
 const Integrations = React.lazy(() => import('./pages/Integrations'));
 const SettingsLayout = React.lazy(() => import('./components/SettingsLayout'));
+
+// ── Lazy-loaded Admin Pages ──────────────────────────────
+const AdminRoute = React.lazy(() => import('./components/admin/AdminRoute'));
+const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminTenants = React.lazy(() => import('./pages/admin/AdminTenants'));
+const AdminPlans = React.lazy(() => import('./pages/admin/AdminPlans'));
+const AdminUsers = React.lazy(() => import('./pages/admin/AdminUsers'));
+const AdminLogs = React.lazy(() => import('./pages/admin/AdminLogs'));
 const WorkspaceSettings = React.lazy(() => import('./pages/settings/WorkspaceSettings'));
 const ContactFieldsSettings = React.lazy(() => import('./pages/settings/ContactFieldsSettings'));
 const LifecycleSettings = React.lazy(() => import('./pages/settings/LifecycleSettings'));
@@ -186,6 +194,33 @@ function App() {
             <PrivateRoute>
               <ChannelManage />
             </PrivateRoute>
+          } />
+
+          {/* Super Admin Routes */}
+          <Route path="/admin" element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          } />
+          <Route path="/admin/tenants" element={
+            <AdminRoute>
+              <AdminTenants />
+            </AdminRoute>
+          } />
+          <Route path="/admin/plans" element={
+            <AdminRoute>
+              <AdminPlans />
+            </AdminRoute>
+          } />
+          <Route path="/admin/users" element={
+            <AdminRoute>
+              <AdminUsers />
+            </AdminRoute>
+          } />
+          <Route path="/admin/logs" element={
+            <AdminRoute>
+              <AdminLogs />
+            </AdminRoute>
           } />
 
           {/* Legacy Redirects */}
