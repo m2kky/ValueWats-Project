@@ -15,9 +15,9 @@ const channelConfigs = {
     description: 'Connect your WhatsApp account using Evolution API. You only need to scan a QR code to start automating your messages.',
     color: 'emerald',
     resources: [
-      { name: 'Everything you need to know about WhatsApp Instances', link: '/help/channels/whatsapp' },
-      { name: 'How to scan the QR code safely', link: '/help/channels/whatsapp#qr-scan' },
-      { name: 'WhatsApp Automation Best Practices', link: '/help/channels/whatsapp#best-practices' }
+      { name: 'Everything about WhatsApp Instances', link: '/help/channels/whatsapp' },
+      { name: 'How to connect WhatsApp Instance', link: '/help/channels/whatsapp/connect' },
+      { name: 'QR Scan Safety & Best Practices', link: '/help/channels/whatsapp' }
     ],
     icon: (
       <svg className="w-24 h-24 text-emerald-500" viewBox="0 0 24 24" fill="currentColor">
@@ -30,8 +30,8 @@ const channelConfigs = {
     description: 'Connect Facebook Messenger to engage with your customers on the world\'s largest social media platform.',
     color: 'blue',
     resources: [
-      { name: 'Everything you need to know about Facebook Messenger', link: '/help/channels/messenger' },
-      { name: 'Connecting your Facebook Page', link: '/help/channels/messenger#setup' }
+      { name: 'Everything about Messenger', link: '/help/channels/messenger' },
+      { name: 'How to connect Facebook Page', link: '/help/channels/messenger/connect' }
     ],
     icon: (
       <svg className="w-24 h-24 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
@@ -44,8 +44,8 @@ const channelConfigs = {
     description: 'Connect Instagram to reply to private messages and build strong brand connections.',
     color: 'rose',
     resources: [
-      { name: 'Everything you need to know about Instagram', link: '/help/channels/instagram' },
-      { name: 'Connecting your Instagram Professional account', link: '/help/channels/instagram#setup' }
+      { name: 'Everything about Instagram Direct', link: '/help/channels/instagram' },
+      { name: 'How to connect Instagram account', link: '/help/channels/instagram/connect' }
     ],
     icon: (
       <svg className="w-24 h-24 text-rose-500" viewBox="0 0 24 24" fill="currentColor">
@@ -58,7 +58,8 @@ const channelConfigs = {
     description: 'Connect TikTok Business Messaging to engage with a whole new audience from TikTok.',
     color: 'zinc',
     resources: [
-      { name: 'Everything you need to know about TikTok', link: '/help/tiktok' }
+      { name: 'Everything about TikTok Business', link: '/help/channels/tiktok' },
+      { name: 'How to connect TikTok Business', link: '/help/channels/tiktok/connect' }
     ],
     icon: (
       <svg className="w-24 h-24 text-white" viewBox="0 0 24 24" fill="currentColor">

@@ -7,6 +7,7 @@ const helpLinks = [
     { name: 'Smart Inbox', path: '/help/inbox' },
     { name: 'Campaigns & Broadcasts', path: '/help/campaigns' },
     { name: 'AI Agents', path: '/help/agents' },
+    { name: 'Messaging Channels', path: '/help/channels/whatsapp' },
     { name: 'Settings & Automations', path: '/help/settings' },
 ];
 

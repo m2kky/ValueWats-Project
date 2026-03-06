@@ -50,6 +50,7 @@ const InboxHelp = React.lazy(() => import('./pages/public/help/InboxHelp'));
 const CampaignsHelp = React.lazy(() => import('./pages/public/help/CampaignsHelp'));
 const AgentsHelp = React.lazy(() => import('./pages/public/help/AgentsHelp'));
 const SettingsHelp = React.lazy(() => import('./pages/public/help/SettingsHelp'));
+const ChannelHelp = React.lazy(() => import('./pages/public/help/ChannelHelp'));
 
 // Legal Pages
 const PrivacyPolicy = React.lazy(() => import('./pages/public/legal/PrivacyPolicy'));
@@ -124,6 +125,8 @@ function App() {
 
           {/* Help Center Routes */}
           <Route path="/help" element={<HelpCenter />} />
+          <Route path="/help/channels/:channel/:topic" element={<ChannelHelp />} />
+          <Route path="/help/channels/:channel" element={<ChannelHelp />} />
           <Route path="/help/getting-started" element={<GettingStartedHelp />} />
           <Route path="/help/inbox" element={<InboxHelp />} />
           <Route path="/help/campaigns" element={<CampaignsHelp />} />

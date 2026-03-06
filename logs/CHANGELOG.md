@@ -11,6 +11,8 @@
 - **Connected Channels Dashboard**: Implemented a dedicated "Connected Channels" section that displays live channel status, platform icons, and management controls (Delete, Reconnect).
 - **Live Status Monitoring**: Integrated real-time status syncing for WhatsApp instances, providing visual feedback for active, disconnected, and scan-required states.
 - **Terminology Normalization**: Removed all references to "WhatsApp Business API", standardizing on "WhatsApp Instance" to reflect direct Evolution API connectivity.
+- **Channel Help Center**: Implemented dynamic Help Center routes for all messaging platforms (`/help/channels/:channel`), providing "Everything you need to know" and "Setup Guide" articles.
+- **Enhanced Catalog Links**: Added direct documentation links to each catalog card and connection wizard sidebar, following the respond.io pattern.
 
 ### Added
 

@@ -53,6 +53,16 @@ const categories = [
         link: '/help/agents'
     },
     {
+        id: 'channels',
+        title: 'Messaging Channels',
+        description: 'Connect and configure WhatsApp, FB, IG, TikTok, and Telegram instances.',
+        icon: RocketLaunchIcon,
+        color: 'text-orange-400',
+        bg: 'bg-orange-500/10',
+        border: 'border-orange-500/20',
+        link: '/help/channels/whatsapp'
+    },
+    {
         id: 'settings',
         title: 'Settings & API',
         description: 'Configure your instances, team members, and webhooks for external integrations.',
