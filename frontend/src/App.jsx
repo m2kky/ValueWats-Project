@@ -45,10 +45,6 @@ const Tools = React.lazy(() => import('./pages/public/resources/Tools'));
 
 // Help Center Pages
 const HelpCenter = React.lazy(() => import('./pages/public/help/HelpCenter'));
-const GettingStartedHelp = React.lazy(() => import('./pages/public/help/GettingStarted'));
-const InboxHelp = React.lazy(() => import('./pages/public/help/InboxHelp'));
-const CampaignsHelp = React.lazy(() => import('./pages/public/help/CampaignsHelp'));
-const AgentsHelp = React.lazy(() => import('./pages/public/help/AgentsHelp'));
 const SettingsHelp = React.lazy(() => import('./pages/public/help/SettingsHelp'));
 const ChannelHelp = React.lazy(() => import('./pages/public/help/ChannelHelp'));
 const ChannelsList = React.lazy(() => import('./pages/public/help/ChannelsList'));
@@ -134,7 +130,6 @@ function App() {
           <Route path="/help/channels" element={<ChannelsList />} />
           <Route path="/help/:feature/:topic" element={<FeatureHelp />} />
           <Route path="/help/:feature" element={<FeatureHelp />} />
-          <Route path="/help/getting-started" element={<GettingStartedHelp />} />
           <Route path="/help/settings" element={<SettingsHelp />} />
           
           <Route path="/resources/support" element={<Navigate to="/help" replace />} />

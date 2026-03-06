@@ -12,6 +12,8 @@
 - **Internal Knowledge Shortcuts**: Directly linked the "Learn how to write this" UI hook in the AI Agent editor to the local Help Center, replacing external redirects with native product guidance. (05:20 AM)
 - **Context-Aware Header Links**: Integrated direct documentation shortcuts in the headers of Contacts, Campaigns, Integrations, and Workflows modules, enabling users to access help without leaving their task context. (05:40 AM)
 - **Seamless Sidebar Navigation**: Updated `Layout.jsx` to treat the "Help Center" entry as an internal application route, ensuring faster loading and persistent UI state. (05:45 AM)
+- **Critical Build Recovery**: Resolved production build failure caused by stale React Router imports in `App.jsx` after the support hub migration. (05:55 AM)
+- **Product Roadmap Refresh**: Updated the public `/roadmap` to reflect "Recently Launched" milestones (Multi-Channel Inbox, Help Center) and current Q1 focus (Mobile App, Shopify). (05:58 AM)
 
 ## [2026-03-06] — Phase 5: Multi-Channel Inbox
 
