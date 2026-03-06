@@ -22,6 +22,7 @@ import {
 
 export default function NewCampaign() {
   const [instances, setInstances] = useState([]);
+  const [segments, setSegments] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     instanceIds: [],
@@ -39,16 +40,27 @@ export default function NewCampaign() {
   const [file, setFile] = useState(null); // CSV contact file
   const [mediaFile, setMediaFile] = useState(null); // Media attachment
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('manual'); // 'manual', 'csv', 'sheet'
+  const [activeTab, setActiveTab] = useState('manual'); // 'manual', 'csv', 'sheet', 'segment'
   const [sheetUrl, setSheetUrl] = useState('');
   const [sheetColumns, setSheetColumns] = useState([]);
   const [phoneColumn, setPhoneColumn] = useState('');
   const [fetchingColumns, setFetchingColumns] = useState(false);
+  const [segmentId, setSegmentId] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchInstances();
+    fetchSegments();
   }, []);
+
+  const fetchSegments = async () => {
+    try {
+      const response = await api.get('/segments');
+      setSegments(response.data);
+    } catch (e) {
+      console.error('Failed to fetch segments', e);
+    }
+  };
 
   const fetchInstances = async () => {
     try {
@@ -206,6 +218,8 @@ export default function NewCampaign() {
       } else if (activeTab === 'sheet') {
         data.append('googleSheetUrl', sheetUrl);
         data.append('phoneColumn', phoneColumn);
+      } else if (activeTab === 'segment' && segmentId) {
+        data.append('segmentId', segmentId);
       }
 
       if (mediaFile) {
@@ -455,6 +469,16 @@ export default function NewCampaign() {
                   >
                     Google Sheet
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('segment')}
+                    className={`flex-1 py-2 px-4 text-sm font-semibold rounded-lg transition-all ${activeTab === 'segment'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                      }`}
+                  >
+                    Saved Segment <SparklesIcon className="inline w-3 h-3 ml-1"/>
+                  </button>
                 </div>
 
                 {activeTab === 'manual' ? (
@@ -522,7 +546,7 @@ export default function NewCampaign() {
                       </>
                     )}
                   </div>
-                ) : (
+                ) : activeTab === 'sheet' ? (
                   <div className="space-y-5 bg-black/20 border border-white/5 p-5 rounded-2xl">
                     <div>
                       <label className="block text-sm font-semibold text-zinc-300 mb-2">Google Sheet Public URL</label>
@@ -582,7 +606,28 @@ export default function NewCampaign() {
                       </div>
                     )}
                   </div>
-                )}
+                ) : activeTab === 'segment' ? (
+                  <div className="space-y-5 bg-black/20 border border-indigo-500/10 p-5 rounded-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                      <SparklesIcon className="w-32 h-32 text-indigo-500" />
+                    </div>
+                    <div className="relative z-10">
+                      <label className="block text-sm font-semibold text-zinc-300 mb-2">Select a Saved Segment</label>
+                      <select
+                        className="w-full bg-black/40 border border-indigo-500/30 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all appearance-none"
+                        value={segmentId}
+                        onChange={e => setSegmentId(e.target.value)}
+                        required={activeTab === 'segment'}
+                      >
+                        <option value="" className="bg-zinc-900 text-zinc-400">-- Choose Segment --</option>
+                        {segments.map(seg => (
+                          <option key={seg.id} value={seg.id} className="bg-zinc-900 text-white">{seg.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-zinc-500 mt-2 font-medium">Broadcast your campaign to an already refined audience list. Build segments in the Contacts page.</p>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               {/* Delay Configuration - P1 Feature */}
@@ -715,7 +760,7 @@ export default function NewCampaign() {
                 <button
                   type="button"
                   className="inline-flex items-center justify-center min-w-[180px] px-6 py-2.5 border border-transparent text-sm font-semibold rounded-xl shadow-[0_0_20px_rgba(79,70,229,0.3)] text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5"
-                  disabled={loading || formData.instanceIds.length === 0 || (activeTab === 'csv' && !file) || (activeTab === 'sheet' && (!sheetUrl || !phoneColumn))}
+                  disabled={loading || formData.instanceIds.length === 0 || (activeTab === 'csv' && !file) || (activeTab === 'sheet' && (!sheetUrl || !phoneColumn)) || (activeTab === 'segment' && !segmentId)}
                   onClick={handleSubmit}
                 >
                   {loading ? (

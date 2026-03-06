@@ -99,6 +99,7 @@ app.use('/api/tags', require('./routes/tags.routes'));
 app.use('/api/snippets', require('./routes/snippets.routes'));
 app.use('/api/lifecycle-rules', require('./routes/lifecycleRules.routes'));
 app.use('/api/integrations', tenantContext, require('./routes/integrations'));
+app.use('/api/segments', require('./routes/segments'));
 
 // Public routes (Webhooks)
 app.use('/api/webhooks', webhookRoutes);

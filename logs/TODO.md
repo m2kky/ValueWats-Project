@@ -13,15 +13,12 @@
 - [ ] 6. **Implement Activity Feed** (Chat Banner & CRM Timeline)
 - [ ] 7. **Implement Saved Segments & Retargeting** (Smart filtering)
 - [ ] 8. **Implement Analytics Dashboard** (Campaigns, Agents, Funnel)
-- [ ] 9. **Implement Quick Replies & Auto-Contact Creation**
-- [ ] 10. **Implement Anti-Ban Smart Sending** (Warm-up, delays, rotation)
 - [ ] 11. **Implement Webhook API** (For business external integrations)
 
 ## 🟡 Medium Priority
 
 - [ ] Add Smart Scheduling (send at optimal times per recipient timezone)
 - [ ] Add Auto-Retry for failed messages with configurable backoff
-- [ ] Add Blacklist system (auto opt-out on reply keywords like STOP, UNSUBSCRIBE)
 
 ## 🟢 Low Priority
 
@@ -36,6 +33,10 @@
 
 ## ✅ Done
 
+- [x] Implement Agent Tools (Google Calendar, Google Sheets, Google Drive, Email, WhatsApp Notifications) — 2026-03-05
+- [x] Implement Quick Replies & Auto-Contact Creation — 2026-03-04
+- [x] Implement Anti-Ban Smart Sending (Warm-up, delays, rotation) — 2026-03-04
+- [x] Add Blacklist system (auto opt-out on reply keywords) — 2026-03-04
 - [x] Phase 12: Onboarding Wizard (3-step data collection & redirects) — 2026-03-04
 - [x] Phase 11: Auth Pages Redesign & Google OAuth integration — 2026-03-04
 - [x] Redesigned OTP & Team Invitation Email Templates (Dark theme + Base64 SVG) — 2026-03-04

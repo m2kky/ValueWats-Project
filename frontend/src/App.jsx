@@ -45,6 +45,11 @@ const WhyUs = React.lazy(() => import('./pages/public/WhyUs'));
 const Support = React.lazy(() => import('./pages/public/resources/Support'));
 const Learn = React.lazy(() => import('./pages/public/resources/Learn'));
 const Tools = React.lazy(() => import('./pages/public/resources/Tools'));
+const GettingStartedDocs = React.lazy(() => import('./pages/public/resources/support/GettingStartedDocs'));
+const InboxDocs = React.lazy(() => import('./pages/public/resources/support/InboxDocs'));
+const CampaignsDocs = React.lazy(() => import('./pages/public/resources/support/CampaignsDocs'));
+const AgentsDocs = React.lazy(() => import('./pages/public/resources/support/AgentsDocs'));
+const SettingsDocs = React.lazy(() => import('./pages/public/resources/support/SettingsDocs'));
 
 // Legal Pages
 const PrivacyPolicy = React.lazy(() => import('./pages/public/legal/PrivacyPolicy'));
@@ -119,6 +124,11 @@ function App() {
 
           {/* Resource Routes */}
           <Route path="/resources/support" element={<Support />} />
+          <Route path="/resources/support/getting-started" element={<GettingStartedDocs />} />
+          <Route path="/resources/support/inbox" element={<InboxDocs />} />
+          <Route path="/resources/support/campaigns" element={<CampaignsDocs />} />
+          <Route path="/resources/support/agents" element={<AgentsDocs />} />
+          <Route path="/resources/support/settings" element={<SettingsDocs />} />
           <Route path="/resources/learn" element={<Learn />} />
           <Route path="/resources/tools" element={<Tools />} />
 

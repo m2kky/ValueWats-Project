@@ -10,6 +10,15 @@ import {
   ArrowTrendingDownIcon,
   ClockIcon
 } from '@heroicons/react/24/outline';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
 import ActivityFeed from '../components/ActivityFeed';
 
 const StatCard = ({ title, value, icon: Icon, color, trend, trendValue }) => (
@@ -44,7 +53,8 @@ export default function Dashboard() {
     campaigns: 0,
     contacts: 0,
     ai: { messagesHandled: 0, escalationRate: 0, activeSessions: 0 },
-    teamInsights: []
+    teamInsights: [],
+    timeline: []
   });
   const [user, setUser] = useState(null);
 
@@ -70,7 +80,8 @@ export default function Dashboard() {
           escalationRate: data.ai?.escalationRate || 0,
           activeSessions: data.ai?.activeSessions || 0
         },
-        teamInsights: data.teamInsights || []
+        teamInsights: data.teamInsights || [],
+        timeline: data.timeline || []
       });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -215,6 +226,38 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Message Volume Graph */}
+          {stats.timeline && stats.timeline.length > 0 && (
+            <div className="glass-card p-8 mt-8">
+              <h2 className="text-xl font-black text-white uppercase tracking-widest mb-6">Message Volume (7d)</h2>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stats.timeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorSent" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorDelivered" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                    <XAxis dataKey="name" stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 12 }} dy={10} axisLine={false} tickLine={false} />
+                    <YAxis stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '12px' }}
+                      itemStyle={{ color: '#e4e4e7', fontWeight: 'bold' }}
+                    />
+                    <Area type="monotone" dataKey="sent" name="Sent" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorSent)" />
+                    <Area type="monotone" dataKey="delivered" name="Delivered" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorDelivered)" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
           )}

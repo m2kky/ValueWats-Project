@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const queueService = require('../services/queueService');
 const googleSheetService = require('../services/googleSheetService');
+const crmService = require('../services/crmService');
 
 const fs = require('fs');
 const xlsx = require('xlsx');
@@ -11,7 +12,7 @@ const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 const createCampaign = async (req, res) => {
   try {
-    const { name, instanceIds, message, messages, numbers, googleSheetUrl, phoneColumn, delayMin = 15, delayMax = 25, instanceSwitchCount = 50, messageRotationCount = 1, scheduledAt, endAt } = req.body;
+    const { name, instanceIds, message, messages, numbers, googleSheetUrl, phoneColumn, segmentId, delayMin = 15, delayMax = 25, instanceSwitchCount = 50, messageRotationCount = 1, scheduledAt, endAt } = req.body;
 
     const tenantId = req.user.tenantId;
 
@@ -138,12 +139,45 @@ const createCampaign = async (req, res) => {
       }).filter(Boolean);
 
     }
-    // 3. Manual Input
+    // 3. Saved Segment Input
+    else if (segmentId) {
+      const segment = await prisma.savedSegment.findUnique({
+        where: { id: segmentId, tenantId }
+      });
+      if (!segment) {
+        return res.status(404).json({ error: 'Saved segment not found.' });
+      }
+
+      // Convert stored filters JSON into the format crmService.listContacts expects
+      const rules = segment.rules.filters || {};
+      const search = segment.rules.search;
+      
+      const crmReq = {
+        search,
+        lifecycleStageId: rules.lifecycleStageId,
+        labelIds: rules.labelIds?.length > 0 ? rules.labelIds : undefined,
+        governorate: rules.governorate,
+        source: rules.source,
+        limit: 9999999 // Pull everyone matching
+      };
+
+      const result = await crmService.listContacts(tenantId, crmReq);
+      
+      if (!result.contacts || result.contacts.length === 0) {
+        return res.status(400).json({ error: 'Selected segment contains no contacts.' });
+      }
+
+      contacts = result.contacts.map(c => ({
+        number: c.phoneNumber.trim(),
+        variables: { name: c.name, email: c.email }
+      })).filter(c => c.number);
+    }
+    // 4. Manual Input
     else if (numbers) {
       const lines = numbers.split('\n');
       contacts = lines.map(line => ({ number: line.trim() })).filter(c => c.number && c.number.length >= 7);
     } else {
-      return res.status(400).json({ error: 'No contacts provided (CSV, Sheet, or Manual)' });
+      return res.status(400).json({ error: 'No contacts provided (CSV, Sheet, Segment, or Manual)' });
     }
 
     if (contacts.length === 0) {
@@ -233,6 +267,14 @@ const createCampaign = async (req, res) => {
           instanceId: instance.id,
           orderIndex: index
         }))
+      });
+    }
+
+    // Link Saved Segment if applicable
+    if (segmentId) {
+      await prisma.campaign.update({
+        where: { id: campaign.id },
+        data: { savedSegmentId: segmentId }
       });
     }
 

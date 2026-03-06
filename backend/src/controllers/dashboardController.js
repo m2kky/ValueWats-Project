@@ -128,6 +128,47 @@ const getStats = async (req, res) => {
       messagesReplied: u._count.sentMessages
     })).sort((a, b) => b.messagesReplied - a.messagesReplied);
 
+    // 9. Message Timeline (Last 7 Days) for Charting
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // 7 days including today
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const recentMessages = await prisma.message.findMany({
+      where: {
+        tenantId,
+        createdAt: { gte: sevenDaysAgo }
+      },
+      select: { createdAt: true, status: true }
+    });
+
+    const timelineMap = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+      timelineMap[dateStr] = {
+        name: d.toLocaleDateString('en-US', { weekday: 'short' }), // Mon, Tue, etc.
+        sent: 0,
+        delivered: 0,
+        read: 0,
+        failed: 0
+      };
+    }
+
+    recentMessages.forEach(m => {
+      // we need to match local date strings, using toLocaleDateString('en-CA') as quick YYYY-MM-DD standard
+      const dateStr = m.createdAt.toLocaleDateString('en-CA');
+      if (timelineMap[dateStr]) {
+        const s = m.status.toLowerCase();
+        if (s === 'sent') timelineMap[dateStr].sent++;
+        else if (s === 'delivered') timelineMap[dateStr].delivered++;
+        else if (s === 'read') timelineMap[dateStr].read++;
+        else if (s === 'error' || s === 'failed') timelineMap[dateStr].failed++;
+      }
+    });
+
+    const messagesTimeline = Object.values(timelineMap);
+
     res.json({
       campaigns: totalCampaigns,
       messages: {
@@ -149,7 +190,8 @@ const getStats = async (req, res) => {
         createdAt: c.createdAt,
         messageCount: c._count.messages
       })),
-      teamInsights
+      teamInsights,
+      timeline: messagesTimeline
     });
 
   } catch (error) {

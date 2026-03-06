@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import {
   PlusIcon, MagnifyingGlassIcon, ArrowUpTrayIcon, TrashIcon,
-  FunnelIcon, TagIcon, UserCircleIcon,
+  FunnelIcon, TagIcon, UserCircleIcon, BookmarkIcon
 } from '@heroicons/react/24/outline';
 
 const SOURCES = ['manual', 'whatsapp', 'import', 'website'];
@@ -23,6 +23,8 @@ export default function Contacts() {
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [showBulkTagMenu, setShowBulkTagMenu] = useState(false);
   const [showBulkStageMenu, setShowBulkStageMenu] = useState(false);
+  const [showSaveSegmentModal, setShowSaveSegmentModal] = useState(false);
+  const [segmentName, setSegmentName] = useState('');
   const [newContact, setNewContact] = useState({ phoneNumber: '', name: '', email: '', governorate: '' });
   const [newLabel, setNewLabel] = useState({ name: '', color: '#6366f1' });
   const LIMIT = 50;
@@ -122,6 +124,22 @@ export default function Contacts() {
     }
   };
 
+  const handleSaveSegment = async () => {
+    if (!segmentName.trim()) return alert("Enter a name for the segment.");
+    try {
+      const rules = {
+        filters,
+        search
+      };
+      await api.post('/segments', { name: segmentName, rules });
+      setShowSaveSegmentModal(false);
+      setSegmentName('');
+      alert("Segment saved successfully.");
+    } catch (e) {
+      alert(e.response?.data?.error || 'Failed to save segment.');
+    }
+  };
+
   const toggleSelect = (id) => {
     setSelected(prev => {
       const next = new Set(prev);
@@ -186,6 +204,12 @@ export default function Contacts() {
           <option value="">All Sources</option>
           {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
+        {/* Save Segment Trigger */}
+        {(filters.lifecycleStageId || filters.source || filters.governorate || filters.labelIds.length > 0 || search) && (
+          <button onClick={() => setShowSaveSegmentModal(true)} className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 text-sm font-bold uppercase tracking-widest transition-all">
+            <BookmarkIcon className="w-4 h-4" /> Save Segment
+          </button>
+        )}
         {selected.size > 0 && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-600/10 border border-indigo-500/30">
             <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">{selected.size} selected</span>
@@ -357,6 +381,31 @@ export default function Contacts() {
               <button onClick={handleCreateLabel} className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-black transition-all">Add</button>
             </div>
             <button onClick={() => setShowLabelModal(false)} className="w-full py-2.5 rounded-xl border border-white/10 text-zinc-400 text-sm hover:bg-white/5 transition-all">Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Save Segment Modal */}
+      {showSaveSegmentModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-card border border-white/10 bg-zinc-900 rounded-2xl p-6 w-full max-w-md space-y-4">
+            <h2 className="text-lg font-black text-white">Save View as Segment</h2>
+            <p className="text-zinc-500 text-sm">You can quickly reuse this exact set of filters for broadcasting campaigns.</p>
+            
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Segment Name</label>
+              <input 
+                value={segmentName} 
+                onChange={e => setSegmentName(e.target.value)} 
+                placeholder="e.g. VIP Customers from Cairo" 
+                className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/30" 
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setShowSaveSegmentModal(false)} className="flex-1 py-2.5 rounded-xl border border-white/10 text-zinc-400 text-sm hover:bg-white/5 transition-all">Cancel</button>
+              <button onClick={handleSaveSegment} className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-black transition-all">Save Segment</button>
+            </div>
           </div>
         </div>
       )}

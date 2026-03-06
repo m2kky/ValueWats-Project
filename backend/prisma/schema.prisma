@@ -74,6 +74,7 @@ model Tenant {
   contactFieldDefinitions ContactFieldDefinition[]
   snippets                Snippet[]
   lifecycleRules          LifecycleRule[]
+  savedSegments           SavedSegment[]
 
   @@map("tenants")
 }
@@ -167,6 +168,9 @@ model Campaign {
   createdAt            DateTime  @default(now()) @map("created_at")
   mediaUrl             String?   @map("media_url")
   mediaType            String?   @map("media_type")
+
+  savedSegmentId String?       @map("saved_segment_id")
+  savedSegment   SavedSegment? @relation(fields: [savedSegmentId], references: [id], onDelete: SetNull)
 
   tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   instance          Instance?          @relation(fields: [instanceId], references: [id], onDelete: Cascade)
@@ -797,4 +801,23 @@ model LifecycleRule {
 
   @@index([tenantId, triggerType])
   @@map("lifecycle_rules")
+}
+
+// Saved Segments (Dynamic filters for Contacts)
+model SavedSegment {
+  id       String @id @default(uuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String? @db.Text
+  rules       Json    @map("rules") // Structure: { matchType: "AND"|"OR", filters: [{ field: "tags", operator: "includes", value: "vip" }] }
+
+  campaigns Campaign[] // Campaigns targeting this segment
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, name])
+  @@map("saved_segments")
 }
