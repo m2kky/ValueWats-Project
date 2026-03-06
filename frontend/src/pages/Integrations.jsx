@@ -93,9 +93,18 @@ export default function Integrations() {
             <GlobeAltIcon className="w-8 h-8 text-indigo-400" />
             Integrations
           </h1>
-          <p className="text-sm text-zinc-400 mt-2 font-medium max-w-lg">
-            Connect external tools, services, and Google accounts to expand your AI agents' capabilities.
-          </p>
+          <div className="flex items-center gap-3 mt-2">
+            <p className="text-sm text-zinc-400 font-medium">
+              Connect external tools, services, and Google accounts to expand your AI agents' capabilities.
+            </p>
+            <div className="w-1 h-1 rounded-full bg-zinc-700" />
+            <a 
+              href="/help/workflows" 
+              className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-widest"
+            >
+              Documentation
+            </a>
+          </div>
         </div>
         <button
           onClick={() => setShowModal(true)}

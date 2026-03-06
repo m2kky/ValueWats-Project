@@ -5,7 +5,8 @@
 
 ## 🔴 High Priority
 
-- [x] 1. **Resolve AI Agent Response Issues** (Harmonized field names and fixed Prisma validation) - 2026-02-27
+- [x] 1. **Link Internal App Pages to Help Center**: Ensure all core modules (Agents, Integrations, Contacts, Campaigns) have direct links to their respective help pages.
+- [x] 2. **Resolve AI Agent Response Issues** (Harmonized field names and fixed Prisma validation) - 2026-02-27
 - [x] 2. **Resolve Evolution API DNS/Instance Issues** (Monitoring needed)
 - [x] 3. **Implement CRM System** (Contacts, Labels, Notes, Lifecycle Stages) — Schema + Backend + Frontend
 - [x] 4. **Implement Agent Actions** (8 distinct actions like respond.io) - Premium single-page UI, RichTextarea, and universal HTTP connector.
@@ -60,3 +61,8 @@
 - [x] Dashboard Team Insights for messages replied to by staff — 2026-03-01
 - [x] Campaigns UI Redesign (Premium Dark Theme with Glassmorphism) — 2026-03-04
 - [x] Public marketing site, Mega Menu, and Legal hub pages — 2026-03-04
+- [x] Redesign Help Center following `respond.io` structure (Hub, Categories, Breadcrumbs) — 2026-03-07
+- [x] Create Product Help Hub (`/help/product`) and feature-specific guides — 2026-03-07
+- [x] Rename `/help/agents` to `/help/ai-agents` and add `AI Agent Actions` guide — 2026-03-07
+- [x] Update Sidebar icons to premium set — 2026-03-07
+- [x] Use official high-fidelity logos for all messaging channels — 2026-03-07

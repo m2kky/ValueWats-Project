@@ -161,7 +161,13 @@ export default function Contacts() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-white">Contacts</h1>
-          <p className="text-zinc-500 text-sm mt-1">{total.toLocaleString()} contacts</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-zinc-500 text-sm">{total.toLocaleString()} contacts</p>
+            <span className="text-zinc-700">•</span>
+            <a href="/help/contacts" className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-widest">
+              How to manage
+            </a>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={() => setShowLabelModal(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-zinc-400 hover:text-white hover:border-white/20 text-xs font-black uppercase tracking-widest transition-all">

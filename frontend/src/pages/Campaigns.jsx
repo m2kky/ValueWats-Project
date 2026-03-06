@@ -93,7 +93,16 @@ export default function Campaigns() {
               </div>
               <div>
                 <h1 className="text-3xl font-black tracking-tight text-white">Campaigns</h1>
-                <p className="text-sm text-zinc-400 font-medium">Broadcast messages and manage scheduled sequences at scale.</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-zinc-400 font-medium">Broadcast messages and manage scheduled sequences at scale.</p>
+                  <span className="text-zinc-700 font-bold">•</span>
+                  <a 
+                    href="/help/campaigns" 
+                    className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-widest"
+                  >
+                    Documentation
+                  </a>
+                </div>
               </div>
             </div>
           </div>

@@ -17,15 +17,18 @@
 ### Fixed
 
 - **Database Consistency**: Added missing `saved_segments` table and `campaigns.saved_segment_id` column that was causing production crashes in the campaign scheduler.
+- **Frontend Crash (ReferenceError)**: Fixed `ChannelsList is not defined` error in `App.jsx` by adding the missing lazy-load import.
 - **WhatsApp Cloud API Links**: Fixed incorrect help links in the channel catalog.
 
 ### Added
 
 - **New Help Center Hub**: Launched a unified `/help` landing page with categorized documentation articles and search capabilities.
-- **Dynamic Routing**: Reorganized all documentation articles under the native `/help` route, migrating away from the legacy `/resources/support` path.
-- **Sidebar Integration**: Added a persistent "Help Center" link to the main application sidebar for instant user access.
+- **Product Help Hub**: Created `/help/product` navigation hub for deep feature documentation across all core modules.
+- **AI Agent Actions Documentation**: Added specialized guides for AI Agent Actions at `/help/ai-agents/actions`.
+- **Dynamic Help Routing**: Implemented `FeatureHelp.jsx` to handle multi-topic documentation for AI Agents, Contacts, Inbox, and Campaigns.
+- **Premium Sidebar Icons**: Updated the main navigation icons to a professional, high-fidelity set mirroring `respond.io`.
+- **High-Fidelity Channel Logos**: Replaced generic SVG icons with official brand logos for WhatsApp, TikTok, Messenger, Instagram, and more in the Channel Catalog.
 - **In-App Documentation**: Linked the `RichTextarea` "Learn how to write this" shortcut directly to the local Help Center instead of external sites.
-- **Legacy Redirects**: Implemented automatic routing for old support links to ensure zero broken links during the transition.
 
 ## [2026-03-06] — Phase 5: Multi-Channel Inbox
 

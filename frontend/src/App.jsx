@@ -52,6 +52,8 @@ const AgentsHelp = React.lazy(() => import('./pages/public/help/AgentsHelp'));
 const SettingsHelp = React.lazy(() => import('./pages/public/help/SettingsHelp'));
 const ChannelHelp = React.lazy(() => import('./pages/public/help/ChannelHelp'));
 const ChannelsList = React.lazy(() => import('./pages/public/help/ChannelsList'));
+const ProductHelp = React.lazy(() => import('./pages/public/help/ProductHelp'));
+const FeatureHelp = React.lazy(() => import('./pages/public/help/FeatureHelp'));
 
 // Legal Pages
 const PrivacyPolicy = React.lazy(() => import('./pages/public/legal/PrivacyPolicy'));
@@ -126,13 +128,13 @@ function App() {
 
           {/* Help Center Routes */}
           <Route path="/help" element={<HelpCenter />} />
+          <Route path="/help/product" element={<ProductHelp />} />
           <Route path="/help/channels/:channel/:topic" element={<ChannelHelp />} />
           <Route path="/help/channels/:channel" element={<ChannelHelp />} />
           <Route path="/help/channels" element={<ChannelsList />} />
+          <Route path="/help/:feature/:topic" element={<FeatureHelp />} />
+          <Route path="/help/:feature" element={<FeatureHelp />} />
           <Route path="/help/getting-started" element={<GettingStartedHelp />} />
-          <Route path="/help/inbox" element={<InboxHelp />} />
-          <Route path="/help/campaigns" element={<CampaignsHelp />} />
-          <Route path="/help/agents" element={<AgentsHelp />} />
           <Route path="/help/settings" element={<SettingsHelp />} />
           
           <Route path="/resources/support" element={<Navigate to="/help" replace />} />

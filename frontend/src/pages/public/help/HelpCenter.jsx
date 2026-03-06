@@ -8,10 +8,21 @@ import {
     MegaphoneIcon, 
     BeakerIcon, 
     Cog6ToothIcon,
-    ArrowRightIcon
+    ArrowRightIcon,
+    RectangleGroupIcon
 } from '@heroicons/react/24/outline';
 
 const categories = [
+    {
+        id: 'product',
+        title: 'Product Features',
+        description: 'Explore core functionalities: AI Agents, Smart Inbox, Contacts, Campaigns, and more.',
+        icon: RectangleGroupIcon,
+        color: 'text-amber-400',
+        bg: 'bg-amber-500/10',
+        border: 'border-amber-500/20',
+        link: '/help/product'
+    },
     {
         id: 'getting-started',
         title: 'Quick Start',

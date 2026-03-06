@@ -88,11 +88,20 @@ export default function Workflows() {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Workflows</h1>
-          <p className="text-sm text-gray-500">Automate actions when agents trigger events</p>
-        </div>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-widest italic">Workflows</h1>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-500">Automate actions when agents trigger events</p>
+              <span className="text-gray-300">•</span>
+              <a 
+                href="/help/workflows" 
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-500 transition-colors uppercase tracking-widest"
+              >
+                Documentation
+              </a>
+            </div>
+          </div>
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"

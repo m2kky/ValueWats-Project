@@ -1,21 +1,20 @@
 import { Link, useLocation } from 'react-router-dom';
 import {
-  HomeIcon,
-  MegaphoneIcon,
-  BoltIcon,
-  DevicePhoneMobileIcon,
+  RectangleGroupIcon,
   ChatBubbleLeftRightIcon,
-  ArrowRightOnRectangleIcon as LogoutIcon,
-  UserGroupIcon,
-  CpuChipIcon,
-  AdjustmentsHorizontalIcon,
-  MagnifyingGlassIcon,
-  BellIcon,
   UsersIcon,
-  DocumentDuplicateIcon,
+  MegaphoneIcon,
+  DocumentTextIcon,
+  CpuChipIcon,
+  Squares2X2Icon,
+  BoltIcon,
   Cog6ToothIcon,
-  QuestionMarkCircleIcon
+  QuestionMarkCircleIcon,
+  ArrowRightOnRectangleIcon as LogoutIcon,
+  BellIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
+import { SparklesIcon } from '@heroicons/react/24/solid';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import GlobalProgressBar from './GlobalProgressBar';
@@ -50,16 +49,16 @@ export default function Layout({ children }) {
   };
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: HomeIcon },
+    { name: 'Dashboard', path: '/dashboard', icon: RectangleGroupIcon },
     { name: 'Inbox', path: '/inbox', icon: ChatBubbleLeftRightIcon },
     { name: 'Contacts', path: '/contacts', icon: UsersIcon },
     { name: 'Campaigns', path: '/campaigns', icon: MegaphoneIcon },
-    { name: 'Templates', path: '/templates', icon: DocumentDuplicateIcon },
-    { name: 'AI Agents', path: '/agents', icon: CpuChipIcon },
-    { name: 'Channels', path: '/channels', icon: ChatBubbleLeftRightIcon },
+    { name: 'Templates', path: '/templates', icon: DocumentTextIcon },
+    { name: 'AI Agents', path: '/agents', icon: SparklesIcon },
+    { name: 'Channels', path: '/channels', icon: Squares2X2Icon },
     { name: 'Automations', path: '/automations', icon: BoltIcon },
     { name: 'Settings', path: '/settings', icon: Cog6ToothIcon },
-    { name: 'Help Center', path: '/help', icon: QuestionMarkCircleIcon, external: true },
+    { name: 'Help Center', path: '/help', icon: QuestionMarkCircleIcon },
   ];
 
   const isActive = (path) => location.pathname.startsWith(path);

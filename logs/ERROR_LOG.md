@@ -974,3 +974,30 @@ Created a manual SQL migration in `backend/prisma/migrations/20260306120000_add_
 ### Lesson Learned
 
 Never assume that a schema field exists in the database just because it is in `schema.prisma`. Always verify existing migrations and run `prisma migrate deploy` after any schema updates.
+
+---
+
+## ERR-035: Frontend Crash — ReferenceError: ChannelsList is not defined
+
+| Field        | Value                          |
+| ------------ | ------------------------------ |
+| **Date**     | 2026-03-06                     |
+| **Severity** | 🔴 Critical                    |
+| **Source**   | `frontend/src/App.jsx`         |
+| **Trigger**  | Navigating to `/help/channels` |
+
+### Description
+
+The frontend application crashed with `Uncaught ReferenceError: ChannelsList is not defined`. This happened because the `ChannelsList` component was used in the routing table but was not imported or declared via `React.lazy`.
+
+### Root Cause
+
+During the Help Center redesign, the `/help/channels` route was updated to use the `ChannelsList` component, but the corresponding `const ChannelsList = React.lazy(...)` import statement was omitted from `App.jsx`.
+
+### Fix
+
+Added the missing `React.lazy` import for `ChannelsList` in `App.jsx`.
+
+### Lesson Learned
+
+Always ensure that every component used in the routing configuration has a corresponding import (or lazy import). The production build will fail if a referenced identifier is not defined in the scope.
