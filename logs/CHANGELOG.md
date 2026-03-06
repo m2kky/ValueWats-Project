@@ -1,34 +1,17 @@
 ---
 
-## [2026-03-07] — Phase 7: Channels Module Redesign
-
-### Changed
-
-- **Renamed Instances to Channels**: Updated all UI references and dashboard navigation from "Instances" to "Channels" for a more intuitive multi-channel experience.
-- **New Channel Catalog**: Redesigned the main channels page into a modern "Channel Catalog" grid with category filtering and platform-specific cards.
-- **Split-Screen Connection Wizard**: Implemented a professional, split-screen connection flow with dedicated sidebars for platform resources and step-by-step guidance.
-- **Legacy Support**: Added automatic redirects from `/instances` and `/instances/new` to the new `/channels` structure.
-- **Connected Channels Dashboard**: Implemented a dedicated "Connected Channels" section that displays live channel status, platform icons, and management controls (Delete, Reconnect).
-- **Live Status Monitoring**: Integrated real-time status syncing for WhatsApp instances, providing visual feedback for active, disconnected, and scan-required states.
-- **Terminology Normalization**: Removed all references to "WhatsApp Business API", standardizing on "WhatsApp Instance" to reflect direct Evolution API connectivity.
-- **Channel Help Center**: Implemented dynamic Help Center routes for all messaging platforms (`/help/channels/:channel`), providing "Everything you need to know" and "Setup Guide" articles.
-- **Enhanced Catalog Links**: Added direct documentation links to each catalog card and connection wizard sidebar, following the respond.io pattern.
-
-### Fixed
-
-- **Database Consistency**: Added missing `saved_segments` table and `campaigns.saved_segment_id` column that was causing production crashes in the campaign scheduler.
-- **Frontend Crash (ReferenceError)**: Fixed `ChannelsList is not defined` error in `App.jsx` by adding the missing lazy-load import.
-- **WhatsApp Cloud API Links**: Fixed incorrect help links in the channel catalog.
+## [2026-03-06] — Phase 7: Help Center Expansion & Product Alignment (05:50 AM)
 
 ### Added
 
-- **New Help Center Hub**: Launched a unified `/help` landing page with categorized documentation articles and search capabilities.
-- **Product Help Hub**: Created `/help/product` navigation hub for deep feature documentation across all core modules.
-- **AI Agent Actions Documentation**: Added specialized guides for AI Agent Actions at `/help/ai-agents/actions`.
-- **Dynamic Help Routing**: Implemented `FeatureHelp.jsx` to handle multi-topic documentation for AI Agents, Contacts, Inbox, and Campaigns.
-- **Premium Sidebar Icons**: Updated the main navigation icons to a professional, high-fidelity set mirroring `respond.io`.
-- **High-Fidelity Channel Logos**: Replaced generic SVG icons with official brand logos for WhatsApp, TikTok, Messenger, Instagram, and more in the Channel Catalog.
-- **In-App Documentation**: Linked the `RichTextarea` "Learn how to write this" shortcut directly to the local Help Center instead of external sites.
+- **Unified Help Center Hub**: Launched a comprehensive landing page at `/help` with high-fidelity collection cards for all major product categories, featuring categorized search and premium dark theme layout. (03:10 AM)
+- **Product Help Hub**: Created a dedicated navigation hub at `/help/product` that serves as the central documentation tree for core platform features (Contacts, Inbox, Campaigns, AI Agents, Workflows). (03:45 AM)
+- **AI Agent Actions Documentation**: Authored granular guides for AI Agent Actions at `/help/ai-agents/actions`, detailing the configuration of 8 distinct neural response behaviors. (04:15 AM)
+- **Dynamic Help Routing Engine**: Implemented `FeatureHelp.jsx` to dynamically serve multi-topic documentation based on URL parameters, ensuring scalable content management for all platform modules. (04:30 AM)
+- **Premium Navigation Assets**: Migrated to a professional, high-fidelity sidebar icon set and integrated official brand logos (WhatsApp, TikTok, Meta) across the Channel Catalog for enterprise-grade visual identity. (04:45 AM)
+- **Internal Knowledge Shortcuts**: Directly linked the "Learn how to write this" UI hook in the AI Agent editor to the local Help Center, replacing external redirects with native product guidance. (05:20 AM)
+- **Context-Aware Header Links**: Integrated direct documentation shortcuts in the headers of Contacts, Campaigns, Integrations, and Workflows modules, enabling users to access help without leaving their task context. (05:40 AM)
+- **Seamless Sidebar Navigation**: Updated `Layout.jsx` to treat the "Help Center" entry as an internal application route, ensuring faster loading and persistent UI state. (05:45 AM)
 
 ## [2026-03-06] — Phase 5: Multi-Channel Inbox
 

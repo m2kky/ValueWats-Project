@@ -2,6 +2,60 @@
 
 Document all critical errors, their root causes, fixes, and lessons learned. When fixing an issue, **FIRST check this file** to see if it's already documented. After fixing an issue, **ADD it here**.
 
+## ERR-035: Frontend Crash — ReferenceError: ChannelsList is not defined
+
+| Field        | Value                                                          |
+| ------------ | -------------------------------------------------------------- |
+| **Date**     | 2026-03-06 (03:52 AM)                                          |
+| **Severity** | 🔴 Critical                                                    |
+| **Source**   | `frontend/src/App.jsx`                                         |
+| **Trigger**  | Loading the application or navigating to `/help` / `/channels` |
+
+### Description
+
+The application displayed a blank screen for some help center routes. The browser console reported `Uncaught ReferenceError: ChannelsList is not defined`.
+
+### Root Cause
+
+During the migration from `/resources/support` to the new `/help` structure, the `ChannelsList` component was added to the routing table in `App.jsx`, but the corresponding `React.lazy` import statement was missing at the top of the file.
+
+### Fix
+
+Added `const ChannelsList = React.lazy(() => import('./pages/public/help/ChannelsList'));` to the imports section of `App.jsx`. (03:55 AM)
+
+### Lesson Learned
+
+Never assume a component is available globally just because it exists in the filesystem. Always verify that all components used in the `Route` definitions have matching imports, especially in the central `App.jsx` file.
+
+---
+
+## ERR-034: Production Crash — Missing segments relation in Campaign Scheduler
+
+| Field        | Value                                      |
+| ------------ | ------------------------------------------ |
+| **Date**     | 2026-03-06 (02:50 AM)                      |
+| **Severity** | 🔴 Critical                                |
+| **Source**   | `backend/src/services/schedulerService.js` |
+| **Trigger**  | Automated campaign scheduling cycle        |
+
+### Description
+
+The background campaign scheduler crashed with a Prisma validation error: `The column campaigns.saved_segment_id does not exist`.
+
+### Root Cause
+
+A previous feature update for "Saved Segments" added the `savedSegmentId` field to the `Campaign` model in `schema.prisma`, but the SQL migration was not applied to the production database. The scheduler attempted to query this missing column, leading to a process crash.
+
+### Fix
+
+Created and applied a manual SQL migration to add the `saved_segments` table and the `saved_segment_id` column to the `campaigns` table. (03:00 AM)
+
+### Lesson Learned
+
+Database schema changes integrated into core background services (like BullMQ workers or schedulers) are high-risk. Always verify that migrations have successfully deployed to the production environment before the application code attempts to access the new schema.
+
+---
+
 ## ERR-033: Prisma Crash — Missing channel_type Column
 
 | Field        | Value                                                   |

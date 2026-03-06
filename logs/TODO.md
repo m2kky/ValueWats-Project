@@ -61,8 +61,9 @@
 - [x] Dashboard Team Insights for messages replied to by staff — 2026-03-01
 - [x] Campaigns UI Redesign (Premium Dark Theme with Glassmorphism) — 2026-03-04
 - [x] Public marketing site, Mega Menu, and Legal hub pages — 2026-03-04
-- [x] Redesign Help Center following `respond.io` structure (Hub, Categories, Breadcrumbs) — 2026-03-07
-- [x] Create Product Help Hub (`/help/product`) and feature-specific guides — 2026-03-07
-- [x] Rename `/help/agents` to `/help/ai-agents` and add `AI Agent Actions` guide — 2026-03-07
-- [x] Update Sidebar icons to premium set — 2026-03-07
-- [x] Use official high-fidelity logos for all messaging channels — 2026-03-07
+- [x] Redesign Help Center following `respond.io` structure (Hub, Categories, Breadcrumbs) — 2026-03-06 (03:15 AM)
+- [x] Create Product Help Hub (`/help/product`) and feature-specific guides — 2026-03-06 (03:50 AM)
+- [x] Rename `/help/agents` to `/help/ai-agents` and add `AI Agent Actions` guide — 2026-03-06 (04:20 AM)
+- [x] Update Sidebar icons to premium set — 2026-03-06 (04:50 AM)
+- [x] Use official high-fidelity logos for all messaging channels — 2026-03-06 (05:00 AM)
+- [x] Integrated context-aware internal help links across core app modules — 2026-03-06 (05:40 AM)
