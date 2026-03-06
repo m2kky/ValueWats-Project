@@ -14,13 +14,23 @@ import {
 const categories = [
     {
         id: 'getting-started',
-        title: 'Getting Started',
-        description: 'New to ValueWats? Start here to set up your account and send your first message.',
+        title: 'Quick Start',
+        description: 'Set up your workspace and send your first test message in under 5 minutes.',
         icon: RocketLaunchIcon,
         color: 'text-blue-400',
         bg: 'bg-blue-500/10',
         border: 'border-blue-500/20',
         link: '/help/getting-started'
+    },
+    {
+        id: 'channels',
+        title: 'Messaging Channels',
+        description: 'Connect and configure WhatsApp, FB, IG, TikTok, and Telegram instances.',
+        icon: ChatBubbleLeftRightIcon,
+        color: 'text-emerald-400',
+        bg: 'bg-emerald-500/10',
+        border: 'border-emerald-500/20',
+        link: '/help/channels'
     },
     {
         id: 'inbox',
@@ -51,16 +61,6 @@ const categories = [
         bg: 'bg-fuchsia-500/10',
         border: 'border-fuchsia-500/20',
         link: '/help/agents'
-    },
-    {
-        id: 'channels',
-        title: 'Messaging Channels',
-        description: 'Connect and configure WhatsApp, FB, IG, TikTok, and Telegram instances.',
-        icon: RocketLaunchIcon,
-        color: 'text-orange-400',
-        bg: 'bg-orange-500/10',
-        border: 'border-orange-500/20',
-        link: '/help/channels/whatsapp'
     },
     {
         id: 'settings',
@@ -95,48 +95,87 @@ export default function HelpCenter() {
                         {/* Search Bar */}
                         <div className="relative max-w-2xl mx-auto">
                             <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                                <MagnifyingGlassIcon className="h-6 w-6 text-zinc-500" />
+                                <MagnifyingGlassIcon className={`h-6 w-6 transition-colors ${searchQuery ? 'text-blue-400' : 'text-zinc-500'}`} />
                             </div>
                             <input
                                 type="text"
                                 placeholder="Search for articles (e.g. spintax, AI knowledge base)..."
-                                className="w-full bg-[#18181b] border border-white/10 rounded-2xl py-4 pl-14 pr-4 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all shadow-2xl text-lg"
+                                className="w-full bg-[#18181b] border border-white/10 rounded-2xl py-4 pl-14 pr-16 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all shadow-2xl text-lg"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
+                            {searchQuery && (
+                                <button 
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-6 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white text-sm font-bold"
+                                >
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="mt-8 flex items-center justify-center gap-4 text-sm text-zinc-500">
+                            <span className="font-bold text-zinc-400 uppercase tracking-widest text-[10px]">Popular:</span>
+                            <button onClick={() => setSearchQuery('whatsapp')} className="hover:text-white transition-colors">WhatsApp Setup</button>
+                            <span className="text-zinc-800">•</span>
+                            <button onClick={() => setSearchQuery('agent')} className="hover:text-white transition-colors">AI Agents</button>
+                            <span className="text-zinc-800">•</span>
+                            <button onClick={() => setSearchQuery('broadcast')} className="hover:text-white transition-colors">Anti-Ban</button>
                         </div>
                     </div>
                 </div>
 
                 {/* Categories Grid */}
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-32">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {categories.map((cat) => (
-                            <Link 
-                                key={cat.id} 
-                                to={cat.link}
-                                className="group bg-[#111113] border border-white/5 rounded-3xl p-8 hover:bg-white/[0.03] hover:border-white/10 transition-all duration-300 relative overflow-hidden"
-                            >
-                                <div className={`w-14 h-14 ${cat.bg} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                                    <cat.icon className={`w-7 h-7 ${cat.color}`} />
-                                </div>
-                                
-                                <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
-                                    {cat.title}
-                                    <ArrowRightIcon className="w-4 h-4 text-zinc-600 group-hover:text-blue-400 transition-colors group-hover:translate-x-1 duration-300" />
-                                </h3>
-                                <p className="text-zinc-400 text-[15px] leading-relaxed">
-                                    {cat.description}
-                                </p>
+                    {categories.filter(cat => 
+                        cat.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        cat.description.toLowerCase().includes(searchQuery.toLowerCase())
+                    ).length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {categories
+                                .filter(cat => 
+                                    cat.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                    cat.description.toLowerCase().includes(searchQuery.toLowerCase())
+                                )
+                                .map((cat) => (
+                                    <Link 
+                                        key={cat.id} 
+                                        to={cat.link}
+                                        className="group bg-[#111113] border border-white/5 rounded-3xl p-8 hover:bg-white/[0.03] hover:border-white/10 transition-all duration-300 relative overflow-hidden"
+                                    >
+                                        <div className={`w-14 h-14 ${cat.bg} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                                            <cat.icon className={`w-7 h-7 ${cat.color}`} />
+                                        </div>
+                                        
+                                        <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                                            {cat.title}
+                                            <ArrowRightIcon className="w-4 h-4 text-zinc-600 group-hover:text-blue-400 transition-colors group-hover:translate-x-1 duration-300" />
+                                        </h3>
+                                        <p className="text-zinc-400 text-[15px] leading-relaxed">
+                                            {cat.description}
+                                        </p>
 
-                                <div className="mt-8">
-                                    <span className="text-sm font-semibold text-blue-400 group-hover:underline">
-                                        View Guides
-                                    </span>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
+                                        <div className="mt-8">
+                                            <span className="text-sm font-semibold text-blue-400 group-hover:underline">
+                                                View Guides
+                                            </span>
+                                        </div>
+                                    </Link>
+                                ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 bg-[#111113] border border-dashed border-white/10 rounded-3xl">
+                             <MagnifyingGlassIcon className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
+                             <h3 className="text-xl font-bold text-white mb-2">No results for "{searchQuery}"</h3>
+                             <p className="text-zinc-500 mb-8 text-sm">Try searching for something else or browse categories below.</p>
+                             <button 
+                                onClick={() => setSearchQuery('')}
+                                className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg font-bold transition-all text-sm border border-white/10"
+                             >
+                                 Clear Search
+                             </button>
+                        </div>
+                    )}
 
                     {/* Support Section */}
                     <div className="mt-20 p-10 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-3xl border border-blue-500/20 text-center">

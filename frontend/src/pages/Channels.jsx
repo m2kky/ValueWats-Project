@@ -93,6 +93,8 @@ const catalog = [
     description: 'Connect Telegram Bot to provide real-time support when customers reach out.',
     category: 'messaging',
     color: 'sky',
+    helpLink: '/help/channels/telegram',
+    connectHelpLink: '/help/channels/telegram/connect',
     icon: (
       <svg className="w-10 h-10 text-sky-500" viewBox="0 0 24 24" fill="currentColor">
         <path d="M11.944 0C5.337 0 0 5.337 0 11.944c0 6.606 5.337 11.944 11.944 11.944 6.607 0 11.944-5.338 11.944-11.944C23.888 5.337 18.551 0 11.944 0zm5.833 8.333l-2.04 9.613c-.154.678-.556.846-1.127.525l-3.109-2.29-1.5 1.444c-.166.166-.305.305-.625.305l.223-3.167 5.764-5.208c.249-.221-.055-.345-.386-.123l-7.126 4.456-3.078-.962c-.67-.209-.684-.67.14-.99l12.036-4.638c.556-.205 1.042.125.834.99z"/>
@@ -106,6 +108,8 @@ const catalog = [
     description: 'Connect Viber Bot to enable customer support and engagement on Viber.',
     category: 'messaging',
     color: 'purple',
+    helpLink: '/help/channels/viber',
+    connectHelpLink: '/help/channels/viber/connect',
     icon: (
       <svg className="w-10 h-10 text-purple-500" viewBox="0 0 24 24" fill="currentColor">
         <path d="M17.472 0a6.528 6.528 0 016.528 6.516v13.68c-.024.18-.084.324-.168.456a.465.465 0 01-.228.168.64.64 0 01-.192.012H16.2c-.372-.012-.66-.192-.852-.528l-.348-.6V16.62c0-.588-.228-1.572-.672-2.928-.276-.84-.732-2.028-1.344-3.564-.624-1.524-1.284-3.048-2.004-4.572C8.748 4.716 7.956 3.192 7.044 1.704l-.168-.276A3.6 3.6 0 016.636.54a.42.42 0 01.12-.396C6.816.096 6.948 0 7.152 0h10.32z"/>
@@ -119,6 +123,8 @@ const catalog = [
     description: 'Connect LINE Official Account to provide timely support to your customers on LINE.',
     category: 'messaging',
     color: 'green',
+    helpLink: '/help/channels/line',
+    connectHelpLink: '/help/channels/line/connect',
     icon: (
       <svg className="w-10 h-10 text-green-500" viewBox="0 0 24 24" fill="currentColor">
         <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645s6.934-4.089 9.47-6.992c1.004-1.12 1.513-3.818 1.513-5.951z"/>
@@ -132,6 +138,8 @@ const catalog = [
     description: 'Connect WeChat Service Account for customer engagement, brand promotion, and seamless communication.',
     category: 'messaging',
     color: 'green',
+    helpLink: '/help/channels/wechat',
+    connectHelpLink: '/help/channels/wechat/connect',
     icon: (
       <svg className="w-10 h-10 text-green-600" viewBox="0 0 24 24" fill="currentColor">
         <path d="M8.611 12.012c4.712 0 8.521-3.328 8.521-7.433 0-4.106-3.812-7.433-8.521-7.433S.11 0.473.11 4.579c0 2.27 1.157 4.314 3.011 5.75-.15.462-.513 1.567-.532 1.631-.039.111-.073.303.113.186C2.868 12.051 4.38 11.233 5.3 10.8c1.052.8 2.288 1.212 3.311 1.212zm-3.522-6.527c-.512 0-.928-.363-.928-.809 0-.447.416-.81.928-.81s.928.363.928.81c0 .446-.416.809-.928.809zm6.983 0c-.512 0-.928-.363-.928-.809 0-.447.416-.81.928-.81.513 0 .928.363.928.81 0 .446-.416.809-.928.809zM23.89 13.918c0-3.562-3.328-6.447-7.433-6.447-4.106 0-7.433 2.885-7.433 6.447s3.327 6.447 7.433 6.447c.801 0 1.558-.113 2.264-.32.784.394 2.103 1.083 2.155 1.11.162.1.135-.11.1-.212-.03-.131-.334-1.077-.463-1.479 2.016-1.21 3.414-3.1 3.414-5.546zm-9.352-1.285c-.41 0-.742-.29-.742-.647 0-.357.332-.647.742-.647.413 0 .743.29.743.647 0 .357-.33.647-.743.647zm5.568 0c-.41 0-.742-.29-.742-.647 0-.357.332-.647.742-.647.413 0 .743.29.743.647 0 .357-.33.647-.743.647z"/>
@@ -145,8 +153,8 @@ const catalog = [
     description: 'Connect official WhatsApp Cloud API (Meta) for enterprise-grade scalability and reliability.',
     category: 'messaging',
     color: 'blue',
-    helpLink: '/help/channels/messenger',
-    connectHelpLink: '/help/channels/messenger/connect',
+    helpLink: '/help/channels/whatsapp_cloud',
+    connectHelpLink: '/help/channels/whatsapp_cloud/connect',
     icon: (
       <svg className="w-10 h-10 text-indigo-500" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm1.25 18.25c-3.15 0-5.75-2.6-5.75-5.75s2.6-5.75 5.75-5.75 5.75 2.6 5.75 5.75-2.6 5.75-5.75 5.75z"/>
@@ -160,6 +168,7 @@ const catalog = [
     description: 'Connect any channels not natively available in respond.io to expand your messaging capabilities.',
     category: 'messaging',
     color: 'amber',
+    helpLink: '/help/agents',
     icon: (
       <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-6 h-6">

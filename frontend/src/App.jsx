@@ -127,6 +127,7 @@ function App() {
           <Route path="/help" element={<HelpCenter />} />
           <Route path="/help/channels/:channel/:topic" element={<ChannelHelp />} />
           <Route path="/help/channels/:channel" element={<ChannelHelp />} />
+          <Route path="/help/channels" element={<ChannelsList />} />
           <Route path="/help/getting-started" element={<GettingStartedHelp />} />
           <Route path="/help/inbox" element={<InboxHelp />} />
           <Route path="/help/campaigns" element={<CampaignsHelp />} />
