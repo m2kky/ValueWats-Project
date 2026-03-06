@@ -178,7 +178,7 @@ export default function ChannelManage() {
 
   const fetchInstance = async () => {
     try {
-      const res = await api.get(`/api/instances/${instanceId}/details`);
+      const res = await api.get(`/instances/${instanceId}/details`);
       setInstance(res.data.instance);
       setChannelName(res.data.instance.instanceName);
     } catch (err) {
@@ -192,7 +192,7 @@ export default function ChannelManage() {
     setSaving(true);
     setSaveMessage('');
     try {
-      const res = await api.patch(`/api/instances/${instanceId}`, { instanceName: channelName });
+      const res = await api.patch(`/instances/${instanceId}`, { instanceName: channelName });
       setInstance(res.data.instance);
       setSaveMessage('Changes saved successfully');
       setTimeout(() => setSaveMessage(''), 3000);
@@ -207,7 +207,7 @@ export default function ChannelManage() {
     if (!window.confirm('Are you sure you want to delete this channel? Messages and contacts will remain but you won\'t be able to interact via this channel anymore.')) return;
     setDeleting(true);
     try {
-      await api.delete(`/api/instances/${instanceId}`);
+      await api.delete(`/instances/${instanceId}`);
       navigate('/channels');
     } catch (err) {
       alert('Failed to delete channel');

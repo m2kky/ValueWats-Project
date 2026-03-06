@@ -184,7 +184,7 @@ export default function Channels() {
 
   const fetchInstances = async () => {
     try {
-      const response = await api.get('/api/instances');
+      const response = await api.get('/instances');
       const instances = response.data.instances || [];
       setConnectedChannels(instances);
       // If no connected channels, default to catalog view
