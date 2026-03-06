@@ -51,6 +51,7 @@ const CampaignsHelp = React.lazy(() => import('./pages/public/help/CampaignsHelp
 const AgentsHelp = React.lazy(() => import('./pages/public/help/AgentsHelp'));
 const SettingsHelp = React.lazy(() => import('./pages/public/help/SettingsHelp'));
 const ChannelHelp = React.lazy(() => import('./pages/public/help/ChannelHelp'));
+const ChannelsList = React.lazy(() => import('./pages/public/help/ChannelsList'));
 
 // Legal Pages
 const PrivacyPolicy = React.lazy(() => import('./pages/public/legal/PrivacyPolicy'));

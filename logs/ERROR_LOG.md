@@ -943,3 +943,34 @@ The frontend `Agents.jsx` was sending a `model` field in the update request, but
 ### Lesson Learned
 
 > Always synchronize frontend form fields with Prisma schema names exactly. When passing `req.body` directly to Prisma `update/create`, sanitize or map incoming fields to ensure they match the schema to avoid validation crashes.
+
+---
+
+## ERR-034: Production Crash — Missing campaigns.saved_segment_id
+
+| Field        | Value                                            |
+| ------------ | ------------------------------------------------ |
+| **Date**     | 2026-03-06                                       |
+| **Severity** | 🔴 Critical                                      |
+| **Source**   | `backend/prisma/schema.prisma`                   |
+| **Trigger**  | Campaign scheduler (`schedulerService.js`) query |
+
+### Description
+
+The production campaign scheduler crashed with `PrismaClientKnownRequestError: The column campaigns.saved_segment_id does not exist`. This prevented all scheduled campaigns from being processed.
+
+### Root Cause
+
+The `SavedSegment` model and the `saved_segment_id` relation field were added to the Prisma schema during Phase 4, but the corresponding SQL migration was never generated or applied to the production database.
+
+### Fix
+
+Created a manual SQL migration in `backend/prisma/migrations/20260306120000_add_saved_segments/migration.sql` that:
+
+1. Creates the `saved_segments` table.
+2. Adds the `saved_segment_id` column to the `campaigns` table.
+3. Establishes the foreign key constraints.
+
+### Lesson Learned
+
+Never assume that a schema field exists in the database just because it is in `schema.prisma`. Always verify existing migrations and run `prisma migrate deploy` after any schema updates.

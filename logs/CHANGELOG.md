@@ -14,6 +14,11 @@
 - **Channel Help Center**: Implemented dynamic Help Center routes for all messaging platforms (`/help/channels/:channel`), providing "Everything you need to know" and "Setup Guide" articles.
 - **Enhanced Catalog Links**: Added direct documentation links to each catalog card and connection wizard sidebar, following the respond.io pattern.
 
+### Fixed
+
+- **Database Consistency**: Added missing `saved_segments` table and `campaigns.saved_segment_id` column that was causing production crashes in the campaign scheduler.
+- **WhatsApp Cloud API Links**: Fixed incorrect help links in the channel catalog.
+
 ### Added
 
 - **New Help Center Hub**: Launched a unified `/help` landing page with categorized documentation articles and search capabilities.
