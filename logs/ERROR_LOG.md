@@ -1082,3 +1082,19 @@ Added the missing `React.lazy` import for `ChannelsList` in `App.jsx`.
 ### Lesson Learned
 
 Always ensure that every component used in the routing configuration has a corresponding import (or lazy import). The production build will fail if a referenced identifier is not defined in the scope.
+
+## Error: Channels API crashing on inaccessible WhatsApp QR instances
+**Date:** 2026-03-05
+**Component:** Backend (`instances.js`)
+
+**Behavior:**
+User reported "Can't access connected channels" inside the `Channels.jsx` UI.
+
+**Investigation:**
+The `Channels.jsx` defaults to "Catalog" view when `GET /api/instances` returns an empty array. Looking at the backend endpoint `/api/instances`, it mapped over the database instances and attempted to run `evolutionApi.getInstanceStatus()` for every `channelType === 'whatsapp'`. However, `Promise.all` would throw a rejection if ANY instance was invalid or removed from Evolution API manually, forcing a `500 Server Error`.
+
+**Fix:**
+Wrapped the `evolutionApi.getInstanceStatus()` call inside a `try / catch` inside the map specifically, updating the faulty instance `status` to `disconnected` in the DB when catching the error instead of bubbling the error. Also allowed `whatsapp_cloud` connections in `POST /api/instances`.
+
+**Lesson:**
+When dealing with `Promise.all` over external microservices or APIs to hydrate list models, always encapsulate the individual HTTP fetches in their own `catch` blocks with fallbacks. If an external API crashes for just ONE list item, it shouldn't nuke the entire endpoint.
