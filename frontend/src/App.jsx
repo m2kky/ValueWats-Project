@@ -14,6 +14,7 @@ const Campaigns = React.lazy(() => import('./pages/Campaigns'));
 const NewCampaign = React.lazy(() => import('./pages/NewCampaign'));
 const NewInstance = React.lazy(() => import('./pages/ConnectChannel'));
 const Instances = React.lazy(() => import('./pages/Channels'));
+const ChannelManage = React.lazy(() => import('./pages/ChannelManage'));
 const CampaignDetails = React.lazy(() => import('./pages/CampaignDetails'));
 const Automations = React.lazy(() => import('./pages/Automations'));
 const Inbox = React.lazy(() => import('./pages/Inbox'));
@@ -177,6 +178,12 @@ function App() {
           <Route path="/channels/connect/:type" element={
             <PrivateRoute>
               <NewInstance />
+            </PrivateRoute>
+          } />
+
+          <Route path="/channels/manage/:instanceId" element={
+            <PrivateRoute>
+              <ChannelManage />
             </PrivateRoute>
           } />
 

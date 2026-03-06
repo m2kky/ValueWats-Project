@@ -1,5 +1,32 @@
 ---
 
+## [2026-03-06] — WhatsApp Cloud API Connect Flow (06:55 AM)
+
+### Added
+
+- **WhatsApp Cloud API Connect Form**: Added `whatsapp_cloud` config to `ConnectChannel.jsx` with Meta-native form fields: Phone Number ID, WABA ID, and Permanent Access Token — each with helper text pointing to Meta Business Suite.
+- **WhatsApp Cloud API Help Docs**: Enriched `ChannelHelp.jsx` with comprehensive documentation including a QR vs Cloud API comparison table, prerequisites checklist, and 6-step connection guide.
+- **Smart Channel Form Logic**: `ConnectChannel.jsx` now differentiates 4 channel types: WhatsApp QR (name + QR scan), WhatsApp Cloud API (3 API fields), Messenger/Instagram (page selector + token), and generic channels (API token).
+
+---
+
+## [2026-03-06] — Channel Management System (06:40 AM)
+
+### Added
+
+- **Two-View Channels Page**: Refactored `Channels.jsx` into a dual-view system — "My Channels" (connected channel cards with Manage buttons + status indicators) and "Channel Catalog" (with back navigation arrow).
+- **Channel Management Page**: Created `ChannelManage.jsx` — a full-screen sidebar+content management page at `/channels/manage/:instanceId` with per-channel navigation tabs.
+  - **Configuration Tab** (all channels): Editable channel name, chat link, phone number, connection status, Save Changes, Danger Zone (delete).
+  - **Templates Tab** (Messenger/WhatsApp Cloud): Message template management UI with sync functionality.
+  - **Private Replies Tab** (Messenger/Instagram): Auto-reply to post comments with post tracking and eligibility rules.
+  - **Chat Menu Tab** (Messenger): Persistent chat menu builder with Payload/URL button types.
+  - **Troubleshoot Tab** (all channels): Numbered troubleshooting steps, Refresh Permission button (Meta), platform status page links.
+- **Backend Endpoints**: Added `GET /api/instances/:id/details` (single instance with status sync) and `PATCH /api/instances/:id` (update channel name with duplicate checking).
+- **Full-Width Layout**: Added `/channels/manage` to full-screen mode in `Layout.jsx`.
+- **Routing**: Added lazy-loaded `/channels/manage/:instanceId` route in `App.jsx`.
+
+---
+
 ## [2026-03-06] — Phase 7: Help Center Expansion & Product Alignment (05:50 AM)
 
 ### Added

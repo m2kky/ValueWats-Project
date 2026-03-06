@@ -4,12 +4,13 @@ import api from '../api/client';
 import { 
   MagnifyingGlassIcon,
   ChevronRightIcon,
-  TrashIcon,
-  ArrowPathIcon,
+  ArrowLeftIcon,
+  PlusIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
   InformationCircleIcon,
-  RocketLaunchIcon
+  RocketLaunchIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
 const categories = [
@@ -174,6 +175,8 @@ export default function Channels() {
   const [searchQuery, setSearchQuery] = useState('');
   const [connectedChannels, setConnectedChannels] = useState([]);
   const [loading, setLoading] = useState(true);
+  // View: 'connected' or 'catalog'
+  const [view, setView] = useState('connected');
 
   useEffect(() => {
     fetchInstances();
@@ -182,27 +185,28 @@ export default function Channels() {
   const fetchInstances = async () => {
     try {
       const response = await api.get('/api/instances');
-      setConnectedChannels(response.data.instances || []);
+      const instances = response.data.instances || [];
+      setConnectedChannels(instances);
+      // If no connected channels, default to catalog view
+      if (instances.length === 0) {
+        setView('catalog');
+      }
     } catch (err) {
       console.error('Failed to fetch instances:', err);
+      setView('catalog');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this channel?')) return;
-    try {
-      await api.delete(`/api/instances/${id}`);
-      setConnectedChannels(prev => prev.filter(inst => inst.id !== id));
-    } catch (err) {
-      alert('Failed to delete channel');
     }
   };
 
   const getChannelIcon = (type) => {
     const item = catalog.find(c => c.type === type);
     return item?.icon || null;
+  };
+
+  const getChannelName = (type) => {
+    const item = catalog.find(c => c.type === type);
+    return item?.name || type;
   };
 
   const filteredCatalog = useMemo(() => {
@@ -214,11 +218,156 @@ export default function Channels() {
     });
   }, [activeTab, searchQuery]);
 
+  const filteredConnected = useMemo(() => {
+    if (!searchQuery) return connectedChannels;
+    return connectedChannels.filter(inst =>
+      inst.instanceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (inst.channelType || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [connectedChannels, searchQuery]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // ──────────────────────── CONNECTED CHANNELS VIEW ────────────────────────
+  if (view === 'connected') {
+    return (
+      <div className="font-sans">
+        {/* Header */}
+        <div className="mb-10">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-4">
+              <div className="p-2 border border-white/10 rounded-lg bg-white/5 shadow-inner">
+                <div className="w-6 h-6 text-zinc-400">
+                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" />
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <h1 className="text-[32px] font-bold text-white tracking-tight leading-tight">Channels</h1>
+                <p className="text-zinc-500 text-sm mt-1 max-w-2xl font-medium">
+                  Manage your messaging channels and discover new ones to help you acquire more customers.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setView('catalog')}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white uppercase tracking-[0.15em] transition-all shadow-lg shadow-indigo-500/20"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add Channel
+            </button>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="mb-8">
+          <div className="relative w-full md:w-[360px]">
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Search Channels"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#1c1f26] border border-white/10 rounded-xl py-2.5 pl-11 pr-4 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-sm"
+            />
+          </div>
+        </div>
+
+        {/* Connected Channels Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredConnected.map(instance => (
+            <div 
+              key={instance.id}
+              className="bg-[#14171c]/80 border border-white/5 rounded-[24px] p-6 flex flex-col justify-between group hover:border-white/10 transition-all shadow-sm hover:shadow-xl hover:shadow-indigo-500/5"
+            >
+              <div className="flex items-start gap-4 mb-5">
+                <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+                  <div className="w-8 h-8">
+                    {getChannelIcon(instance.channelType)}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-white text-[15px] leading-tight mb-1 truncate">{instance.instanceName}</h4>
+                  <p className="text-[12px] text-zinc-500 font-medium mb-2">{getChannelName(instance.channelType)}</p>
+                  <div className="flex items-center gap-2">
+                    {instance.status === 'connected' ? (
+                      <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                        Active
+                      </span>
+                    ) : instance.status === 'qr_pending' ? (
+                      <span className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b] animate-pulse" />
+                        Scan Required
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-[10px] font-bold text-rose-400 uppercase tracking-wider">
+                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
+                        Disconnected
+                      </span>
+                    )}
+                  </div>
+                  {(instance.phoneNumber || instance.phoneNumberId) && (
+                    <span className="text-[11px] text-zinc-600 font-mono mt-1 block">
+                      {instance.phoneNumber || instance.phoneNumberId}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <button 
+                onClick={() => navigate(`/channels/manage/${instance.id}`)}
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-black bg-[#1c1f26] text-white border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all uppercase tracking-[0.2em] shadow-sm"
+              >
+                <Cog6ToothIcon className="w-4 h-4" />
+                Manage
+              </button>
+            </div>
+          ))}
+
+          {/* Browse Catalog Card */}
+          <div 
+            onClick={() => setView('catalog')}
+            className="bg-[#14171c]/40 border border-dashed border-white/10 rounded-[24px] p-6 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all min-h-[200px] group"
+          >
+            <div className="p-3 bg-white/5 rounded-2xl border border-white/5 group-hover:border-indigo-500/20 transition-colors">
+              <PlusIcon className="w-8 h-8 text-zinc-500 group-hover:text-indigo-400 transition-colors" />
+            </div>
+            <div className="text-center">
+              <p className="text-zinc-400 font-bold text-sm group-hover:text-white transition-colors">Connect more channels</p>
+              <p className="text-zinc-600 text-xs mt-1">Reach your contacts in their preferred channels</p>
+            </div>
+            <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1">
+              Browse Catalog <ChevronRightIcon className="w-3 h-3" />
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ──────────────────────── CHANNEL CATALOG VIEW ────────────────────────
   return (
     <div className="font-sans">
-      {/* Header Area */}
+      {/* Header with back button */}
       <div className="mb-10">
-        <div className="flex items-start gap-4 mb-2">
+        {connectedChannels.length > 0 && (
+          <button
+            onClick={() => { setView('connected'); setSearchQuery(''); }}
+            className="flex items-center gap-2 text-zinc-400 hover:text-white text-sm font-medium mb-6 transition-colors group"
+          >
+            <ArrowLeftIcon className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            My Channels
+          </button>
+        )}
+        <div className="flex items-start gap-4">
           <div className="p-2 border border-white/10 rounded-lg bg-white/5 shadow-inner">
              <div className="w-6 h-6 text-zinc-400">
                <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -264,79 +413,6 @@ export default function Channels() {
           />
         </div>
       </div>
-
-      {/* Connected Channels Section */}
-      {connectedChannels.length > 0 && (
-        <div className="mb-16">
-          <div className="mb-6">
-             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-600 mb-1 ml-1">Connected Channels</h3>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {connectedChannels.map(instance => (
-              <div 
-                key={instance.id}
-                className="bg-[#14171c]/80 border border-white/5 rounded-[24px] p-5 flex items-center justify-between group hover:border-white/10 transition-all shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
-                    <div className="w-8 h-8">
-                       {getChannelIcon(instance.channelType)}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-[15px] leading-tight mb-1">{instance.instanceName}</h4>
-                    <div className="flex flex-col gap-1">
-                       <div className="flex items-center gap-2">
-                          {instance.status === 'connected' ? (
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
-                              Active
-                            </span>
-                          ) : instance.status === 'qr_pending' ? (
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400 uppercase tracking-wider">
-                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b] animate-pulse" />
-                              Scan Required
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-rose-400 uppercase tracking-wider">
-                              <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
-                              Disconnected
-                            </span>
-                          )}
-                       </div>
-                       {(instance.phoneNumber || instance.phoneNumberId) && (
-                         <span className="text-[11px] text-zinc-500 font-mono">
-                           {instance.phoneNumber || instance.phoneNumberId}
-                         </span>
-                       )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {instance.channelType === 'whatsapp' && (instance.status === 'disconnected' || instance.status === 'qr_pending') && (
-                    <button 
-                      onClick={() => navigate(`/channels/connect/whatsapp`)}
-                      className="p-2 hover:bg-white/5 rounded-lg text-indigo-400 transition-colors"
-                      title="Reconnect"
-                    >
-                      <ArrowPathIcon className="w-5 h-5" />
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => handleDelete(instance.id)}
-                    className="p-2 hover:bg-rose-500/10 rounded-lg text-zinc-500 hover:text-rose-400 transition-colors"
-                    title="Delete Channel"
-                  >
-                    <TrashIcon className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Catalog Grid */}
       <div className="space-y-12">
@@ -411,13 +487,5 @@ export default function Channels() {
         </section>
       </div>
     </div>
-  );
-}
-
-function Squares2X2Icon({ className }) {
-  return (
-    <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" />
-    </svg>
   );
 }

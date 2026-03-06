@@ -346,22 +346,110 @@ const channelData = {
             title: 'Everything about WhatsApp Cloud API',
             content: (
                 <>
-                    <p>Unlike the Evolution API (QR scan), the Cloud API is hosted directly by Meta. It is designed for high-volume enterprise messaging.</p>
-                    <h3>Why use Cloud API?</h3>
+                    <p>The WhatsApp Cloud API is Meta's official, cloud-hosted API for businesses to send and receive messages at scale. Unlike the QR-based WhatsApp connection (via Evolution API), the Cloud API provides enterprise-grade reliability, official message templates, and direct integration with Meta's infrastructure.</p>
+                    
+                    <h3>WhatsApp QR vs Cloud API — What's the difference?</h3>
+                    <div className="overflow-x-auto my-6">
+                        <table className="w-full text-sm text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-white/10">
+                                    <th className="py-3 px-4 text-zinc-400 font-bold">Feature</th>
+                                    <th className="py-3 px-4 text-zinc-400 font-bold">WhatsApp QR (Evolution API)</th>
+                                    <th className="py-3 px-4 text-zinc-400 font-bold">WhatsApp Cloud API (Meta)</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-zinc-300">
+                                <tr className="border-b border-white/5"><td className="py-2 px-4">Connection</td><td className="py-2 px-4">Scan QR code</td><td className="py-2 px-4">API credentials from Meta</td></tr>
+                                <tr className="border-b border-white/5"><td className="py-2 px-4">Host</td><td className="py-2 px-4">Self-hosted (Evolution)</td><td className="py-2 px-4">Meta's cloud servers</td></tr>
+                                <tr className="border-b border-white/5"><td className="py-2 px-4">Message Templates</td><td className="py-2 px-4">Not supported</td><td className="py-2 px-4">✅ Full template support</td></tr>
+                                <tr className="border-b border-white/5"><td className="py-2 px-4">Scalability</td><td className="py-2 px-4">1 phone, 4 linked devices</td><td className="py-2 px-4">Unlimited, enterprise-grade</td></tr>
+                                <tr className="border-b border-white/5"><td className="py-2 px-4">Verified Business</td><td className="py-2 px-4">No blue tick</td><td className="py-2 px-4">✅ Blue tick eligible</td></tr>
+                                <tr className="border-b border-white/5"><td className="py-2 px-4">Pricing</td><td className="py-2 px-4">Free (your phone number)</td><td className="py-2 px-4">Per-conversation fees from Meta</td></tr>
+                                <tr><td className="py-2 px-4">Best For</td><td className="py-2 px-4">Small businesses, quick setup</td><td className="py-2 px-4">Enterprise, high-volume, official templates</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3>Key Features</h3>
                     <ul className="list-disc pl-5 space-y-2">
-                        <li><strong>Scalability:</strong> Send thousands of messages per second.</li>
-                        <li><strong>Stability:</strong> Direct connection to Meta's servers.</li>
+                        <li><strong>Enterprise Scalability:</strong> Send thousands of messages per second with Meta's infrastructure.</li>
+                        <li><strong>Message Templates:</strong> Create and use pre-approved templates for notifications, updates, and marketing.</li>
+                        <li><strong>Verified Sender:</strong> Apply for the official WhatsApp Blue Tick (Official Business Account).</li>
+                        <li><strong>Rich Media:</strong> Send images, videos, documents, location, and interactive components.</li>
+                        <li><strong>Messaging Limits:</strong> Start at 1K unique contacts/day. Scale to unlimited with quality rating.</li>
                     </ul>
+
+                    <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-6 my-8">
+                        <div className="flex gap-4">
+                            <InformationCircleIcon className="w-6 h-6 text-indigo-400 shrink-0" />
+                            <div>
+                                <h4 className="text-indigo-400 font-bold mb-1">Prerequisites</h4>
+                                <ul className="text-sm text-zinc-400 m-0 list-disc ml-4 space-y-1">
+                                    <li>A <strong>Meta Business Account</strong> (verified recommended)</li>
+                                    <li>A <strong>WhatsApp Business Account</strong> in Meta Business Suite</li>
+                                    <li>A <strong>phone number</strong> not already linked to any WhatsApp app</li>
+                                    <li>A <strong>System User</strong> with permanent access token</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </>
             )
         },
         connect: {
-            title: 'How to connect Cloud API',
-            content: <p>Fill in your Phone Number ID, WABA ID, and Permanent Access Token from the Meta Business Suite.</p>
+            title: 'How to connect WhatsApp Cloud API',
+            content: (
+                <>
+                    <p>To connect WhatsApp Cloud API, you'll configure your credentials from the Meta Business Suite.</p>
+                    
+                    <h3>Step-by-Step Connection</h3>
+                    <ol className="list-decimal pl-5 space-y-4">
+                        <li>
+                            <strong>Create a Meta App:</strong> Go to <a href="https://developers.facebook.com/" target="_blank" rel="noreferrer" className="text-blue-400 underline">Meta for Developers</a> and create a new Business App. Add the "WhatsApp" product.
+                        </li>
+                        <li>
+                            <strong>Get Phone Number ID:</strong> In the Meta App Dashboard, navigate to <strong>WhatsApp → API Setup</strong>. Your Phone Number ID is listed there.
+                        </li>
+                        <li>
+                            <strong>Get WABA ID:</strong> Navigate to <strong>Business Settings → WhatsApp Accounts</strong>. Your WhatsApp Business Account ID is displayed here.
+                        </li>
+                        <li>
+                            <strong>Generate Permanent Token:</strong> Create a System User in <strong>Business Settings → System Users</strong>. Assign the WhatsApp Business Management and Message permissions, then generate a token.
+                        </li>
+                        <li>
+                            <strong>Configure Webhook:</strong> Set your webhook URL to point to ValueWats for receiving incoming messages.
+                        </li>
+                        <li>
+                            <strong>Connect in ValueWats:</strong> Navigate to <Link to="/channels" className="text-blue-400">Channels</Link>, select <strong>WhatsApp Cloud API</strong>, and paste your Phone Number ID, WABA ID, and Access Token.
+                        </li>
+                    </ol>
+
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6 my-8">
+                        <div className="flex gap-4">
+                            <CheckCircleIcon className="w-6 h-6 text-emerald-400 shrink-0" />
+                            <div>
+                                <h4 className="text-emerald-400 font-bold mb-1">Connection Successful</h4>
+                                <p className="text-sm text-zinc-400 m-0">Once connected, your channel status will show as <strong>Active</strong>. You can then create message templates and start sending/receiving messages immediately.</p>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )
         },
         video: {
-            title: 'Video Tutorial',
-            content: <p>Coming soon!</p>
+            title: 'Step-by-Step Video Tutorial',
+            content: (
+                <>
+                    <p>Coming soon! We are currently producing a detailed video tutorial for connecting WhatsApp Cloud API.</p>
+                    <div className="aspect-video bg-[#111113] border border-white/5 rounded-3xl flex items-center justify-center group cursor-pointer hover:border-indigo-500/30 transition-all overflow-hidden relative">
+                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent"></div>
+                         <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-500 relative z-10">
+                            <RocketLaunchIcon className="w-8 h-8 text-zinc-600 group-hover:text-indigo-400 transition-colors" />
+                         </div>
+                         <span className="absolute bottom-8 text-zinc-500 font-bold text-xs uppercase tracking-[0.2em]">Video coming soon</span>
+                    </div>
+                </>
+            )
         }
     }
 };

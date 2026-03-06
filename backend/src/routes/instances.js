@@ -109,6 +109,88 @@ router.post('/', async (req, res) => {
 });
 
 /**
+ * GET /api/instances/:id/details - Get single instance details
+ */
+router.get('/:id/details', async (req, res) => {
+  try {
+    const instance = await prisma.instance.findFirst({
+      where: { id: req.params.id, tenantId: req.tenantId },
+    });
+
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
+
+    // Sync status for WhatsApp
+    if ((instance.channelType || 'whatsapp') === 'whatsapp') {
+      try {
+        const status = await evolutionApi.getInstanceStatus(instance.instanceName);
+        const state = status.instance?.state || status.state;
+        const newStatus = state === 'open' ? 'connected' :
+                         state === 'connecting' ? 'qr_pending' : 'disconnected';
+        if (instance.status !== newStatus) {
+          await prisma.instance.update({
+            where: { id: instance.id },
+            data: { status: newStatus }
+          });
+          instance.status = newStatus;
+        }
+      } catch (err) {
+        console.log(`Could not sync status for ${instance.instanceName}:`, err.message);
+      }
+    }
+
+    res.json({ instance });
+  } catch (error) {
+    console.error('Get instance details error:', error);
+    res.status(500).json({ error: 'Failed to fetch instance details' });
+  }
+});
+
+/**
+ * PATCH /api/instances/:id - Update instance name/settings
+ */
+router.patch('/:id', async (req, res) => {
+  try {
+    const { instanceName } = req.body;
+
+    const instance = await prisma.instance.findFirst({
+      where: { id: req.params.id, tenantId: req.tenantId },
+    });
+
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
+
+    const updateData = {};
+    if (instanceName && instanceName !== instance.instanceName) {
+      // Check for duplicate name
+      const existing = await prisma.instance.findFirst({
+        where: {
+          tenantId: req.tenantId,
+          instanceName,
+          id: { not: instance.id }
+        },
+      });
+      if (existing) {
+        return res.status(409).json({ error: 'Instance name already exists' });
+      }
+      updateData.instanceName = instanceName;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.json({ instance, message: 'No changes to save' });
+    }
+
+    const updated = await prisma.instance.update({
+      where: { id: instance.id },
+      data: updateData,
+    });
+
+    res.json({ instance: updated, message: 'Instance updated successfully' });
+  } catch (error) {
+    console.error('Update instance error:', error);
+    res.status(500).json({ error: 'Failed to update instance' });
+  }
+});
+
+/**
  * GET /api/instances/:id/status - Get instance status
  */
 router.get('/:id/status', async (req, res) => {

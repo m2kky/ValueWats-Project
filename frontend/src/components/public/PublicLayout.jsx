@@ -23,7 +23,7 @@ const MegaMenuDropdown = ({ title, children, isOpen, onMouseEnter, onMouseLeave 
         className={`absolute top-full left-1/2 -translate-x-1/2 pt-2 transition-all duration-200 ease-out origin-top ${isOpen ? 'opacity-100 scale-y-100 translate-y-0 visible' : 'opacity-0 scale-y-95 -translate-y-2 invisible'}`}
         style={{ zIndex: 100 }}
       >
-        <div className="bg-[#111111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-screen max-w-sm sm:max-w-md md:max-w-lg lg:max-w-4xl xl:max-w-[1000px] p-8 relative before:absolute before:-top-4 before:left-0 before:w-full before:h-4 before:bg-transparent">
+        <div className="bg-[#111111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-[92vw] max-w-sm sm:max-w-md md:max-w-lg lg:max-w-4xl xl:max-w-[1000px] p-8 relative before:absolute before:-top-4 before:left-0 before:w-full before:h-4 before:bg-transparent">
           {children}
         </div>
       </div>

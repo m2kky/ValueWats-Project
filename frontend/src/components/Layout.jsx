@@ -65,7 +65,8 @@ export default function Layout({ children }) {
 
   const isInboxRoute = location.pathname.startsWith('/inbox');
   const isConnectRoute = location.pathname.startsWith('/channels/connect');
-  const isFullWidth = isInboxRoute || isConnectRoute;
+  const isManageRoute = location.pathname.startsWith('/channels/manage');
+  const isFullWidth = isInboxRoute || isConnectRoute || isManageRoute;
 
   return (
     <div className="flex h-screen bg-[#09090b] text-zinc-100 overflow-hidden">

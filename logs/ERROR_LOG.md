@@ -2,6 +2,33 @@
 
 Document all critical errors, their root causes, fixes, and lessons learned. When fixing an issue, **FIRST check this file** to see if it's already documented. After fixing an issue, **ADD it here**.
 
+## ERR-036: Production Build Failure — Webpack/Rollup Module Not Found
+
+| Field        | Value                                |
+| ------------ | ------------------------------------ |
+| **Date**     | 2026-03-06 (05:50 AM)                |
+| **Severity** | 🔴 Critical                          |
+| **Source**   | `frontend/src/App.jsx`               |
+| **Trigger**  | Automated Coolify Deployment (CI/CD) |
+
+### Description
+
+The production build failed during the `npm run build:frontend` phase. The log reported: `Could not resolve "./pages/public/help/InboxHelp" from "src/App.jsx"`.
+
+### Root Cause
+
+During the Help Center consolidation (Phase 7), several static help components (`InboxHelp.jsx`, `AgentsHelp.jsx`, etc.) were deleted and replaced by a dynamic `FeatureHelp.jsx` engine. However, the `App.jsx` routing table hadn't been updated to remove the corresponding `React.lazy` imports and `<Route>` definitions.
+
+### Fix
+
+Removed all stale imports for `GettingStartedHelp`, `InboxHelp`, `CampaignsHelp`, and `AgentsHelp` from `App.jsx` and updated the routes to use the dynamic engine exclusively. (05:55 AM)
+
+### Lesson Learned
+
+When migrating to dynamic routing or consolidating components, perform a global search for the deleted component names to ensure no lingering imports exist in central entry points like `App.jsx`. Local dev servers may handle missing lazy imports gracefully, but production builds will strictly enforce module resolution.
+
+---
+
 ## ERR-035: Frontend Crash — ReferenceError: ChannelsList is not defined
 
 | Field        | Value                                                          |

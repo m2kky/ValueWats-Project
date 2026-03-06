@@ -72,12 +72,37 @@ const channelConfigs = {
     description: 'Connect Telegram Bot to provide real-time support when customers reach out.',
     color: 'sky',
     resources: [
-      { name: 'Everything you need to know about Telegram', link: '/help/telegram' }
+      { name: 'Everything you need to know about Telegram', link: '/help/channels/telegram' }
     ],
     icon: (
       <svg className="w-24 h-24 text-sky-500" viewBox="0 0 24 24" fill="currentColor">
         <path d="M11.944 0C5.337 0 0 5.337 0 11.944c0 6.606 5.337 11.944 11.944 11.944 6.607 0 11.944-5.338 11.944-11.944C23.888 5.337 18.551 0 11.944 0zm5.833 8.333l-2.04 9.613c-.154.678-.556.846-1.127.525l-3.109-2.29-1.5 1.444c-.166.166-.305.305-.625.305l.223-3.167 5.764-5.208c.249-.221-.055-.345-.386-.123l-7.126 4.456-3.078-.962c-.67-.209-.684-.67.14-.99l12.036-4.638c.556-.205 1.042.125.834.99z"/>
       </svg>
+    )
+  },
+  whatsapp_cloud: {
+    name: 'WhatsApp Cloud API',
+    description: 'Connect the official WhatsApp Cloud API from your Meta Business account for enterprise-grade messaging with message templates, verified sender, and professional features.',
+    color: 'indigo',
+    resources: [
+      { name: 'Everything about WhatsApp Cloud API', link: '/help/channels/whatsapp_cloud' },
+      { name: 'How to connect WhatsApp Cloud API', link: '/help/channels/whatsapp_cloud/connect' },
+      { name: 'WhatsApp Message Templates', link: '/help/channels/whatsapp_cloud' },
+      { name: 'Meta Business Verification Guide', link: '/help/channels/whatsapp_cloud' },
+    ],
+    icon: (
+      <div className="relative w-24 h-24">
+        <svg className="w-24 h-24 text-emerald-500 opacity-30" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .018 5.394 0 12.03c0 2.119.554 4.188 1.607 6.04L0 24l6.117-1.605A11.793 11.793 0 0012.046 24c6.638 0 12.032-5.393 12.035-12.03a11.77 11.77 0 00-3.536-8.508z"/>
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="bg-indigo-600 rounded-2xl p-3 shadow-2xl border border-white/20">
+            <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2.04c-5.5 0-10 4.49-10 10.02 0 5 3.66 9.15 8.44 9.9v-7H7.9v-2.9h2.54V9.85c0-2.52 1.49-3.93 3.78-3.93 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.45 2.9h-2.33v7a10 10 0 008.44-9.9c0-5.53-4.5-10.02-10-10.02z"/>
+            </svg>
+          </div>
+        </div>
+      </div>
     )
   }
 };
@@ -90,10 +115,15 @@ export default function ConnectChannel() {
   const [instanceName, setInstanceName] = useState('');
   const [phoneNumberId, setPhoneNumberId] = useState('');
   const [accessToken, setAccessToken] = useState('');
+  const [wabaId, setWabaId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [qrCode, setQrCode] = useState(null);
   const [step, setStep] = useState('config'); // config, qr
+
+  const isWhatsAppQR = type === 'whatsapp';
+  const isCloudAPI = type === 'whatsapp_cloud';
+  const isMetaChannel = type === 'messenger' || type === 'instagram';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,12 +134,21 @@ export default function ConnectChannel() {
       const payload = { 
         instanceName: instanceName || config.name, 
         channelType: type,
-        ...(type !== 'whatsapp' && { phoneNumberId, accessToken })
       };
+
+      // Add channel-specific fields
+      if (isCloudAPI) {
+        payload.phoneNumberId = phoneNumberId;
+        payload.accessToken = accessToken;
+        // wabaId stored in phoneNumberId for now (can be extended later)
+      } else if (isMetaChannel) {
+        payload.phoneNumberId = phoneNumberId;
+        payload.accessToken = accessToken;
+      }
 
       const response = await api.post('/instances', payload);
       
-      if (type === 'whatsapp') {
+      if (isWhatsAppQR) {
         if (response.data.instance.qrCode) {
           setQrCode(response.data.instance.qrCode);
           setStep('qr');
@@ -200,44 +239,123 @@ export default function ConnectChannel() {
                 
                 {type !== 'whatsapp' && (
                   <div className="space-y-6">
+                    {/* Channel Name */}
                     <div>
-                      <label className="block text-xs font-medium text-zinc-400 mb-2">We have found {config.name} page(s) managed by you.</label>
-                      <div className="relative group">
-                        <select
-                          className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all cursor-pointer"
-                          value={phoneNumberId}
-                          onChange={(e) => setPhoneNumberId(e.target.value)}
-                          required
-                        >
-                          <option value="">Select a {config.name} Page from the list</option>
-                          <option value="temp">Example Page (Testing Only)</option>
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
-                          <ChevronDownIcon className="w-4 h-4" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-zinc-400 mb-2">Page Access Token</label>
+                      <label className="block text-sm font-bold text-zinc-300 mb-2">Channel Name</label>
                       <input
-                        type="password"
-                        className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
-                        value={accessToken}
-                        onChange={(e) => setAccessToken(e.target.value)}
-                        placeholder="Paste your access token here"
+                        type="text"
+                        className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-bold tracking-tight"
+                        value={instanceName}
+                        onChange={(e) => setInstanceName(e.target.value)}
+                        placeholder={`e.g., My ${config.name} Channel`}
                         required
                       />
                     </div>
 
-                    <button type="button" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm font-bold py-2 group">
-                       <ArrowPathIcon className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
-                       Refresh List
-                    </button>
+                    {/* WhatsApp Cloud API specific fields */}
+                    {isCloudAPI && (
+                      <>
+                        <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-5 space-y-1">
+                          <h4 className="text-sm font-bold text-indigo-400">Meta Cloud API Setup</h4>
+                          <p className="text-xs text-zinc-500">You'll need your Phone Number ID, Business Account ID, and a Permanent Access Token from the <a href="https://business.facebook.com/" target="_blank" rel="noreferrer" className="text-indigo-400 underline">Meta Business Suite</a>.</p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">Phone Number ID</label>
+                          <input
+                            type="text"
+                            className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
+                            value={phoneNumberId}
+                            onChange={(e) => setPhoneNumberId(e.target.value)}
+                            placeholder="e.g., 123456789012345"
+                            required
+                          />
+                          <p className="text-[11px] text-zinc-600 mt-1.5">Found in Meta Business Suite → WhatsApp → Phone Numbers</p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">WhatsApp Business Account ID (WABA ID)</label>
+                          <input
+                            type="text"
+                            className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
+                            value={wabaId}
+                            onChange={(e) => setWabaId(e.target.value)}
+                            placeholder="e.g., 987654321098765"
+                            required
+                          />
+                          <p className="text-[11px] text-zinc-600 mt-1.5">Found in Meta Business Suite → WhatsApp → Business Account Settings</p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">Permanent Access Token</label>
+                          <input
+                            type="password"
+                            className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
+                            value={accessToken}
+                            onChange={(e) => setAccessToken(e.target.value)}
+                            placeholder="Paste your permanent system user token"
+                            required
+                          />
+                          <p className="text-[11px] text-zinc-600 mt-1.5">Generate a System User Token in Meta Business Settings → System Users</p>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Messenger / Instagram specific fields */}
+                    {isMetaChannel && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-medium text-zinc-400 mb-2">We have found {config.name} page(s) managed by you.</label>
+                          <div className="relative group">
+                            <select
+                              className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all cursor-pointer"
+                              value={phoneNumberId}
+                              onChange={(e) => setPhoneNumberId(e.target.value)}
+                              required
+                            >
+                              <option value="">Select a {config.name} Page from the list</option>
+                              <option value="temp">Example Page (Testing Only)</option>
+                            </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
+                              <ChevronDownIcon className="w-4 h-4" />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-zinc-400 mb-2">Page Access Token</label>
+                          <input
+                            type="password"
+                            className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
+                            value={accessToken}
+                            onChange={(e) => setAccessToken(e.target.value)}
+                            placeholder="Paste your access token here"
+                            required
+                          />
+                        </div>
+
+                        <button type="button" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm font-bold py-2 group">
+                           <ArrowPathIcon className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                           Refresh List
+                        </button>
+                      </>
+                    )}
+
+                    {/* Generic channels (telegram, tiktok, etc.) */}
+                    {!isCloudAPI && !isMetaChannel && (
+                      <div>
+                        <label className="block text-xs font-medium text-zinc-400 mb-2">API Token / Configuration</label>
+                        <input
+                          type="password"
+                          className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
+                          value={accessToken}
+                          onChange={(e) => setAccessToken(e.target.value)}
+                          placeholder="Paste your API token or key here"
+                          required
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {type === 'whatsapp' && (
+                {isWhatsAppQR && (
                   <div>
                     <label className="block text-sm font-bold text-zinc-300 mb-2">Channel Name</label>
                     <input
@@ -259,7 +377,7 @@ export default function ConnectChannel() {
                   className={`px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-xl
                     ${loading ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#6366f1] hover:bg-[#5558e3] text-white shadow-indigo-500/20'}`}
                 >
-                  {loading ? 'Processing...' : step === 'config' && type === 'whatsapp' ? 'Generate QR Code' : 'Complete'}
+                  {loading ? 'Processing...' : isWhatsAppQR ? 'Generate QR Code' : isCloudAPI ? 'Connect Cloud API' : 'Complete'}
                 </button>
               </div>
             </form>
