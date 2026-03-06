@@ -12,8 +12,8 @@ import Onboarding from './pages/Onboarding';
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Campaigns = React.lazy(() => import('./pages/Campaigns'));
 const NewCampaign = React.lazy(() => import('./pages/NewCampaign'));
-const NewInstance = React.lazy(() => import('./pages/NewInstance'));
-const Instances = React.lazy(() => import('./pages/Instances'));
+const NewInstance = React.lazy(() => import('./pages/ConnectChannel'));
+const Instances = React.lazy(() => import('./pages/Channels'));
 const CampaignDetails = React.lazy(() => import('./pages/CampaignDetails'));
 const Automations = React.lazy(() => import('./pages/Automations'));
 const Inbox = React.lazy(() => import('./pages/Inbox'));
@@ -164,17 +164,21 @@ function App() {
             </PrivateRoute>
           } />
 
-          <Route path="/instances" element={
+          <Route path="/channels" element={
             <PrivateRoute>
               <Instances />
             </PrivateRoute>
           } />
 
-          <Route path="/instances/new" element={
+          <Route path="/channels/connect/:type" element={
             <PrivateRoute>
               <NewInstance />
             </PrivateRoute>
           } />
+
+          {/* Legacy Redirects */}
+          <Route path="/instances" element={<Navigate to="/channels" replace />} />
+          <Route path="/instances/new" element={<Navigate to="/channels" replace />} />
 
           <Route path="/campaigns/:id" element={
             <PrivateRoute>

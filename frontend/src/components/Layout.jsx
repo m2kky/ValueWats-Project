@@ -56,7 +56,7 @@ export default function Layout({ children }) {
     { name: 'Campaigns', path: '/campaigns', icon: MegaphoneIcon },
     { name: 'Templates', path: '/templates', icon: DocumentDuplicateIcon },
     { name: 'AI Agents', path: '/agents', icon: CpuChipIcon },
-    { name: 'Instances', path: '/instances', icon: DevicePhoneMobileIcon },
+    { name: 'Channels', path: '/channels', icon: ChatBubbleLeftRightIcon },
     { name: 'Automations', path: '/automations', icon: BoltIcon },
     { name: 'Settings', path: '/settings', icon: Cog6ToothIcon },
     { name: 'Help Center', path: '/help', icon: QuestionMarkCircleIcon, external: true },

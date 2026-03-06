@@ -1,6 +1,13 @@
 ---
 
-## [2026-03-07] — Phase 6: Help Center Migration
+## [2026-03-07] — Phase 7: Channels Module Redesign
+
+### Changed
+
+- **Renamed Instances to Channels**: Updated all UI references and dashboard navigation from "Instances" to "Channels" for a more intuitive multi-channel experience.
+- **New Channel Catalog**: Redesigned the main channels page into a modern "Channel Catalog" grid with category filtering and platform-specific cards.
+- **Split-Screen Connection Wizard**: Implemented a professional, split-screen connection flow with dedicated sidebars for platform resources and step-by-step guidance.
+- **Legacy Support**: Added automatic redirects from `/instances` and `/instances/new` to the new `/channels` structure.
 
 ### Added
 
