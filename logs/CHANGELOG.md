@@ -53,6 +53,9 @@
 - **Robust Webhooks**: Unified handler for all Meta platforms with platform detection and media extraction.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Media Sending Regression**: Fixed a bug where media attachments sent from the dashboard across all channels were being transmitted as plain text.
 - **Auto-Sync Reliability**: Prevented non-WhatsApp instances from triggering Evolution API errors during background chat syncing.
@@ -70,6 +73,9 @@
 - **Database Schema**: Expanded `schema.prisma` natively with a `SavedSegment` model and connected `savedSegmentId` integrally into ongoing `Campaign` deployments.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Deployment Crash**: Resolved a critical `MODULE_NOT_FOUND` error in `segments.js` caused by a non-existent auth middleware import. Switched to the established `tenantContext` middleware.
 
@@ -93,6 +99,9 @@
   - **Real-time Sync**: Agent actions (tags, lifecycle, assignee) now update the mock contact fields instantly in the preview window.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Missing Dependency**: Resolved a Vite import-analysis error by running `npm install` to restore the missing `@react-oauth/google` package.
 - **Contact Fields UI**: Fixed issue where custom fields were not rendering or improperly saving in the Inbox sidebar (`ContactSidebar.jsx`) and Contact Details page (`ContactProfile.jsx`) by syncing components with the global definitions API endpoints.
@@ -115,6 +124,9 @@
 - **Auth Redirects**: Intelligent routing in `App.jsx`, `Login.jsx` and `Register.jsx` to intercept users who haven't completed onboarding and redirect them transparently to the wizard.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Onboarding UI Behaviors**: Fixed unclickable Checkboxes and Radio buttons in "Org Size" and "Chat Purposes" selections within the wizard.
 
@@ -137,6 +149,9 @@
 - **Show/Hide Password Toggle**: Both Login and Register pages have eye icon toggles for password visibility.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Google OAuth Popup Crash**: Fixed `Cross-Origin-Opener-Policy` block caused by `helmet.js` in the backend preventing Google Sign-In popup from completing the transform redirect.
 
@@ -166,6 +181,9 @@
 - **Legal Stub Pages**: Stubbed out routes and React components for Privacy Policy, ToS, Cookie Policy, Security, Subprocessors, and DPA.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **React Router Navigation**: Added a `ScrollManager` wrapper inside `BrowserRouter` in `App.jsx` to smoothly scroll anchor hashes `#features` and `#ai`. Added fallback routing `/*` mapping to the landing page. Fixed unhandled links pointing to absent pages.
 
@@ -188,6 +206,9 @@
 - **Agent Session Tracking**: `chat.service.js` successfully creates and tracks `ConversationAgent` records (start/end) when manual human-to-AI or AI-to-human assignments happen via the Inbox UI.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Inbox**: Fixed an issue where clicking on a chat would not open the conversation due to a missing Prisma Schema relation `user` in `ContactNote`.
 - **Campaigns**: Fixed a React build syntax error (missing closing tags) in the `NewCampaign.jsx` page.
@@ -236,6 +257,9 @@
 - **Orbiting Circles Integration**: Added the MagicUI OrbitingCircles animation component to visually represent AI agent integrations on the Landing page.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Inbox Crash Error**: Fixed a 500 error preventing WhatsApp threads from loading properly. Root cause was an invalid invalid field `name` queried inside the `ContactNote` prisma include block in `chat.service.js`.
 
@@ -248,6 +272,9 @@
 ## [2026-03-04] — Architecture & Data Integrity Overhaul
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Prisma Client Connection Leak**: Replaced `new PrismaClient()` with shared singleton from `config/database.js` across 17 files (controllers, services, routes). Prevents connection pool exhaustion under load.
 
@@ -269,6 +296,9 @@
 ## [2026-03-04] — Inbox Core Bug Fixes
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Sender Name Overwrite**: Fixed `webhookController.js` so it doesn't overwrite the contact's name with the agent's (`pushName`) when an outgoing message is sent.
 - **Custom Fields Empty States**: Fixed `ContactSidebar.jsx` so global custom fields aren't deleted if saved with empty values. They are now persistently rendered.
@@ -308,6 +338,9 @@
 - **Backend `PUT /api/chat/conversations/:id/status`**: Close/open/pending status toggle
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **`dangerouslySetLabel` Bug**: `ContactSidebar.jsx` line 250 had wrong prop name → fixed to render emoji as plain text
 - **`PlusIcon` Missing**: Was used but not imported in `ContactSidebar.jsx`
@@ -382,6 +415,9 @@
 - **Instance Management**: Support for Meta Phone Number ID instead of QR codes
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Webhook Verification**: Improved Meta webhook verification format and logging
 - **Token Handling**: Fixed corrupted access token in environment variables
@@ -399,6 +435,9 @@
 - **Team Insights Dashboard**: Introduced a new "Team Insights" section ranking team members by their number of replies.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Unread Toggle Fixed**: Restored functionality to the Unread toggle button in the Inbox to correctly parse local `unreadCount`.
 - **Group Chat Names Overriden**: Fixed `webhookController.js` pulling the `pushName` of individual senders on group chats and using it to override the conversation name by bypassing assignment logic for IDs containing `@g.us`.
@@ -422,6 +461,9 @@
 ---
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **AI Agent Field Mismatch**: Harmonized `model` vs `aiModel` field names across the stack. Added a mapping in `agent.routes.js` and updated `Agents.jsx` to use `aiModel`, resolving `PrismaClientValidationError`.
 - **AIAgent Update 500 Error**: Implemented strict field filtering in `agent.routes.js` to prevent non-schema fields (like `actionConfig`) from crashing Prisma.
@@ -437,6 +479,9 @@
 ## [2026-02-25] — Production Crash Fix & Infrastructure Recovery
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Backend Startup Crash**: `pdf-parse` was loaded at module level via `require('pdf-parse')` in `knowledgeService.js`. On Node.js v22, this triggers PDF.js browser polyfill code at startup which crashes the server. Fixed by moving `require('pdf-parse')` inside the `case 'pdf'` block (lazy load — only loads when a PDF is actually uploaded).
 - **Evolution API Down**: Container was stopped. Restarted via Coolify dashboard.
@@ -498,6 +543,9 @@
 - **DevOps**: Updated root `package.json` with scripts to build frontend and start backend concurrently (`install:all`, `build:frontend`, `deploy`).
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Infrastructure**: Resolved `405 Method Not Allowed` by bypassing the failing Nginx proxy.
 - **Database**: Fixed `PrismaClientKnownRequestError (P2022)` by adding the missing `variables` JSONB column to the `Message` table via migration.
@@ -523,6 +571,9 @@
 - **DevOps**: Connected custom domain `app.muhammedmekky.com` to Coolify service. SSL enabled via Let's Encrypt.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Agents Page**: Repaired structural JSX corruption in `Agents.jsx` and standardized styling across all tabs (Identity, Settings, Skills, Knowledge).
 - **Global**: Standardized scrollbars and backdrop-blur effects throughout the application for a cohesive enterprise feel.
@@ -606,12 +657,18 @@
 - **Schema**: Added `allowGroupResponse`, `allowedGroups`, and `actionConfig` fields to `AIAgent` model.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Database**: Resolved `type "vector" does not exist` error by enabling extension and updating Docker image.
 - **Database**: Fixed migration SQL table name mismatches (e.g., `Conversation` -> `conversations`).
 - **Webhook**: Integrated AI Agent logic into `webhookController.js` to replace legacy AI fallback.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **Webhook 405 Error**: Evolution API v2 appends event names to webhook URLs (e.g. `/receive/messages-upsert`). Added `router.post('/receive/:event', ...)` to `backend/src/routes/webhooks.js`.
 - **Nginx 413 Body Too Large**: Added `client_max_body_size 50m` to `frontend/nginx.conf`. Default was 1MB, but webhook payloads with media can be 12MB+.
@@ -653,6 +710,9 @@
 ## [2026-02-10] — MinIO & Evolution API Fixes
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - **MinIO 403 Forbidden**: Fixed S3 access configuration for media uploads.
 - **Evolution API DNS**: Fixed internal service DNS resolution for webhook delivery.
@@ -716,6 +776,9 @@
 - Refined Dashboard calculations using actual database records and identified the migration deployment issue.
 
 ### Fixed
+- **Help Center**: Fixed routing issue where `/help` pages were not loading due to missing `PublicLayout` wrapper.
+- **Channels**: Fixed bug preventing WhatsApp Cloud API instances from being connected (`Invalid channel type`).
+- **Channels API**: Caught unhandled Evolution API sync errors that previously crashed the GET `/api/instances` endpoint, preventing the Connected Channels view from loading.
 
 - Fixed General Settings page crash by implementing the missing `GET /api/auth/me` endpoint to supply tenant information.
 - Fixed AI Knowledge Settings page by creating a workspace-wide `GET /api/agents/knowledge` endpoint to consolidate all AI agent knowledge sources.

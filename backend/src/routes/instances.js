@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
         if (channelType === 'whatsapp') {
           try {
             const status = await evolutionApi.getInstanceStatus(instance.instanceName);
-            const state = status.instance?.state || status.state;
+            const state = status?.instance?.state || status?.state || 'disconnected';
             const newStatus = state === 'open' ? 'connected' : 
                              state === 'connecting' ? 'qr_pending' : 'disconnected';
             
@@ -36,9 +36,17 @@ router.get('/', async (req, res) => {
             }
           } catch (err) {
             console.log(`Could not sync status for ${instance.instanceName}:`, err.message);
+            // Default to disconnected if API is unreachable
+            if (instance.status !== 'disconnected') {
+              await prisma.instance.update({
+                where: { id: instance.id },
+                data: { status: 'disconnected' }
+              });
+              instance.status = 'disconnected';
+            }
           }
         }
-        // For messenger/instagram, status is always 'connected' for now
+        // For messenger/instagram/whatsapp_cloud, status is always 'connected' for now
         return instance;
       })
     );
@@ -78,10 +86,10 @@ router.post('/', async (req, res) => {
     if (channelType === 'whatsapp') {
       // WhatsApp handled via Evolution API
       instance = await evolutionApi.createInstance(req.tenantId, instanceName);
-    } else if (channelType === 'messenger' || channelType === 'instagram') {
-      // Messenger/Instagram handled manually via Meta tokens
+    } else if (channelType === 'messenger' || channelType === 'instagram' || channelType === 'whatsapp_cloud') {
+      // Messenger/Instagram/WhatsApp Cloud handled manually via Meta tokens
       if (!phoneNumberId || !accessToken) {
-        return res.status(400).json({ error: 'Page ID and Access Token are required for this channel type' });
+        return res.status(400).json({ error: 'Phone Number/Page ID and Access Token are required for this channel type' });
       }
 
       instance = await prisma.instance.create({

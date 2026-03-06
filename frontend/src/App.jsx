@@ -115,34 +115,34 @@ function App() {
       <ScrollManager />
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/roadmap" element={<Roadmap />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/why-us" element={<WhyUs />} />
+          {/* Public Routes with PublicLayout */}
+          <Route path="/" element={<PublicLayout><Landing /></PublicLayout>} />
+          <Route path="/about" element={<PublicLayout><About /></PublicLayout>} />
+          <Route path="/roadmap" element={<PublicLayout><Roadmap /></PublicLayout>} />
+          <Route path="/contact" element={<PublicLayout><Contact /></PublicLayout>} />
+          <Route path="/pricing" element={<PublicLayout><Pricing /></PublicLayout>} />
+          <Route path="/why-us" element={<PublicLayout><WhyUs /></PublicLayout>} />
 
           {/* Help Center Routes */}
-          <Route path="/help" element={<HelpCenter />} />
-          <Route path="/help/product" element={<ProductHelp />} />
-          <Route path="/help/channels/:channel/:topic" element={<ChannelHelp />} />
-          <Route path="/help/channels/:channel" element={<ChannelHelp />} />
-          <Route path="/help/channels" element={<ChannelsList />} />
-          <Route path="/help/:feature/:topic" element={<FeatureHelp />} />
-          <Route path="/help/:feature" element={<FeatureHelp />} />
-          <Route path="/help/settings" element={<SettingsHelp />} />
+          <Route path="/help" element={<PublicLayout><HelpCenter /></PublicLayout>} />
+          <Route path="/help/product" element={<PublicLayout><ProductHelp /></PublicLayout>} />
+          <Route path="/help/channels/:channel/:topic" element={<PublicLayout><ChannelHelp /></PublicLayout>} />
+          <Route path="/help/channels/:channel" element={<PublicLayout><ChannelHelp /></PublicLayout>} />
+          <Route path="/help/channels" element={<PublicLayout><ChannelsList /></PublicLayout>} />
+          <Route path="/help/:feature/:topic" element={<PublicLayout><FeatureHelp /></PublicLayout>} />
+          <Route path="/help/:feature" element={<PublicLayout><FeatureHelp /></PublicLayout>} />
+          <Route path="/help/settings" element={<PublicLayout><SettingsHelp /></PublicLayout>} />
           
           <Route path="/resources/support" element={<Navigate to="/help" replace />} />
-          <Route path="/resources/learn" element={<Learn />} />
-          <Route path="/resources/tools" element={<Tools />} />
+          <Route path="/resources/learn" element={<PublicLayout><Learn /></PublicLayout>} />
+          <Route path="/resources/tools" element={<PublicLayout><Tools /></PublicLayout>} />
 
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/terms" element={<TermsOfService />} />
-          <Route path="/cookie-policy" element={<CookiePolicy />} />
-          <Route path="/security" element={<Security />} />
-          <Route path="/subprocessors" element={<Subprocessors />} />
-          <Route path="/dpa" element={<DPA />} />
+          <Route path="/privacy" element={<PublicLayout><PrivacyPolicy /></PublicLayout>} />
+          <Route path="/terms" element={<PublicLayout><TermsOfService /></PublicLayout>} />
+          <Route path="/cookie-policy" element={<PublicLayout><CookiePolicy /></PublicLayout>} />
+          <Route path="/security" element={<PublicLayout><Security /></PublicLayout>} />
+          <Route path="/subprocessors" element={<PublicLayout><Subprocessors /></PublicLayout>} />
+          <Route path="/dpa" element={<PublicLayout><DPA /></PublicLayout>} />
           <Route path="/api-docs" element={<Navigate to="/resources/tools" replace />} />
           <Route path="/success-stories" element={<Navigate to="/resources/learn" replace />} />
 
