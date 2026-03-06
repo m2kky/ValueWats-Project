@@ -206,6 +206,8 @@ export default function Agents() {
     const full = await fetchAgent(agent.id);
     if (full) {
       setForm({
+        ...defaultForm,
+        ...full,
         name: full.name || '',
         description: full.description || '',
         instructions: full.instructions || '',
@@ -227,8 +229,10 @@ export default function Agents() {
         priority: full.priority ?? 0,
         isPublished: full.isPublished ?? false,
         aiModel: full.aiModel || full.model || 'deepseek-chat',
-
-        actionConfig: full.actionConfig || {},
+        actionConfig: {
+          ...defaultForm.actionConfig,
+          ...(full.actionConfig || {}),
+        },
       });
       setEditingId(full.id);
       setChatMessages([]);

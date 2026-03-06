@@ -84,22 +84,22 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Protected routes
 app.use('/api/instances', tenantContext, instanceRoutes);
-app.use('/api/campaigns', campaignRoutes);
-app.use('/api/dashboard', require('./routes/dashboard'));
-app.use('/api/automations', require('./routes/automations'));
-app.use('/api/team', require('./routes/team'));
+app.use('/api/campaigns', tenantContext, campaignRoutes);
+app.use('/api/dashboard', tenantContext, require('./routes/dashboard'));
+app.use('/api/automations', tenantContext, require('./routes/automations'));
+app.use('/api/team', tenantContext, require('./routes/team'));
 app.use('/api/chat', tenantContext, chatRoutes);
-app.use('/api/agents', agentRoutes);
-app.use('/api/agents', require('./agents/knowledge.routes'));
-app.use('/api/lifecycle', require('./routes/lifecycle.routes'));
-app.use('/api/contacts', require('./routes/contacts'));
+app.use('/api/agents', tenantContext, agentRoutes);
+app.use('/api/agents', tenantContext, require('./agents/knowledge.routes'));
+app.use('/api/lifecycle', tenantContext, require('./routes/lifecycle.routes'));
+app.use('/api/contacts', tenantContext, require('./routes/contacts'));
 app.use('/api/templates', tenantContext, require('./routes/templates'));
-app.use('/api/contact-fields', require('./routes/contactFields.routes'));
-app.use('/api/tags', require('./routes/tags.routes'));
-app.use('/api/snippets', require('./routes/snippets.routes'));
-app.use('/api/lifecycle-rules', require('./routes/lifecycleRules.routes'));
+app.use('/api/contact-fields', tenantContext, require('./routes/contactFields.routes'));
+app.use('/api/tags', tenantContext, require('./routes/tags.routes'));
+app.use('/api/snippets', tenantContext, require('./routes/snippets.routes'));
+app.use('/api/lifecycle-rules', tenantContext, require('./routes/lifecycleRules.routes'));
 app.use('/api/integrations', tenantContext, require('./routes/integrations'));
-app.use('/api/segments', require('./routes/segments'));
+app.use('/api/segments', tenantContext, require('./routes/segments'));
 
 // Super Admin Routes (Protected internally by isAdmin middleware)
 app.use('/api/admin', require('./routes/admin'));

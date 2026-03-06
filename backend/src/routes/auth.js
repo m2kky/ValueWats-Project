@@ -185,6 +185,7 @@ const verifyOtp = async (req, res) => {
         id: result.user.id,
         email: result.user.email,
         role: result.user.role,
+        isSuperAdmin: result.user.isSuperAdmin,
       },
       tenant: {
         id: result.tenant.id,
@@ -323,6 +324,7 @@ const login = async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        isSuperAdmin: user.isSuperAdmin,
       },
       tenant: {
         id: user.tenant.id,
@@ -452,6 +454,7 @@ const googleAuth = async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        isSuperAdmin: user.isSuperAdmin,
       },
       tenant: {
         id: user.tenant.id,
