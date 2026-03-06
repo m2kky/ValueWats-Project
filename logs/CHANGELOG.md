@@ -8,6 +8,9 @@
 - **New Channel Catalog**: Redesigned the main channels page into a modern "Channel Catalog" grid with category filtering and platform-specific cards.
 - **Split-Screen Connection Wizard**: Implemented a professional, split-screen connection flow with dedicated sidebars for platform resources and step-by-step guidance.
 - **Legacy Support**: Added automatic redirects from `/instances` and `/instances/new` to the new `/channels` structure.
+- **Connected Channels Dashboard**: Implemented a dedicated "Connected Channels" section that displays live channel status, platform icons, and management controls (Delete, Reconnect).
+- **Live Status Monitoring**: Integrated real-time status syncing for WhatsApp instances, providing visual feedback for active, disconnected, and scan-required states.
+- **Terminology Normalization**: Removed all references to "WhatsApp Business API", standardizing on "WhatsApp Instance" to reflect direct Evolution API connectivity.
 
 ### Added
 

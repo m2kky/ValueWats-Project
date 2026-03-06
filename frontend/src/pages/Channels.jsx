@@ -1,8 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../api/client';
 import { 
   MagnifyingGlassIcon,
   ChevronRightIcon,
+  TrashIcon,
+  ArrowPathIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
 const categories = [
@@ -125,9 +130,9 @@ const catalog = [
   },
   {
     id: 'whatsapp-cloud',
-    type: 'whatsapp',
+    type: 'whatsapp_cloud',
     name: 'WhatsApp Cloud API',
-    description: 'Connect WhatsApp Cloud API and manage your messages easily in one centralized inbox.',
+    description: 'Connect official WhatsApp Cloud API (Meta) for enterprise-grade scalability and reliability.',
     category: 'messaging',
     color: 'blue',
     icon: (
@@ -158,6 +163,38 @@ export default function Channels() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [connectedChannels, setConnectedChannels] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchInstances();
+  }, []);
+
+  const fetchInstances = async () => {
+    try {
+      const response = await api.get('/api/instances');
+      setConnectedChannels(response.data.instances || []);
+    } catch (err) {
+      console.error('Failed to fetch instances:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this channel?')) return;
+    try {
+      await api.delete(`/api/instances/${id}`);
+      setConnectedChannels(prev => prev.filter(inst => inst.id !== id));
+    } catch (err) {
+      alert('Failed to delete channel');
+    }
+  };
+
+  const getChannelIcon = (type) => {
+    const item = catalog.find(c => c.type === type);
+    return item?.icon || null;
+  };
 
   const filteredCatalog = useMemo(() => {
     return catalog.filter(item => {
@@ -218,6 +255,79 @@ export default function Channels() {
           />
         </div>
       </div>
+
+      {/* Connected Channels Section */}
+      {connectedChannels.length > 0 && (
+        <div className="mb-16">
+          <div className="mb-6">
+             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-600 mb-1 ml-1">Connected Channels</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {connectedChannels.map(instance => (
+              <div 
+                key={instance.id}
+                className="bg-[#14171c]/80 border border-white/5 rounded-[24px] p-5 flex items-center justify-between group hover:border-white/10 transition-all shadow-sm"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+                    <div className="w-8 h-8">
+                       {getChannelIcon(instance.channelType)}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white text-[15px] leading-tight mb-1">{instance.instanceName}</h4>
+                    <div className="flex flex-col gap-1">
+                       <div className="flex items-center gap-2">
+                          {instance.status === 'connected' ? (
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                              Active
+                            </span>
+                          ) : instance.status === 'qr_pending' ? (
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b] animate-pulse" />
+                              Scan Required
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-rose-400 uppercase tracking-wider">
+                              <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
+                              Disconnected
+                            </span>
+                          )}
+                       </div>
+                       {(instance.phoneNumber || instance.phoneNumberId) && (
+                         <span className="text-[11px] text-zinc-500 font-mono">
+                           {instance.phoneNumber || instance.phoneNumberId}
+                         </span>
+                       )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {instance.channelType === 'whatsapp' && (instance.status === 'disconnected' || instance.status === 'qr_pending') && (
+                    <button 
+                      onClick={() => navigate(`/channels/connect/whatsapp`)}
+                      className="p-2 hover:bg-white/5 rounded-lg text-indigo-400 transition-colors"
+                      title="Reconnect"
+                    >
+                      <ArrowPathIcon className="w-5 h-5" />
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => handleDelete(instance.id)}
+                    className="p-2 hover:bg-rose-500/10 rounded-lg text-zinc-500 hover:text-rose-400 transition-colors"
+                    title="Delete Channel"
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Catalog Grid */}
       <div className="space-y-12">
