@@ -1,6 +1,14 @@
-All notable changes to the ValueWats project, tracked by date.
-
 ---
+
+## [2026-03-07] — Phase 6: Help Center Migration
+
+### Added
+
+- **New Help Center Hub**: Launched a unified `/help` landing page with categorized documentation articles and search capabilities.
+- **Dynamic Routing**: Reorganized all documentation articles under the native `/help` route, migrating away from the legacy `/resources/support` path.
+- **Sidebar Integration**: Added a persistent "Help Center" link to the main application sidebar for instant user access.
+- **In-App Documentation**: Linked the `RichTextarea` "Learn how to write this" shortcut directly to the local Help Center instead of external sites.
+- **Legacy Redirects**: Implemented automatic routing for old support links to ensure zero broken links during the transition.
 
 ## [2026-03-06] — Phase 5: Multi-Channel Inbox
 

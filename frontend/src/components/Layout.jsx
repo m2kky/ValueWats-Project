@@ -13,7 +13,8 @@ import {
   BellIcon,
   UsersIcon,
   DocumentDuplicateIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
@@ -58,6 +59,7 @@ export default function Layout({ children }) {
     { name: 'Instances', path: '/instances', icon: DevicePhoneMobileIcon },
     { name: 'Automations', path: '/automations', icon: BoltIcon },
     { name: 'Settings', path: '/settings', icon: Cog6ToothIcon },
+    { name: 'Help Center', path: '/help', icon: QuestionMarkCircleIcon, external: true },
   ];
 
   const isActive = (path) => location.pathname.startsWith(path);

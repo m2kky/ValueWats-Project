@@ -41,15 +41,13 @@ const Contact = React.lazy(() => import('./pages/public/Contact'));
 const Pricing = React.lazy(() => import('./pages/public/Pricing'));
 const WhyUs = React.lazy(() => import('./pages/public/WhyUs'));
 
-// Resources Pages
-const Support = React.lazy(() => import('./pages/public/resources/Support'));
-const Learn = React.lazy(() => import('./pages/public/resources/Learn'));
-const Tools = React.lazy(() => import('./pages/public/resources/Tools'));
-const GettingStartedDocs = React.lazy(() => import('./pages/public/resources/support/GettingStartedDocs'));
-const InboxDocs = React.lazy(() => import('./pages/public/resources/support/InboxDocs'));
-const CampaignsDocs = React.lazy(() => import('./pages/public/resources/support/CampaignsDocs'));
-const AgentsDocs = React.lazy(() => import('./pages/public/resources/support/AgentsDocs'));
-const SettingsDocs = React.lazy(() => import('./pages/public/resources/support/SettingsDocs'));
+// Help Center Pages
+const HelpCenter = React.lazy(() => import('./pages/public/help/HelpCenter'));
+const GettingStartedHelp = React.lazy(() => import('./pages/public/help/GettingStarted'));
+const InboxHelp = React.lazy(() => import('./pages/public/help/InboxHelp'));
+const CampaignsHelp = React.lazy(() => import('./pages/public/help/CampaignsHelp'));
+const AgentsHelp = React.lazy(() => import('./pages/public/help/AgentsHelp'));
+const SettingsHelp = React.lazy(() => import('./pages/public/help/SettingsHelp'));
 
 // Legal Pages
 const PrivacyPolicy = React.lazy(() => import('./pages/public/legal/PrivacyPolicy'));
@@ -122,13 +120,15 @@ function App() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/why-us" element={<WhyUs />} />
 
-          {/* Resource Routes */}
-          <Route path="/resources/support" element={<Support />} />
-          <Route path="/resources/support/getting-started" element={<GettingStartedDocs />} />
-          <Route path="/resources/support/inbox" element={<InboxDocs />} />
-          <Route path="/resources/support/campaigns" element={<CampaignsDocs />} />
-          <Route path="/resources/support/agents" element={<AgentsDocs />} />
-          <Route path="/resources/support/settings" element={<SettingsDocs />} />
+          {/* Help Center Routes */}
+          <Route path="/help" element={<HelpCenter />} />
+          <Route path="/help/getting-started" element={<GettingStartedHelp />} />
+          <Route path="/help/inbox" element={<InboxHelp />} />
+          <Route path="/help/campaigns" element={<CampaignsHelp />} />
+          <Route path="/help/agents" element={<AgentsHelp />} />
+          <Route path="/help/settings" element={<SettingsHelp />} />
+          
+          <Route path="/resources/support" element={<Navigate to="/help" replace />} />
           <Route path="/resources/learn" element={<Learn />} />
           <Route path="/resources/tools" element={<Tools />} />
 

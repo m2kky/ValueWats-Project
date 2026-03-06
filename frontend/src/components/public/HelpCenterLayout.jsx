@@ -2,12 +2,12 @@ import { NavLink } from 'react-router-dom';
 import PublicLayout from './PublicLayout';
 
 const helpLinks = [
-    { name: 'Help Center Home', path: '/resources/support' },
-    { name: 'Getting Started', path: '/resources/support/getting-started' },
-    { name: 'Smart Inbox', path: '/resources/support/inbox' },
-    { name: 'Campaigns & Broadcasts', path: '/resources/support/campaigns' },
-    { name: 'AI Agents', path: '/resources/support/agents' },
-    { name: 'Settings & Automations', path: '/resources/support/settings' },
+    { name: 'Help Center Home', path: '/help' },
+    { name: 'Getting Started', path: '/help/getting-started' },
+    { name: 'Smart Inbox', path: '/help/inbox' },
+    { name: 'Campaigns & Broadcasts', path: '/help/campaigns' },
+    { name: 'AI Agents', path: '/help/agents' },
+    { name: 'Settings & Automations', path: '/help/settings' },
 ];
 
 export default function HelpCenterLayout({ children, title, lastUpdated }) {
@@ -26,7 +26,7 @@ export default function HelpCenterLayout({ children, title, lastUpdated }) {
                                 <NavLink
                                     key={link.name}
                                     to={link.path}
-                                    end={link.path === '/resources/support'}
+                                    end={link.path === '/help'}
                                     className={({ isActive }) =>
                                         `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
                                             ? 'bg-blue-500/10 text-blue-400'
