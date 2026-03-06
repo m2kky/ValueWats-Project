@@ -11,6 +11,10 @@ All notable changes to the ValueWats project, tracked by date.
 - **Backend Infrastructure**: Built `segmentController.js` and `/api/segments` routes to execute dynamic contact querying based on stored JSON rules via the `crmService`.
 - **Database Schema**: Expanded `schema.prisma` natively with a `SavedSegment` model and connected `savedSegmentId` integrally into ongoing `Campaign` deployments.
 
+### Fixed
+
+- **Deployment Crash**: Resolved a critical `MODULE_NOT_FOUND` error in `segments.js` caused by a non-existent auth middleware import. Switched to the established `tenantContext` middleware.
+
 ---
 
 ## [2026-03-05]
