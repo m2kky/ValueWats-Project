@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/client';
 import { 
   MagnifyingGlassIcon,
@@ -7,7 +7,9 @@ import {
   TrashIcon,
   ArrowPathIcon,
   ExclamationTriangleIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  InformationCircleIcon,
+  RocketLaunchIcon
 } from '@heroicons/react/24/outline';
 
 const categories = [
