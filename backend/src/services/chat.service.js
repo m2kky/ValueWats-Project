@@ -7,9 +7,11 @@ class ChatService {
    */
   async upsertConversation(tenantId, contactNumber, messageData = {}) {
     try {
+      const channelType = messageData.channelType || 'whatsapp';
+
       const conversation = await prisma.conversation.upsert({
         where: {
-          tenantId_contactNumber: { tenantId, contactNumber }
+          tenantId_contactNumber_channelType: { tenantId, contactNumber, channelType }
         },
         update: {
           lastMessage: messageData.content?.substring(0, 100) || '[Media]',
@@ -21,6 +23,7 @@ class ChatService {
         },
         create: {
           tenantId,
+          channelType,
           contactNumber,
           contactName: messageData.contactName || contactNumber,
           lastMessage: messageData.content?.substring(0, 100) || '[Media]',
@@ -47,6 +50,7 @@ class ChatService {
           conversationId,
           instanceId: messageData.instanceId || null,
           direction: messageData.fromMe ? 'outgoing' : 'incoming',
+          channelType: messageData.channelType || 'whatsapp',
           senderNumber: messageData.senderNumber,
           recipientNumber: messageData.recipientNumber,
           messageType: messageData.messageType || 'text',
@@ -336,24 +340,41 @@ class ChatService {
     });
     if (!instance) throw new Error('Instance not found');
 
-    // Send via Evolution API
-    const result = await evolutionApi.sendMessage(
-      tenantId,
-      instance.instanceName,
-      conversation.contactNumber,
-      content
-    );
+    let result;
+    const channelType = instance.channelType || 'whatsapp';
+
+    if (channelType === 'whatsapp') {
+      // Send via Evolution API
+      result = await evolutionApi.sendMessage(
+        tenantId,
+        instance.instanceName,
+        conversation.contactNumber,
+        content,
+        mediaUrl,
+        messageType
+      );
+    } else {
+      // Send via Meta API (Messenger/Instagram)
+      result = await metaApi.sendMetaMessage(
+        instance,
+        conversation.contactNumber,
+        content,
+        mediaUrl,
+        messageType
+      );
+    }
 
     // Save to DB
     const savedMessage = await this.saveMessage(conversationId, {
       instanceId,
       fromMe: true,
-      senderNumber: instance.instanceName,
+      senderNumber: instance.phoneNumberId || instance.instanceName,
       recipientNumber: conversation.contactNumber,
       messageType: messageType || 'text',
+      channelType,
       content,
       mediaUrl,
-      wamid: result?.key?.id || null,
+      wamid: result?.key?.id || result?.message_id || null,
       status: 'sent',
     });
 
@@ -392,6 +413,8 @@ class ChatService {
       let syncCount = 0;
 
       for (const instance of instances) {
+        if (instance.channelType && instance.channelType !== 'whatsapp') continue;
+        
         console.log(`[ChatSync] Syncing for instance: ${instance.instanceName}`);
 
         // 2. Fetch conversations from Evolution API

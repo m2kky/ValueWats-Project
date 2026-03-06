@@ -317,6 +317,8 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
     return colors[hash % colors.length];
   };
 
+  const channelType = conversation.channelType || 'whatsapp';
+
   return (
     <div className="w-80 min-w-[320px] h-full bg-[#0f0f11] border-l border-white/5 flex flex-col overflow-y-auto custom-scrollbar">
 
@@ -338,9 +340,11 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
           {(conversation.contactName || conversation.contactNumber)?.[0]?.toUpperCase() || '?'}
         </div>
         <h2 className="text-lg font-bold text-white text-center break-all">
-          {conversation.contactName || conversation.contactNumber}
+          {conversation.contactName || (channelType === 'whatsapp' ? formatPhoneNumber(conversation.contactNumber) : conversation.contactNumber)}
         </h2>
-        <p className="text-xs text-zinc-500 mt-1">{formatPhoneNumber(conversation.contactNumber)}</p>
+        <p className="text-xs text-zinc-500 mt-1">
+          {channelType === 'whatsapp' ? formatPhoneNumber(conversation.contactNumber) : `${channelType.charAt(0).toUpperCase() + channelType.slice(1)} ID: ${conversation.contactNumber}`}
+        </p>
 
         {/* Assignment Dropdown */}
         <div className="relative mt-4 w-full">

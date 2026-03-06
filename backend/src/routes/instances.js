@@ -6,7 +6,7 @@ const router = express.Router();
 
 /**
  * GET /api/instances - List all instances for tenant
- * Syncs status from Evolution API for each instance
+ * Syncs status from Evolution API for WhatsApp instances
  */
 router.get('/', async (req, res) => {
   try {
@@ -15,27 +15,30 @@ router.get('/', async (req, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Sync status from Evolution API for each instance
+    // Sync status for each instance
     const syncedInstances = await Promise.all(
       instances.map(async (instance) => {
-        try {
-          const status = await evolutionApi.getInstanceStatus(instance.instanceName);
-          // Evolution API returns { instance: { state: "open" | "connecting" | ... } }
-          const state = status.instance?.state || status.state;
-          const newStatus = state === 'open' ? 'connected' : 
-                           state === 'connecting' ? 'qr_pending' : 'disconnected';
-          
-          // Update in DB if status changed
-          if (instance.status !== newStatus) {
-            await prisma.instance.update({
-              where: { id: instance.id },
-              data: { status: newStatus }
-            });
-            instance.status = newStatus;
+        const channelType = instance.channelType || 'whatsapp';
+        
+        if (channelType === 'whatsapp') {
+          try {
+            const status = await evolutionApi.getInstanceStatus(instance.instanceName);
+            const state = status.instance?.state || status.state;
+            const newStatus = state === 'open' ? 'connected' : 
+                             state === 'connecting' ? 'qr_pending' : 'disconnected';
+            
+            if (instance.status !== newStatus) {
+              await prisma.instance.update({
+                where: { id: instance.id },
+                data: { status: newStatus }
+              });
+              instance.status = newStatus;
+            }
+          } catch (err) {
+            console.log(`Could not sync status for ${instance.instanceName}:`, err.message);
           }
-        } catch (err) {
-          console.log(`Could not sync status for ${instance.instanceName}:`, err.message);
         }
+        // For messenger/instagram, status is always 'connected' for now
         return instance;
       })
     );
@@ -52,12 +55,7 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const fs = require('fs');
-    fs.appendFileSync('route_debug.log', `[${new Date().toISOString()}] POST /instances called\n`);
-    fs.appendFileSync('route_debug.log', `Body: ${JSON.stringify(req.body)}\n`);
-    fs.appendFileSync('route_debug.log', `TenantID: ${req.tenantId}\n`);
-    
-    const { instanceName } = req.body;
+    const { instanceName, channelType = 'whatsapp', phoneNumberId, accessToken } = req.body;
 
     if (!instanceName) {
       return res.status(400).json({ error: 'Instance name is required' });
@@ -75,15 +73,36 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ error: 'Instance name already exists' });
     }
 
-    const instance = await evolutionApi.createInstance(req.tenantId, instanceName);
+    let instance;
+
+    if (channelType === 'whatsapp') {
+      // WhatsApp handled via Evolution API
+      instance = await evolutionApi.createInstance(req.tenantId, instanceName);
+    } else if (channelType === 'messenger' || channelType === 'instagram') {
+      // Messenger/Instagram handled manually via Meta tokens
+      if (!phoneNumberId || !accessToken) {
+        return res.status(400).json({ error: 'Page ID and Access Token are required for this channel type' });
+      }
+
+      instance = await prisma.instance.create({
+        data: {
+          tenantId: req.tenantId,
+          instanceName,
+          channelType,
+          phoneNumberId,
+          accessToken,
+          status: 'connected'
+        }
+      });
+    } else {
+      return res.status(400).json({ error: 'Invalid channel type' });
+    }
 
     res.status(201).json({
       message: 'Instance created successfully',
       instance,
     });
   } catch (error) {
-    const fs = require('fs');
-    fs.appendFileSync('route_debug.log', `[${new Date().toISOString()}] ERROR: ${error.message}\nStack: ${error.stack}\n`);
     console.error('Create instance error:', error);
     res.status(500).json({ error: error.message });
   }
@@ -95,27 +114,26 @@ router.post('/', async (req, res) => {
 router.get('/:id/status', async (req, res) => {
   try {
     const instance = await prisma.instance.findFirst({
-      where: {
-        id: req.params.id,
-        tenantId: req.tenantId,
-      },
+      where: { id: req.params.id, tenantId: req.tenantId },
     });
 
-    if (!instance) {
-      return res.status(404).json({ error: 'Instance not found' });
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
+
+    const channelType = instance.channelType || 'whatsapp';
+
+    if (channelType === 'whatsapp') {
+      const status = await evolutionApi.getInstanceStatus(instance.instanceName);
+      const newStatus = status.state === 'open' ? 'connected' : 'disconnected';
+
+      await prisma.instance.update({
+        where: { id: instance.id },
+        data: { status: newStatus },
+      });
+      return res.json({ status });
     }
 
-    const status = await evolutionApi.getInstanceStatus(instance.instanceName);
-
-    // Update status in database
-    await prisma.instance.update({
-      where: { id: instance.id },
-      data: {
-        status: status.state === 'open' ? 'connected' : 'disconnected',
-      },
-    });
-
-    res.json({ status });
+    // For non-whatsapp, assume connected
+    res.json({ status: { state: 'open' } });
   } catch (error) {
     console.error('Get status error:', error);
     res.status(500).json({ error: 'Failed to get instance status' });
@@ -128,19 +146,17 @@ router.get('/:id/status', async (req, res) => {
 router.get('/:id/connect', async (req, res) => {
   try {
     const instance = await prisma.instance.findFirst({
-      where: {
-        id: req.params.id,
-        tenantId: req.tenantId,
-      },
+      where: { id: req.params.id, tenantId: req.tenantId },
     });
 
-    if (!instance) {
-      return res.status(404).json({ error: 'Instance not found' });
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
+
+    if (instance.channelType && instance.channelType !== 'whatsapp') {
+      return res.status(400).json({ error: 'Connect with QR is only for WhatsApp' });
     }
 
     const qrCode = await evolutionApi.fetchQrCode(instance.instanceName);
 
-    // Update QR in DB
     if (qrCode) {
       await prisma.instance.update({
         where: { id: instance.id },
@@ -161,18 +177,15 @@ router.get('/:id/connect', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const instance = await prisma.instance.findFirst({
-      where: {
-        id: req.params.id,
-        tenantId: req.tenantId,
-      },
+      where: { id: req.params.id, tenantId: req.tenantId },
     });
 
-    if (!instance) {
-      return res.status(404).json({ error: 'Instance not found' });
-    }
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
 
-    // Delete from Evolution API
-    await evolutionApi.deleteInstance(instance.instanceName);
+    // Delete from Evolution API only for WhatsApp
+    if ((instance.channelType || 'whatsapp') === 'whatsapp') {
+      await evolutionApi.deleteInstance(instance.instanceName).catch(e => console.error('Evolution delete failed', e));
+    }
 
     // Delete from database
     await prisma.instance.delete({
@@ -187,7 +200,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 /**
- * POST /api/instances/:id/send - Send single message
+ * POST /api/instances/:id/send - Send single message (Campaign/Direct)
  */
 router.post('/:id/send', async (req, res) => {
   try {
@@ -198,26 +211,24 @@ router.post('/:id/send', async (req, res) => {
     }
 
     const instance = await prisma.instance.findFirst({
-      where: {
-        id: req.params.id,
-        tenantId: req.tenantId,
-      },
+      where: { id: req.params.id, tenantId: req.tenantId },
     });
 
-    if (!instance) {
-      return res.status(404).json({ error: 'Instance not found' });
-    }
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
 
     if (instance.status !== 'connected') {
       return res.status(400).json({ error: 'Instance is not connected' });
     }
 
-    const result = await evolutionApi.sendMessage(
-      req.tenantId,
-      instance.instanceName,
-      number,
-      message
-    );
+    let result;
+    const channelType = instance.channelType || 'whatsapp';
+
+    if (channelType === 'whatsapp') {
+      result = await evolutionApi.sendMessage(req.tenantId, instance.instanceName, number, message);
+    } else {
+      const metaApi = require('../services/metaApi');
+      result = await metaApi.sendMetaMessage(instance, number, message);
+    }
 
     res.json({
       message: 'Message sent successfully',

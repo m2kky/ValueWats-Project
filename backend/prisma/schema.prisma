@@ -131,11 +131,12 @@ model Invitation {
 model Instance {
   id            String   @id @default(uuid())
   tenantId      String   @map("tenant_id")
+  channelType   String   @default("whatsapp") @map("channel_type") // 'whatsapp', 'messenger', 'instagram'
   instanceName  String   @map("instance_name")
   phoneNumber   String?  @map("phone_number")
-  phoneNumberId String?  @map("phone_number_id") // Meta Cloud API Phone Number ID
-  accessToken   String?  @map("access_token") @db.Text // Meta Cloud API token (encrypted)
-  status        String // 'connected', 'disconnected', 'qr_pending'
+  phoneNumberId String?  @map("phone_number_id") // Meta Cloud API Phone Number ID OR Facebook Page ID
+  accessToken   String?  @map("access_token") @db.Text // Meta Cloud API token OR Page Access Token (encrypted)
+  status        String // 'connected', 'disconnected', 'active'
   qrCode        String?  @map("qr_code") @db.Text
   createdAt     DateTime @default(now()) @map("created_at")
 
@@ -276,6 +277,7 @@ model AutomationRule {
 model Conversation {
   id            String    @id @default(uuid())
   tenantId      String    @map("tenant_id")
+  channelType   String    @default("whatsapp") @map("channel_type") // 'whatsapp', 'messenger', 'instagram'
   contactNumber String    @map("contact_number")
   contactName   String?   @map("contact_name")
   lastMessage   String?   @map("last_message") @db.Text
@@ -313,7 +315,7 @@ model Conversation {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([tenantId, contactNumber])
+  @@unique([tenantId, contactNumber, channelType])
   @@index([tenantId, lastMessageAt(sort: Desc)])
   @@map("conversations")
 }
@@ -323,13 +325,14 @@ model ChatMessage {
   conversationId  String   @map("conversation_id")
   instanceId      String?  @map("instance_id")
   direction       String // 'incoming' or 'outgoing'
+  channelType     String   @default("whatsapp") @map("channel_type") // 'whatsapp', 'messenger', 'instagram'
   senderNumber    String   @map("sender_number")
   recipientNumber String   @map("recipient_number")
   messageType     String   @default("text") @map("message_type")
   content         String?  @db.Text
-  mediaUrl        String?  @map("media_url")
-  wamid           String?  @unique
-  status          String   @default("pending")
+  mediaUrl        String?  @map("media_url") @db.Text
+  wamid           String?  @unique @map("wamid") // Message ID from the provider (WhatsApp, etc.)
+  status          String   @default("sent") // sent, delivered, read, failed
   createdAt       DateTime @default(now()) @map("created_at")
 
   senderUserId String? @map("sender_user_id")

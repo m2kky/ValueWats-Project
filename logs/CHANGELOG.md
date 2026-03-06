@@ -2,6 +2,24 @@ All notable changes to the ValueWats project, tracked by date.
 
 ---
 
+## [2026-03-06] — Phase 5: Multi-Channel Inbox
+
+### Added
+
+- **Multi-Channel Inbox (Phase 5)**: Fully integrated Facebook Messenger and Instagram Direct into the unified chat experience.
+- **Channel Icons**: Platform-specific identifiers for WhatsApp, Messenger, and Instagram across all chat views.
+- **Media Messaging**: Implemented full support for images, videos, and files for both WhatsApp and Meta channels.
+- **Intelligent Routing**: Automatic API selection (Evolution vs Meta Graph) based on conversation channel type.
+- **Robust Webhooks**: Unified handler for all Meta platforms with platform detection and media extraction.
+
+### Fixed
+
+- **Media Sending Regression**: Fixed a bug where media attachments sent from the dashboard across all channels were being transmitted as plain text.
+- **Auto-Sync Reliability**: Prevented non-WhatsApp instances from triggering Evolution API errors during background chat syncing.
+- **Identifier Formatting**: Ensured platform-specific IDs (PSIDs) are not erroneously formatted as phone numbers.
+
+---
+
 ## [2026-03-06] — Phase 4: Saved Segments & Retargeting
 
 ### Added

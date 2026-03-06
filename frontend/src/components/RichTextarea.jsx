@@ -210,9 +210,7 @@ export default function RichTextarea({
 
                 <div className="flex items-center gap-4">
                     <a
-                        href="https://respond.io/help/ai-agent-actions"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="/resources/support/agents"
                         className="text-[10px] font-bold text-zinc-600 hover:text-indigo-400 flex items-center gap-1.5 uppercase tracking-widest transition-colors"
                     >
                         <QuestionMarkCircleIcon className="h-3 w-3" />

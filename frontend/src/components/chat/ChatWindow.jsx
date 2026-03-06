@@ -13,10 +13,19 @@ import {
   DocumentTextIcon,
   XMarkIcon,
   CheckIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  DevicePhoneMobileIcon,
+  ChatBubbleBottomCenterTextIcon,
+  CameraIcon
 } from '@heroicons/react/24/outline';
 import { formatPhoneNumber } from '../../utils/formatters';
 import api from '../../api/client';
+
+const channelIcons = {
+  whatsapp: DevicePhoneMobileIcon,
+  messenger: ChatBubbleBottomCenterTextIcon,
+  instagram: CameraIcon
+};
 
 // Common emojis grouped
 const EMOJI_GROUPS = {
@@ -55,6 +64,9 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const searchInputRef = useRef(null);
+
+  const channelType = conversation.channelType || 'whatsapp';
+  const ChannelIcon = channelIcons[channelType] || DevicePhoneMobileIcon;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -197,7 +209,7 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
     const file = e.target.files?.[0];
     if (!file) return;
     if (!selectedInstance) {
-      alert('Please select a WhatsApp instance before attaching a file.');
+      alert('Please select an instance before attaching a file.');
       return;
     }
     setUploading(true);
@@ -263,12 +275,17 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
       {/* Header */}
       <header className="h-[72px] border-b border-white/5 bg-transparent flex items-center justify-between px-6 z-10 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white font-bold text-lg">
-            {(conversation.contactName || conversation.contactNumber)?.[0]?.toUpperCase() || '?'}
+          <div className="relative">
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white font-bold text-lg">
+              {(conversation.contactName || conversation.contactNumber)?.[0]?.toUpperCase() || '?'}
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#121214] rounded-full flex items-center justify-center border border-white/10">
+              <ChannelIcon className={`w-3 h-3 ${channelType === 'whatsapp' ? 'text-emerald-500' : channelType === 'messenger' ? 'text-blue-500' : 'text-pink-500'}`} />
+            </div>
           </div>
           <div className="flex flex-col">
             <h3 className="font-bold text-[15px] text-white tracking-tight flex items-center gap-2">
-              {conversation.contactName || conversation.contactNumber}
+              {conversation.contactName || (channelType === 'whatsapp' ? formatPhoneNumber(conversation.contactNumber) : conversation.contactNumber)}
               {conversation.lifecycleStage ? (
                 <span
                   className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border uppercase tracking-wider"
@@ -291,7 +308,9 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
                 </span>
               ))}
             </h3>
-            <p className="text-xs text-zinc-500">{formatPhoneNumber(conversation.contactNumber)}</p>
+            <p className="text-xs text-zinc-500">
+              {channelType === 'whatsapp' ? formatPhoneNumber(conversation.contactNumber) : `${channelType.charAt(0).toUpperCase() + channelType.slice(1)} ID: ${conversation.contactNumber}`}
+            </p>
           </div>
         </div>
 
@@ -602,19 +621,19 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
             <div className="w-4 h-4 rounded-full bg-blue-500/20 flex items-center justify-center">
               <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
             </div>
-            {instances.length > 1 ? (
+            {instances.filter(i => (i.channelType || 'whatsapp') === channelType).length > 1 ? (
               <select
                 value={selectedInstance}
                 onChange={e => setSelectedInstance(e.target.value)}
                 className="bg-transparent text-xs font-semibold text-zinc-300 outline-none cursor-pointer"
               >
-                {instances.map(inst => (
+                {instances.filter(i => (i.channelType || 'whatsapp') === channelType).map(inst => (
                   <option key={inst.id} value={inst.id} className="bg-zinc-900">{inst.instanceName}</option>
                 ))}
               </select>
             ) : (
               <span className="text-xs font-semibold text-zinc-300">
-                {instances.find(i => i.id === selectedInstance)?.instanceName || 'No Instance Connected'}
+                {instances.find(i => i.id === selectedInstance)?.instanceName || (instances.filter(i => (i.channelType || 'whatsapp') === channelType)[0]?.instanceName) || 'No Instance Connected'}
               </span>
             )}
           </div>
@@ -633,7 +652,7 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
                 </button>
               ))}
               <div className="w-px h-4 bg-white/10 mx-1" />
-              <span className="text-[10px] text-zinc-600 italic">WhatsApp markdown: *bold*, _italic_, ~strike~, `mono`</span>
+              <span className="text-[10px] text-zinc-600 italic">Formatting: *bold*, _italic_, ~strike~, `mono`</span>
             </div>
           )}
 

@@ -1,7 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { formatPhoneNumber } from '../../utils/formatters';
-import { ArrowPathIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { 
+  ArrowPathIcon, 
+  MagnifyingGlassIcon, 
+  XMarkIcon,
+  DevicePhoneMobileIcon,
+  ChatBubbleBottomCenterTextIcon,
+  CameraIcon
+} from '@heroicons/react/24/outline';
+
+const channelIcons = {
+  whatsapp: DevicePhoneMobileIcon,
+  messenger: ChatBubbleBottomCenterTextIcon,
+  instagram: CameraIcon
+};
 
 export default function ConversationList({ conversations, selectedId, onSelect, loading, onSync, syncing, activeFilter = 'all', showFilters, onToggleFilters }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,7 +113,7 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
             <button
               onClick={onSync}
               disabled={syncing}
-              title="Sync Chats from WhatsApp"
+              title="Sync Chats"
               className={`p-1.5 rounded-full hover:bg-white/5 text-zinc-400 transition-all ${syncing ? 'animate-spin opacity-50' : ''}`}
             >
               <ArrowPathIcon className="w-5 h-5" />
@@ -166,111 +179,116 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
             <p className="text-sm font-bold uppercase tracking-widest">{searchTerm ? 'No matches' : 'Empty'}</p>
           </div>
         ) : (
-          filtered.map(conv => (
-            <div
-              key={conv.id}
-              onClick={() => onSelect(conv)}
-              className={`flex items-start gap-4 p-3 rounded-xl cursor-pointer transition-all duration-200 group relative
-                ${selectedId === conv.id
-                  ? 'bg-white/10'
-                  : 'hover:bg-white/[0.03] border border-transparent'
-                }`}
-            >
-              {selectedId === conv.id && (
-                <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r-full shadow-[0_0_10px_rgba(71,37,244,0.5)]"></div>
-              )}
+          filtered.map(conv => {
+            const ChannelIcon = channelIcons[conv.channelType || 'whatsapp'] || DevicePhoneMobileIcon;
+            return (
+              <div
+                key={conv.id}
+                onClick={() => onSelect(conv)}
+                className={`flex items-start gap-4 p-3 rounded-xl cursor-pointer transition-all duration-200 group relative
+                  ${selectedId === conv.id
+                    ? 'bg-white/10'
+                    : 'hover:bg-white/[0.03] border border-transparent'
+                  }`}
+              >
+                {selectedId === conv.id && (
+                  <div className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r-full shadow-[0_0_10px_rgba(71,37,244,0.5)]"></div>
+                )}
 
-              <div className="relative shrink-0 mt-0.5 ml-2">
-                <div className={`w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold shrink-0 transition-transform group-hover:scale-105 shadow-md
-                  ${selectedId === conv.id ? 'bg-gradient-to-tr from-indigo-500 to-purple-500 text-white' : 'bg-white/10 text-white'}`}>
-                  <span>{(conv.contactName || conv.contactNumber)?.[0]?.toUpperCase() || '?'}</span>
-                </div>
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[#18181b] rounded-full"></div>
-              </div>
-
-              <div className="flex-1 min-w-0 flex flex-col pt-0.5">
-                <div className="flex justify-between items-baseline mb-0.5 w-full">
-                  <span className={`text-[15px] font-semibold truncate tracking-tight
-                    ${selectedId === conv.id ? 'text-white' : 'text-zinc-200 group-hover:text-white'}`}>
-                    {conv.contactName || formatPhoneNumber(conv.contactNumber)}
-                  </span>
-                  <span className={`text-[11px] font-medium shrink-0 ml-2
-                    ${conv.unreadCount > 0 ? 'text-indigo-400 font-bold' : 'text-zinc-500'}`}>
-                    {conv.lastMessageAt && formatDistanceToNow(new Date(conv.lastMessageAt), { addSuffix: false })}
-                  </span>
+                <div className="relative shrink-0 mt-0.5 ml-2">
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold shrink-0 transition-transform group-hover:scale-105 shadow-md
+                    ${selectedId === conv.id ? 'bg-gradient-to-tr from-indigo-500 to-purple-500 text-white' : 'bg-white/10 text-white'}`}>
+                    <span>{(conv.contactName || conv.contactNumber)?.[0]?.toUpperCase() || '?'}</span>
+                  </div>
+                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#18181b] rounded-full flex items-center justify-center border border-white/5">
+                    <ChannelIcon className={`w-2.5 h-2.5 ${conv.channelType === 'whatsapp' ? 'text-emerald-500' : conv.channelType === 'messenger' ? 'text-blue-500' : 'text-pink-500'}`} />
+                  </div>
                 </div>
 
-                <div className="flex justify-between items-start mt-0.5">
-                  <div className="flex flex-col gap-1.5 overflow-hidden flex-1">
-                    <p className={`text-[13px] truncate flex items-center gap-1.5
-                      ${conv.unreadCount > 0 ? 'text-white font-semibold' : 'text-zinc-400'}`}>
-                      {conv.unreadCount === 0 && (
-                        <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                      <span className="truncate">{conv.lastMessage || 'No discussion yet'}</span>
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      {conv.lifecycleStage ? (
-                        <span
-                          className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium border"
-                          style={{
-                            backgroundColor: `${conv.lifecycleStage.color}15` || 'rgba(59, 130, 246, 0.1)',
-                            color: conv.lifecycleStage.color || '#3b82f6',
-                            borderColor: `${conv.lifecycleStage.color}20` || 'rgba(59, 130, 246, 0.15)'
-                          }}
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full mr-1.5 opacity-80" style={{ backgroundColor: conv.lifecycleStage.color || '#3b82f6' }}></div>
-                          {conv.lifecycleStage.name}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                          <div className="w-1.5 h-1.5 rounded-full mr-1.5 opacity-80 bg-blue-400"></div>
-                          New Lead
-                        </span>
-                      )}
-
-                      {/* Labels */}
-                      {(conv.labels || []).slice(0, 2).map(lbl => (
-                        <span key={lbl} className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          {lbl}
-                        </span>
-                      ))}
-
-                      {conv.isGroup && (
-                        <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
-                          👥 Group
-                        </span>
-                      )}
-
-                      {conv.instanceName && (
-                        <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800/80 text-zinc-400 border border-zinc-700/80 max-w-[100px] truncate" title={`Instance: ${conv.instanceName}`}>
-                          📱 {conv.instanceName}
-                        </span>
-                      )}
-
-                      {conv.assignedUser ? (
-                        <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800/80 text-zinc-400 border border-zinc-700/80">
-                          {conv.assignedUser.email.split('@')[0]}
-                        </span>
-                      ) : conv.currentAgentId ? (
-                        <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                          🤖 Bot
-                        </span>
-                      ) : null}
-                    </div>
+                <div className="flex-1 min-w-0 flex flex-col pt-0.5">
+                  <div className="flex justify-between items-baseline mb-0.5 w-full">
+                    <span className={`text-[15px] font-semibold truncate tracking-tight
+                      ${selectedId === conv.id ? 'text-white' : 'text-zinc-200 group-hover:text-white'}`}>
+                      {conv.contactName || (conv.channelType === 'whatsapp' ? formatPhoneNumber(conv.contactNumber) : conv.contactNumber)}
+                    </span>
+                    <span className={`text-[11px] font-medium shrink-0 ml-2
+                      ${conv.unreadCount > 0 ? 'text-indigo-400 font-bold' : 'text-zinc-500'}`}>
+                      {conv.lastMessageAt && formatDistanceToNow(new Date(conv.lastMessageAt), { addSuffix: false })}
+                    </span>
                   </div>
 
-                  {conv.unreadCount > 0 && (
-                    <span className="ml-2 mt-1 w-5 h-5 flex items-center justify-center rounded-full bg-indigo-500 text-[10px] font-black text-white shadow-[0_0_10px_rgba(71,37,244,0.4)] shrink-0">
-                      {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
-                    </span>
-                  )}
+                  <div className="flex justify-between items-start mt-0.5">
+                    <div className="flex flex-col gap-1.5 overflow-hidden flex-1">
+                      <p className={`text-[13px] truncate flex items-center gap-1.5
+                        ${conv.unreadCount > 0 ? 'text-white font-semibold' : 'text-zinc-400'}`}>
+                        {conv.unreadCount === 0 && conv.direction === 'outgoing' && (
+                          <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                        <span className="truncate">{conv.lastMessage || 'No discussion yet'}</span>
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        {conv.lifecycleStage ? (
+                          <span
+                            className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium border"
+                            style={{
+                              backgroundColor: `${conv.lifecycleStage.color}15` || 'rgba(59, 130, 246, 0.1)',
+                              color: conv.lifecycleStage.color || '#3b82f6',
+                              borderColor: `${conv.lifecycleStage.color}20` || 'rgba(59, 130, 246, 0.15)'
+                            }}
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full mr-1.5 opacity-80" style={{ backgroundColor: conv.lifecycleStage.color || '#3b82f6' }}></div>
+                            {conv.lifecycleStage.name}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            <div className="w-1.5 h-1.5 rounded-full mr-1.5 opacity-80 bg-blue-400"></div>
+                            New Lead
+                          </span>
+                        )}
+
+                        {/* Labels */}
+                        {(conv.labels || []).slice(0, 2).map(lbl => (
+                          <span key={lbl} className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            {lbl}
+                          </span>
+                        ))}
+
+                        {conv.isGroup && (
+                          <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
+                            👥 Group
+                          </span>
+                        )}
+
+                        {conv.instanceName && (
+                          <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800/80 text-zinc-400 border border-zinc-700/80 max-w-[100px] truncate" title={`Instance: ${conv.instanceName}`}>
+                            <ChannelIcon className="w-2.5 h-2.5 mr-1" /> {conv.instanceName}
+                          </span>
+                        )}
+
+                        {conv.assignedUser ? (
+                          <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-zinc-800/80 text-zinc-400 border border-zinc-700/80">
+                            {conv.assignedUser.email.split('@')[0]}
+                          </span>
+                        ) : conv.currentAgentId ? (
+                          <span className="inline-flex items-center px-1.5 py-[1px] rounded-[4px] text-[10px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                            🤖 Bot
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {conv.unreadCount > 0 && (
+                      <span className="ml-2 mt-1 w-5 h-5 flex items-center justify-center rounded-full bg-indigo-500 text-[10px] font-black text-white shadow-[0_0_10px_rgba(71,37,244,0.4)] shrink-0">
+                        {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

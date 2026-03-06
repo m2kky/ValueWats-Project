@@ -9,13 +9,21 @@ import {
   SignalSlashIcon,
   DevicePhoneMobileIcon,
   EllipsisVerticalIcon,
-  QrCodeIcon
+  QrCodeIcon,
+  ChatBubbleBottomCenterTextIcon,
+  CameraIcon
 } from '@heroicons/react/24/outline';
 
 const statusConfig = {
   connected: { label: 'Connected', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]', dot: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' },
   qr_pending: { label: 'Awaiting QR', color: 'bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]', dot: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' },
   disconnected: { label: 'Disconnected', color: 'bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.2)]', dot: 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' },
+};
+
+const channelIcons = {
+  whatsapp: DevicePhoneMobileIcon,
+  messenger: ChatBubbleBottomCenterTextIcon,
+  instagram: CameraIcon
 };
 
 export default function Instances() {
@@ -54,6 +62,15 @@ export default function Instances() {
   const handleRefreshStatus = async (e, instance) => {
     e.stopPropagation();
     setOpenMenuId(null);
+
+    if (instance.channelType !== 'whatsapp') {
+      // For now, Meta status is just manual refresh (fetch instances again)
+      setRefreshing(instance.id);
+      await fetchInstances();
+      setRefreshing(null);
+      return;
+    }
+
     setRefreshing(instance.id);
     try {
       await api.get(`/instances/${instance.id}/status`);
@@ -91,27 +108,27 @@ export default function Instances() {
       <div className="md:flex md:items-center md:justify-between mb-8">
         <div className="flex-1 min-w-0">
           <h2 className="text-2xl font-black text-white sm:text-3xl sm:truncate tracking-tight uppercase italic">
-            WhatsApp Instances
+            Channel Instances
           </h2>
           <p className="mt-1 flex items-center gap-2 text-sm text-zinc-400 font-medium tracking-wide">
             <span className="flex h-2 w-2 relative">
               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${connectedCount > 0 ? 'bg-emerald-400' : 'bg-rose-400'}`}></span>
               <span className={`relative inline-flex rounded-full h-2 w-2 ${connectedCount > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
             </span>
-            {connectedCount}/{totalCount} connected instances
+            {connectedCount}/{totalCount} active channels
           </p>
         </div>
         <div className="mt-4 flex md:mt-0 md:ml-4 gap-3">
           <button
             onClick={fetchInstances}
-            className="btn-glass flex items-center"
+            className="btn-glass flex items-center px-4"
           >
             <ArrowPathIcon className={`-ml-1 mr-2 h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh All
+            Refresh
           </button>
           <Link
             to="/instances/new"
-            className="btn-premium flex items-center"
+            className="btn-premium flex items-center px-4"
           >
             <PlusIcon className="-ml-1 mr-2 h-5 w-5 border-2 border-white/20 rounded-full p-0.5" />
             Connect New
@@ -124,27 +141,28 @@ export default function Instances() {
         {loading ? (
           <div className="text-center py-16">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)] mx-auto mb-4"></div>
-            <p className="text-zinc-500 font-medium">Loading instances...</p>
+            <p className="text-zinc-500 font-medium tracking-widest uppercase text-[10px]">Loading channels...</p>
           </div>
         ) : instances.length === 0 ? (
           <div className="text-center py-20 px-6">
             <div className="w-16 h-16 mx-auto bg-white/5 rounded-2xl flex items-center justify-center mb-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
               <DevicePhoneMobileIcon className="h-8 w-8 text-zinc-500" />
             </div>
-            <h3 className="mt-4 text-sm font-black text-white uppercase tracking-widest italic">No instances</h3>
-            <p className="mt-2 mb-8 text-sm text-zinc-400">Connect a WhatsApp number to start automating messages.</p>
+            <h3 className="mt-4 text-sm font-black text-white uppercase tracking-widest italic">No channels connected</h3>
+            <p className="mt-2 mb-8 text-sm text-zinc-400">Connect WhatsApp, Messenger, or Instagram to start.</p>
             <Link
               to="/instances/new"
               className="btn-glass inline-flex items-center"
             >
               <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-              Connect Instance
+              Connect Channel
             </Link>
           </div>
         ) : (
           <div className="divide-y divide-white/5">
             {instances.map(instance => {
               const cfg = statusConfig[instance.status] || statusConfig.disconnected;
+              const Icon = channelIcons[instance.channelType || 'whatsapp'] || DevicePhoneMobileIcon;
               return (
                 <div key={instance.id} className="px-5 py-5 flex items-center justify-between group hover:bg-white/[0.02] transition-colors rounded-xl m-2">
                   <div className="flex items-center gap-5 min-w-0 pr-4">
@@ -152,21 +170,20 @@ export default function Instances() {
                       ${instance.status === 'connected'
                         ? 'bg-emerald-500/20 border-emerald-500/20 shadow-emerald-500/10'
                         : 'bg-zinc-800/50 border-white/5 shadow-black/20'}`}>
-                      {instance.status === 'connected' ? (
-                        <SignalIcon className="h-6 w-6 text-emerald-400" />
-                      ) : (
-                        <SignalSlashIcon className="h-6 w-6 text-zinc-500" />
-                      )}
+                      <Icon className={`h-6 w-6 ${instance.status === 'connected' ? 'text-emerald-400' : 'text-zinc-500'}`} />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 text-left">
                       <p className="text-base font-bold text-white truncate tracking-tight mb-1">{instance.instanceName}</p>
                       <div className="flex items-center gap-4">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400/80 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                          {instance.channelType || 'whatsapp'}
+                        </span>
                         {instance.phoneNumber && (
-                          <span className="text-xs font-bold text-zinc-300 tracking-wider font-mono bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+                          <span className="text-xs font-bold text-zinc-300 tracking-wider font-mono">
                             {instance.phoneNumber}
                           </span>
                         )}
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest hidden sm:inline">
                           Created <time>{new Date(instance.createdAt).toLocaleDateString()}</time>
                         </span>
                       </div>

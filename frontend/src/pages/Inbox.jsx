@@ -291,7 +291,7 @@ export default function Inbox() {
             {syncing ? (
               <>
                 <h2>Syncing chats...</h2>
-                <p>Pulling conversations from WhatsApp. This may take a moment.</p>
+                <p>Pulling conversations from all channels. This may take a moment.</p>
               </>
             ) : (
               <>

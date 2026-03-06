@@ -4,190 +4,181 @@ const agentService = require('../agents/agent.service');
 const socketService = require('../services/socketService');
 const prisma = require('../config/database');
 
-// GET: Meta webhook verification
 const verifyWebhook = (req, res) => {
-  console.log('[MetaWebhook] Verification request:', {
-    query: req.query,
-    method: req.method,
-    url: req.url,
-    userAgent: req.get('User-Agent')
-  });
-
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  console.log('[MetaWebhook] Verification params:', { mode, token, challenge });
-  console.log('[MetaWebhook] Expected token:', process.env.META_WEBHOOK_VERIFY_TOKEN);
-
-  // Verify the mode and token
-  if (mode && token) {
-    if (mode === 'subscribe' && token === process.env.META_WEBHOOK_VERIFY_TOKEN) {
-      console.log('[MetaWebhook] ✅ Webhook verified successfully');
-      // Respond with the challenge token from the request
-      return res.status(200).send(challenge);
-    } else {
-      console.log('[MetaWebhook] ❌ Verification failed - token mismatch');
-      return res.sendStatus(403);
-    }
-  } else {
-    console.log('[MetaWebhook] ❌ Verification failed - missing mode or token');
-    return res.sendStatus(403);
+  if (mode === 'subscribe' && token === process.env.META_WEBHOOK_VERIFY_TOKEN) {
+    return res.status(200).send(challenge);
   }
+  return res.sendStatus(403);
 };
 
-// POST: Incoming events from Meta
 const handleMetaWebhook = async (req, res) => {
-  // Always respond 200 immediately to Meta
   res.sendStatus(200);
 
   try {
     const entry = req.body?.entry?.[0];
-    const change = entry?.changes?.[0]?.value;
-    if (!change) return;
+    if (!entry) return;
 
-    const phoneNumberId = change.metadata?.phone_number_id;
+    let channelType = 'whatsapp';
+    let identifier = ''; // Page ID or Phone Number ID
+    let payload = null;
 
-    // Find instance by phoneNumberId
+    // Detect Channel Type
+    if (entry.messaging) {
+      // Messenger or Instagram
+      payload = entry.messaging[0];
+      identifier = payload.recipient?.id;
+      channelType = req.body.object === 'instagram' ? 'instagram' : 'messenger';
+    } else if (entry.changes) {
+      // WhatsApp Cloud API
+      const change = entry.changes[0].value;
+      if (!change) return;
+      identifier = change.metadata?.phone_number_id;
+      channelType = 'whatsapp';
+      payload = change;
+    }
+
+    if (!identifier) return;
+
+    // Find instance by identifier and type
     const instance = await prisma.instance.findFirst({
-      where: { phoneNumberId }
+      where: { phoneNumberId: identifier, channelType }
     });
 
     if (!instance) {
-      console.warn(`[MetaWebhook] No instance found for phoneNumberId: ${phoneNumberId}`);
+      console.warn(`[MetaWebhook] No instance found for ${channelType} identifier: ${identifier}`);
       return;
     }
 
-    // ====== STATUS UPDATES (delivered / read) ======
-    if (change.statuses?.length) {
-      for (const s of change.statuses) {
-        const statusMap = { delivered: 'DELIVERED', read: 'READ' };
-        const statusString = statusMap[s.status];
-        if (!statusString) continue;
-
-        await prisma.message.updateMany({
-          where: { wamid: s.id },
-          data: { status: statusString, ...(statusString === 'DELIVERED' ? { deliveredAt: new Date() } : {}) }
-        }).catch(() => { });
-
-        await prisma.chatMessage.updateMany({
-          where: { wamid: s.id },
-          data: { status: s.status }
-        }).catch(() => { });
-      }
-      return;
-    }
-
-    // ====== INCOMING MESSAGES ======
-    if (!change.messages?.length) return;
-
-    const msg = change.messages[0];
-    const contact = change.contacts?.[0];
-    const contactNumber = msg.from;
-    const pushName = contact?.profile?.name || null;
-    const wamid = msg.id;
-    const fromMe = false;
-
+    // ====== PROCESS PAYLOAD BY CHANNEL ======
+    let contactNumber = '';
+    let pushName = null;
     let text = '';
-    let messageType = msg.type;
+    let messageType = 'text';
     let mediaUrl = null;
+    let wamid = '';
 
-    if (msg.type === 'text') {
-      text = msg.text?.body || '';
-    } else if (['image', 'video', 'audio', 'document'].includes(msg.type)) {
-      const mediaObj = msg[msg.type];
-      text = mediaObj?.caption || '';
-      // Resolve media URL from Meta
-      try {
-        mediaUrl = await metaApi.getMediaUrl(mediaObj.id);
-      } catch (e) {
-        console.error('[MetaWebhook] Failed to get media URL:', e.message);
+    if (channelType === 'whatsapp') {
+      // Status updates
+      if (payload.statuses?.length) {
+        for (const s of payload.statuses) {
+          const statusMap = { delivered: 'DELIVERED', read: 'READ' };
+          const statusString = statusMap[s.status];
+          if (statusString) {
+            await prisma.message.updateMany({ where: { wamid: s.id }, data: { status: statusString } }).catch(() => { });
+            await prisma.chatMessage.updateMany({ where: { wamid: s.id }, data: { status: s.status } }).catch(() => { });
+          }
+        }
+        return;
+      }
+      if (!payload.messages?.length) return;
+      const msg = payload.messages[0];
+      contactNumber = msg.from;
+      pushName = payload.contacts?.[0]?.profile?.name || null;
+      wamid = msg.id;
+      messageType = msg.type;
+      if (msg.type === 'text') text = msg.text?.body || '';
+      else if (['image', 'video', 'audio', 'document'].includes(msg.type)) {
+        text = msg[msg.type]?.caption || '';
+        try { mediaUrl = await metaApi.getMediaUrl(msg[msg.type].id, instance.accessToken); } catch (e) { }
+      }
+    } else {
+      // Messenger / Instagram
+      if (payload.read || payload.delivery) return; // Ignore status updates for now
+      if (!payload.message) return;
+      contactNumber = payload.sender.id; // PSID
+      wamid = payload.message.mid;
+      text = payload.message.text || '';
+      
+      // Handle media for Messenger/Instagram
+      if (payload.message.attachments && payload.message.attachments.length > 0) {
+        const att = payload.message.attachments[0];
+        messageType = att.type; // image, video, audio, file
+        if (messageType === 'file') messageType = 'document';
+        mediaUrl = att.payload?.url;
+        
+        if (!text && messageType !== 'text') {
+           text = `[${messageType.charAt(0).toUpperCase() + messageType.slice(1)}]`;
+        }
       }
     }
 
-    console.log(`[MetaWebhook] 📩 Message from ${contactNumber}, type: ${messageType}, text: ${text?.substring(0, 80)}`);
+    if (!contactNumber) return;
+
+    console.log(`[MetaWebhook:${channelType}] 📩 Message from ${contactNumber}: ${text?.substring(0, 50)}`);
 
     // ====== PERSIST TO CHAT INBOX ======
-    let conversation;
-    try {
-      conversation = await chatService.upsertConversation(
-        instance.tenantId,
-        contactNumber,
-        { content: text || `[${messageType}]`, fromMe, contactName: pushName }
-      );
+    let conversation = await chatService.upsertConversation(
+      instance.tenantId,
+      contactNumber,
+      { content: text || `[${messageType}]`, fromMe: false, contactName: pushName, channelType }
+    );
 
-      const chatMsg = await chatService.saveMessage(conversation.id, {
-        instanceId: instance.id,
-        fromMe,
-        senderNumber: contactNumber,
-        recipientNumber: instance.phoneNumberId,
-        messageType,
-        content: text || null,
-        mediaUrl,
-        wamid,
-        status: 'delivered'
-      });
-
-      if (chatMsg) {
-        socketService.emitChatMessage(instance.tenantId, 'chat:message_received', { conversation, message: chatMsg });
-      }
-    } catch (e) {
-      console.error('[MetaWebhook] Chat persistence error:', e.message);
-    }
-
-    if (!text) return;
-
-    // ====== AUTOMATION RULES ======
-    const rules = await prisma.automationRule.findMany({
-      where: { instanceId: instance.id, tenantId: instance.tenantId, isActive: true },
-      orderBy: { createdAt: 'asc' }
+    const chatMsg = await chatService.saveMessage(conversation.id, {
+      instanceId: instance.id,
+      fromMe: false,
+      senderNumber: contactNumber,
+      recipientNumber: instance.phoneNumberId,
+      messageType,
+      content: text || null,
+      mediaUrl,
+      wamid,
+      status: 'delivered'
     });
 
+    if (chatMsg) {
+      socketService.emitChatMessage(instance.tenantId, 'chat:message_received', { conversation, message: chatMsg });
+    }
+
+    // ====== AUTOMATION & AI ======
+    if (!text) return;
+
+    // Opt-out check
+    const OPTOUT_KEYWORDS = ['stop', 'unsubscribe', 'الغاء'];
+    if (OPTOUT_KEYWORDS.some(kw => text.toLowerCase().includes(kw))) {
+      await prisma.contact.updateMany({ where: { tenantId: instance.tenantId, phoneNumber: contactNumber }, data: { blacklisted: true } });
+      const optOutMsg = '✅ Subscription cancelled.';
+      if (channelType === 'whatsapp') await metaApi.sendMessage(instance, contactNumber, optOutMsg);
+      else await metaApi.sendMetaMessage(instance, contactNumber, optOutMsg);
+      return;
+    }
+
+    // Standard rules
+    const rules = await prisma.automationRule.findMany({ where: { instanceId: instance.id, isActive: true } });
     let matched = false;
     for (const rule of rules) {
-      let trigger = false;
-      if (rule.triggerType === 'keyword' && rule.triggerValue && text.toLowerCase().includes(rule.triggerValue.toLowerCase())) trigger = true;
-      if (rule.triggerType === 'any_message') trigger = true;
-      if (rule.triggerType === 'welcome') {
-        const count = await prisma.message.count({ where: { instanceId: instance.id, recipientNumber: contactNumber, tenantId: instance.tenantId } });
-        if (count === 0) trigger = true;
-      }
-
-      if (trigger) {
-        await metaApi.sendMessage(contactNumber, rule.responseText);
-        matched = true;
+      if (rule.triggerType === 'keyword' && text.toLowerCase().includes(rule.triggerValue.toLowerCase())) matched = true;
+      if (rule.triggerType === 'any_message') matched = true;
+      if (matched) {
+        if (channelType === 'whatsapp') await metaApi.sendMessage(instance, contactNumber, rule.responseText);
+        else await metaApi.sendMetaMessage(instance, contactNumber, rule.responseText);
         break;
       }
     }
 
-    // ====== AI AGENT ======
-    if (!matched && conversation?.aiEnabled && !conversation?.escalated) {
-      try {
-        const aiResult = await agentService.processMessage({
-          conversationId: conversation.id,
-          message: text,
-          contactNumber,
-          tenantId: conversation.tenantId
-        });
+    // AI Agent fallback
+    if (!matched && conversation.aiEnabled && !conversation.escalated) {
+      const aiResult = await agentService.processMessage({ conversationId: conversation.id, message: text, contactNumber, tenantId: instance.tenantId });
+      if (aiResult?.response) {
+        if (channelType === 'whatsapp') await metaApi.sendMessage(instance, contactNumber, aiResult.response);
+        else await metaApi.sendMetaMessage(instance, contactNumber, aiResult.response);
 
-        if (aiResult?.response) {
-          await metaApi.sendMessage(contactNumber, aiResult.response);
-          const saved = await prisma.chatMessage.create({
-            data: {
-              conversationId: conversation.id,
-              content: aiResult.response,
-              direction: 'outgoing',
-              senderNumber: instance.phoneNumberId,
-              recipientNumber: contactNumber,
-              messageType: 'text',
-              wamid: `ai-${Date.now()}`,
-              status: 'sent'
-            }
-          });
-          socketService.emitChatMessage(instance.tenantId, 'chat:message_received', { conversation, message: saved });
-        }
-      } catch (e) {
-        console.error('[MetaWebhook] AI error:', e.message);
+        const saved = await prisma.chatMessage.create({
+          data: {
+            conversationId: conversation.id,
+            content: aiResult.response,
+            direction: 'outgoing',
+            senderNumber: instance.phoneNumberId,
+            recipientNumber: contactNumber,
+            messageType: 'text',
+            wamid: `ai-${Date.now()}`,
+            status: 'sent'
+          }
+        });
+        socketService.emitChatMessage(instance.tenantId, 'chat:message_received', { conversation, message: saved });
       }
     }
 
