@@ -8,7 +8,8 @@ import {
     ArrowPathRoundedSquareIcon,
     DocumentTextIcon,
     BookOpenIcon,
-    BoltIcon
+    BoltIcon,
+    ShieldExclamationIcon
 } from '@heroicons/react/24/outline';
 
 const settingsNav = [
@@ -21,6 +22,7 @@ const settingsNav = [
     { name: 'Snippets', path: '/settings/snippets', icon: DocumentTextIcon },
     { name: 'AI Knowledge', path: '/settings/ai-knowledge', icon: BookOpenIcon },
     { name: 'Integrations', path: '/settings/integrations', icon: ArrowPathRoundedSquareIcon },
+    { name: 'Opt-out / Blacklist', path: '/settings/optout', icon: ShieldExclamationIcon },
 ];
 
 export default function SettingsLayout() {

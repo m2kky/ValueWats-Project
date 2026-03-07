@@ -100,6 +100,7 @@ app.use('/api/snippets', tenantContext, require('./routes/snippets.routes'));
 app.use('/api/lifecycle-rules', tenantContext, require('./routes/lifecycleRules.routes'));
 app.use('/api/integrations', tenantContext, require('./routes/integrations'));
 app.use('/api/segments', tenantContext, require('./routes/segments'));
+app.use('/api/settings', tenantContext, require('./routes/settings'));
 
 // Super Admin Routes (Protected internally by isAdmin middleware)
 app.use('/api/admin', require('./routes/admin'));

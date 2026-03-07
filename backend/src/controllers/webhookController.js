@@ -289,23 +289,27 @@ const handleIncomingMessage = async (req, res) => {
     console.log(`[Webhook] 🤖 Processing automations for: ${text.substring(0, 50)}`);
 
     // ====== OPT-OUT / BLACKLIST CHECK ======
-    // If the contact sends a stop keyword, blacklist them and skip all automations
-    const OPTOUT_KEYWORDS = ['stop', 'وقف', 'انهاء', 'إلغاء', 'الغاء', 'لا رسائل', 'unsubscribe', 'إلغاء الاشتراك'];
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: instance.tenantId },
+      select: { optoutEnabled: true, optoutMessage: true, optoutKeywords: true }
+    });
     const normalizedText = text.trim().toLowerCase();
-    if (OPTOUT_KEYWORDS.some(kw => normalizedText === kw || normalizedText.includes(kw))) {
+    const optoutKeywords = tenant?.optoutKeywords?.length ? tenant.optoutKeywords : ['stop', 'وقف', 'انهاء', 'إلغاء', 'الغاء', 'لا رسائل', 'unsubscribe', 'إلغاء الاشتراك'];
+    if (tenant?.optoutEnabled !== false && optoutKeywords.some(kw => normalizedText === kw.toLowerCase() || normalizedText.includes(kw.toLowerCase()))) {
       console.log(`[Webhook] 🚫 Opt-out keyword detected from ${contactNumber}. Blacklisting...`);
       try {
         await prisma.contact.updateMany({
           where: { tenantId: instance.tenantId, phoneNumber: contactNumber },
           data: { blacklisted: true, blacklistedAt: new Date() }
         });
-        // Send opt-out confirmation
-        await evolutionApi.sendMessage(
-          instance.tenantId,
-          instanceName,
-          contactNumber,
-          '✅ تم إلغاء اشتراكك بنجاح. لن تصلك رسائل تسويقية منا بعد الآن. يمكنك التواصل معنا في أي وقت.'
-        );
+        if (tenant?.optoutMessage) {
+          await evolutionApi.sendMessage(
+            instance.tenantId,
+            instanceName,
+            contactNumber,
+            tenant.optoutMessage
+          );
+        }
         console.log(`[Webhook] ✅ Contact ${contactNumber} blacklisted and opt-out confirmation sent.`);
       } catch (optoutErr) {
         console.error('[Webhook] ❌ Opt-out error:', optoutErr.message);

@@ -52,6 +52,11 @@ model Tenant {
   chatPurposes        String[] @default([]) @map("chat_purposes")
   referralSource      String?  @map("referral_source")
 
+  // Opt-out / Blacklist settings
+  optoutEnabled  Boolean  @default(true) @map("optout_enabled")
+  optoutMessage  String   @default("✅ تم إلغاء اشتراكك بنجاح. لن تصلك رسائل تسويقية منا بعد الآن. يمكنك التواصل معنا في أي وقت.") @map("optout_message") @db.Text
+  optoutKeywords String[] @default(["stop","وقف","انهاء","إلغاء","الغاء","لا رسائل","unsubscribe","إلغاء الاشتراك"]) @map("optout_keywords")
+
   users           User[]
   instances       Instance[]
   campaigns       Campaign[]

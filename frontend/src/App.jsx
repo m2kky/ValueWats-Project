@@ -42,6 +42,7 @@ const TagSettings = React.lazy(() => import('./pages/settings/TagSettings'));
 const SnippetsSettings = React.lazy(() => import('./pages/settings/SnippetsSettings'));
 const AIKnowledgeSettings = React.lazy(() => import('./pages/settings/AIKnowledgeSettings'));
 const LifecycleRules = React.lazy(() => import('./pages/settings/LifecycleRules'));
+const OptoutSettings = React.lazy(() => import('./pages/Settings'));
 
 // ── Lazy-loaded Public Pages ───────────────────────────────
 const Landing = React.lazy(() => import('./pages/public/Landing'));
@@ -284,6 +285,7 @@ function App() {
             <Route path="snippets" element={<SnippetsSettings />} />
             <Route path="ai-knowledge" element={<AIKnowledgeSettings />} />
             <Route path="integrations" element={<Integrations />} />
+            <Route path="optout" element={<OptoutSettings />} />
           </Route>
 
           <Route path="/workflows" element={
