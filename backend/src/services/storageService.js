@@ -93,4 +93,30 @@ const uploadFile = async (file) => {
   return `${baseUrl}/${BUCKET_NAME}/${fileKey}`;
 };
 
-module.exports = { uploadFile, s3Client, BUCKET_NAME };
+/**
+ * Upload media from base64 string to MinIO
+ * @param {string} base64 - Base64 encoded file content
+ * @param {string} mimetype - e.g. 'image/jpeg', 'audio/ogg'
+ * @param {string} prefix - folder prefix e.g. 'chat-media'
+ * @returns {string} Public URL
+ */
+const uploadBase64 = async (base64, mimetype, prefix = 'chat-media') => {
+  await ensureBucketExists();
+
+  const ext = mimetype.split('/')[1]?.split(';')[0] || 'bin';
+  const fileKey = `${prefix}/${Date.now()}.${ext}`;
+  const buffer = Buffer.from(base64, 'base64');
+
+  await s3Client.send(new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: fileKey,
+    Body: buffer,
+    ContentType: mimetype,
+  }));
+
+  const endpoint = process.env.S3_PUBLIC_URL || process.env.S3_ENDPOINT || 'http://localhost:9000';
+  const baseUrl = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint;
+  return `${baseUrl}/${BUCKET_NAME}/${fileKey}`;
+};
+
+module.exports = { uploadFile, uploadBase64, s3Client, BUCKET_NAME };

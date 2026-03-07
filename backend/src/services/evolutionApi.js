@@ -331,6 +331,25 @@ Stack: ${error.stack}
   }
 
   /**
+   * Download media from a WhatsApp message and return as buffer
+   * Evolution API v2: POST /chat/getBase64FromMediaMessage/{instanceName}
+   */
+  async downloadMedia(instanceName, messageKey) {
+    try {
+      const response = await axios.post(
+        `${this.baseURL}/chat/getBase64FromMediaMessage/${instanceName}`,
+        { message: { key: messageKey }, convertToMp4: false },
+        { headers: { apikey: this.apiKey } }
+      );
+      // Returns { base64: '...', mimetype: 'image/jpeg', ... }
+      return response.data;
+    } catch (error) {
+      console.warn(`[EvolutionAPI] downloadMedia failed for ${instanceName}:`, error.response?.data?.message || error.message);
+      return null;
+    }
+  }
+
+  /**
    * Set Webhook for instance
    */
   async setWebhook(instanceName, webhookUrl, enabled = true, tenantId = null) {

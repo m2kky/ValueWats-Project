@@ -455,21 +455,32 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
                         : 'bg-[#18181b] border border-white/5 text-zinc-200 rounded-tl-sm'
                       }`}>
 
-                      {msg.content || (['image', 'video', 'document', 'audio', 'sticker'].includes(msg.messageType) ? '' : <span className="italic opacity-60">Unsupported or reaction</span>)}
+                      {/* Text content — hide if it's just a media placeholder */}
+                      {msg.content && !(['[image]','[video]','[audio]','[document]','[sticker]'].includes(msg.content)) && (
+                        <span>{msg.content}</span>
+                      )}
+                      {!msg.content && !msg.mediaUrl && !['image','video','document','audio','sticker'].includes(msg.messageType) && (
+                        <span className="italic opacity-60">Unsupported or reaction</span>
+                      )}
 
                       {msg.mediaUrl && (msg.messageType === 'image' || msg.messageType === 'sticker') && (
-                        <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
-                          <img src={msg.mediaUrl} alt="media" className="max-w-full max-h-[300px] object-contain" />
+                        <div className="mt-1 rounded-lg overflow-hidden">
+                          <img src={msg.mediaUrl} alt="media" className="max-w-full max-h-[300px] object-contain rounded-lg" />
                         </div>
                       )}
                       {msg.mediaUrl && msg.messageType === 'video' && (
-                        <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
-                          <video src={msg.mediaUrl} controls className="max-w-full max-h-[300px]" />
+                        <div className="mt-1 rounded-lg overflow-hidden">
+                          <video src={msg.mediaUrl} controls className="max-w-full max-h-[300px] rounded-lg" />
                         </div>
                       )}
                       {msg.mediaUrl && msg.messageType === 'audio' && (
-                        <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
-                          <audio src={msg.mediaUrl} controls className="max-w-[240px]" />
+                        <div className="mt-1">
+                          <audio src={msg.mediaUrl} controls preload="metadata" className="max-w-[260px] h-10" style={{ colorScheme: 'dark' }} />
+                        </div>
+                      )}
+                      {!msg.mediaUrl && msg.messageType === 'audio' && (
+                        <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400 italic">
+                          🎤 Voice message (unavailable)
                         </div>
                       )}
                       {msg.mediaUrl && msg.messageType === 'document' && (

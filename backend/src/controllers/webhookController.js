@@ -4,6 +4,25 @@ const chatService = require('../services/chat.service');
 const agentService = require('../agents/agent.service');
 const socketService = require('../services/socketService');
 const prisma = require('../config/database');
+const { uploadBase64 } = require('../services/storageService');
+
+// Download media from Evolution API and upload to MinIO, returns permanent URL or null
+async function resolveMediaUrl(instanceName, msgKey, messageContent, messageType) {
+  if (!['image', 'video', 'audio', 'document', 'sticker'].includes(messageType)) return null;
+  try {
+    const result = await evolutionApi.downloadMedia(instanceName, msgKey);
+    if (!result?.base64) return null;
+    const mimetype = result.mimetype ||
+      (messageType === 'image' ? 'image/jpeg' :
+       messageType === 'video' ? 'video/mp4' :
+       messageType === 'audio' ? 'audio/ogg' :
+       messageType === 'sticker' ? 'image/webp' : 'application/octet-stream');
+    return await uploadBase64(result.base64, mimetype, 'chat-media');
+  } catch (e) {
+    console.warn('[Webhook] resolveMediaUrl failed:', e.message);
+    return null;
+  }
+}
 
 const handleIncomingMessage = async (req, res) => {
   try {
@@ -258,11 +277,7 @@ const handleIncomingMessage = async (req, res) => {
         recipientNumber: fromMe ? contactNumber : instanceName,
         messageType,
         content: text || null,
-        mediaUrl: messageContent?.imageMessage?.url ||
-          messageContent?.videoMessage?.url ||
-          messageContent?.audioMessage?.url ||
-          messageContent?.documentMessage?.url ||
-          messageContent?.stickerMessage?.url || null,
+        mediaUrl: await resolveMediaUrl(instanceName, msgObj.key, messageContent, messageType),
         wamid,
         status: fromMe ? 'sent' : 'delivered'
       });
