@@ -7,8 +7,10 @@ const fs = require('fs');
 const xlsx = require('xlsx');
 const storageService = require('../services/storageService');
 
-// Helper to extract IPs from text
+// Helper to extract URLs from text
 const urlRegex = /(https?:\/\/[^\s]+)/g;
+// Strip invisible/zero-width unicode characters from URLs
+const sanitizeUrl = (url) => url.replace(/[\u200B-\u200D\uFEFF\u00AD\u200C\u200E\u200F]/g, '').trim();
 
 const createCampaign = async (req, res) => {
   try {
@@ -23,11 +25,15 @@ const createCampaign = async (req, res) => {
     });
 
     // Handle messages (support both single 'message' and array 'messages')
+    // Sanitize: strip zero-width/invisible unicode chars from URLs inside messages
+    const sanitizeMsg = (text) => text.replace(/(https?:\/\/\S+)/g, (url) =>
+      url.replace(/[\u200B-\u200D\uFEFF\u00AD\u200C\u200E\u200F]/g, '')
+    );
     let messageList = [];
     if (messages && Array.isArray(messages)) {
-      messageList = messages.filter(m => m.trim().length > 0);
+      messageList = messages.filter(m => m.trim().length > 0).map(sanitizeMsg);
     } else if (message) {
-      messageList = [message];
+      messageList = [sanitizeMsg(message)];
     }
 
     // Validate required fields
