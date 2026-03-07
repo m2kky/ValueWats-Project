@@ -404,6 +404,31 @@ export default function ChannelManage() {
                 )}
               </div>
 
+              {/* Pause / Enable Toggle */}
+              <div className="border-t border-white/5 pt-6 pb-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Channel Status</h4>
+                    <p className="text-zinc-500 text-xs mt-1">
+                      {instance?.status === 'disabled' ? 'Channel is paused — not used in campaigns' : 'Channel is active and available for campaigns'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const res = await api.patch(`/instances/${instanceId}/toggle`);
+                      setInstance(res.data.instance);
+                    }}
+                    className={`inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      instance?.status !== 'disabled' ? 'bg-indigo-600' : 'bg-zinc-700'
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                      instance?.status !== 'disabled' ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+              </div>
+
               {/* Danger Zone */}
               <div className="border-t border-white/5 pt-8">
                 <h3 className="text-sm font-bold text-white mb-3">Danger Zone</h3>

@@ -212,14 +212,8 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
     };
 
     // Inject invisible random chars to bypass hash-matching spam filters
-    // IMPORTANT: inject BEFORE any trailing URL to avoid breaking links
-    const urlMatch = currentMessage.match(/(https?:\/\/\S+)\s*$/);
-    if (urlMatch) {
-      const urlStart = currentMessage.lastIndexOf(urlMatch[0]);
-      currentMessage = currentMessage.slice(0, urlStart) + generateInvisibleString() + ' ' + urlMatch[0];
-    } else {
-      currentMessage += generateInvisibleString();
-    }
+    // Appended on a new line so they never touch URLs or message content
+    currentMessage += '\n' + generateInvisibleString();
 
     // Replace basic dynamic variables
     currentMessage = currentMessage.replace(/{{rand}}/gi, Math.floor(Math.random() * 10000).toString());

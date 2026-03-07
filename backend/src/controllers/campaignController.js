@@ -759,7 +759,7 @@ const updateCampaign = async (req, res) => {
   try {
     const tenantId = req.user.tenantId;
     const { id } = req.params;
-    const { message, messages } = req.body;
+    const { message, messages, contacts } = req.body;
 
     const campaign = await prisma.campaign.findFirst({ where: { id, tenantId } });
     if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
@@ -784,62 +784,60 @@ const updateCampaign = async (req, res) => {
     // 1. Update Campaign Record
     await prisma.campaign.update({
       where: { id },
-      data: {
-        messageTemplate: messageList[0] // Update primary display
-      }
+      data: { messageTemplate: messageList[0] }
     });
 
     // 2. Update Message Templates
-    // First delete old ones, then create new ones
     await prisma.messageTemplate.deleteMany({ where: { campaignId: id } });
     await prisma.messageTemplate.createMany({
-      data: messageList.map((content, index) => ({
-        campaignId: id,
-        content,
-        orderIndex: index
-      }))
+      data: messageList.map((content, index) => ({ campaignId: id, content, orderIndex: index }))
     });
 
-    // 3. Regenerate Pending Messages
-    // Fetch all pending messages for this campaign
-    const pendingMessages = await prisma.message.findMany({
-      where: { campaignId: id, status: 'pending' }
-    });
+    // 3. If contacts list provided — replace pending messages with new list
+    if (contacts && Array.isArray(contacts) && contacts.length > 0) {
+      // Get existing pending messages to find instanceId
+      const firstPending = await prisma.message.findFirst({ where: { campaignId: id, status: 'pending' } });
+      const instanceId = firstPending?.instanceId || campaign.instanceId;
 
-    console.log(`[Campaign] Regenerating ${pendingMessages.length} pending messages for campaign ${id}`);
+      // Delete all pending messages
+      await prisma.message.deleteMany({ where: { campaignId: id, status: 'pending' } });
 
-    // Update each message with new template (Round Robin)
-    // We use a transaction or parallel promises
-    const updatePromises = pendingMessages.map(async (msg, index) => {
-      // Determine new template
-      const templateIndex = index % messageList.length;
-      let newText = messageList[templateIndex];
+      // Create new pending messages for the new contact list
+      await prisma.message.createMany({
+        data: contacts.map((number, index) => ({
+          campaignId: id,
+          instanceId,
+          tenantId,
+          recipientNumber: number,
+          messageText: messageList[index % messageList.length],
+          status: 'pending'
+        }))
+      });
 
-      // Re-interpolate variables if they exist
+      // Update totalContacts count
+      const sentCount = await prisma.message.count({ where: { campaignId: id, status: { in: ['sent', 'delivered', 'read'] } } });
+      await prisma.campaign.update({
+        where: { id },
+        data: { totalContacts: sentCount + contacts.length }
+      });
+
+      return res.json({ message: `Campaign updated. Contacts replaced with ${contacts.length} new numbers.` });
+    }
+
+    // 3b. Regenerate Pending Messages with new templates
+    const pendingMessages = await prisma.message.findMany({ where: { campaignId: id, status: 'pending' } });
+    await Promise.all(pendingMessages.map((msg, index) => {
+      let newText = messageList[index % messageList.length];
       if (msg.variables) {
-        // msg.variables is Json type
-        const vars = msg.variables;
-        Object.keys(vars).forEach(key => {
-          const regex = new RegExp(`{{${key}}}`, 'gi');
-          newText = newText.replace(regex, vars[key] || '');
+        Object.keys(msg.variables).forEach(key => {
+          newText = newText.replace(new RegExp(`{{${key}}}`, 'gi'), msg.variables[key] || '');
         });
       }
+      return prisma.message.update({ where: { id: msg.id }, data: { messageText: newText } });
+    }));
 
-      // Return the update query preserving the original newText
+    res.json({ message: `Campaign updated. ${pendingMessages.length} pending messages regenerated.` });
 
-      return prisma.message.update({
-        where: { id: msg.id },
-        data: { messageText: newText }
-      });
-    });
-
-    await Promise.all(updatePromises);
-
-    res.json({
-      message: `Campaign updated. ${pendingMessages.length} pending messages regenerated.`
-    });
-
-  } catch (error) {
     console.error('Update Campaign Error:', error);
     res.status(500).json({ error: 'Failed to update campaign' });
   }

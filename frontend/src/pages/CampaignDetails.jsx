@@ -84,10 +84,18 @@ export default function CampaignDetails() {
     }
   };
 
-  const handleExport = (status) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    const token = localStorage.getItem('token');
-    window.open(`${baseUrl}/campaigns/${id}/export?status=${status}&token=${token}`, '_blank');
+  const handleExport = async (status) => {
+    try {
+      const response = await api.get(`/campaigns/${id}/export?status=${status}`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([response.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `campaign_${id}_${status.toLowerCase()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert('Export failed');
+    }
   };
 
   useEffect(() => {
@@ -124,6 +132,8 @@ export default function CampaignDetails() {
   // Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);
   const [editMessages, setEditMessages] = useState(['']);
+  const [editTab, setEditTab] = useState('messages'); // 'messages' | 'contacts'
+  const [editContacts, setEditContacts] = useState('');
 
   // Campaign Actions
   const handleAction = async (action, confirmMsg) => {
@@ -145,12 +155,18 @@ export default function CampaignDetails() {
   };
 
   const openEditModal = () => {
-    // Populate with existing templates
     if (campaign.messageTemplates && campaign.messageTemplates.length > 0) {
       setEditMessages(campaign.messageTemplates.map(t => t.content));
     } else {
       setEditMessages([campaign.messageTemplate]);
     }
+    // Load current pending numbers
+    const pendingNums = (campaign.messages || [])
+      .filter(m => m.status === 'pending')
+      .map(m => m.recipientNumber)
+      .join('\n');
+    setEditContacts(pendingNums);
+    setEditTab('messages');
     setShowEditModal(true);
   };
 
@@ -158,12 +174,14 @@ export default function CampaignDetails() {
     e.preventDefault();
     setActionLoading(true);
     try {
-      await api.put(`/campaigns/${id}`, {
-        messages: editMessages
-      });
+      const payload = { messages: editMessages };
+      if (editTab === 'contacts' && editContacts.trim()) {
+        payload.contacts = editContacts.split('\n').map(n => n.trim().replace(/[^0-9]/g, '')).filter(n => n.length >= 7);
+      }
+      await api.put(`/campaigns/${id}`, payload);
       setShowEditModal(false);
       fetchCampaignDetails();
-      alert('Campaign updated successfully. Pending messages have been regenerated.');
+      alert('Campaign updated successfully.');
     } catch (error) {
       alert(error.response?.data?.error || 'Failed to update campaign');
     } finally {
@@ -416,36 +434,49 @@ export default function CampaignDetails() {
                   <div className="sm:flex sm:items-start">
                     <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
                       <h3 className="text-lg font-black text-white uppercase italic tracking-widest" id="modal-title">
-                        Edit Campaign Messages
+                        Edit Campaign
                       </h3>
-                      <div className="mt-3 space-y-4">
-                        <p className="text-sm text-zinc-400">
-                          Updating message templates will <strong className="text-amber-400 font-bold">regenerate all PENDING messages</strong>. Sent messages will not be affected.
-                        </p>
-
-                        {editMessages.map((msg, index) => (
-                          <div key={index}>
-                            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Variant {index + 1}</label>
-                            <textarea
-                              rows={4}
-                              className="input w-full rounded-xl border border-white/10 bg-zinc-800 text-white placeholder-zinc-500 focus:border-indigo-500 focus:ring-indigo-500 text-sm p-3 transition-colors"
-                              value={msg}
-                              onChange={(e) => {
-                                const newMsgs = [...editMessages];
-                                newMsgs[index] = e.target.value;
-                                setEditMessages(newMsgs);
-                              }}
-                              required
-                            />
-                          </div>
+                      {/* Tabs */}
+                      <div className="flex gap-1 mt-3 bg-white/5 rounded-xl p-1">
+                        {['messages', 'contacts'].map(tab => (
+                          <button key={tab} type="button" onClick={() => setEditTab(tab)}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-colors ${
+                              editTab === tab ? 'bg-indigo-600 text-white' : 'text-zinc-400 hover:text-white'
+                            }`}>
+                            {tab === 'messages' ? 'Messages' : 'Contacts'}
+                          </button>
                         ))}
-                        <button
-                          type="button"
-                          onClick={() => setEditMessages([...editMessages, ''])}
-                          className="text-xs font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-widest"
-                        >
-                          + Add Variant
-                        </button>
+                      </div>
+                      <div className="mt-4 space-y-4">
+                        {editTab === 'messages' ? (
+                          <>
+                            <p className="text-sm text-zinc-400">Updating templates will <strong className="text-amber-400">regenerate all PENDING messages</strong>.</p>
+                            {editMessages.map((msg, index) => (
+                              <div key={index}>
+                                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Variant {index + 1}</label>
+                                <textarea rows={4}
+                                  className="input w-full rounded-xl border border-white/10 bg-zinc-800 text-white placeholder-zinc-500 focus:border-indigo-500 text-sm p-3 transition-colors"
+                                  value={msg}
+                                  onChange={(e) => { const n = [...editMessages]; n[index] = e.target.value; setEditMessages(n); }}
+                                  required />
+                              </div>
+                            ))}
+                            <button type="button" onClick={() => setEditMessages([...editMessages, ''])}
+                              className="text-xs font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-widest">
+                              + Add Variant
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm text-zinc-400">Edit the <strong className="text-amber-400">pending</strong> contact numbers (one per line). Sent numbers won't be re-sent.</p>
+                            <textarea rows={10}
+                              className="input w-full rounded-xl border border-white/10 bg-zinc-800 text-white text-sm p-3 font-mono transition-colors focus:border-indigo-500"
+                              value={editContacts}
+                              onChange={e => setEditContacts(e.target.value)}
+                              placeholder="201012345678&#10;201098765432" />
+                            <p className="text-xs text-zinc-500">{editContacts.split('\n').filter(n => n.trim().replace(/[^0-9]/g,'').length >= 7).length} valid numbers</p>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

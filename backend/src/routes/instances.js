@@ -262,6 +262,28 @@ router.get('/:id/connect', async (req, res) => {
 });
 
 /**
+ * PATCH /api/instances/:id/toggle - Enable or disable an instance
+ */
+router.patch('/:id/toggle', async (req, res) => {
+  try {
+    const instance = await prisma.instance.findFirst({
+      where: { id: req.params.id, tenantId: req.tenantId },
+    });
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
+
+    const newStatus = instance.status === 'disabled' ? 'disconnected' : 'disabled';
+    const updated = await prisma.instance.update({
+      where: { id: instance.id },
+      data: { status: newStatus },
+    });
+    res.json({ instance: updated });
+  } catch (error) {
+    console.error('Toggle instance error:', error);
+    res.status(500).json({ error: 'Failed to toggle instance' });
+  }
+});
+
+/**
  * DELETE /api/instances/:id - Delete instance
  */
 router.delete('/:id', async (req, res) => {
