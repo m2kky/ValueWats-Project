@@ -171,6 +171,9 @@ export default function ChannelManage() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [qrCode, setQrCode] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   useEffect(() => {
     fetchInstance();
@@ -212,6 +215,33 @@ export default function ChannelManage() {
     } catch (err) {
       alert('Failed to delete channel');
       setDeleting(false);
+    }
+  };
+
+  const handleReconnect = async () => {
+    setQrLoading(true);
+    setQrCode(null);
+    try {
+      const res = await api.get(`/instances/${instanceId}/connect`);
+      setQrCode(res.data.qrCode);
+    } catch (err) {
+      alert('Failed to get QR code');
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!window.confirm('Disconnect this WhatsApp number?')) return;
+    setDisconnecting(true);
+    try {
+      await api.post(`/instances/${instanceId}/disconnect`);
+      setInstance(prev => ({ ...prev, status: 'disconnected' }));
+      setQrCode(null);
+    } catch (err) {
+      alert('Failed to disconnect');
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -428,6 +458,37 @@ export default function ChannelManage() {
                   </button>
                 </div>
               </div>
+
+              {/* WhatsApp Reconnect / Disconnect */}
+              {(!instance.channelType || instance.channelType === 'whatsapp') && (
+                <div className="border-t border-white/5 pt-6 space-y-4">
+                  <h4 className="text-sm font-bold text-white">Connection</h4>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleReconnect}
+                      disabled={qrLoading}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-600/20 transition-all uppercase tracking-wider"
+                    >
+                      {qrLoading ? 'Loading...' : '🔄 Reconnect'}
+                    </button>
+                    {instance.status === 'connected' && (
+                      <button
+                        onClick={handleDisconnect}
+                        disabled={disconnecting}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all uppercase tracking-wider"
+                      >
+                        {disconnecting ? 'Disconnecting...' : '⏏ Disconnect'}
+                      </button>
+                    )}
+                  </div>
+                  {qrCode && (
+                    <div className="animate-in slide-in-from-top-2 duration-300">
+                      <p className="text-xs text-zinc-400 mb-3">Scan with WhatsApp on your phone</p>
+                      <img src={qrCode} alt="QR Code" className="w-48 h-48 rounded-xl border border-white/10" />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Danger Zone */}
               <div className="border-t border-white/5 pt-8">

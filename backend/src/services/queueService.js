@@ -60,12 +60,26 @@ messageQueue.process(async (job) => {
   } catch (error) {
     console.error(`Failed to send message to ${number}:`, error.message);
 
+    // Translate technical errors to human-readable reasons
+    const rawError = error.response?.data?.message || error.response?.data?.error || error.message || '';
+    let failReason = 'Unknown error';
+    if (/not connected|disconnected|closed|logout/i.test(rawError)) {
+      failReason = 'Instance disconnected — WhatsApp number is not connected';
+    } else if (/invalid number|not registered|does not exist/i.test(rawError)) {
+      failReason = 'Invalid number — not registered on WhatsApp';
+    } else if (/rate limit|too many|flood/i.test(rawError)) {
+      failReason = 'Rate limit — too many messages sent too quickly';
+    } else if (/blocked|banned/i.test(rawError)) {
+      failReason = 'Number blocked or banned by WhatsApp';
+    } else if (/timeout|ECONNREFUSED|ENOTFOUND/i.test(rawError)) {
+      failReason = 'Connection timeout — Evolution API unreachable';
+    } else if (rawError) {
+      failReason = rawError;
+    }
+
     await prisma.message.update({
       where: { id: messageRecordId },
-      data: {
-        status: 'FAILED',
-        failReason: error.response?.data?.message || error.message || 'Unknown error'
-      }
+      data: { status: 'FAILED', failReason }
     });
 
     throw error;

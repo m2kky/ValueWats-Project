@@ -262,6 +262,25 @@ router.get('/:id/connect', async (req, res) => {
 });
 
 /**
+ * POST /api/instances/:id/disconnect - Logout WhatsApp session
+ */
+router.post('/:id/disconnect', async (req, res) => {
+  try {
+    const instance = await prisma.instance.findFirst({
+      where: { id: req.params.id, tenantId: req.tenantId },
+    });
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
+
+    await evolutionApi.logoutInstance(instance.instanceName).catch(e => console.error('Evolution logout failed', e));
+    await prisma.instance.update({ where: { id: instance.id }, data: { status: 'disconnected' } });
+    res.json({ message: 'Disconnected successfully' });
+  } catch (error) {
+    console.error('Disconnect instance error:', error);
+    res.status(500).json({ error: 'Failed to disconnect instance' });
+  }
+});
+
+/**
  * PATCH /api/instances/:id/toggle - Enable or disable an instance
  */
 router.patch('/:id/toggle', async (req, res) => {

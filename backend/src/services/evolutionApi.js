@@ -227,15 +227,25 @@ Stack: ${error.stack}
     try {
       await axios.delete(
         `${this.baseURL}/instance/delete/${instanceName}`,
-        {
-          headers: { apikey: this.apiKey },
-        }
+        { headers: { apikey: this.apiKey } }
       );
-
       return { success: true };
     } catch (error) {
       console.error('Delete instance error:', error.response?.data || error.message);
       throw new Error('Failed to delete instance');
+    }
+  }
+
+  async logoutInstance(instanceName) {
+    try {
+      await axios.delete(
+        `${this.baseURL}/instance/logout/${instanceName}`,
+        { headers: { apikey: this.apiKey } }
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('Logout instance error:', error.response?.data || error.message);
+      // Don't throw — logout failure shouldn't block DB update
     }
   }
 
