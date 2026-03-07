@@ -838,6 +838,7 @@ const updateCampaign = async (req, res) => {
 
     res.json({ message: `Campaign updated. ${pendingMessages.length} pending messages regenerated.` });
 
+  } catch (error) {
     console.error('Update Campaign Error:', error);
     res.status(500).json({ error: 'Failed to update campaign' });
   }

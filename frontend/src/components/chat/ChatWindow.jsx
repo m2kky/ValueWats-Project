@@ -59,6 +59,7 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
   const [show3Dot, setShow3Dot] = useState(false);
   const [closingConv, setClosingConv] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [mediaPreview, setMediaPreview] = useState(null); // { file, url, caption }
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -205,34 +206,35 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
     }
   };
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!selectedInstance) {
       alert('Please select an instance before attaching a file.');
       return;
     }
+    const url = URL.createObjectURL(file);
+    setMediaPreview({ file, url, caption: '' });
+    e.target.value = '';
+  };
+
+  const handleSendMedia = async () => {
+    if (!mediaPreview || uploading) return;
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', mediaPreview.file);
       formData.append('conversationId', conversation.id);
       formData.append('instanceId', selectedInstance);
-      await api.post('/chat/messages/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      // File sent — conversation will update via socket event
+      if (mediaPreview.caption.trim()) formData.append('caption', mediaPreview.caption.trim());
+      await api.post('/chat/messages/upload', formData);
+      URL.revokeObjectURL(mediaPreview.url);
+      setMediaPreview(null);
     } catch (e) {
-      // upload endpoint might not exist yet — show gentle warning
       const msg = e.response?.data?.error || e.message;
-      if (e.response?.status === 404) {
-        alert('File upload endpoint not yet deployed. Coming soon!');
-      } else {
-        alert('Failed to upload file: ' + msg);
-      }
+      alert('Failed to upload file: ' + msg);
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
   };
 
@@ -508,6 +510,39 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
             </button>
             <button onClick={() => setAiSuggestion('')} className="text-zinc-500 hover:text-white">
               <XMarkIcon className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Media Preview Modal */}
+      {mediaPreview && (
+        <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm pb-4">
+          <div className="bg-zinc-900 border border-white/10 rounded-2xl p-4 w-full max-w-sm mx-4 space-y-3 animate-in slide-in-from-bottom-4 duration-200">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">Preview</span>
+              <button onClick={() => { URL.revokeObjectURL(mediaPreview.url); setMediaPreview(null); }} className="text-zinc-500 hover:text-white">✕</button>
+            </div>
+            {mediaPreview.file.type.startsWith('image/') ? (
+              <img src={mediaPreview.url} className="w-full max-h-64 object-contain rounded-xl" />
+            ) : mediaPreview.file.type.startsWith('video/') ? (
+              <video src={mediaPreview.url} controls className="w-full max-h-48 rounded-xl" />
+            ) : (
+              <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3">
+                <DocumentTextIcon className="w-8 h-8 text-indigo-400 shrink-0" />
+                <span className="text-sm text-white truncate">{mediaPreview.file.name}</span>
+              </div>
+            )}
+            <input
+              value={mediaPreview.caption}
+              onChange={e => setMediaPreview(p => ({ ...p, caption: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && handleSendMedia()}
+              placeholder="Add a caption..."
+              className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500/30"
+            />
+            <button onClick={handleSendMedia} disabled={uploading}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-xl py-2.5 text-xs font-black uppercase tracking-widest text-white transition-colors">
+              {uploading ? 'Sending...' : 'Send'}
             </button>
           </div>
         </div>
