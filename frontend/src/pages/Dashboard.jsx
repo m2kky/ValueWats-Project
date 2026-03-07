@@ -8,7 +8,11 @@ import {
   MegaphoneIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  ClockIcon
+  ClockIcon,
+  InboxIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  BoltIcon
 } from '@heroicons/react/24/outline';
 import {
   AreaChart,
@@ -52,8 +56,19 @@ export default function Dashboard() {
     messages: { total: 0, sent: 0, delivered: 0, read: 0, failed: 0, deliveryRate: 0, readRate: 0 },
     campaigns: 0,
     contacts: 0,
+    conversations: 0,
+    openConversations: 0,
+    pendingConversations: 0,
     ai: { messagesHandled: 0, escalationRate: 0, activeSessions: 0 },
     teamInsights: [],
+    teamTotal: 0,
+    leadsByStage: [],
+    totalLeads: 0,
+    recentCampaigns: [],
+    recentFailed: [],
+    topKeywords: [],
+    avgResponseTime: 0,
+    disconnectedInstances: [],
     timeline: []
   });
   const [user, setUser] = useState(null);
@@ -75,12 +90,23 @@ export default function Dashboard() {
         },
         campaigns: data.campaigns || 0,
         contacts: data.contacts || 0,
+        conversations: data.conversations || 0,
+        openConversations: data.openConversations || 0,
+        pendingConversations: data.pendingConversations || 0,
         ai: {
           messagesHandled: data.ai?.messagesHandled || 0,
           escalationRate: data.ai?.escalationRate || 0,
           activeSessions: data.ai?.activeSessions || 0
         },
         teamInsights: data.teamInsights || [],
+        teamTotal: data.teamTotal || 0,
+        leadsByStage: data.leadsByStage || [],
+        totalLeads: data.totalLeads || 0,
+        recentCampaigns: data.recentCampaigns || [],
+        recentFailed: data.recentFailed || [],
+        topKeywords: data.topKeywords || [],
+        avgResponseTime: data.avgResponseTime || 0,
+        disconnectedInstances: data.disconnectedInstances || [],
         timeline: data.timeline || []
       });
     } catch (error) {
@@ -135,12 +161,12 @@ export default function Dashboard() {
           trendValue="+24%"
         />
         <StatCard
-          title="AI Automation"
-          value={`${stats.ai.messagesHandled}`}
-          icon={UserGroupIcon}
+          title="Campaigns"
+          value={stats.campaigns}
+          icon={MegaphoneIcon}
           color="from-purple-500 to-pink-500"
           trend="up"
-          trendValue={`${stats.ai.activeSessions} active`}
+          trendValue={`${stats.ai.messagesHandled} AI msgs`}
         />
         <StatCard
           title="Reach"
@@ -148,7 +174,7 @@ export default function Dashboard() {
           icon={UserGroupIcon}
           color="from-orange-500 to-amber-500"
           trend="up"
-          trendValue="+40%"
+          trendValue={`${stats.conversations} convos`}
         />
       </div>
 
@@ -207,22 +233,61 @@ export default function Dashboard() {
           {/* Team Insights */}
           {stats.teamInsights && stats.teamInsights.length > 0 && (
             <div className="glass-card p-8 mt-8">
-              <h2 className="text-xl font-black text-white uppercase tracking-widest mb-6">Team Insights</h2>
-              <div className="space-y-4">
-                {stats.teamInsights.map(member => (
-                  <div key={member.id} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                        {member.name.charAt(0).toUpperCase()}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-black text-white uppercase tracking-widest">Team</h2>
+                <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">{stats.teamTotal} member{stats.teamTotal !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="space-y-5">
+                {stats.teamInsights.map(member => {
+                  const max = stats.teamInsights[0]?.messagesReplied || 1;
+                  const pct = max > 0 ? Math.round((member.messagesReplied / max) * 100) : 0;
+                  return (
+                    <div key={member.id}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                            {member.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm font-bold text-white">{member.name}</span>
+                          <span className="text-[10px] font-black text-zinc-600 uppercase tracking-wider">{member.role}</span>
+                        </div>
+                        <span className="text-sm font-black text-emerald-400">{member.messagesReplied.toLocaleString()}</span>
                       </div>
-                      <div>
-                        <div className="text-sm font-bold text-white">{member.name}</div>
-                        <div className="text-[10px] uppercase tracking-wider text-zinc-500">{member.role}</div>
+                      <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xl font-black text-emerald-400">{member.messagesReplied}</div>
-                      <div className="text-[10px] uppercase tracking-wider text-zinc-500">Replies</div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Leads by Stage */}
+          {stats.leadsByStage && stats.leadsByStage.length > 0 && (
+            <div className="glass-card p-8 mt-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-black text-white uppercase tracking-widest">Leads Pipeline</h2>
+                <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">{stats.totalLeads.toLocaleString()} total</span>
+              </div>
+              <div className="space-y-4">
+                {stats.leadsByStage.map(stage => (
+                  <div key={stage.id}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-sm font-bold text-white">
+                        {stage.emoji && <span className="mr-1.5">{stage.emoji}</span>}
+                        {stage.name}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black text-white">{stage.count.toLocaleString()}</span>
+                        <span className="text-[10px] font-black text-zinc-600">{stage.percent}%</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${stage.percent}%`, backgroundColor: stage.color || '#6366f1' }}
+                      />
                     </div>
                   </div>
                 ))}
@@ -263,9 +328,119 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Global Activity Feed */}
+        {/* Right Column */}
         <div className="lg:col-span-12 xl:col-span-5 flex flex-col gap-6">
-          <div className="glass-card flex-1 flex flex-col overflow-hidden min-h-[500px]">
+
+          {/* Open Conversations */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="glass-card p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-xl bg-emerald-500/10">
+                  <InboxIcon className="w-4 h-4 text-emerald-400" />
+                </div>
+                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Open</span>
+              </div>
+              <p className="text-3xl font-black text-white">{stats.openConversations}</p>
+              <p className="text-[10px] text-zinc-600 mt-1">conversations</p>
+            </div>
+            <div className="glass-card p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-xl bg-amber-500/10">
+                  <ClockIcon className="w-4 h-4 text-amber-400" />
+                </div>
+                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Pending</span>
+              </div>
+              <p className="text-3xl font-black text-white">{stats.pendingConversations}</p>
+              <p className="text-[10px] text-zinc-600 mt-1">conversations</p>
+            </div>
+          </div>
+
+          {/* Recent Campaigns */}
+          {stats.recentCampaigns.length > 0 && (
+            <div className="glass-card p-6">
+              <h2 className="text-sm font-black text-white uppercase tracking-[0.3em] mb-4">Recent Campaigns</h2>
+              <div className="space-y-3">
+                {stats.recentCampaigns.map(c => {
+                  const statusColor = { completed: 'text-emerald-400', running: 'text-indigo-400', failed: 'text-rose-400', paused: 'text-amber-400' }[c.status] || 'text-zinc-500';
+                  return (
+                    <div key={c.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{c.name}</p>
+                        <p className="text-[10px] font-black text-zinc-600 uppercase tracking-wider">{c.messageCount.toLocaleString()} msgs</p>
+                      </div>
+                      <span className={`text-[10px] font-black uppercase tracking-wider shrink-0 ml-3 ${statusColor}`}>{c.status}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Disconnected Instances Alert */}
+          {stats.disconnectedInstances.length > 0 && (
+            <div className="glass-card p-5 border border-rose-500/20">
+              <div className="flex items-center gap-2 mb-3">
+                <ExclamationTriangleIcon className="w-4 h-4 text-rose-400" />
+                <span className="text-xs font-black text-rose-400 uppercase tracking-widest">Disconnected Channels</span>
+              </div>
+              <div className="space-y-2">
+                {stats.disconnectedInstances.map(inst => (
+                  <div key={inst.id} className="flex items-center justify-between">
+                    <span className="text-sm text-zinc-300">{inst.name}</span>
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${inst.status === 'qr_pending' ? 'text-amber-400' : 'text-rose-400'}`}>{inst.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Avg Response Time */}
+          <div className="glass-card p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <BoltIcon className="w-4 h-4 text-indigo-400" />
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Avg Response Time</span>
+            </div>
+            <p className="text-3xl font-black text-white">
+              {stats.avgResponseTime < 1 ? '<1' : stats.avgResponseTime}
+              <span className="text-sm font-bold text-zinc-500 ml-1">min</span>
+            </p>
+            <p className="text-[10px] text-zinc-600 mt-1">last 7 days</p>
+          </div>
+
+          {/* Failed Messages Last 2 Days */}
+          {stats.recentFailed.length > 0 && (
+            <div className="glass-card p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">Failed Messages (2d)</span>
+                <span className="text-xs font-black text-rose-400">{stats.recentFailed.length}</span>
+              </div>
+              <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                {stats.recentFailed.map((m, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-400 font-mono">{m.recipientNumber}</span>
+                    <span className="text-rose-400/70 text-[10px] truncate max-w-[120px] ml-2">{m.failReason || 'Unknown'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Top Keywords */}
+          {stats.topKeywords.length > 0 && (
+            <div className="glass-card p-5">
+              <span className="text-xs font-black text-zinc-400 uppercase tracking-widest block mb-3">Top Keywords</span>
+              <div className="flex flex-wrap gap-2">
+                {stats.topKeywords.map(({ word, count }) => (
+                  <span key={word} className="px-2.5 py-1 bg-white/5 border border-white/5 rounded-lg text-xs text-zinc-300 font-medium">
+                    {word} <span className="text-zinc-600 ml-1">{count}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Activity Feed */}
+          <div className="glass-card flex-1 flex flex-col overflow-hidden min-h-[400px]">
             <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
               <h2 className="text-sm font-black text-white uppercase tracking-[0.3em]">Live Feed</h2>
               <div className="flex items-center gap-2">

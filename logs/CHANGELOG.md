@@ -1,5 +1,16 @@
 ---
 
+## [2026-07-14] — Dashboard Enhancement
+
+### Fixed
+- **Dashboard blank data**: `dashboardController.js` crashing due to unsupported `where` inside `_count.select` in Prisma `findMany`. Removed invalid filter — all stats now load correctly.
+
+### Added
+- **Backend `getStats`**: Added `disconnectedInstances`, `openConversations`, `pendingConversations`, `recentFailed` (last 2 days), `topKeywords` (last 200 incoming msgs), `avgResponseTime` (SQL lateral join, 7d), `leadsByStage` with %, `teamTotal`, real `contacts` count from `Contact` table.
+- **Dashboard UI**: Campaigns stat card, Open/Pending mini-cards, Recent Campaigns list, Disconnected Channels alert, Avg Response Time card, Failed Messages (2d) list, Top Keywords tags, Team progress bars, Leads Pipeline section.
+
+---
+
 ## [2026-03-06] — WhatsApp Cloud API Connect Flow (06:55 AM)
 
 ### Added

@@ -73,15 +73,17 @@ const getStats = async (req, res) => {
       }
     });
 
-    // 3. Get Active Instances
-    const activeInstances = await prisma.instance.count({
-      where: { tenantId, status: 'connected' }
+    // 3. Get Active Instances + disconnected
+    const activeInstances = await prisma.instance.count({ where: { tenantId, status: 'connected' } });
+    const disconnectedInstances = await prisma.instance.findMany({
+      where: { tenantId, status: { in: ['disconnected', 'qr_pending'] } },
+      select: { id: true, name: true, status: true }
     });
 
-    // 4. Get Total Contacts -> we can just use the number of unique conversations as "reach"
-    const totalContacts = await prisma.conversation.count({
-      where: { tenantId }
-    });
+    // 4. Conversations
+    const totalContacts = await prisma.conversation.count({ where: { tenantId } });
+    const openConversations = await prisma.conversation.count({ where: { tenantId, status: 'open' } });
+    const pendingConversations = await prisma.conversation.count({ where: { tenantId, status: 'pending' } });
 
     // 5. Calculate Rates
     // Sent metric usually denotes successful transfer to WhatsApp node, so delivered is a subset of sent.
@@ -111,22 +113,90 @@ const getStats = async (req, res) => {
       where: { tenantId },
       select: {
         id: true,
+        name: true,
         email: true,
         role: true,
         _count: {
-          select: {
-            sentMessages: { where: { direction: 'outgoing' } }
-          }
+          select: { sentMessages: true }
         }
       }
     });
 
     const teamInsights = teamMembers.map(u => ({
       id: u.id,
-      name: u.email.split('@')[0],
+      name: u.name || u.email.split('@')[0],
       role: u.role,
       messagesReplied: u._count.sentMessages
     })).sort((a, b) => b.messagesReplied - a.messagesReplied);
+
+    // 10. Leads by Lifecycle Stage
+    const lifecycleStages = await prisma.lifecycleStage.findMany({
+      where: { tenantId },
+      orderBy: { order: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        emoji: true,
+        color: true,
+        _count: { select: { contacts: true } }
+      }
+    });
+
+    const totalLeads = lifecycleStages.reduce((sum, s) => sum + s._count.contacts, 0);
+    const leadsByStage = lifecycleStages.map(s => ({
+      id: s.id,
+      name: s.name,
+      emoji: s.emoji,
+      color: s.color,
+      count: s._count.contacts,
+      percent: totalLeads > 0 ? Math.round((s._count.contacts / totalLeads) * 100) : 0
+    }));
+
+    // 11. Total contacts (real Contact table)
+    const totalRealContacts = await prisma.contact.count({ where: { tenantId } });
+
+    // 12. Failed messages last 2 days
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    twoDaysAgo.setHours(0, 0, 0, 0);
+    const recentFailed = await prisma.message.findMany({
+      where: { tenantId, status: 'failed', createdAt: { gte: twoDaysAgo } },
+      select: { createdAt: true, failReason: true, recipientNumber: true },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+
+    // 13. Top keywords from last 200 incoming chat messages
+    const recentIncoming = await prisma.chatMessage.findMany({
+      where: { conversation: { tenantId }, direction: 'incoming', messageType: 'text', content: { not: null } },
+      select: { content: true },
+      orderBy: { createdAt: 'desc' },
+      take: 200
+    });
+    const stopWords = new Set(['the','a','an','is','in','on','at','to','for','of','and','or','i','you','my','me','we','it','this','that','with','have','be','do','not','are','was','but','so','if','as','by','from','your','our','can','will','just','what','how','when','where','who','yes','no','ok','hi','hello','hey','thanks','thank','please','help']);
+    const wordCount = {};
+    recentIncoming.forEach(m => {
+      m.content.toLowerCase().replace(/[^a-z0-9\u0600-\u06ff\s]/g, '').split(/\s+/).forEach(w => {
+        if (w.length > 2 && !stopWords.has(w)) wordCount[w] = (wordCount[w] || 0) + 1;
+      });
+    });
+    const topKeywords = Object.entries(wordCount).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([word, count]) => ({ word, count }));
+
+    // 14. Avg response time (minutes) — first outgoing after each incoming, last 7 days
+    const avgResponseTime = await prisma.$queryRawUnsafe(`
+      SELECT ROUND(AVG(EXTRACT(EPOCH FROM (o.created_at - i.created_at)) / 60)::numeric, 1) as avg_minutes
+      FROM chat_messages i
+      JOIN conversations c ON c.id = i.conversation_id
+      JOIN LATERAL (
+        SELECT created_at FROM chat_messages
+        WHERE conversation_id = i.conversation_id AND direction = 'outgoing' AND created_at > i.created_at
+        ORDER BY created_at ASC LIMIT 1
+      ) o ON true
+      WHERE c.tenant_id = $1
+        AND i.direction = 'incoming'
+        AND i.created_at >= NOW() - INTERVAL '7 days'
+        AND EXTRACT(EPOCH FROM (o.created_at - i.created_at)) / 60 < 1440
+    `, tenantId);
 
     // 9. Message Timeline (Last 7 Days) for Charting
     const sevenDaysAgo = new Date();
@@ -177,7 +247,11 @@ const getStats = async (req, res) => {
         readRate: readRate.toFixed(1)
       },
       instances: activeInstances,
-      contacts: totalContacts,
+      disconnectedInstances,
+      contacts: totalRealContacts,
+      conversations: totalContacts,
+      openConversations,
+      pendingConversations,
       ai: {
         messagesHandled: aiMessages,
         escalationRate: aiMessages > 0 ? ((escalations / aiMessages) * 100).toFixed(1) : 0,
@@ -191,6 +265,12 @@ const getStats = async (req, res) => {
         messageCount: c._count.messages
       })),
       teamInsights,
+      teamTotal: teamMembers.length,
+      leadsByStage,
+      totalLeads,
+      recentFailed,
+      topKeywords,
+      avgResponseTime: Number(avgResponseTime[0]?.avg_minutes) || 0,
       timeline: messagesTimeline
     });
 

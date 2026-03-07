@@ -13,7 +13,7 @@
 - [ ] 5. **Implement Agent Tools** (Google Calendar, Google Sheets, Google Drive, Email, WhatsApp Notifications)
 - [ ] 6. **Implement Activity Feed** (Chat Banner & CRM Timeline)
 - [ ] 7. **Implement Saved Segments & Retargeting** (Smart filtering)
-- [ ] 8. **Implement Analytics Dashboard** (Campaigns, Agents, Funnel)
+- [ ] 8. **Implement Analytics Dashboard** (Campaigns, Agents, Funnel) — Dashboard overview enhanced with delivery stats, team insights, leads pipeline, response time, failed messages, top keywords, disconnected instances alert.
 - [ ] 11. **Implement Webhook API** (For business external integrations)
 
 ## 🟡 Medium Priority
