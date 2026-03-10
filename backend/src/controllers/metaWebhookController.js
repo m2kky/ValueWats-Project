@@ -30,8 +30,9 @@ const handleMetaWebhook = async (req, res) => {
     if (entry.messaging) {
       // Messenger or Instagram
       payload = entry.messaging[0];
-      identifier = payload.recipient?.id;
+      identifier = String(entry.id);  // entry.id = Page ID (Messenger) or IG Account ID (Instagram)
       channelType = req.body.object === 'instagram' ? 'instagram' : 'messenger';
+      console.log(`[MetaWebhook] ${channelType} webhook — entry.id: ${entry.id}, recipient.id: ${payload.recipient?.id}, sender.id: ${payload.sender?.id}`);
     } else if (entry.changes) {
       // WhatsApp Cloud API
       const change = entry.changes[0].value;
@@ -44,12 +45,26 @@ const handleMetaWebhook = async (req, res) => {
     if (!identifier) return;
 
     // Find instance by identifier and type
-    const instance = await prisma.instance.findFirst({
+    let instance = await prisma.instance.findFirst({
       where: { phoneNumberId: identifier, channelType }
     });
 
+    // Fallback: try with recipient.id if entry.id didn't match (Messenger/IG)
+    if (!instance && entry.messaging && payload.recipient?.id) {
+      instance = await prisma.instance.findFirst({
+        where: { phoneNumberId: String(payload.recipient.id), channelType }
+      });
+    }
+
+    // Fallback: try without channelType filter (in case user set wrong channelType)
     if (!instance) {
-      console.warn(`[MetaWebhook] No instance found for ${channelType} identifier: ${identifier}`);
+      instance = await prisma.instance.findFirst({
+        where: { phoneNumberId: identifier }
+      });
+    }
+
+    if (!instance) {
+      console.warn(`[MetaWebhook] No instance found for ${channelType} identifier: ${identifier}. Create an instance with this Page/Account ID in the Channels page.`);
       return;
     }
 
