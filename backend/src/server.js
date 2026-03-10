@@ -37,7 +37,6 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // CORS configuration
-// CORS configuration
 app.use(cors({
   origin: [
     'https://app.muhammedmekky.com',
@@ -46,7 +45,7 @@ app.use(cors({
     'http://apptest.muhammedmekky.com',
     'http://j4k0g4s4kssk8g0wksg0csk8.72.62.50.238.sslip.io',
     'http://i0kwck044gc80s0osco8w0wg.72.62.50.238.sslip.io',
-    /\.sslip\.io$/,
+    /^https?:\/\/[a-z0-9-]+\.72\.62\.50\.238\.sslip\.io$/, // Strictly matching Coolify VPS subdomains
     'http://localhost:5173',
     'http://localhost:3000'
   ],
@@ -124,8 +123,13 @@ app.get(/.*/, (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
+  
+  // Mask detailed database/application errors in production to prevent information leakage
+  const isProduction = process.env.NODE_ENV === 'production';
+  const errorMessage = isProduction ? 'Internal server error' : (err.message || 'Internal server error');
+
   res.status(err.status || 500).json({
-    error: err.message || 'Internal server error',
+    error: errorMessage,
   });
 });
 

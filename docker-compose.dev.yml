@@ -6,7 +6,7 @@ services:
     container_name: valuewats-postgres
     restart: unless-stopped
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     environment:
       POSTGRES_USER: valuewats
       POSTGRES_PASSWORD: valuewats_dev_2026

@@ -5,7 +5,17 @@ let io;
 const init = (server) => {
   io = socketIo(server, {
     cors: {
-      origin: "*", // Allow all origins for now (adjust for production)
+      origin: [
+        'https://app.muhammedmekky.com',
+        'http://app.muhammedmekky.com',
+        'https://apptest.muhammedmekky.com',
+        'http://apptest.muhammedmekky.com',
+        'http://j4k0g4s4kssk8g0wksg0csk8.72.62.50.238.sslip.io',
+        'http://i0kwck044gc80s0osco8w0wg.72.62.50.238.sslip.io',
+        /^https?:\/\/[a-z0-9-]+\.72\.62\.50\.238\.sslip\.io$/,
+        'http://localhost:5173',
+        'http://localhost:3000'
+      ],
       methods: ["GET", "POST"]
     }
   });

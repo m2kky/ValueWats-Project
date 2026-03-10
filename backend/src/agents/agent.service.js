@@ -343,7 +343,7 @@ ${actionPrompts.join('\n')}`;
     if (!agent.workingHoursEnabled || !agent.workingHours) return true;
 
     const now = new Date();
-    const currentDay = now.toLocaleLowerCase('en-US', { weekday: 'long' }); // e.g., "monday"
+    const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase(); // e.g., "monday"
     const currentTime = now.getHours() * 60 + now.getMinutes();
 
     const schedule = agent.workingHours[currentDay];
@@ -658,16 +658,45 @@ ${actionPrompts.join('\n')}`;
         else if (actionString.startsWith('ADD_COMMENT:')) {
           const comment = actionString.replace('ADD_COMMENT:', '').trim();
           try {
-            await prisma.contactNote.create({
-              data: {
-                tenantId: agent.tenantId,
-                contactNumber: conversation.contactNumber,
-                content: comment,
-                type: 'ai_agent'
-              }
+            // Find or create the contact to attach the note
+            let contactId = conversation.contactId;
+            if (!contactId) {
+              const contact = await prisma.contact.upsert({
+                where: { tenantId_phoneNumber: { tenantId: agent.tenantId, phoneNumber: conversation.contactNumber } },
+                update: {},
+                create: {
+                  tenantId: agent.tenantId,
+                  phoneNumber: conversation.contactNumber,
+                  name: conversation.contactName || 'Unknown'
+                }
+              });
+              contactId = contact.id;
+              await prisma.conversation.update({
+                where: { id: conversation.id },
+                data: { contactId: contact.id }
+              });
+            }
+
+            // ContactNote requires userId — find the first admin user for this tenant
+            const adminUser = await prisma.user.findFirst({
+              where: { tenantId: agent.tenantId, role: 'admin' },
+              select: { id: true }
             });
+
+            if (adminUser) {
+              await prisma.contactNote.create({
+                data: {
+                  contactId,
+                  userId: adminUser.id,
+                  content: `[AI Agent: ${agent.name}] ${comment}`
+                }
+              });
+              console.log(`[AgentService] Action: Added internal comment`);
+            } else {
+              console.log(`[AgentService] AI Comment (no admin user for note): ${comment}`);
+            }
           } catch (e) {
-            console.log(`[AgentService] AI Comment: ${comment}`);
+            console.error(`[AgentService] Failed to add comment:`, e.message);
           }
         }
 

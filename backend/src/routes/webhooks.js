@@ -2,15 +2,16 @@ const express = require('express');
 const router = express.Router();
 const webhookController = require('../controllers/webhookController');
 const { verifyWebhook, handleMetaWebhook } = require('../controllers/metaWebhookController');
+const verifyWebhookContext = require('../middleware/verifyWebhookContext');
 
 // Meta Cloud API webhook
 router.get('/meta', verifyWebhook);
 router.post('/meta', handleMetaWebhook);
 
-// Evolution API webhooks (keeping for reference — can be removed later)
-router.post('/whatsapp', webhookController.handleIncomingMessage);
-router.post('/evolution', webhookController.handleIncomingMessage);
-router.post('/receive', webhookController.handleIncomingMessage);
-router.post('/receive/:event', webhookController.handleIncomingMessage);
+// Evolution API webhooks (secured with middleware)
+router.post('/whatsapp', verifyWebhookContext, webhookController.handleIncomingMessage);
+router.post('/evolution', verifyWebhookContext, webhookController.handleIncomingMessage);
+router.post('/receive', verifyWebhookContext, webhookController.handleIncomingMessage);
+router.post('/receive/:event', verifyWebhookContext, webhookController.handleIncomingMessage);
 
 module.exports = router;

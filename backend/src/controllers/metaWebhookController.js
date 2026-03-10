@@ -136,11 +136,16 @@ const handleMetaWebhook = async (req, res) => {
     // ====== AUTOMATION & AI ======
     if (!text) return;
 
-    // Opt-out check
-    const OPTOUT_KEYWORDS = ['stop', 'unsubscribe', 'الغاء'];
-    if (OPTOUT_KEYWORDS.some(kw => text.toLowerCase().includes(kw))) {
-      await prisma.contact.updateMany({ where: { tenantId: instance.tenantId, phoneNumber: contactNumber }, data: { blacklisted: true } });
-      const optOutMsg = '✅ Subscription cancelled.';
+    // Opt-out check — fetch keywords from tenant settings (same as Evolution webhook)
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: instance.tenantId },
+      select: { optoutEnabled: true, optoutMessage: true, optoutKeywords: true }
+    });
+    const optoutKeywords = tenant?.optoutKeywords?.length ? tenant.optoutKeywords : ['stop', 'وقف', 'انهاء', 'إلغاء', 'الغاء', 'لا رسائل', 'unsubscribe', 'إلغاء الاشتراك'];
+    const normalizedText = text.toLowerCase().trim();
+    if (tenant?.optoutEnabled !== false && optoutKeywords.some(kw => normalizedText === kw.toLowerCase() || normalizedText.includes(kw.toLowerCase()))) {
+      await prisma.contact.updateMany({ where: { tenantId: instance.tenantId, phoneNumber: contactNumber }, data: { blacklisted: true, blacklistedAt: new Date() } });
+      const optOutMsg = tenant?.optoutMessage || '✅ تم إلغاء اشتراكك بنجاح. لن تصلك رسائل تسويقية منا بعد الآن.';
       if (channelType === 'whatsapp') await metaApi.sendMessage(instance, contactNumber, optOutMsg);
       else await metaApi.sendMetaMessage(instance, contactNumber, optOutMsg);
       return;

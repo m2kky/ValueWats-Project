@@ -77,7 +77,7 @@ const getStats = async (req, res) => {
     const activeInstances = await prisma.instance.count({ where: { tenantId, status: 'connected' } });
     const disconnectedInstances = await prisma.instance.findMany({
       where: { tenantId, status: { in: ['disconnected', 'qr_pending'] } },
-      select: { id: true, name: true, status: true }
+      select: { id: true, instanceName: true, status: true }
     });
 
     // 4. Conversations
@@ -183,7 +183,7 @@ const getStats = async (req, res) => {
     const topKeywords = Object.entries(wordCount).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([word, count]) => ({ word, count }));
 
     // 14. Avg response time (minutes) — first outgoing after each incoming, last 7 days
-    const avgResponseTime = await prisma.$queryRawUnsafe(`
+    const avgResponseTime = await prisma.$queryRaw`
       SELECT ROUND(AVG(EXTRACT(EPOCH FROM (o.created_at - i.created_at)) / 60)::numeric, 1) as avg_minutes
       FROM chat_messages i
       JOIN conversations c ON c.id = i.conversation_id
@@ -192,11 +192,11 @@ const getStats = async (req, res) => {
         WHERE conversation_id = i.conversation_id AND direction = 'outgoing' AND created_at > i.created_at
         ORDER BY created_at ASC LIMIT 1
       ) o ON true
-      WHERE c.tenant_id = $1
+      WHERE c.tenant_id = ${tenantId}
         AND i.direction = 'incoming'
         AND i.created_at >= NOW() - INTERVAL '7 days'
         AND EXTRACT(EPOCH FROM (o.created_at - i.created_at)) / 60 < 1440
-    `, tenantId);
+    `;
 
     // 9. Message Timeline (Last 7 Days) for Charting
     const sevenDaysAgo = new Date();

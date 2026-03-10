@@ -58,7 +58,9 @@ async function checkScheduledCampaigns() {
           message: msg.messageText,
           campaignId: campaign.id,
           messageRecordId: msg.id,
-          tenantId: campaign.tenantId
+          tenantId: campaign.tenantId,
+          mediaUrl: msg.mediaUrl || campaign.mediaUrl,
+          mediaType: msg.mediaType || campaign.mediaType
         }, {
           delay: i === 0 ? 0 : cumulativeDelay,
           attempts: 3,

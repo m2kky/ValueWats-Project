@@ -244,7 +244,7 @@ model Message {
   instanceId      String    @map("instance_id")
   recipientNumber String    @map("recipient_number")
   messageText     String    @map("message_text") @db.Text
-  status          String // 'pending', 'sent', 'delivered', 'failed', 'cancelled'
+  status          String // 'pending', 'SENT', 'DELIVERED', 'FAILED', 'cancelled'
   failReason      String?   @map("fail_reason") @db.Text
   sentAt          DateTime? @map("sent_at")
   deliveredAt     DateTime? @map("delivered_at")
@@ -252,12 +252,14 @@ model Message {
   mediaUrl        String?   @map("media_url")
   mediaType       String?   @map("media_type")
   variables       Json?     @map("variables")
+  createdAt       DateTime  @default(now()) @map("created_at")
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   instance Instance  @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   links    Link[]
 
+  @@index([tenantId, createdAt(sort: Desc)])
   @@map("messages")
 }
 

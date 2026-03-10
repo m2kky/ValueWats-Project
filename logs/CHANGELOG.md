@@ -1,5 +1,33 @@
 ---
 
+## [2026-03-10] — Security & Codebase Audit Patches
+
+### Added
+- **Webhook Security**: Created `verifyWebhookContext.js` middleware to mandate an `apikey` or `x-webhook-secret` header on all Evolution API webhook requests, preventing spoofing and unauthorized access.
+
+### Changed
+- **CORS Lockdown**: Tightened the CORS origin regex in `server.js` from `/\.sslip\.io$/` to strictly match the Coolify VPS subnet (`/^https?:\/\/[a-z0-9-]+\.72\.62\.50\.238\.sslip\.io$/`), eliminating widespread cross-origin vulnerabilities.
+- **Production Error Masking**: Updated the global error handler in `server.js` to return generic "Internal server error" messages when `NODE_ENV === 'production'`, preventing Prisma SQL query and schema leakage.
+- **Local DB Security**: Restricted PostgreSQL port binding to `127.0.0.1:5433` in `docker-compose.dev.yml` to prevent accidental public exposure.
+
+## [2026-03-10] — Deep Audit: Bug & Feature Fixes
+
+### Fixed
+- **Scheduled/Resumed Campaigns Media Loss**: `schedulerService.js` and `campaignController.js` (resumeCampaign) were not passing `mediaUrl`/`mediaType` to the queue, causing media-attached campaigns to send text-only messages after scheduling or resuming.
+- **AI Agent Working Hours Crash**: `agent.service.js` used `now.toLocaleLowerCase()` (nonexistent method), causing a runtime crash when any agent had working hours enabled. Replaced with correct `toLocaleDateString().toLowerCase()`.
+- **AI Agent ADD_COMMENT Crash**: `agent.service.js` tried to create `ContactNote` with wrong fields (`contactNumber` instead of `contactId`, nonexistent `type` field, missing required `userId`). Rewrote to properly find/create Contact and use admin user as note author.
+- **Dashboard Instance Name**: `dashboardController.js` queried `Instance.name` which doesn't exist in the schema. Fixed to use `Instance.instanceName`.
+- **Dashboard SQL Safety**: Replaced `$queryRawUnsafe()` with `$queryRaw` tagged template literal in `dashboardController.js` to prevent future SQL injection risk.
+- **Message Status Casing**: `queueService.js` stored statuses as `'SENT'`/`'FAILED'` (uppercase) while all other code expected lowercase. Unified to lowercase `'sent'`/`'failed'`.
+- **Meta Webhook Opt-out**: `metaWebhookController.js` used a hardcoded 3-keyword array `['stop', 'unsubscribe', 'الغاء']` instead of the tenant's configured opt-out keywords from the database. Now fetches from tenant settings (same as Evolution webhook handler).
+
+### Changed
+- **Socket.io CORS**: Restricted Socket.io CORS from wildcard `"*"` to specific Coolify VPS origins and localhost dev servers in `socketService.js`.
+- **Schema**: Added missing `createdAt` field + index to `Message` model in `schema.prisma` (dashboard timeline queries depended on it).
+- **Dead Code Cleanup**: Removed orphaned link-shortener comments (~20 lines) from `campaignController.js`.
+
+---
+
 ## [2026-07-14] — Dashboard Enhancement
 
 ### Fixed

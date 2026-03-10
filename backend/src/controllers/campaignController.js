@@ -338,24 +338,6 @@ const createCampaign = async (req, res) => {
             variables: contact.variables || null
           }
         });
-
-        // If we want per-user tracking to be traceable to the specific message, we'd need to update the links created above
-        // with the messageRecord.id. This adds N updates. 
-        // For V1, let's stick to campaign-level tracking or efficient batching if needed.
-        // But for "Advanced Analytics", user wants to know WHO clicked.
-        // So we should ideally update the Link records.
-        // Optimization: Generate shortCode, Create Message, Create Link with MessageID.
-        // But we need the shortCode to put in the message text *before* creating the message.
-        // So: 
-        // 1. Generate shortCode/Link (messageId: null)
-        // 2. Create Message (messageText: ...shortUrl...)
-        // 3. Update Link (messageId: messageRecord.id)
-
-        // Re-parsing to find the short codes we just inserted might be complex.
-        // Let's rely on the previous loop. We need to track which links belong to this message.
-        // Ideally linkShortener returns the Link object, not just URL.
-
-        // Refined Logic below in next chunk for addToQueue
       }
 
       res.status(201).json({
@@ -588,7 +570,9 @@ const resumeCampaign = async (req, res) => {
         message: msg.messageText,
         campaignId: id,
         messageRecordId: msg.id,
-        tenantId
+        tenantId,
+        mediaUrl: msg.mediaUrl || campaign.mediaUrl,
+        mediaType: msg.mediaType || campaign.mediaType
       }, {
         delay: i === 0 ? 0 : cumulativeDelay,
         attempts: 3,

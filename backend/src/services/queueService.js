@@ -50,7 +50,7 @@ messageQueue.process(async (job) => {
     await prisma.message.update({
       where: { id: messageRecordId },
       data: {
-        status: 'SENT',
+        status: 'sent',
         sentAt: new Date(),
         wamid
       }
@@ -79,7 +79,7 @@ messageQueue.process(async (job) => {
 
     await prisma.message.update({
       where: { id: messageRecordId },
-      data: { status: 'FAILED', failReason }
+      data: { status: 'failed', failReason }
     });
 
     throw error;
