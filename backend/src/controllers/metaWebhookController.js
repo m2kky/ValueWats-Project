@@ -115,6 +115,11 @@ const handleMetaWebhook = async (req, res) => {
       contactNumber = payload.sender.id; // PSID
       wamid = payload.message.mid;
       text = payload.message.text || '';
+
+      // Fetch sender profile (name, profile_pic) from Meta Graph API
+      const profile = await metaApi.getUserProfile(contactNumber, instance.accessToken);
+      pushName = profile.name;
+      console.log(`[MetaWebhook:${channelType}] 👤 Profile: ${pushName || 'unknown'}`);
       
       // Handle media for Messenger/Instagram
       if (payload.message.attachments && payload.message.attachments.length > 0) {

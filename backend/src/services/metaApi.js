@@ -109,6 +109,21 @@ class MetaApi {
   }
 
   // --- COMMON UTILS ---
+
+  // Fetch Messenger/Instagram user profile (name, profile_pic)
+  // Docs: https://developers.facebook.com/docs/messenger-platform/identity/user-profile/
+  async getUserProfile(psid, accessToken) {
+    try {
+      const res = await axios.get(`${FB_BASE}/${psid}`, {
+        params: { fields: 'name,profile_pic', access_token: accessToken }
+      });
+      return { name: res.data.name || null, profilePic: res.data.profile_pic || null };
+    } catch (err) {
+      console.warn(`[MetaApi] Failed to fetch profile for ${psid}:`, err.response?.data?.error?.message || err.message);
+      return { name: null, profilePic: null };
+    }
+  }
+
   async getMediaUrl(mediaId, token) {
     const res = await axios.get(`${FB_BASE}/${mediaId}`, { headers: this.getHeaders(token) });
     return res.data.url;
