@@ -88,8 +88,33 @@ router.post('/', async (req, res) => {
       instance = await evolutionApi.createInstance(req.tenantId, instanceName);
     } else if (channelType === 'messenger' || channelType === 'instagram' || channelType === 'whatsapp_cloud') {
       // Messenger/Instagram/WhatsApp Cloud handled manually via Meta tokens
-      if (!phoneNumberId || !accessToken) {
-        return res.status(400).json({ error: 'Phone Number/Page ID and Access Token are required for this channel type' });
+      if (!accessToken) {
+        return res.status(400).json({ error: 'Access Token is required for this channel type' });
+      }
+
+      // For WhatsApp Cloud, phoneNumberId is always required from user
+      if (channelType === 'whatsapp_cloud' && !phoneNumberId) {
+        return res.status(400).json({ error: 'Phone Number ID is required for WhatsApp Cloud API' });
+      }
+
+      // For Messenger/Instagram: auto-fetch the real Page ID from Access Token
+      let resolvedPageId = phoneNumberId;
+      if ((channelType === 'messenger' || channelType === 'instagram') && accessToken) {
+        try {
+          const axios = require('axios');
+          const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
+          const res = await axios.get(`https://graph.facebook.com/${META_API_VERSION}/me`, {
+            params: { fields: 'id,name', access_token: accessToken }
+          });
+          resolvedPageId = res.data.id;
+          console.log(`[Instance] Auto-detected Page ID: ${resolvedPageId} (${res.data.name}) from Access Token`);
+        } catch (apiErr) {
+          console.warn('[Instance] Failed to auto-detect Page ID:', apiErr.response?.data?.error?.message || apiErr.message);
+          if (!phoneNumberId) {
+            return res.status(400).json({ error: 'Failed to auto-detect Page ID. Please provide it manually or check your Access Token.' });
+          }
+          // Fall back to user-provided phoneNumberId
+        }
       }
 
       instance = await prisma.instance.create({
@@ -97,7 +122,7 @@ router.post('/', async (req, res) => {
           tenantId: req.tenantId,
           instanceName,
           channelType,
-          phoneNumberId,
+          phoneNumberId: resolvedPageId,
           accessToken,
           status: 'connected'
         }

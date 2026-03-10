@@ -142,7 +142,7 @@ export default function ConnectChannel() {
         payload.accessToken = accessToken;
         // wabaId stored in phoneNumberId for now (can be extended later)
       } else if (isMetaChannel) {
-        payload.phoneNumberId = phoneNumberId;
+        if (phoneNumberId) payload.phoneNumberId = phoneNumberId; // Optional — auto-detected from token
         payload.accessToken = accessToken;
       }
 
@@ -355,23 +355,10 @@ export default function ConnectChannel() {
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-zinc-400 mb-2 mt-4">2. Identify Output Channel ({config.name})</label>
+                          <label className="block text-xs font-medium text-zinc-400 mb-2 mt-4">2. Connect your {config.name}</label>
                           <div className="space-y-4">
                             <div>
-                                <label className="block text-[11px] font-bold text-zinc-500 mb-1 uppercase tracking-wider">{config.name} ID (Page/Account ID)</label>
-                                <input
-                                  type="text"
-                                  className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
-                                  value={phoneNumberId}
-                                  onChange={(e) => setPhoneNumberId(e.target.value)}
-                                  placeholder={`Enter your ${config.name} ID`}
-                                  required
-                                />
-                                <p className="text-[11px] text-zinc-600 mt-1.5">You can find the App ID / Page ID / Account ID in your Meta Developer Dashboard.</p>
-                            </div>
-                            
-                            <div>
-                              <label className="block text-[11px] font-bold text-zinc-500 mb-1 uppercase tracking-wider">Page Access Token</label>
+                              <label className="block text-[11px] font-bold text-zinc-500 mb-1 uppercase tracking-wider">Page Access Token <span className="text-rose-400">*</span></label>
                               <input
                                 type="password"
                                 className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
@@ -380,6 +367,19 @@ export default function ConnectChannel() {
                                 placeholder="Paste your Page Access Token here"
                                 required
                               />
+                              <p className="text-[11px] text-emerald-500/80 mt-1.5">✨ The Page ID will be auto-detected from your token — no need to find it manually!</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-[11px] font-bold text-zinc-500 mb-1 uppercase tracking-wider">{config.name} ID <span className="text-zinc-600">(Optional)</span></label>
+                                <input
+                                  type="text"
+                                  className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
+                                  value={phoneNumberId}
+                                  onChange={(e) => setPhoneNumberId(e.target.value)}
+                                  placeholder="Auto-detected from token (override only if needed)"
+                                />
+                                <p className="text-[11px] text-zinc-600 mt-1.5">Leave empty — we'll fetch it automatically. Only fill if auto-detection fails.</p>
                             </div>
                           </div>
                         </div>
