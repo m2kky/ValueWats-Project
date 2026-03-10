@@ -1,5 +1,15 @@
 ---
 
+## [2026-03-10] — Meta Messenger/Instagram Integration Fix
+
+### Fixed
+- **Messenger/Instagram replies not sending**: `metaApi.js` `sendMetaMessage()` was posting to the WhatsApp Cloud API endpoint — which doesn't work for Messenger or Instagram. Rewrote with 3 separate methods per official Meta docs:
+  - **Messenger**: `POST graph.facebook.com/{PAGE_ID}/messages` with `messaging_type: RESPONSE` + `access_token` query param
+  - **Instagram**: `POST graph.instagram.com/{IG_ID}/messages` with Bearer token (different host!)
+  - **Unified**: `sendMetaMessage()` auto-routes based on `instance.channelType`
+- **WhatsApp status casing**: `metaWebhookController.js` stored delivery statuses as `DELIVERED`/`READ` (uppercase) while all dashboard/stats code expected lowercase. Unified to lowercase.
+
+
 ## [2026-03-10] — Security & Codebase Audit Patches
 
 ### Added

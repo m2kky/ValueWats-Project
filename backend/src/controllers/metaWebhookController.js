@@ -65,10 +65,8 @@ const handleMetaWebhook = async (req, res) => {
       // Status updates
       if (payload.statuses?.length) {
         for (const s of payload.statuses) {
-          const statusMap = { delivered: 'DELIVERED', read: 'READ' };
-          const statusString = statusMap[s.status];
-          if (statusString) {
-            await prisma.message.updateMany({ where: { wamid: s.id }, data: { status: statusString } }).catch(() => { });
+          if (['delivered', 'read'].includes(s.status)) {
+            await prisma.message.updateMany({ where: { wamid: s.id }, data: { status: s.status } }).catch(() => { });
             await prisma.chatMessage.updateMany({ where: { wamid: s.id }, data: { status: s.status } }).catch(() => { });
           }
         }
