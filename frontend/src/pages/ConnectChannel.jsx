@@ -273,7 +273,7 @@ export default function ConnectChannel() {
                               <div>
                                 <span className="text-[10px] uppercase font-bold text-zinc-500">Verify Token</span>
                                 <div className="bg-[#1c1f26] border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between">
-                                  <code className="text-xs text-emerald-400 font-mono select-all">valuewats_secure_webhook_token_2026</code>
+                                  <code className="text-xs text-emerald-400 font-mono select-all">valuewats_verify_2026</code>
                                 </div>
                                 <div className="mt-1.5 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
                                   <p className="text-[11px] text-yellow-500 leading-snug">
@@ -341,7 +341,7 @@ export default function ConnectChannel() {
                               <div>
                                 <span className="text-[10px] uppercase font-bold text-zinc-500">Verify Token</span>
                                 <div className="bg-[#1c1f26] border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between">
-                                  <code className="text-xs text-emerald-400 font-mono select-all">valuewats_secure_webhook_token_2026</code>
+                                  <code className="text-xs text-emerald-400 font-mono select-all">valuewats_verify_2026</code>
                                 </div>
                                 <div className="mt-1.5 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
                                   <p className="text-[11px] text-yellow-500 leading-snug">
