@@ -69,7 +69,12 @@ const handleMetaWebhook = async (req, res) => {
     }
 
     if (!instance) {
+      // DEBUG: List ALL instances in DB to help diagnose
+      const allInstances = await prisma.instance.findMany({
+        select: { instanceName: true, channelType: true, phoneNumberId: true, tenantId: true }
+      });
       console.warn(`[MetaWebhook] No instance found for ${channelType} identifier: ${identifier}. Create an instance with this Page/Account ID in the Channels page.`);
+      console.warn(`[MetaWebhook] DEBUG — All instances in DB:`, JSON.stringify(allInstances.map(i => ({name: i.instanceName, type: i.channelType, phoneId: i.phoneNumberId})), null, 2));
       return;
     }
 
