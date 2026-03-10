@@ -105,7 +105,14 @@ export default function CampaignDetails() {
     const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
     const baseUrl = socketUrl.replace('/api', '');
 
-    socketRef.current = io(baseUrl);
+    socketRef.current = io(baseUrl, {
+      path: '/socket.io',
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      timeout: 10000
+    });
 
     socketRef.current.on('connect', () => {
       console.log('Connected to socket server');

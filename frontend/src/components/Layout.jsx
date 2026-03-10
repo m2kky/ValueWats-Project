@@ -31,7 +31,14 @@ export default function Layout({ children }) {
     if (user && user.tenantId) {
       const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       const baseUrl = socketUrl.replace('/api', '');
-      const newSocket = io(baseUrl);
+      const newSocket = io(baseUrl, {
+        path: '/socket.io',
+        transports: ['polling', 'websocket'],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
+        timeout: 10000
+      });
 
       newSocket.on('connect', () => {
         newSocket.emit('join_tenant', user.tenantId);

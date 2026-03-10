@@ -1,5 +1,11 @@
 ---
 
+## [2026-03-10] — Realtime Inbox Socket.io Fix
+
+### Fixed
+- **Inbox not realtime**: Socket.io client in `Inbox.jsx`, `Layout.jsx`, and `CampaignDetails.jsx` was connecting without transport configuration, causing failures behind Nginx/QUIC proxies. Added `transports: ['polling', 'websocket']` (starts with polling, then upgrades to WS), reconnection config, and connection error logging.
+
+
 ## [2026-03-10] — Meta Messenger/Instagram Integration Fix
 
 ### Fixed

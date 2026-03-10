@@ -28,11 +28,26 @@ export default function Inbox() {
     if (!user.tenantId) return;
 
     const socketUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace('/api', '');
-    const newSocket = io(socketUrl);
+    const newSocket = io(socketUrl, {
+      path: '/socket.io',
+      transports: ['polling', 'websocket'], // Start with polling, then upgrade — avoids QUIC/HTTP3 issues
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      timeout: 10000
+    });
 
     newSocket.on('connect', () => {
       newSocket.emit('join_tenant', user.tenantId);
-      console.log('[Inbox] Socket connected, joined tenant room');
+      console.log('[Inbox] Socket connected, joined tenant room:', user.tenantId);
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error('[Inbox] Socket connection error:', err.message);
+    });
+
+    newSocket.on('disconnect', (reason) => {
+      console.warn('[Inbox] Socket disconnected:', reason);
     });
 
     setSocket(newSocket);
