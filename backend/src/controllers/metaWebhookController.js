@@ -16,11 +16,16 @@ const verifyWebhook = (req, res) => {
 };
 
 const handleMetaWebhook = async (req, res) => {
+  // DEBUG: Log raw incoming webhook payload
+  console.log('[MetaWebhook] 📩 RAW POST body:', JSON.stringify(req.body).substring(0, 500));
   res.sendStatus(200);
 
   try {
     const entry = req.body?.entry?.[0];
-    if (!entry) return;
+    if (!entry) {
+      console.warn('[MetaWebhook] ⚠️ No entry in body, body.object:', req.body?.object);
+      return;
+    }
 
     let channelType = 'whatsapp';
     let identifier = ''; // Page ID or Phone Number ID
