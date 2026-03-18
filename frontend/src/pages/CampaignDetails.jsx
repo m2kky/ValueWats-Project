@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import io from 'socket.io-client';
+import { getSocketUrl } from '../utils/socketUtils';
 import {
   ArrowLeftIcon,
   MegaphoneIcon,
@@ -102,12 +103,10 @@ export default function CampaignDetails() {
     fetchCampaignDetails();
 
     // Initialize Socket.io
-    const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    const baseUrl = socketUrl.replace('/api', '');
+    const socketUrl = getSocketUrl();
 
-    socketRef.current = io(baseUrl, {
-      path: '/socket.io',
-      transports: ['polling', 'websocket'],
+    socketRef.current = io(socketUrl, {
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,

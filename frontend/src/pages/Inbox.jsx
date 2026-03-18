@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import io from 'socket.io-client';
+import { getSocketUrl } from '../utils/socketUtils';
 import api from '../api/client';
 import ConversationList from '../components/chat/ConversationList';
 import ChatWindow from '../components/chat/ChatWindow';
@@ -25,12 +26,15 @@ export default function Inbox() {
   // Setup socket connection
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.tenantId) return;
+    if (!user.tenantId) {
+      console.warn('[Inbox] No tenantId found — skipping socket setup');
+      return;
+    }
 
-    const socketUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace('/api', '');
+    const socketUrl = getSocketUrl();
+    console.log('[Inbox] Connecting socket to:', socketUrl);
     const newSocket = io(socketUrl, {
-      path: '/socket.io',
-      transports: ['polling', 'websocket'], // Start with polling, then upgrade — avoids QUIC/HTTP3 issues
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
@@ -39,15 +43,15 @@ export default function Inbox() {
 
     newSocket.on('connect', () => {
       newSocket.emit('join_tenant', user.tenantId);
-      console.log('[Inbox] Socket connected, joined tenant room:', user.tenantId);
+      console.log(`[Inbox] ✅ Socket connected (${newSocket.id}), joined tenant_${user.tenantId}`);
     });
 
     newSocket.on('connect_error', (err) => {
-      console.error('[Inbox] Socket connection error:', err.message);
+      console.error('[Inbox] ❌ Socket connection error:', err.message);
     });
 
     newSocket.on('disconnect', (reason) => {
-      console.warn('[Inbox] Socket disconnected:', reason);
+      console.warn('[Inbox] ⚠️ Socket disconnected:', reason);
     });
 
     setSocket(newSocket);

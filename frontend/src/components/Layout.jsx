@@ -17,6 +17,7 @@ import {
 import { SparklesIcon } from '@heroicons/react/24/solid';
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
+import { getSocketUrl } from '../utils/socketUtils';
 import GlobalProgressBar from './GlobalProgressBar';
 
 export default function Layout({ children }) {
@@ -29,11 +30,9 @@ export default function Layout({ children }) {
 
   useEffect(() => {
     if (user && user.tenantId) {
-      const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const baseUrl = socketUrl.replace('/api', '');
-      const newSocket = io(baseUrl, {
-        path: '/socket.io',
-        transports: ['polling', 'websocket'],
+      const socketUrl = getSocketUrl();
+      const newSocket = io(socketUrl, {
+        transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 2000,

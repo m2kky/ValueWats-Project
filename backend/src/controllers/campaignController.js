@@ -572,7 +572,10 @@ const resumeCampaign = async (req, res) => {
         messageRecordId: msg.id,
         tenantId,
         mediaUrl: msg.mediaUrl || campaign.mediaUrl,
-        mediaType: msg.mediaType || campaign.mediaType
+        mediaType: msg.mediaType || campaign.mediaType,
+        channelType: msg.instance.channelType || 'whatsapp',
+        accessToken: msg.instance.accessToken || null,
+        phoneNumberId: msg.instance.phoneNumberId || null
       }, {
         delay: i === 0 ? 0 : cumulativeDelay,
         attempts: 3,

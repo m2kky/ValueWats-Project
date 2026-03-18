@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const evolutionApi = require('./evolutionApi');
+const metaApi = require('./metaApi');
 
 class ChatService {
   /**
@@ -344,15 +345,26 @@ class ChatService {
     const channelType = instance.channelType || 'whatsapp';
 
     if (channelType === 'whatsapp') {
-      // Send via Evolution API
-      result = await evolutionApi.sendMessage(
-        tenantId,
-        instance.instanceName,
-        conversation.contactNumber,
-        content,
-        mediaUrl,
-        messageType
-      );
+      if (instance.accessToken) {
+        // WhatsApp via Meta Cloud API
+        result = await metaApi.sendMessage(
+          instance,
+          conversation.contactNumber,
+          content,
+          mediaUrl,
+          messageType
+        );
+      } else {
+        // WhatsApp via Evolution API
+        result = await evolutionApi.sendMessage(
+          tenantId,
+          instance.instanceName,
+          conversation.contactNumber,
+          content,
+          mediaUrl,
+          messageType
+        );
+      }
     } else {
       // Send via Meta API (Messenger/Instagram)
       result = await metaApi.sendMetaMessage(

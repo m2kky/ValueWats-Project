@@ -68,7 +68,13 @@ const emitCampaignProgress = (campaignId, tenantId, data) => {
 // Helper to emit chat message events
 const emitChatMessage = (tenantId, eventName, data) => {
   if (io) {
-    io.to(`tenant_${tenantId}`).emit(eventName, data);
+    const room = `tenant_${tenantId}`;
+    const clients = io.sockets.adapter.rooms.get(room);
+    const count = clients ? clients.size : 0;
+    console.log(`[Socket] Emitting ${eventName} to ${room} (${count} clients)`);
+    io.to(room).emit(eventName, data);
+  } else {
+    console.warn(`[Socket] Cannot emit ${eventName} — io not initialized`);
   }
 };
 

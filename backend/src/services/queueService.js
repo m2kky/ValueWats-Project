@@ -1,6 +1,7 @@
 const Queue = require('bull');
 const { redisConfig } = require('../config/redis');
 const evolutionApi = require('./evolutionApi');
+const metaApi = require('./metaApi');
 const prisma = require('../config/database');
 
 
@@ -27,24 +28,33 @@ const messageQueue = new Queue('campaign-messages', {
 
 // Process jobs
 messageQueue.process(async (job) => {
-  const { instanceName, number, message, campaignId, messageRecordId, tenantId, mediaUrl, mediaType } = job.data;
+  const { instanceName, number, message, campaignId, messageRecordId, tenantId, mediaUrl, mediaType, channelType, accessToken, phoneNumberId } = job.data;
 
   try {
-    console.log(`Processing message for ${number} via ${instanceName} (Media: ${mediaUrl ? 'Yes' : 'No'})`);
+    // Route by channel type — Meta Cloud API for messenger/instagram, Evolution API for whatsapp
+    const isMetaChannel = channelType && channelType !== 'whatsapp';
+    console.log(`Processing message for ${number} via ${instanceName} (Channel: ${channelType || 'whatsapp'}, Media: ${mediaUrl ? 'Yes' : 'No'})`);
 
-    // Send typing presence first to mimic human behavior (add random 2s to 4s delay internally)
-    const typingDelay = Math.floor(Math.random() * (4000 - 2000 + 1)) + 2000;
-    await evolutionApi.sendPresence(instanceName, number, typingDelay);
+    let result;
+    if (isMetaChannel) {
+      // Meta Cloud API (Messenger / Instagram)
+      const metaInstance = { phoneNumberId, accessToken, channelType };
+      if (mediaUrl && mediaType) {
+        result = await metaApi.sendMedia(metaInstance, number, mediaUrl, mediaType, message);
+      } else {
+        result = await metaApi.sendMessage(metaInstance, number, message);
+      }
+    } else {
+      // Evolution API (WhatsApp) — with typing presence simulation
+      const typingDelay = Math.floor(Math.random() * (4000 - 2000 + 1)) + 2000;
+      await evolutionApi.sendPresence(instanceName, number, typingDelay);
+      await new Promise(resolve => setTimeout(resolve, typingDelay));
+      result = await evolutionApi.sendMessage(tenantId, instanceName, number, message, mediaUrl, mediaType);
+    }
 
-    // Wait for the simulated typing duration before dispatching the real message
-    await new Promise(resolve => setTimeout(resolve, typingDelay));
-
-    // Now send the actual message
-    const result = await evolutionApi.sendMessage(tenantId, instanceName, number, message, mediaUrl, mediaType);
-
-    // Extract wamid (message ID) from Evolution API response
-    // V2 structure: result.key.id
-    const wamid = result.key?.id || result.id;
+    // Extract message ID from response
+    // Evolution: result.key.id  |  Meta: result.messages[0].id
+    const wamid = result.key?.id || result.messages?.[0]?.id || result.id;
 
     // Update message status in database
     await prisma.message.update({
@@ -61,18 +71,20 @@ messageQueue.process(async (job) => {
     console.error(`Failed to send message to ${number}:`, error.message);
 
     // Translate technical errors to human-readable reasons
-    const rawError = error.response?.data?.message || error.response?.data?.error || error.message || '';
+    const rawError = error.response?.data?.message || error.response?.data?.error?.message || error.response?.data?.error || error.message || '';
     let failReason = 'Unknown error';
     if (/not connected|disconnected|closed|logout/i.test(rawError)) {
-      failReason = 'Instance disconnected — WhatsApp number is not connected';
+      failReason = 'Instance disconnected — channel is not connected';
     } else if (/invalid number|not registered|does not exist/i.test(rawError)) {
-      failReason = 'Invalid number — not registered on WhatsApp';
-    } else if (/rate limit|too many|flood/i.test(rawError)) {
+      failReason = 'Invalid recipient — not registered on this channel';
+    } else if (/rate limit|too many|flood|throttl/i.test(rawError)) {
       failReason = 'Rate limit — too many messages sent too quickly';
     } else if (/blocked|banned/i.test(rawError)) {
-      failReason = 'Number blocked or banned by WhatsApp';
+      failReason = 'Recipient blocked or banned';
     } else if (/timeout|ECONNREFUSED|ENOTFOUND/i.test(rawError)) {
-      failReason = 'Connection timeout — Evolution API unreachable';
+      failReason = `Connection timeout — ${channelType === 'whatsapp' ? 'Evolution API' : 'Meta API'} unreachable`;
+    } else if (/OAuthException|invalid.*token|expired/i.test(rawError)) {
+      failReason = 'Meta API auth error — access token invalid or expired';
     } else if (rawError) {
       failReason = rawError;
     }
@@ -279,7 +291,10 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
       messageRecordId: messageRecord.id,
       tenantId,
       mediaUrl,
-      mediaType
+      mediaType,
+      channelType: currentInstance.channelType || 'whatsapp',
+      accessToken: currentInstance.accessToken || null,
+      phoneNumberId: currentInstance.phoneNumberId || null
     }, {
       delay: i === 0 ? 0 : cumulativeDelay, // First message immediate
       attempts: 3,
