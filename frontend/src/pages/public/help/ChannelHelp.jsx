@@ -79,13 +79,29 @@ const channelData = {
             title: 'Step-by-Step Video Tutorial',
             content: (
                 <>
-                    <p>Coming soon! We are currently producing a series of high-quality video tutorials to help you master WhatsApp automation.</p>
-                    <div className="aspect-video bg-[#111113] border border-white/5 rounded-3xl flex items-center justify-center group cursor-pointer hover:border-indigo-500/30 transition-all overflow-hidden relative">
-                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent"></div>
-                         <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-500 relative z-10">
-                            <RocketLaunchIcon className="w-8 h-8 text-zinc-600 group-hover:text-indigo-400 transition-colors" />
-                         </div>
-                         <span className="absolute bottom-8 text-zinc-500 font-bold text-xs uppercase tracking-[0.2em]">Video coming soon</span>
+                    <p>Use this exact recording flow for your WhatsApp connection tutorial. It is based on the official WhatsApp Linked Devices flow and matches the Value chat QR setup.</p>
+
+                    <h3>Recommended Video Script (5 Chapters)</h3>
+                    <ol className="list-decimal pl-5 space-y-4">
+                        <li><strong>Open Value chat:</strong> Go to <Link to="/channels" className="text-blue-400">Channels</Link>, choose <strong>WhatsApp</strong>, and click <strong>Connect</strong>.</li>
+                        <li><strong>Create the channel:</strong> Enter a channel name and click <strong>Generate QR Code</strong>.</li>
+                        <li><strong>Show the official WhatsApp flow:</strong> On your phone open WhatsApp and go to <strong>Settings {'>'} Linked Devices {'>'} Link a Device</strong>.</li>
+                        <li><strong>Scan and confirm:</strong> Scan the QR code from Value chat and wait until the channel status becomes <strong>Active</strong>.</li>
+                        <li><strong>Run a live test:</strong> Send one inbound and one outbound message to verify the connection is fully synced.</li>
+                    </ol>
+
+                    <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-6 my-8">
+                        <h4 className="text-indigo-400 font-bold mb-2">Official References</h4>
+                        <ul className="list-disc pl-5 space-y-2 text-sm text-zinc-300">
+                            <li>
+                                <a href="https://faq.whatsapp.com/1317564962315842" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    WhatsApp Help Center — How to link a device
+                                </a>
+                            </li>
+                        </ul>
+                        <p className="text-xs text-zinc-500 mt-4 mb-0">
+                            Need Meta&apos;s official API flow instead of QR? Use <Link to="/help/channels/whatsapp_cloud" className="text-blue-400">WhatsApp Cloud API</Link>.
+                        </p>
                     </div>
                 </>
             )
@@ -112,15 +128,31 @@ const channelData = {
             title: 'How to connect Facebook Messenger',
             content: (
                 <>
-                    <p>To connect Messenger, you need to have Admin access to a Facebook Business Page.</p>
-                    
-                    <h3>Setup Checklist</h3>
+                    <p>To connect Messenger in Value chat, follow the official Meta Messenger setup flow, then paste the Page Access Token in Value chat.</p>
+
+                    <h3>Step-by-Step Setup (Official Meta Flow)</h3>
                     <ol className="list-decimal pl-5 space-y-4">
-                        <li>Navigate to the <Link to="/channels" className="text-blue-400">Channels</Link> page and select <strong>Messenger</strong>.</li>
-                        <li>Select your <strong>Facebook Page</strong> from the list.</li>
-                        <li>Provide your <strong>Page Access Token</strong> (You can generate this in the Meta Developers Portal).</li>
-                        <li>Verify that your webhook is correctly configured to point to our endpoint.</li>
+                        <li><strong>Create or open your Meta app:</strong> In Meta for Developers, add the <strong>Messenger</strong> product.</li>
+                        <li><strong>Generate user token and permissions:</strong> Request the required Messenger/Page permissions, then get a Page Access Token from <code>/me/accounts</code>.</li>
+                        <li><strong>Configure webhooks in Meta:</strong> Set callback URL to <code>https://valuechat.app/api/webhooks/meta</code> and use your verify token. Subscribe to messaging events (at minimum <code>messages</code> and <code>messaging_postbacks</code>).</li>
+                        <li><strong>Connect in Value chat:</strong> Go to <Link to="/channels" className="text-blue-400">Channels</Link>, choose <strong>Facebook Messenger</strong>, paste the <strong>Page Access Token</strong>, and complete connection.</li>
                     </ol>
+
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 my-8">
+                        <h4 className="text-blue-400 font-bold mb-2">Official References</h4>
+                        <ul className="list-disc pl-5 space-y-2 text-sm text-zinc-300">
+                            <li>
+                                <a href="https://developers.facebook.com/docs/messenger-platform/get-started" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    Messenger Platform — Get Started
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://developers.facebook.com/docs/messenger-platform/webhooks" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    Messenger Platform — Webhooks
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </>
             )
         },
@@ -128,13 +160,37 @@ const channelData = {
             title: 'Step-by-Step Video Tutorial',
             content: (
                 <>
-                    <p>Coming soon! We are currently producing a series of high-quality video tutorials to help you master Facebook Messenger automation.</p>
-                    <div className="aspect-video bg-[#111113] border border-white/5 rounded-3xl flex items-center justify-center group cursor-pointer hover:border-blue-500/30 transition-all overflow-hidden relative">
-                         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent"></div>
-                         <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-500 relative z-10">
-                            <RocketLaunchIcon className="w-8 h-8 text-zinc-600 group-hover:text-blue-400 transition-colors" />
-                         </div>
-                         <span className="absolute bottom-8 text-zinc-500 font-bold text-xs uppercase tracking-[0.2em]">Video coming soon</span>
+                    <p>Use this script to record a full Messenger connection tutorial with no missing steps.</p>
+
+                    <h3>Recommended Video Script (6 Chapters)</h3>
+                    <ol className="list-decimal pl-5 space-y-4">
+                        <li><strong>Prerequisites:</strong> Confirm you have a Facebook Page and admin-level access.</li>
+                        <li><strong>Meta App setup:</strong> Open Meta for Developers, select your app, and add <strong>Messenger</strong>.</li>
+                        <li><strong>Token generation:</strong> Show how to get a User Token, then fetch Page data via <code>/me/accounts</code> and copy the Page Access Token.</li>
+                        <li><strong>Webhook setup:</strong> Configure callback URL <code>https://valuechat.app/api/webhooks/meta</code>, set verify token, then subscribe to required events.</li>
+                        <li><strong>Connect in Value chat:</strong> Open <Link to="/channels" className="text-blue-400">Channels</Link>, select Messenger, paste Page Access Token, and complete setup.</li>
+                        <li><strong>Validation test:</strong> Send a message to the Page and show it arriving in Value chat inbox.</li>
+                    </ol>
+
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 my-8">
+                        <h4 className="text-blue-400 font-bold mb-2">Official References</h4>
+                        <ul className="list-disc pl-5 space-y-2 text-sm text-zinc-300">
+                            <li>
+                                <a href="https://developers.facebook.com/docs/messenger-platform/get-started" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    Messenger Platform — Get Started
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://developers.facebook.com/docs/pages/access-tokens" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    Pages API — Access Tokens
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://developers.facebook.com/docs/messenger-platform/webhooks" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    Messenger Platform — Webhooks
+                                </a>
+                            </li>
+                        </ul>
                     </div>
                 </>
             )
@@ -161,14 +217,32 @@ const channelData = {
             title: 'How to connect Instagram',
             content: (
                 <>
-                    <p>Connecting Instagram requires a <strong>Professional (Business/Creator) account</strong> linked to a Facebook Page.</p>
-                    
-                    <h3>Steps to Link</h3>
-                    <ul className="list-disc pl-5 space-y-2">
-                        <li>Ensure "Allow Access to Messages" is enabled in your Instagram app settings.</li>
-                        <li>Link your IG account to your Facebook Page.</li>
-                        <li>In Value chat, select <strong>Instagram</strong> from the Catalog and provide the Page access credentials.</li>
-                    </ul>
+                    <p>Instagram Messaging in Value chat follows Meta&apos;s official Instagram Messaging setup. Complete these steps once, then connect using your Page Access Token.</p>
+
+                    <h3>Step-by-Step Setup (Official Meta Flow)</h3>
+                    <ol className="list-decimal pl-5 space-y-4">
+                        <li><strong>Prepare accounts:</strong> Use an Instagram <strong>Professional</strong> account and link it to a Facebook Page.</li>
+                        <li><strong>Enable messaging access:</strong> Make sure message access is enabled for the Instagram professional account.</li>
+                        <li><strong>Get required permissions:</strong> Generate token with required permissions (including <code>instagram_manage_messages</code> and Page metadata permissions), then fetch Pages via <code>/me/accounts</code>.</li>
+                        <li><strong>Configure webhooks:</strong> In Meta app dashboard set callback URL <code>https://valuechat.app/api/webhooks/meta</code>, set verify token, and subscribe to Instagram messaging webhook topic(s).</li>
+                        <li><strong>Connect in Value chat:</strong> Go to <Link to="/channels" className="text-blue-400">Channels</Link>, choose <strong>Instagram</strong>, paste Page Access Token, and finish connection.</li>
+                    </ol>
+
+                    <div className="bg-pink-500/10 border border-pink-500/20 rounded-2xl p-6 my-8">
+                        <h4 className="text-pink-400 font-bold mb-2">Official References</h4>
+                        <ul className="list-disc pl-5 space-y-2 text-sm text-zinc-300">
+                            <li>
+                                <a href="https://developers.facebook.com/docs/instagram-messaging/get-started" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    Instagram Messaging — Getting Started
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://developers.facebook.com/docs/messenger-platform/instagram/features/webhook" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    Instagram Messaging — Webhooks
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </>
             )
         },
@@ -176,13 +250,37 @@ const channelData = {
             title: 'Step-by-Step Video Tutorial',
             content: (
                 <>
-                    <p>Coming soon! We are currently producing a series of high-quality video tutorials to help you master Instagram automation.</p>
-                    <div className="aspect-video bg-[#111113] border border-white/5 rounded-3xl flex items-center justify-center group cursor-pointer hover:border-pink-500/30 transition-all overflow-hidden relative">
-                         <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 to-transparent"></div>
-                         <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-500 relative z-10">
-                            <RocketLaunchIcon className="w-8 h-8 text-zinc-600 group-hover:text-pink-400 transition-colors" />
-                         </div>
-                         <span className="absolute bottom-8 text-zinc-500 font-bold text-xs uppercase tracking-[0.2em]">Video coming soon</span>
+                    <p>Use this recording plan for a complete Instagram connection tutorial from zero to live test.</p>
+
+                    <h3>Recommended Video Script (6 Chapters)</h3>
+                    <ol className="list-decimal pl-5 space-y-4">
+                        <li><strong>Account requirements:</strong> Show that Instagram account is Professional and linked to a Facebook Page.</li>
+                        <li><strong>Meta app preparation:</strong> Open Meta app and explain required Instagram Messaging permissions.</li>
+                        <li><strong>Token flow:</strong> Generate token, call <code>/me/accounts</code>, and identify Page + access token.</li>
+                        <li><strong>Webhook setup:</strong> Use callback URL <code>https://valuechat.app/api/webhooks/meta</code> with verify token and subscribe Instagram messaging events.</li>
+                        <li><strong>Connect in Value chat:</strong> Open <Link to="/channels" className="text-blue-400">Channels</Link>, select Instagram, paste Page Access Token, and complete setup.</li>
+                        <li><strong>Final verification:</strong> Send a DM to the connected Instagram account and confirm it appears in Value chat.</li>
+                    </ol>
+
+                    <div className="bg-pink-500/10 border border-pink-500/20 rounded-2xl p-6 my-8">
+                        <h4 className="text-pink-400 font-bold mb-2">Official References</h4>
+                        <ul className="list-disc pl-5 space-y-2 text-sm text-zinc-300">
+                            <li>
+                                <a href="https://developers.facebook.com/docs/instagram-messaging/get-started" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    Instagram Messaging — Getting Started
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://developers.facebook.com/docs/messenger-platform/instagram/features" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    Instagram Messaging — Features & API
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://developers.facebook.com/docs/messenger-platform/instagram/features/webhook" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    Instagram Messaging — Webhooks
+                                </a>
+                            </li>
+                        </ul>
                     </div>
                 </>
             )

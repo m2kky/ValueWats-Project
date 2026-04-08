@@ -181,7 +181,7 @@ export default function ConnectChannel() {
 
         <div className="space-y-8 mt-auto">
           {/* Tutorial Link */}
-          <Link to={`/help/videos/${type}`} className="group block cursor-pointer">
+          <Link to={`/help/channels/${type}/video`} className="group block cursor-pointer">
             <div className="flex items-center gap-3 text-[#6366f1] mb-2">
                <VideoCameraIcon className="w-4 h-4" />
                <span className="text-xs font-black uppercase tracking-widest hover:underline">Step-by-step Video Tutorial</span>
