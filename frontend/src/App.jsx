@@ -1,15 +1,14 @@
-import React, { Suspense, useEffect } from 'react';
+﻿import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import ValueWatsLoader from './components/ValueWatsLoader';
 import Layout from './components/Layout';
-import PublicLayout from './components/public/PublicLayout';
 
-// Auth (keep eager — first screens the user sees)
+// Auth (keep eager â€” first screens the user sees)
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Onboarding from './pages/Onboarding';
 
-// ── Lazy-loaded Private Pages ──────────────────────────────
+// â”€â”€ Lazy-loaded Private Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Campaigns = React.lazy(() => import('./pages/Campaigns'));
 const NewCampaign = React.lazy(() => import('./pages/NewCampaign'));
@@ -28,7 +27,7 @@ const Team = React.lazy(() => import('./pages/Team'));
 const Integrations = React.lazy(() => import('./pages/Integrations'));
 const SettingsLayout = React.lazy(() => import('./components/SettingsLayout'));
 
-// ── Lazy-loaded Admin Pages ──────────────────────────────
+// â”€â”€ Lazy-loaded Admin Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const AdminRoute = React.lazy(() => import('./components/admin/AdminRoute'));
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminTenants = React.lazy(() => import('./pages/admin/AdminTenants'));
@@ -44,7 +43,7 @@ const AIKnowledgeSettings = React.lazy(() => import('./pages/settings/AIKnowledg
 const LifecycleRules = React.lazy(() => import('./pages/settings/LifecycleRules'));
 const OptoutSettings = React.lazy(() => import('./pages/Settings'));
 
-// ── Lazy-loaded Public Pages ───────────────────────────────
+// â”€â”€ Lazy-loaded Public Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const Landing = React.lazy(() => import('./pages/public/Landing'));
 const About = React.lazy(() => import('./pages/public/About'));
 const Roadmap = React.lazy(() => import('./pages/public/Roadmap'));
@@ -53,6 +52,9 @@ const Pricing = React.lazy(() => import('./pages/public/Pricing'));
 const WhyUs = React.lazy(() => import('./pages/public/WhyUs'));
 const Learn = React.lazy(() => import('./pages/public/resources/Learn'));
 const Tools = React.lazy(() => import('./pages/public/resources/Tools'));
+const WaMeLinkGenerator = React.lazy(() => import('./pages/public/resources/tools/WaMeLinkGenerator'));
+const RoiCalculator = React.lazy(() => import('./pages/public/resources/tools/RoiCalculator'));
+const TemplateTester = React.lazy(() => import('./pages/public/resources/tools/TemplateTester'));
 
 // Help Center Pages
 const HelpCenter = React.lazy(() => import('./pages/public/help/HelpCenter'));
@@ -70,7 +72,7 @@ const Security = React.lazy(() => import('./pages/public/legal/Security'));
 const Subprocessors = React.lazy(() => import('./pages/public/legal/Subprocessors'));
 const DPA = React.lazy(() => import('./pages/public/legal/DPA'));
 
-// ── Full-screen loader shown during transitions ────────────
+// â”€â”€ Full-screen loader shown during transitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function PageLoader() {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#09090b]/90 backdrop-blur-md">
@@ -125,34 +127,37 @@ function App() {
       <ScrollManager />
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Public Routes with PublicLayout */}
-          <Route path="/" element={<PublicLayout><Landing /></PublicLayout>} />
-          <Route path="/about" element={<PublicLayout><About /></PublicLayout>} />
-          <Route path="/roadmap" element={<PublicLayout><Roadmap /></PublicLayout>} />
-          <Route path="/contact" element={<PublicLayout><Contact /></PublicLayout>} />
-          <Route path="/pricing" element={<PublicLayout><Pricing /></PublicLayout>} />
-          <Route path="/why-us" element={<PublicLayout><WhyUs /></PublicLayout>} />
+          {/* Public Routes */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/roadmap" element={<Roadmap />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/why-us" element={<WhyUs />} />
 
           {/* Help Center Routes */}
-          <Route path="/help" element={<PublicLayout><HelpCenter /></PublicLayout>} />
-          <Route path="/help/product" element={<PublicLayout><ProductHelp /></PublicLayout>} />
-          <Route path="/help/channels/:channel/:topic" element={<PublicLayout><ChannelHelp /></PublicLayout>} />
-          <Route path="/help/channels/:channel" element={<PublicLayout><ChannelHelp /></PublicLayout>} />
-          <Route path="/help/channels" element={<PublicLayout><ChannelsList /></PublicLayout>} />
-          <Route path="/help/:feature/:topic" element={<PublicLayout><FeatureHelp /></PublicLayout>} />
-          <Route path="/help/:feature" element={<PublicLayout><FeatureHelp /></PublicLayout>} />
-          <Route path="/help/settings" element={<PublicLayout><SettingsHelp /></PublicLayout>} />
+          <Route path="/help" element={<HelpCenter />} />
+          <Route path="/help/product" element={<ProductHelp />} />
+          <Route path="/help/channels/:channel/:topic" element={<ChannelHelp />} />
+          <Route path="/help/channels/:channel" element={<ChannelHelp />} />
+          <Route path="/help/channels" element={<ChannelsList />} />
+          <Route path="/help/:feature/:topic" element={<FeatureHelp />} />
+          <Route path="/help/:feature" element={<FeatureHelp />} />
+          <Route path="/help/settings" element={<SettingsHelp />} />
           
           <Route path="/resources/support" element={<Navigate to="/help" replace />} />
-          <Route path="/resources/learn" element={<PublicLayout><Learn /></PublicLayout>} />
-          <Route path="/resources/tools" element={<PublicLayout><Tools /></PublicLayout>} />
+          <Route path="/resources/learn" element={<Learn />} />
+          <Route path="/resources/tools" element={<Tools />} />
+          <Route path="/resources/tools/wa-me-link-generator" element={<WaMeLinkGenerator />} />
+          <Route path="/resources/tools/roi-calculator" element={<RoiCalculator />} />
+          <Route path="/resources/tools/template-tester" element={<TemplateTester />} />
 
-          <Route path="/privacy" element={<PublicLayout><PrivacyPolicy /></PublicLayout>} />
-          <Route path="/terms" element={<PublicLayout><TermsOfService /></PublicLayout>} />
-          <Route path="/cookie-policy" element={<PublicLayout><CookiePolicy /></PublicLayout>} />
-          <Route path="/security" element={<PublicLayout><Security /></PublicLayout>} />
-          <Route path="/subprocessors" element={<PublicLayout><Subprocessors /></PublicLayout>} />
-          <Route path="/dpa" element={<PublicLayout><DPA /></PublicLayout>} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/security" element={<Security />} />
+          <Route path="/subprocessors" element={<Subprocessors />} />
+          <Route path="/dpa" element={<DPA />} />
           <Route path="/api-docs" element={<Navigate to="/resources/tools" replace />} />
           <Route path="/success-stories" element={<Navigate to="/resources/learn" replace />} />
 
@@ -314,3 +319,4 @@ function App() {
 }
 
 export default App;
+
