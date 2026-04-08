@@ -42,7 +42,7 @@ export default function HelpCenterLayout({ children, title, lastUpdated }) {
 
                         <div className="mt-8 pt-6 border-t border-white/5">
                             <p className="text-xs text-zinc-500">
-                                Still need help? Contact our support team at <a href="mailto:support@valuewats.com" className="text-blue-400 hover:text-blue-300">support@valuewats.com</a>
+                                Still need help? Contact our support team at <a href="mailto:support@valuechat.app" className="text-blue-400 hover:text-blue-300">support@valuechat.app</a>
                             </p>
                         </div>
                     </div>

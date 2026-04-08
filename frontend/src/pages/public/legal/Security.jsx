@@ -25,7 +25,7 @@ export default function Security() {
 
             <h3>Vulnerability Reporting</h3>
             <p>
-                If you believe you have found a security vulnerability in our platform, please report it to us immediately at <a href="mailto:security@valuewats.com">security@valuewats.com</a> so we can evaluate and remediate it.
+                If you believe you have found a security vulnerability in our platform, please report it to us immediately at <a href="mailto:security@valuechat.app">security@valuechat.app</a> so we can evaluate and remediate it.
             </p>
         </LegalLayout>
     );

@@ -196,7 +196,7 @@ export default function Onboarding() {
                                         type="url"
                                         value={website}
                                         onChange={(e) => setWebsite(e.target.value)}
-                                        placeholder="E.g. www.valuewats.com"
+                                        placeholder="E.g. www.valuechat.app"
                                         className="w-full px-4 py-3 bg-[#2a2a1f] border border-white/10 rounded-xl focus:outline-none focus:border-[#e2f300] focus:ring-1 focus:ring-[#e2f300] text-white placeholder-zinc-500 transition-colors"
                                     />
                                 </div>

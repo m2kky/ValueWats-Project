@@ -40,7 +40,7 @@ export default function LegalLayout({ children, title, lastUpdated }) {
 
                         <div className="mt-8 pt-6 border-t border-white/5">
                             <p className="text-xs text-zinc-500">
-                                Have questions about our policies? Contact our legal team at <a href="mailto:legal@valuewats.com" className="text-indigo-400 hover:text-indigo-300">legal@valuewats.com</a>
+                                Have questions about our policies? Contact our legal team at <a href="mailto:legal@valuechat.app" className="text-indigo-400 hover:text-indigo-300">legal@valuechat.app</a>
                             </p>
                         </div>
                     </div>

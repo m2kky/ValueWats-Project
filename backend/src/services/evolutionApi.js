@@ -79,7 +79,7 @@ class EvolutionAPI {
       // ✨ Auto-configure webhook
       // Use Docker internal networking (both containers share the 'coolify' network)
       // Container name may change on redeploy — override with WEBHOOK_INTERNAL_URL env var if needed
-      const defaultWebhookBase = process.env.BACKEND_URL || 'https://app.muhammedmekky.com';
+      const defaultWebhookBase = process.env.BACKEND_URL || 'https://valuechat.app';
       const webhookUrl = `${process.env.WEBHOOK_INTERNAL_URL || defaultWebhookBase}/api/webhooks/receive`;
 
       console.log('Setting webhook for instance:', sanitizedInstanceName, 'URL:', webhookUrl);

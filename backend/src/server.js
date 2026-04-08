@@ -39,10 +39,6 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // CORS configuration
 app.use(cors({
   origin: [
-    'https://app.muhammedmekky.com',
-    'http://app.muhammedmekky.com',
-    'https://apptest.muhammedmekky.com',
-    'http://apptest.muhammedmekky.com',
     'https://valuechat.app',
     'http://valuechat.app',
     'https://www.valuechat.app',

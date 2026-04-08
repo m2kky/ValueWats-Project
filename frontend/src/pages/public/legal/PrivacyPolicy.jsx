@@ -32,7 +32,7 @@ export default function PrivacyPolicy() {
 
             <h3>4. Your Rights</h3>
             <p>
-                Depending on your jurisdiction (e.g., GDPR, CCPA), you have the right to access, correct, delete, or export your personal data. Contact us at <a href="mailto:privacy@valuewats.com">privacy@valuewats.com</a> to exercise these rights.
+                Depending on your jurisdiction (e.g., GDPR, CCPA), you have the right to access, correct, delete, or export your personal data. Contact us at <a href="mailto:privacy@valuechat.app">privacy@valuechat.app</a> to exercise these rights.
             </p>
         </LegalLayout>
     );

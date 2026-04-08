@@ -204,7 +204,7 @@ export default function HelpCenter() {
                                 Chat Support
                             </a>
                             <a 
-                                href="mailto:support@valuewats.com"
+                                href="mailto:support@valuechat.app"
                                 className="px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all border border-white/10"
                             >
                                 Open Ticket

@@ -23,7 +23,7 @@ export default function Subprocessors() {
             </ul>
 
             <p>
-                If you have specific questions about where and how your data is processed, please contact <a href="mailto:privacy@valuewats.com">privacy@valuewats.com</a>.
+                If you have specific questions about where and how your data is processed, please contact <a href="mailto:privacy@valuechat.app">privacy@valuechat.app</a>.
             </p>
         </LegalLayout>
     );

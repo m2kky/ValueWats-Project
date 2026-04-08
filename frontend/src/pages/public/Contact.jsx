@@ -34,7 +34,7 @@ export default function Contact() {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-white mb-1">Email Us</h3>
-                                    <a href="mailto:support@valuewats.com" className="text-zinc-400 hover:text-indigo-400 transition-colors">support@valuewats.com</a>
+                                    <a href="mailto:support@valuechat.app" className="text-zinc-400 hover:text-indigo-400 transition-colors">support@valuechat.app</a>
                                 </div>
                             </div>
 
