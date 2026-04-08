@@ -260,7 +260,7 @@ export default function AdminLogs() {
                       </div>
                       <p className="text-sm text-zinc-300 mt-1 whitespace-pre-wrap">{notification.message}</p>
                       <p className="text-[11px] text-zinc-500 mt-2">
-                        Created: {new Date(notification.createdAt).toLocaleString()} {notification.expiresAt ? `• Expires: ${new Date(notification.expiresAt).toLocaleString()}` : ''}
+                        Created: {new Date(notification.createdAt).toLocaleString()} {notification.expiresAt ? `- Expires: ${new Date(notification.expiresAt).toLocaleString()}` : ''}
                       </p>
                     </div>
                   </div>
