@@ -1,4 +1,4 @@
-# ValueWats — Exhaustive Codebase Documentation
+# Value chat — Exhaustive Codebase Documentation
 
 > Enterprise WhatsApp Marketing, AI Agents & Automation Platform
 
@@ -1083,7 +1083,7 @@ frontend/src/
         ├── Landing.jsx             # Marketing landing page
         ├── Pricing.jsx             # Pricing page
         ├── Roadmap.jsx             # Public roadmap
-        ├── WhyUs.jsx               # Why ValueWats page
+        ├── WhyUs.jsx               # Why Value chat page
         └── help/
             ├── ChannelHelp.jsx     # Channel setup guides
             ├── ChannelsList.jsx    # Channel comparison

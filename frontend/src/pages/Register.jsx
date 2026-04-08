@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import api from '../api/client';
@@ -6,7 +6,7 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 const PasswordRule = ({ met, text }) => (
   <div className="flex items-center gap-2 text-xs">
-    <div className={`flex items-center justify-center w-4 h-4 rounded-full ${met ? 'bg-[#00D084]' : 'bg-[#2A2A2A]'} text-[#0f0f12] transition-colors duration-300`}>
+    <div className={`flex items-center justify-center w-4 h-4 rounded-full ${met ? 'bg-[#00D084]' : 'bg-[#2A2A2A]'} text-[#232318] transition-colors duration-300`}>
       <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
       </svg>
@@ -146,11 +146,11 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f12] flex flex-col font-sans text-white relative selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-[#232318] flex flex-col font-sans text-white relative selection:bg-[#e2f300]/30 selection:text-[#232318]">
       {/* Top Logo */}
       <div className="absolute top-6 left-6 flex items-center gap-2.5">
-        <img src="/valuewats-app-icon.png" alt="ValueWats" className="w-9 h-9 rounded-lg shadow-[0_0_15px_rgba(168,85,247,0.4)]" />
-        <span className="text-xl font-bold tracking-tight text-white">ValueWats</span>
+        <img src="/main-logo.svg" alt="Value chat" className="w-9 h-9 rounded-lg shadow-[0_0_15px_rgba(226,243,0,0.35)]" />
+        <span className="text-xl font-bold tracking-tight text-white">Value chat</span>
       </div>
 
       {/* Language / Theme toggle mock */}
@@ -159,7 +159,7 @@ export default function Register() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
         </button>
         <button className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors border border-white/10 rounded-md px-3 py-1.5 bg-white/5">
-          <span>🇬🇧</span>
+          <span>EN</span>
           <span>Language</span>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
         </button>
@@ -196,7 +196,7 @@ export default function Register() {
                   <div className="w-full border-t border-white/5"></div>
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className="bg-[#0f0f12] px-3 text-zinc-600">Or</span>
+                  <span className="bg-[#232318] px-3 text-zinc-600">Or</span>
                 </div>
               </div>
 
@@ -213,7 +213,7 @@ export default function Register() {
                     required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#1a1a1f] border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-white placeholder-zinc-500 transition-colors"
+                    className="w-full px-4 py-3 bg-[#2a2a1f] border border-white/10 rounded-xl focus:outline-none focus:border-[#e2f300] focus:ring-1 focus:ring-[#e2f300] text-white placeholder-zinc-500 transition-colors"
                     placeholder="First name"
                   />
                   <input
@@ -221,7 +221,7 @@ export default function Register() {
                     required
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#1a1a1f] border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-white placeholder-zinc-500 transition-colors"
+                    className="w-full px-4 py-3 bg-[#2a2a1f] border border-white/10 rounded-xl focus:outline-none focus:border-[#e2f300] focus:ring-1 focus:ring-[#e2f300] text-white placeholder-zinc-500 transition-colors"
                     placeholder="Last name"
                   />
                 </div>
@@ -232,7 +232,7 @@ export default function Register() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#1a1a1f] border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-white placeholder-zinc-500 transition-colors"
+                    className="w-full px-4 py-3 bg-[#2a2a1f] border border-white/10 rounded-xl focus:outline-none focus:border-[#e2f300] focus:ring-1 focus:ring-[#e2f300] text-white placeholder-zinc-500 transition-colors"
                     placeholder="Email"
                   />
                 </div>
@@ -243,7 +243,7 @@ export default function Register() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`w-full px-4 py-3 bg-[#1a1a1f] border ${password && !isPasswordValid ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500' : 'border-white/10 focus:border-indigo-500 focus:ring-indigo-500'} rounded-xl focus:outline-none focus:ring-1 text-white placeholder-zinc-500 transition-colors pr-12`}
+                    className={`w-full px-4 py-3 bg-[#2a2a1f] border ${password && !isPasswordValid ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500' : 'border-white/10 focus:border-[#e2f300] focus:ring-[#e2f300]'} rounded-xl focus:outline-none focus:ring-1 text-white placeholder-zinc-500 transition-colors pr-12`}
                     placeholder="Password"
                   />
                   <button
@@ -269,16 +269,16 @@ export default function Register() {
                 </div>
 
                 <p className="text-xs text-zinc-500 my-4 text-center">
-                  By clicking on <strong className="text-zinc-300 font-medium">Get Started</strong>, you agree to the <a href="#" className="text-indigo-400 hover:text-indigo-300 transition-colors">terms of service</a> and <a href="#" className="text-indigo-400 hover:text-indigo-300 transition-colors">privacy policy</a>.
+                  By clicking on <strong className="text-zinc-300 font-medium">Get Started</strong>, you agree to the <a href="#" className="text-[#e2f300] hover:text-[#f2ff4f] transition-colors">terms of service</a> and <a href="#" className="text-[#e2f300] hover:text-[#f2ff4f] transition-colors">privacy policy</a>.
                 </p>
 
                 <button
                   type="submit"
                   disabled={loading || !email || !password || !firstName || !lastName || !isPasswordValid}
-                  className="w-full flex justify-center py-3.5 px-4 rounded-xl text-sm font-semibold text-[#0f0f12] bg-[#7d8cf0] hover:bg-[#6b7be0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0f0f12] focus:ring-[#7d8cf0] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(125,140,240,0.2)] hover:shadow-[0_0_25px_rgba(125,140,240,0.3)]"
+                  className="w-full flex justify-center py-3.5 px-4 rounded-xl text-sm font-semibold text-[#232318] bg-[#e2f300] hover:bg-[#d0df00] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#232318] focus:ring-[#e2f300] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(226,243,0,0.2)] hover:shadow-[0_0_25px_rgba(226,243,0,0.32)]"
                 >
                   {loading ? (
-                    <svg className="animate-spin h-5 w-5 text-[#0f0f12]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-5 w-5 text-[#232318]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -290,7 +290,7 @@ export default function Register() {
 
               <p className="mt-8 text-center text-sm text-zinc-400">
                 Already have an account?{' '}
-                <Link to="/login" className="text-indigo-400 hover:text-indigo-300 transition-colors">
+                <Link to="/login" className="text-[#e2f300] hover:text-[#f2ff4f] transition-colors">
                   Sign in
                 </Link>
               </p>
@@ -310,7 +310,7 @@ export default function Register() {
                   maxLength={6}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="w-full px-4 py-4 text-center text-3xl tracking-[0.5em] font-mono bg-[#1a1a1f] border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-white placeholder-zinc-700 transition-colors"
+                  className="w-full px-4 py-4 text-center text-3xl tracking-[0.5em] font-mono bg-[#2a2a1f] border border-white/10 rounded-xl focus:outline-none focus:border-[#e2f300] focus:ring-1 focus:ring-[#e2f300] text-white placeholder-zinc-700 transition-colors"
                   placeholder="------"
                 />
               </div>
@@ -318,7 +318,7 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading || otp.length !== 6}
-                className="w-full flex justify-center py-3.5 px-4 rounded-xl text-sm font-semibold text-[#0f0f12] bg-[#7d8cf0] hover:bg-[#6b7be0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0f0f12] focus:ring-[#7d8cf0] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(125,140,240,0.2)] hover:shadow-[0_0_25px_rgba(125,140,240,0.3)]"
+                className="w-full flex justify-center py-3.5 px-4 rounded-xl text-sm font-semibold text-[#232318] bg-[#e2f300] hover:bg-[#d0df00] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#232318] focus:ring-[#e2f300] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(226,243,0,0.2)] hover:shadow-[0_0_25px_rgba(226,243,0,0.32)]"
               >
                 {loading ? 'Verifying...' : 'Verify Email'}
               </button>
@@ -328,7 +328,7 @@ export default function Register() {
                   type="button"
                   onClick={handleResendOtp}
                   disabled={resendCooldown > 0 || loading}
-                  className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-sm font-medium text-[#e2f300] hover:text-[#f2ff4f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
                 </button>
@@ -350,3 +350,4 @@ export default function Register() {
     </div>
   );
 }
+

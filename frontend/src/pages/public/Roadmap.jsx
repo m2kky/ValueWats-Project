@@ -40,7 +40,7 @@ export default function Roadmap() {
                         Product <span className="text-indigo-400">Roadmap</span>
                     </h1>
                     <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-                        See what we're building next to make ValueWats the most powerful conversational platform in the world.
+                        See what we're building next to make Value chat the most powerful conversational platform in the world.
                     </p>
                 </div>
 

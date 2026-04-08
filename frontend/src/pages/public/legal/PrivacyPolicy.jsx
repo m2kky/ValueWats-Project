@@ -4,7 +4,7 @@ export default function PrivacyPolicy() {
     return (
         <LegalLayout title="Privacy Policy" lastUpdated="January 15, 2026">
             <p>
-                At ValueWats, we are committed to protecting your privacy and ensuring the security of your personal data. This Privacy Policy explains how we collect, use, and safeguard your information when you use our platform.
+                At Value chat, we are committed to protecting your privacy and ensuring the security of your personal data. This Privacy Policy explains how we collect, use, and safeguard your information when you use our platform.
             </p>
 
             <h3>1. Information We Collect</h3>
@@ -20,7 +20,7 @@ export default function PrivacyPolicy() {
             <h3>2. How We Use Information</h3>
             <p>Your data is strictly used to:</p>
             <ul>
-                <li>Provide, maintain, and improve the ValueWats platform.</li>
+                <li>Provide, maintain, and improve the Value chat platform.</li>
                 <li>Train and execute your custom AI agents based <strong>only</strong> on your specific knowledge base.</li>
                 <li>Communicate with you regarding account updates and technical support.</li>
             </ul>

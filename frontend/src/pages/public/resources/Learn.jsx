@@ -5,7 +5,7 @@ export default function Learn() {
         <PublicLayout>
             <div className="pt-32 pb-24 min-h-screen bg-black text-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <h1 className="text-4xl font-extrabold mb-4">ValueWats Blog</h1>
+                    <h1 className="text-4xl font-extrabold mb-4">Value chat Blog</h1>
                     <p className="text-xl text-zinc-400 mb-12">Insights, tutorials, and strategies to scale your marketing.</p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const MegaMenuDropdown = ({ title, children, isOpen, onMouseEnter, onMouseLeave }) => {
@@ -76,11 +76,11 @@ function PublicLayout({ children }) {
   const handleMenuLeave = () => setActiveMenu(null);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-zinc-300 font-sans selection:bg-blue-500/30 selection:text-white flex flex-col">
+    <div className="min-h-screen bg-[#232318] text-zinc-300 font-sans selection:bg-[#e2f300]/30 selection:text-[#232318] flex flex-col">
       {/* Dynamic Navbar */}
       <nav
         className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${isScrolled
-          ? 'bg-[#050505]/80 backdrop-blur-xl border-b border-white/5 py-4'
+          ? 'bg-[#232318]/90 backdrop-blur-xl border-b border-white/5 py-4'
           : 'bg-transparent py-6'
           }`}
       >
@@ -92,9 +92,9 @@ function PublicLayout({ children }) {
               {/* Logo */}
               {/* Logo */}
               <Link to="/" className="flex items-center group mr-8">
-                <img src="/valuewats-transparent.png" alt="ValueWats" className="w-8 h-8 mr-2" />
+                <img src="/main-logo.svg" alt="Value chat" className="w-8 h-8 mr-2" />
                 <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400 group-hover:to-white transition-colors">
-                  ValueWats
+                  Value chat
                 </span>
               </Link>
 
@@ -123,7 +123,7 @@ function PublicLayout({ children }) {
                     <div>
                       <h3 className="text-xs font-semibold text-zinc-500 mb-4">Convert Leads</h3>
                       <div className="space-y-1">
-                        <MegaMenuItem onClick={handleMenuLeave} to="/#ai" title="AI Agents" badge="✨" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>} />
+                        <MegaMenuItem onClick={handleMenuLeave} to="/#ai" title="AI Agents" badge="NEW" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>} />
                         <MegaMenuItem onClick={handleMenuLeave} to="/#features" title="Visual Workflows" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>} />
                         <MegaMenuItem onClick={handleMenuLeave} to="/#features" title="Team Inbox" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>} />
                       </div>
@@ -140,7 +140,7 @@ function PublicLayout({ children }) {
 
                     {/* Column 4 */}
                     <div>
-                      <h3 className="text-xs font-semibold text-zinc-500 mb-4">Scale with ValueWats</h3>
+                      <h3 className="text-xs font-semibold text-zinc-500 mb-4">Scale with Value chat</h3>
                       <div className="space-y-1">
                         <MegaMenuItem onClick={handleMenuLeave} to="/api-docs" title="Developer API" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>} />
                         <MegaMenuItem onClick={handleMenuLeave} to="/integrations" title="Integrations" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>} />
@@ -177,7 +177,7 @@ function PublicLayout({ children }) {
                         <h4 className="text-white font-medium text-[15px] mb-2 leading-snug">Scaling Support with Generative AI Agents</h4>
                         <p className="text-zinc-400 text-sm leading-relaxed">Discover how to deflect 40% of queries safely on WhatsApp using our new Agentic AI features.</p>
                       </div>
-                      <Link to="/resources/learn" className="text-blue-500 text-sm font-medium hover:text-blue-400 mt-4 inline-flex items-center group">Read guide <svg className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></Link>
+                      <Link to="/resources/learn" className="text-[#e2f300] text-sm font-medium hover:text-[#f2ff4f] mt-4 inline-flex items-center group">Read guide <svg className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></Link>
                     </div>
                   </div>
                 </MegaMenuDropdown>
@@ -200,7 +200,7 @@ function PublicLayout({ children }) {
               <Link to="/contact" className="px-4 py-2 rounded-md text-[15px] font-medium text-white border border-white/10 hover:bg-white/5 transition-colors">
                 Talk to Sales
               </Link>
-              <Link to="/register" className="px-4 py-2 rounded-md text-[15px] font-medium bg-[#1a73e8] text-white hover:bg-[#155fc0] transition-colors shadow-lg shadow-blue-500/20">
+              <Link to="/register" className="px-4 py-2 rounded-md text-[15px] font-medium bg-[#e2f300] text-[#232318] hover:bg-[#f2ff4f] transition-colors shadow-lg shadow-[rgba(226,243,0,0.25)]">
                 Start Free Trial
               </Link>
             </div>
@@ -282,8 +282,8 @@ function PublicLayout({ children }) {
             {/* Brand Column */}
             <div className="col-span-2 lg:col-span-1 border-r-0 lg:border-r border-zinc-900 pr-0 lg:pr-8">
               <Link to="/" className="flex items-center group mb-6">
-                <img src="/valuewats-transparent.png" alt="ValueWats" className="w-8 h-8 mr-2" />
-                <span className="text-xl font-bold text-white">ValueWats</span>
+                <img src="/main-logo.svg" alt="Value chat" className="w-8 h-8 mr-2" />
+                <span className="text-xl font-bold text-white">Value chat</span>
               </Link>
               <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">
                 The Agentic CRM for WhatsApp. Automate conversations, train AI agents, and manage your inbox at scale.
@@ -321,7 +321,7 @@ function PublicLayout({ children }) {
           </div>
           <div className="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-zinc-500">
-              &copy; {new Date().getFullYear()} ValueWats. All rights reserved.
+              &copy; {new Date().getFullYear()} Value chat. All rights reserved.
             </p>
             <div className="flex gap-4">
               <span className="flex items-center gap-2 text-xs text-zinc-500">
@@ -336,3 +336,4 @@ function PublicLayout({ children }) {
 }
 
 export default PublicLayout;
+

@@ -10,7 +10,7 @@ export default function About() {
                     </h1>
                     <p className="text-xl/relaxed text-zinc-400 max-w-3xl mx-auto">
                         We're building the infrastructure that powers the next generation of conversational commerce.
-                        ValueWats exists to bridge the gap between businesses and their customers on the platform they use every day.
+                        Value chat exists to bridge the gap between businesses and their customers on the platform they use every day.
                     </p>
                 </div>
 
@@ -21,7 +21,7 @@ export default function About() {
                             WhatsApp is the world's most popular messaging app, but using it at an enterprise scale has always been painfully complex. Businesses were duct-taping consumer tools to try and handle massive volumes of conversations.
                         </p>
                         <p className="text-zinc-400 leading-relaxed text-lg">
-                            We saw teams struggling with dropped messages, complex API integrations, and zero automation. That's why we built ValueWats.
+                            We saw teams struggling with dropped messages, complex API integrations, and zero automation. That's why we built Value chat.
                         </p>
                     </div>
                     <div className="bg-[#111113] border border-white/5 p-8 rounded-3xl relative overflow-hidden flex items-center shadow-2xl">
@@ -31,7 +31,7 @@ export default function About() {
                             <p className="text-xl font-medium text-white italic mb-6">
                                 We believe that every business should interact with their customers as smoothly as friends text each other.
                             </p>
-                            <div className="text-sm font-bold text-indigo-400 uppercase tracking-widest">The ValueWats Team</div>
+                            <div className="text-sm font-bold text-indigo-400 uppercase tracking-widest">The Value chat Team</div>
                         </div>
                     </div>
                 </div>

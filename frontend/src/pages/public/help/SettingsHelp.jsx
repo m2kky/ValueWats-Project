@@ -20,7 +20,7 @@ export default function SettingsHelp() {
 
             <h1 className="text-4xl font-black text-white mb-6 tracking-tight">Platform Customization</h1>
             <p className="text-lg text-zinc-400 mb-12 leading-relaxed max-w-3xl">
-                ValueWats is a modular platform. You can customize the schema, labels, and automation rules to fit your specific business industry and workflow.
+                Value chat is a modular platform. You can customize the schema, labels, and automation rules to fit your specific business industry and workflow.
             </p>
 
             <div className="space-y-16">

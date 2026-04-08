@@ -17,9 +17,9 @@ export default function GettingStarted() {
                 <span className="text-zinc-300">Quick Start</span>
             </div>
 
-            <h1 className="text-4xl font-black text-white mb-6 tracking-tight">Welcome to ValueWats</h1>
+            <h1 className="text-4xl font-black text-white mb-6 tracking-tight">Welcome to Value chat</h1>
             <p className="text-lg text-zinc-400 mb-12 leading-relaxed max-w-3xl">
-                ValueWats is your ultimate Agentic CRM for WhatsApp and Omni-channel messaging. Follow these three simple steps to go live with your team in minutes.
+                Value chat is your ultimate Agentic CRM for WhatsApp and Omni-channel messaging. Follow these three simple steps to go live with your team in minutes.
             </p>
 
             <div className="space-y-16">
@@ -30,7 +30,7 @@ export default function GettingStarted() {
                         <div className="flex-1">
                             <h2 className="text-2xl font-bold text-white mb-4">Connect Your First Channel</h2>
                             <p className="text-zinc-400 mb-6">
-                                The heart of ValueWats is your messaging connections. We use high-performance gateways to link your WhatsApp, Messenger, and Instagram accounts.
+                                The heart of Value chat is your messaging connections. We use high-performance gateways to link your WhatsApp, Messenger, and Instagram accounts.
                             </p>
                             <div className="bg-[#111113] border border-white/5 rounded-2xl p-6 mb-6">
                                 <h4 className="text-white font-bold mb-2 flex items-center gap-2">
@@ -38,7 +38,7 @@ export default function GettingStarted() {
                                     WhatsApp Scanning (Evolution API)
                                 </h4>
                                 <p className="text-sm text-zinc-500 m-0 leading-relaxed">
-                                    Unlike complex Cloud APIs, ValueWats allows you to connect any WhatsApp account by simply scanning a QR code. It's safe, instant, and supports full multimedia.
+                                    Unlike complex Cloud APIs, Value chat allows you to connect any WhatsApp account by simply scanning a QR code. It's safe, instant, and supports full multimedia.
                                 </p>
                             </div>
                             <Link to="/help/channels/whatsapp/connect" className="text-blue-400 hover:underline font-bold text-sm inline-flex items-center gap-1">
@@ -55,7 +55,7 @@ export default function GettingStarted() {
                         <div className="flex-1">
                             <h2 className="text-2xl font-bold text-white mb-4">Invite Your Team</h2>
                             <p className="text-zinc-400 mb-6">
-                                ValueWats is designed for collaboration. Invite agents to manage specific channels or collaborate on a unified team inbox.
+                                Value chat is designed for collaboration. Invite agents to manage specific channels or collaborate on a unified team inbox.
                             </p>
                             <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 list-none p-0 mb-6">
                                 <li className="bg-white/5 border border-white/5 rounded-xl p-4 flex items-center gap-3">

@@ -1,4 +1,4 @@
-# ValueWats Backend Guide
+# Value chat Backend Guide
 
 ## Tech Stack
 - **Runtime**: Node.js 22

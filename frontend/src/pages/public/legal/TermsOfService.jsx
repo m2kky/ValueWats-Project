@@ -4,16 +4,16 @@ export default function TermsOfService() {
     return (
         <LegalLayout title="Terms of Service" lastUpdated="January 15, 2026">
             <p>
-                These Terms of Service ("Terms") govern your use of the ValueWats platform. By accessing or using our services, you agree to be bound by these Terms.
+                These Terms of Service ("Terms") govern your use of the Value chat platform. By accessing or using our services, you agree to be bound by these Terms.
             </p>
 
             <h3>1. Use of the Platform</h3>
             <p>
-                ValueWats provides a software-as-a-service (SaaS) platform for WhatsApp automation and AI agents. You agree to use the platform only for lawful purposes and in compliance with WhatsApp's Business Business Terms of Service.
+                Value chat provides a software-as-a-service (SaaS) platform for WhatsApp automation and AI agents. You agree to use the platform only for lawful purposes and in compliance with WhatsApp's Business Business Terms of Service.
             </p>
 
             <h3>2. Acceptable Use</h3>
-            <p>You may not use ValueWats to:</p>
+            <p>You may not use Value chat to:</p>
             <ul>
                 <li>Send unsolicited spam or violate anti-spam laws.</li>
                 <li>Distribute malware, phishing, or malicious content.</li>

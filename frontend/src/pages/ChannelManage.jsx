@@ -566,7 +566,7 @@ export default function ChannelManage() {
                 <h2 className="text-xl font-bold text-white mb-1">Private Replies</h2>
                 <p className="text-zinc-500 text-sm">
                   Send an automatic private message to a user who comments on a post on your page. 
-                  This converts users from {meta.name} to a ValueWats Contact.
+                  This converts users from {meta.name} to a Value chat Contact.
                 </p>
               </div>
 

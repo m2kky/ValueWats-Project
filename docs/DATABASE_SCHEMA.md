@@ -1,4 +1,4 @@
-# ValueWats Database Schema
+# Value chat Database Schema
 
 Generated from `prisma/schema.prisma`. 26 models total.
 

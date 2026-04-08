@@ -16,13 +16,13 @@ const channelData = {
             title: 'Everything you need to know about WhatsApp',
             content: (
                 <>
-                    <p>WhatsApp is the most popular messaging app in the world, with over 2 billion active users. At ValueWats, we provide a seamless way to connect your WhatsApp account and automate your customer interactions.</p>
+                    <p>WhatsApp is the most popular messaging app in the world, with over 2 billion active users. At Value chat, we provide a seamless way to connect your WhatsApp account and automate your customer interactions.</p>
                     
                     <h3>Key Features</h3>
                     <ul className="list-disc pl-5 space-y-2">
                         <li><strong>High Delivery Rates:</strong> Reach your customers directly on their preferred platform.</li>
                         <li><strong>Rich Media Support:</strong> Send images, videos, PDFs, and documents.</li>
-                        <li><strong>Real-time Sync:</strong> Every message is synced instantly with your ValueWats Inbox.</li>
+                        <li><strong>Real-time Sync:</strong> Every message is synced instantly with your Value chat Inbox.</li>
                         <li><strong>Anti-Ban Protection:</strong> Built-in delays and spintax to protect your account.</li>
                     </ul>
 
@@ -42,7 +42,7 @@ const channelData = {
             title: 'How to connect WhatsApp',
             content: (
                 <>
-                    <p>Connecting your WhatsApp account to ValueWats is as simple as linking any other device to your WhatsApp application.</p>
+                    <p>Connecting your WhatsApp account to Value chat is as simple as linking any other device to your WhatsApp application.</p>
                     
                     <h3>Step-by-Step Connection</h3>
                     <ol className="list-decimal pl-5 space-y-4">
@@ -97,12 +97,12 @@ const channelData = {
             title: 'Everything you need to know about Messenger',
             content: (
                 <>
-                    <p>Facebook Messenger allows businesses to engage with their audience on one of the world's largest social platforms. ValueWats integrates directly with the Meta Graph API to manage your Page inbox.</p>
+                    <p>Facebook Messenger allows businesses to engage with their audience on one of the world's largest social platforms. Value chat integrates directly with the Meta Graph API to manage your Page inbox.</p>
                     
                     <h3>Why use Messenger?</h3>
                     <ul className="list-disc pl-5 space-y-2">
                         <li><strong>Social Presence:</strong> Meet customers where they already follow your brand.</li>
-                        <li><strong>Persistent History:</strong> Chat history is maintained both in ValueWats and your FB Page manager.</li>
+                        <li><strong>Persistent History:</strong> Chat history is maintained both in Value chat and your FB Page manager.</li>
                         <li><strong>No Phone Required:</strong> Unlike WhatsApp, Messenger runs entirely via API tokens.</li>
                     </ul>
                 </>
@@ -146,7 +146,7 @@ const channelData = {
             title: 'Everything you need to know about Instagram Direct',
             content: (
                 <>
-                    <p>Build stronger brand connections by replying to Instagram DMs and Story mentions directly from ValueWats.</p>
+                    <p>Build stronger brand connections by replying to Instagram DMs and Story mentions directly from Value chat.</p>
                     
                     <h3>Key Advantages</h3>
                     <ul className="list-disc pl-5 space-y-2">
@@ -167,7 +167,7 @@ const channelData = {
                     <ul className="list-disc pl-5 space-y-2">
                         <li>Ensure "Allow Access to Messages" is enabled in your Instagram app settings.</li>
                         <li>Link your IG account to your Facebook Page.</li>
-                        <li>In ValueWats, select <strong>Instagram</strong> from the Catalog and provide the Page access credentials.</li>
+                        <li>In Value chat, select <strong>Instagram</strong> from the Catalog and provide the Page access credentials.</li>
                     </ul>
                 </>
             )
@@ -194,7 +194,7 @@ const channelData = {
             title: 'Everything you need to know about TikTok Business',
             content: (
                 <>
-                    <p>TikTok is the fastest growing source of customer leads. ValueWats allows you to manage TikTok Business messages directly from your unified inbox.</p>
+                    <p>TikTok is the fastest growing source of customer leads. Value chat allows you to manage TikTok Business messages directly from your unified inbox.</p>
                     
                     <h3>Why use TikTok?</h3>
                     <ul className="list-disc pl-5 space-y-2">
@@ -215,7 +215,7 @@ const channelData = {
                     <ol className="list-decimal pl-5 space-y-4">
                         <li>Navigate to <Link to="/channels" className="text-blue-400">Channels</Link> and select TikTok.</li>
                         <li>Click "Connect TikTok Account".</li>
-                        <li>Authorize ValueWats in the TikTok permission popup.</li>
+                        <li>Authorize Value chat in the TikTok permission popup.</li>
                         <li>Select the TikTok handle you want to link.</li>
                     </ol>
                 </>
@@ -243,7 +243,7 @@ const channelData = {
             title: 'Everything you need to know about Telegram Bot',
             content: (
                 <>
-                    <p>Telegram is a powerful messaging platform for high-speed, secure communication. ValueWats allows you to manage customer chats via a Telegram Bot.</p>
+                    <p>Telegram is a powerful messaging platform for high-speed, secure communication. Value chat allows you to manage customer chats via a Telegram Bot.</p>
                     
                     <h3>Key Features</h3>
                     <ul className="list-disc pl-5 space-y-2">
@@ -314,7 +314,7 @@ const channelData = {
         name: 'LINE',
         overview: {
             title: 'Everything about LINE Official Accounts',
-            content: <p>LINE is the leading messaging app in Japan, Thailand, and Taiwan. Manage your LINE Official Account directly from ValueWats.</p>
+            content: <p>LINE is the leading messaging app in Japan, Thailand, and Taiwan. Manage your LINE Official Account directly from Value chat.</p>
         },
         connect: {
             title: 'How to connect LINE',
@@ -329,7 +329,7 @@ const channelData = {
         name: 'WeChat',
         overview: {
             title: 'Everything about WeChat Service Accounts',
-            content: <p>Access over 1 billion users in China. ValueWats supports WeChat Service Accounts for business messaging.</p>
+            content: <p>Access over 1 billion users in China. Value chat supports WeChat Service Accounts for business messaging.</p>
         },
         connect: {
             title: 'How to connect WeChat',
@@ -417,10 +417,10 @@ const channelData = {
                             <strong>Generate Permanent Token:</strong> Create a System User in <strong>Business Settings → System Users</strong>. Assign the WhatsApp Business Management and Message permissions, then generate a token.
                         </li>
                         <li>
-                            <strong>Configure Webhook:</strong> Set your webhook URL to point to ValueWats for receiving incoming messages.
+                            <strong>Configure Webhook:</strong> Set your webhook URL to point to Value chat for receiving incoming messages.
                         </li>
                         <li>
-                            <strong>Connect in ValueWats:</strong> Navigate to <Link to="/channels" className="text-blue-400">Channels</Link>, select <strong>WhatsApp Cloud API</strong>, and paste your Phone Number ID, WABA ID, and Access Token.
+                            <strong>Connect in Value chat:</strong> Navigate to <Link to="/channels" className="text-blue-400">Channels</Link>, select <strong>WhatsApp Cloud API</strong>, and paste your Phone Number ID, WABA ID, and Access Token.
                         </li>
                     </ol>
 
@@ -488,7 +488,7 @@ export default function ChannelHelp() {
                     <div>
                         <h1 className="text-4xl font-black text-white mb-4 tracking-tight">{activeChannel.name}</h1>
                         <p className="text-lg text-zinc-500 max-w-2xl leading-relaxed">
-                            Everything you need to know about setting up and using {activeChannel.name} with ValueWats.
+                            Everything you need to know about setting up and using {activeChannel.name} with Value chat.
                         </p>
                     </div>
 

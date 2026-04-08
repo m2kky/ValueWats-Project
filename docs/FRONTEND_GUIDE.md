@@ -1,4 +1,4 @@
-# ValueWats Frontend Guide
+# Value chat Frontend Guide
 
 ## Tech Stack
 - **Framework**: React 19 + Vite

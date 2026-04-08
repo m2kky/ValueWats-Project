@@ -4,7 +4,7 @@ export default function CookiePolicy() {
     return (
         <LegalLayout title="Cookie Policy" lastUpdated="January 15, 2026">
             <p>
-                This Cookie Policy explains how ValueWats ("we", "us", or "our") uses cookies and similar technologies when you visit our website and platform.
+                This Cookie Policy explains how Value chat ("we", "us", or "our") uses cookies and similar technologies when you visit our website and platform.
             </p>
 
             <h3>What are Cookies?</h3>

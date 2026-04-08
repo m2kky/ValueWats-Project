@@ -155,7 +155,7 @@ const featureData = {
             content: (
                 <>
                     <p>
-                        AI Agents in ValueWats can understand context, search your knowledge base, and execute workspace actions.
+                        AI Agents in Value chat can understand context, search your knowledge base, and execute workspace actions.
                         For best results, combine a focused system prompt, high-quality knowledge content, and strict action rules.
                     </p>
                     <h3>The Neural Lab</h3>
@@ -279,7 +279,7 @@ If requirements are missing, do not run the action.`}</code>
             title: 'Running Marketing Campaigns',
             content: (
                 <>
-                    <p>ValueWats allows you to send bulk messages to your contacts or specific segments while mitigating the risk of account bans.</p>
+                    <p>Value chat allows you to send bulk messages to your contacts or specific segments while mitigating the risk of account bans.</p>
                     <h3>Best Practices</h3>
                     <ol className="list-decimal pl-5">
                         <li><strong>Use Spintax:</strong> Use <code>{`{Hi|Hello|Hey}`}</code> to vary your message content.</li>

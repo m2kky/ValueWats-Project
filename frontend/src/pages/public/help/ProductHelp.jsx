@@ -77,7 +77,7 @@ export default function ProductHelp() {
                 <div className="mb-12">
                     <h1 className="text-4xl font-black text-white mb-4 tracking-tight">Product Features</h1>
                     <p className="text-lg text-zinc-500 max-w-2xl leading-relaxed">
-                        Deep dive into every feature of ValueWats. Learn how to optimize your workflows and scale your customer engagement.
+                        Deep dive into every feature of Value chat. Learn how to optimize your workflows and scale your customer engagement.
                     </p>
                 </div>
 

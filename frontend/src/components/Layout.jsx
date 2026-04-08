@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+﻿import { Link, useLocation } from 'react-router-dom';
 import {
   RectangleGroupIcon,
   ChatBubbleLeftRightIcon,
@@ -75,15 +75,15 @@ export default function Layout({ children }) {
   const isFullWidth = isInboxRoute || isConnectRoute || isManageRoute;
 
   return (
-    <div className="flex h-screen bg-[#09090b] text-zinc-100 overflow-hidden">
+    <div className="flex h-screen bg-[#232318] text-[#fffed9] overflow-hidden">
       {/* Premium Sidebar */}
-      <aside className={`border-r border-white/5 bg-[#0f0f11] flex flex-col z-50 transition-all duration-300 ${isFullWidth ? 'w-[60px] items-center py-4' : 'w-64'}`}>
+      <aside className={`border-r border-[#fffed9]/10 bg-[#1d1d14] flex flex-col z-50 transition-all duration-300 ${isFullWidth ? 'w-[60px] items-center py-4' : 'w-64'}`}>
         <div className={`p-4 ${isFullWidth ? 'px-0 pb-6' : 'p-6'}`}>
           <Link to="/dashboard" className={`flex items-center ${isFullWidth ? 'justify-center' : 'gap-3'}`}>
-            <img src="/valuewats-transparent.png" alt="ValueWats" className={`${isFullWidth ? 'w-8 h-8' : 'w-9 h-9'}`} />
+            <img src="/main-logo.svg" alt="Value chat" className={`${isFullWidth ? 'w-8 h-8' : 'w-9 h-9'}`} />
             {!isFullWidth && (
-              <span className="text-xl font-black tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
-                ValueWats
+              <span className="text-xl font-black tracking-tight bg-gradient-to-r from-[#fffed9] to-[#7a7839] bg-clip-text text-transparent">
+                Value chat
               </span>
             )}
           </Link>
@@ -98,11 +98,11 @@ export default function Layout({ children }) {
                 to={item.path}
                 title={isInboxRoute ? item.name : undefined}
                 className={`flex items-center rounded-xl transition-all group relative ${isInboxRoute
-                  ? `w-10 h-10 justify-center ${active ? 'bg-indigo-600/10 text-indigo-400' : 'text-zinc-500 hover:bg-white/5 hover:text-white'}`
-                  : `px-3 py-2.5 gap-3 ${active ? 'bg-indigo-600/10 text-indigo-400 font-bold' : 'text-zinc-400 hover:bg-white/5 hover:text-white font-medium'}`
+                  ? `w-10 h-10 justify-center ${active ? 'bg-[#e2f300]/15 text-[#e2f300]' : 'text-[#fffed9]/45 hover:bg-[#fffed9]/5 hover:text-[#fffed9]'}`
+                  : `px-3 py-2.5 gap-3 ${active ? 'bg-[#e2f300]/15 text-[#e2f300] font-bold' : 'text-[#fffed9]/70 hover:bg-[#fffed9]/5 hover:text-[#fffed9] font-medium'}`
                   }`}
               >
-                <item.icon className={`transition-colors ${isFullWidth ? 'w-[22px] h-[22px]' : 'w-5 h-5'} ${active ? 'text-indigo-400' : 'group-hover:text-white'}`} />
+                <item.icon className={`transition-colors ${isFullWidth ? 'w-[22px] h-[22px]' : 'w-5 h-5'} ${active ? 'text-[#e2f300]' : 'group-hover:text-[#fffed9]'}`} />
                 {!isFullWidth && <span>{item.name}</span>}
               </Link>
             )
@@ -112,7 +112,7 @@ export default function Layout({ children }) {
         <div className={`border-t border-white/5 mt-auto flex flex-col ${isFullWidth ? 'p-2 items-center gap-4 py-4' : 'p-4'}`}>
           {!isFullWidth ? (
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 mb-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#e2f300] to-[#7a7839] flex items-center justify-center font-bold text-[#232318] shadow-lg">
                 {user?.email?.[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -121,7 +121,7 @@ export default function Layout({ children }) {
               </div>
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white text-xs shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#e2f300] to-[#7a7839] flex items-center justify-center font-bold text-[#232318] text-xs shadow-[0_0_15px_rgba(226,243,0,0.2)]">
               {user?.email?.[0].toUpperCase()}
             </div>
           )}
@@ -141,14 +141,14 @@ export default function Layout({ children }) {
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         {/* Top bar (Hidden in Inbox/Connect Mode for Full Screen Immersion) */}
         {!isFullWidth && (
-          <header className="h-16 border-b border-white/5 bg-zinc-950/30 backdrop-blur-md flex items-center justify-between px-8 z-40 shrink-0">
+          <header className="h-16 border-b border-[#fffed9]/8 bg-[#1f1f15]/70 backdrop-blur-md flex items-center justify-between px-8 z-40 shrink-0">
             <div className="flex-1 max-w-xl">
               <div className="relative group">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-indigo-400 transition-colors" />
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fffed9]/45 group-focus-within:text-[#e2f300] transition-colors" />
                 <input
                   type="text"
                   placeholder="Search anything..."
-                  className="w-full bg-white/5 border border-white/5 rounded-full pl-10 pr-4 py-2 text-sm outline-none focus:border-indigo-500/30 focus:ring-4 focus:ring-indigo-500/5 transition-all text-white"
+                  className="w-full bg-[#fffed9]/5 border border-[#fffed9]/10 rounded-full pl-10 pr-4 py-2 text-sm outline-none focus:border-[#e2f300]/35 focus:ring-4 focus:ring-[#e2f300]/10 transition-all text-[#fffed9]"
                 />
               </div>
             </div>
@@ -156,10 +156,10 @@ export default function Layout({ children }) {
             <div className="flex items-center gap-4">
               <button className="p-2 rounded-full hover:bg-white/5 text-zinc-400 hover:text-white transition-all relative">
                 <BellIcon className="w-5 h-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full ring-2 ring-[#09090b]"></span>
+                <span className="absolute top-2 right-2 w-2 h-2 bg-[#e2f300] rounded-full ring-2 ring-[#232318]"></span>
               </button>
               <div className="h-6 w-[1px] bg-white/10 mx-2"></div>
-              <button className="text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-full uppercase tracking-wider transition-all">
+              <button className="text-xs font-bold bg-[#e2f300] hover:bg-[#f0ff4e] text-[#232318] px-4 py-1.5 rounded-full uppercase tracking-wider transition-all">
                 Upgrade
               </button>
             </div>
@@ -167,11 +167,11 @@ export default function Layout({ children }) {
         )}
 
         {isFullWidth ? (
-          <main className="flex-1 h-full overflow-hidden bg-[#09090b]">
+          <main className="flex-1 h-full overflow-hidden bg-[#232318]">
             {children}
           </main>
         ) : (
-          <main className="flex-1 p-8 overflow-y-auto w-full bg-[#09090b]">
+          <main className="flex-1 p-8 overflow-y-auto w-full bg-[#232318]">
             <div className="max-w-7xl mx-auto">
               {children}
             </div>
@@ -183,3 +183,4 @@ export default function Layout({ children }) {
     </div>
   );
 }
+

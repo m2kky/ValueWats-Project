@@ -72,7 +72,7 @@ export default function Landing() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8 backdrop-blur-md">
                         <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span className="text-sm font-medium text-zinc-300">ValueWats Platform v2.0 is Live</span>
+                        <span className="text-sm font-medium text-zinc-300">Value chat Platform v2.0 is Live</span>
                     </div>
 
                     <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-8 leading-[1.1]">
@@ -316,7 +316,7 @@ export default function Landing() {
                         <div className="order-1 lg:order-2">
                             <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">One Inbox. <br />Every Channel.</h2>
                             <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
-                                Stop switching tabs. ValueWats brings WhatsApp, Instagram, Messenger, and more into a single, collaborative workspace.
+                                Stop switching tabs. Value chat brings WhatsApp, Instagram, Messenger, and more into a single, collaborative workspace.
                                 Equip your team with customer context from your CRM, auto-assign conversations, and resolve issues faster.
                             </p>
                             <ul className="space-y-4">
@@ -426,7 +426,7 @@ export default function Landing() {
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-indigo-900/20 pointer-events-none"></div>
                 <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
                     <h2 className="text-4xl md:text-6xl font-extrabold text-white mb-8 tracking-tight">Ready to transform your communication?</h2>
-                    <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto">Join the forward-thinking teams using ValueWats to automate workflows and drive revenue on WhatsApp.</p>
+                    <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto">Join the forward-thinking teams using Value chat to automate workflows and drive revenue on WhatsApp.</p>
                     <Link
                         to="/register"
                         className="inline-flex items-center justify-center px-8 py-4 rounded-xl bg-white text-black font-bold text-lg hover:bg-zinc-200 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1"

@@ -3,8 +3,8 @@ import HelpCenterLayout from '../../../../components/public/HelpCenterLayout';
 export default function GettingStartedDocs() {
     return (
         <HelpCenterLayout title="Getting Started" lastUpdated="March 2026">
-            <h2>Welcome to ValueWats</h2>
-            <p>ValueWats is your ultimate Agentic CRM for WhatsApp. This guide covers the basics of getting your workspace set up.</p>
+            <h2>Welcome to Value chat</h2>
+            <p>Value chat is your ultimate Agentic CRM for WhatsApp. This guide covers the basics of getting your workspace set up.</p>
             
             <h3>1. Connecting Meta Cloud API</h3>
             <p>

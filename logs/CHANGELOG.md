@@ -1,5 +1,28 @@
 ---
 
+## [2026-04-08] - Rebrand Assets Finalization & Campaign Prerequisite Guard
+
+### Changed
+- **Branding asset paths stabilized**: Switched runtime logo/icon references to space-safe public paths:
+  - `/main-logo.svg`
+  - `/icon-blue-animated.svg`
+  - `/icon-blue-animated-2.svg`
+- **Favicon + OG branding**: Confirmed `frontend/index.html` uses `/icon-yellow.svg` and updated OG image path to `/main-logo.svg`.
+- **Documentation branding alignment**: Updated core docs titles from `ValueWats` to `Value chat` in:
+  - `docs/API_REFERENCE.md`
+  - `docs/BACKEND_GUIDE.md`
+  - `docs/CODEBASE_WALKTHROUGH.md`
+  - `docs/DATABASE_SCHEMA.md`
+  - `docs/FRONTEND_GUIDE.md`
+
+### Fixed
+- **Campaign launch prerequisite**: Campaign creation now enforces connected-instance validation in both UI and API:
+  - Frontend blocks navigation/submit with clear guidance to connect a number first.
+  - Backend rejects campaign creation when tenant has no connected instances or selected instances are disconnected.
+
+### Notes
+- Frontend production build re-run successfully after branding path updates.
+
 ## [2026-04-08] - AI Agent Actions Docs Refresh & Help Route Repair
 
 ### Added

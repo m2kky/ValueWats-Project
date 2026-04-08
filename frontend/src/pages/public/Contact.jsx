@@ -24,7 +24,7 @@ export default function Contact() {
                             Let's <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Talk</span>
                         </h1>
                         <p className="text-xl text-zinc-400 mb-12">
-                            Have questions about pricing, enterprise plans, or how ValueWats can fit into your specific workflow? Drop us a line.
+                            Have questions about pricing, enterprise plans, or how Value chat can fit into your specific workflow? Drop us a line.
                         </p>
 
                         <div className="space-y-8">

@@ -1,4 +1,4 @@
-# ValueWats API Reference
+# Value chat API Reference
 
 Base URL: `https://app.muhammedmekky.com/api`  
 All protected routes require: `Authorization: Bearer <JWT>`

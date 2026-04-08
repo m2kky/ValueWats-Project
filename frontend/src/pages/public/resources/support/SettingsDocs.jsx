@@ -4,7 +4,7 @@ export default function SettingsDocs() {
     return (
         <HelpCenterLayout title="Settings & Automations" lastUpdated="March 2026">
             <h2>Platform Customization</h2>
-            <p>ValueWats is highly modular. You can mold the CRM and the Automation rules to completely fit your industry.</p>
+            <p>Value chat is highly modular. You can mold the CRM and the Automation rules to completely fit your industry.</p>
             
             <h3>Custom Fields</h3>
             <p>

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+﻿import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import ValueWatsLoader from '../components/ValueWatsLoader';
 import {
@@ -34,9 +34,11 @@ const CampaignStatus = ({ status }) => {
 };
 
 export default function Campaigns() {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const connectNumberFirstMessage = 'Please connect a WhatsApp number first before launching a campaign.';
 
   useEffect(() => {
     fetchCampaigns();
@@ -78,6 +80,25 @@ export default function Campaigns() {
     setOpenMenuId(openMenuId === id ? null : id);
   };
 
+  const handleCreateCampaignClick = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await api.get('/instances');
+      const hasConnectedInstance = (response.data.instances || []).some((instance) => instance.status === 'connected');
+
+      if (!hasConnectedInstance) {
+        alert(connectNumberFirstMessage);
+        navigate('/instances');
+        return;
+      }
+
+      navigate('/campaigns/new');
+    } catch (error) {
+      alert('Could not verify connected numbers right now. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-indigo-500/30">
 
@@ -88,14 +109,14 @@ export default function Campaigns() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 p-2">
-                <img src="/valuewats-broadcast.svg" alt="Broadcast" className="w-full h-full rounded-lg" />
+              <div className="w-12 h-12 rounded-2xl bg-[#171717] border border-[#2c2c23] flex items-center justify-center shadow-lg shadow-[#e2f300]/10 p-2">
+                <img src="/icon-blue-animated-2.svg" alt="Campaigns" className="w-full h-full rounded-lg" />
               </div>
               <div>
                 <h1 className="text-3xl font-black tracking-tight text-white">Campaigns</h1>
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-zinc-400 font-medium">Broadcast messages and manage scheduled sequences at scale.</p>
-                  <span className="text-zinc-700 font-bold">•</span>
+                  <span className="text-zinc-700 font-bold">â€¢</span>
                   <a 
                     href="/help/campaigns" 
                     className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-widest"
@@ -110,6 +131,7 @@ export default function Campaigns() {
           <div className="flex items-center gap-3">
             <Link
               to="/campaigns/new"
+              onClick={handleCreateCampaignClick}
               className="group relative inline-flex items-center justify-center px-6 py-3 text-sm font-bold text-white transition-all duration-200 bg-indigo-500 font-pj rounded-xl hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] active:scale-95"
             >
               <PlusIcon className="w-5 h-5 mr-2" />
@@ -131,7 +153,7 @@ export default function Campaigns() {
           ) : campaigns.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 px-6 text-center z-10 relative">
               <div className="w-24 h-24 bg-white/5 rounded-3xl flex items-center justify-center mb-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] border border-white/5">
-                <MegaphoneIcon className="w-10 h-10 text-zinc-500" />
+                <img src="/icon-blue-animated-2.svg" alt="No campaigns" className="w-14 h-14" />
               </div>
               <h3 className="text-xl font-black text-white mb-2">No campaigns yet</h3>
               <p className="text-sm text-zinc-400 max-w-sm mx-auto mb-8 font-medium leading-relaxed">
@@ -139,6 +161,7 @@ export default function Campaigns() {
               </p>
               <Link
                 to="/campaigns/new"
+                onClick={handleCreateCampaignClick}
                 className="btn-glass inline-flex items-center px-6 py-3 text-sm font-bold text-white rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
               >
                 <PlusIcon className="w-5 h-5 mr-2" />
@@ -264,3 +287,5 @@ export default function Campaigns() {
     </div>
   );
 }
+
+

@@ -11,6 +11,7 @@ const storageService = require('../services/storageService');
 const urlRegex = /(https?:\/\/[^\s]+)/g;
 // Strip invisible/zero-width unicode characters from URLs
 const sanitizeUrl = (url) => url.replace(/[\u200B-\u200D\uFEFF\u00AD\u200C\u200E\u200F]/g, '').trim();
+const CONNECT_NUMBER_FIRST_ERROR = 'Please connect a WhatsApp number first before launching a campaign.';
 
 const createCampaign = async (req, res) => {
   try {
@@ -41,6 +42,17 @@ const createCampaign = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: name, message' });
     }
 
+    const connectedInstancesCount = await prisma.instance.count({
+      where: {
+        tenantId,
+        status: 'connected'
+      }
+    });
+
+    if (connectedInstancesCount === 0) {
+      return res.status(400).json({ error: CONNECT_NUMBER_FIRST_ERROR });
+    }
+
     // Handle instanceIds (can be array or single value back-compat)
     let instanceIdList = [];
     if (instanceIds) {
@@ -48,7 +60,12 @@ const createCampaign = async (req, res) => {
     } else if (req.body.instanceId) {
       instanceIdList = [req.body.instanceId];
     } else {
-      return res.status(400).json({ error: 'At least one instance is required' });
+      return res.status(400).json({ error: CONNECT_NUMBER_FIRST_ERROR });
+    }
+
+    instanceIdList = [...new Set(instanceIdList.filter(Boolean))];
+    if (instanceIdList.length === 0) {
+      return res.status(400).json({ error: CONNECT_NUMBER_FIRST_ERROR });
     }
 
     // Verify instances exist and are connected
@@ -60,8 +77,8 @@ const createCampaign = async (req, res) => {
       }
     });
 
-    if (instances.length === 0) {
-      return res.status(400).json({ error: 'No connected instances found' });
+    if (instances.length !== instanceIdList.length) {
+      return res.status(400).json({ error: 'One or more selected instances are not connected. Please reconnect your number(s) and try again.' });
     }
 
     // Handle Contacts (CSV File or Manual Input or Google Sheet)

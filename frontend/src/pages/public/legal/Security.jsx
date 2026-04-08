@@ -4,7 +4,7 @@ export default function Security() {
     return (
         <LegalLayout title="Security" lastUpdated="January 15, 2026">
             <p>
-                At ValueWats, we treat security as our highest priority. We realize that an enterprise communication platform handles highly sensitive data.
+                At Value chat, we treat security as our highest priority. We realize that an enterprise communication platform handles highly sensitive data.
             </p>
 
             <h3>Data Encryption</h3>

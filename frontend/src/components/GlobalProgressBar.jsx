@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import {
@@ -80,15 +80,15 @@ export default function GlobalProgressBar({ socket }) {
           }`}
         style={{ width: '400px' }}
       >
-        <div className="h-full bg-[#0f0f11]/95 backdrop-blur-2xl border-l border-white/10 shadow-[−30px_0_60px_rgba(0,0,0,0.5)] flex flex-col">
+        <div className="h-full bg-[#0f0f11]/95 backdrop-blur-2xl border-l border-white/10 shadow-[âˆ’30px_0_60px_rgba(0,0,0,0.5)] flex flex-col">
           {/* Panel Header */}
           <div className="p-6 border-b border-white/5">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-3">
                 <img
-                  src="/valuewats-animated-loader.svg"
+                  src="/icon-blue-animated.svg"
                   alt="Processing"
-                  className="w-10 h-10 drop-shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+                  className="w-10 h-10 drop-shadow-[0_0_15px_rgba(34,42,198,0.4)]"
                 />
                 <div>
                   <h2 className="text-lg font-black text-white tracking-tight">Live Campaigns</h2>
@@ -125,7 +125,7 @@ export default function GlobalProgressBar({ socket }) {
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
                         <img
-                          src="/valuewats-broadcast.svg"
+                          src="/icon-blue-animated-2.svg"
                           alt=""
                           className="w-5 h-5 rounded"
                         />
@@ -133,7 +133,7 @@ export default function GlobalProgressBar({ socket }) {
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-white truncate">{campaign.name}</p>
                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5">
-                          {campaign.status === 'PROCESSING' ? '● SENDING' : campaign.status}
+                          {campaign.status === 'PROCESSING' ? 'â— SENDING' : campaign.status}
                         </p>
                       </div>
                     </div>
@@ -197,9 +197,9 @@ export default function GlobalProgressBar({ socket }) {
         <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white pl-3 pr-2 py-3 rounded-l-2xl shadow-[0_0_30px_rgba(99,102,241,0.4)] hover:shadow-[0_0_40px_rgba(99,102,241,0.6)] transition-all group">
           <div className="relative">
             <img
-              src="/valuewats-animated-loader.svg"
+              src="/icon-blue-animated.svg"
               alt=""
-              className="w-6 h-6 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]"
+              className="w-6 h-6 drop-shadow-[0_0_8px_rgba(34,42,198,0.5)]"
             />
             <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black shadow-lg">
               {totalActive}
@@ -223,3 +223,5 @@ export default function GlobalProgressBar({ socket }) {
     </>
   );
 }
+
+

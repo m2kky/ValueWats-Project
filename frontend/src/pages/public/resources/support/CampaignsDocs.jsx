@@ -4,7 +4,7 @@ export default function CampaignsDocs() {
     return (
         <HelpCenterLayout title="Campaigns & Broadcasts" lastUpdated="March 2026">
             <h2>Running Successful Campaigns</h2>
-            <p>ValueWats offers an incredibly robust broadcasting engine that leverages multiple strategies to protect your number from getting banned by WhatsApp.</p>
+            <p>Value chat offers an incredibly robust broadcasting engine that leverages multiple strategies to protect your number from getting banned by WhatsApp.</p>
             
             <h3>The Anti-Ban System</h3>
             <p>

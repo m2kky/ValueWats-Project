@@ -8,12 +8,12 @@ export default function AgentsDocs() {
             
             <h3>Knowledge Base (RAG)</h3>
             <p>
-                Your agent is only as smart as the data it has access to. Navigate to the <strong>Knowledge</strong> tab inside the Agent Editor. You can upload PDFs or paste raw text. ValueWats chunks this text and converts it into embeddings using `pgvector`, allowing your bot to semantically search your docs before answering a question.
+                Your agent is only as smart as the data it has access to. Navigate to the <strong>Knowledge</strong> tab inside the Agent Editor. You can upload PDFs or paste raw text. Value chat chunks this text and converts it into embeddings using `pgvector`, allowing your bot to semantically search your docs before answering a question.
             </p>
             
             <h3>Autonomous Actions</h3>
             <p>
-                Unlike dumb chatbots, ValueWats AI can perform actions. Give the bot instructions like: <i>"If the user is angry, Tag them as VIP and assign the chat to a human."</i>
+                Unlike dumb chatbots, Value chat AI can perform actions. Give the bot instructions like: <i>"If the user is angry, Tag them as VIP and assign the chat to a human."</i>
                 The prompt engine evaluates the context and securely runs macros in the background to inject Tags, change Lifecycle stages, or route the chat.
             </p>
 

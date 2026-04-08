@@ -182,6 +182,18 @@ export default function NewCampaign() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (instances.length === 0) {
+      alert('Please connect a WhatsApp number first before launching a campaign.');
+      navigate('/instances');
+      return;
+    }
+
+    if (formData.instanceIds.length === 0) {
+      alert('Please select at least one connected WhatsApp number before launching the campaign.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -276,8 +288,15 @@ export default function NewCampaign() {
                 <label className="block text-sm font-semibold text-zinc-300 mb-2">Select WhatsApp Instances <span className="text-indigo-400 font-mono font-normal ml-1">({formData.instanceIds.length})</span></label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {instances.length === 0 ? (
-                    <div className="col-span-2 p-4 bg-rose-500/10 text-rose-400 rounded-xl text-sm border border-rose-500/20 font-medium">
-                      No connected instances found. Please connect a WhatsApp number first.
+                    <div className="col-span-2 p-4 bg-rose-500/10 text-rose-400 rounded-xl text-sm border border-rose-500/20 font-medium space-y-3">
+                      <p>No connected instances found. Please connect a WhatsApp number first.</p>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/instances')}
+                        className="inline-flex items-center rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition-colors"
+                      >
+                        Connect a Number
+                      </button>
                     </div>
                   ) : (
                     instances.map(instance => (
@@ -758,10 +777,9 @@ export default function NewCampaign() {
                   Cancel
                 </button>
                 <button
-                  type="button"
+                  type="submit"
                   className="inline-flex items-center justify-center min-w-[180px] px-6 py-2.5 border border-transparent text-sm font-semibold rounded-xl shadow-[0_0_20px_rgba(79,70,229,0.3)] text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5"
-                  disabled={loading || formData.instanceIds.length === 0 || (activeTab === 'csv' && !file) || (activeTab === 'sheet' && (!sheetUrl || !phoneColumn)) || (activeTab === 'segment' && !segmentId)}
-                  onClick={handleSubmit}
+                  disabled={loading || instances.length === 0 || formData.instanceIds.length === 0 || (activeTab === 'csv' && !file) || (activeTab === 'sheet' && (!sheetUrl || !phoneColumn)) || (activeTab === 'segment' && !segmentId)}
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">

@@ -4,7 +4,7 @@ export default function Subprocessors() {
     return (
         <LegalLayout title="Our Subprocessors" lastUpdated="January 15, 2026">
             <p>
-                To provide the ValueWats service, we engage and use certain third-party data processors with access to certain Customer Data (each, a "Subprocessor").
+                To provide the Value chat service, we engage and use certain third-party data processors with access to certain Customer Data (each, a "Subprocessor").
             </p>
             <p>
                 Prior to engaging any third party Subprocessor, we evaluate their privacy, security, and confidentiality practices and execute an agreement implementing applicable data protection obligations.
