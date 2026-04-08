@@ -80,7 +80,7 @@ export default function GettingStarted() {
                             <p className="text-zinc-400 mb-6">
                                 Don't just chat—automate. Use our No-Code Agent builder to create an AI that answers customer questions, qualifies leads, and book appointments 24/7.
                             </p>
-                            <Link to="/help/agents" className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl transition-all border border-white/10">
+                            <Link to="/help/ai-agents" className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl transition-all border border-white/10">
                                 Explore AI Agents
                             </Link>
                         </div>

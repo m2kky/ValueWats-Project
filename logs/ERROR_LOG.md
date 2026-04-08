@@ -2,6 +2,68 @@
 
 Document all critical errors, their root causes, fixes, and lessons learned. When fixing an issue, **FIRST check this file** to see if it's already documented. After fixing an issue, **ADD it here**.
 
+## ERR-038: Campaign Creation Allowed Without Connected Instance
+
+| Field        | Value                                                                 |
+| ------------ | --------------------------------------------------------------------- |
+| **Date**     | 2026-04-08                                                            |
+| **Severity** | High                                                                  |
+| **Source**   | `frontend/src/pages/Campaigns.jsx`, `frontend/src/pages/NewCampaign.jsx`, `backend/src/controllers/campaignController.js` |
+| **Trigger**  | User tries to create/launch a campaign before connecting any WhatsApp instance |
+
+### Description
+
+Users could proceed to campaign creation and start a campaign flow even when no connected instance was available. This produced downstream message failures and poor UX.
+
+### Root Cause
+
+Validation was not consistently enforced across all entry points:
+1. Campaign entry from the listing page did not proactively verify connected instances.
+2. New Campaign submit flow did not hard-stop early enough for the "no connected instance" case.
+3. Backend validation did not enforce a tenant-level "at least one connected instance exists" invariant before campaign creation.
+
+### Fix
+
+- Added frontend pre-check on Campaigns page before navigating to `/campaigns/new`.
+- Added explicit guard and user messaging in `NewCampaign.jsx`, including a `Connect a Number` action redirecting to `/instances`.
+- Added backend guard in `createCampaign` to:
+  - block creation when tenant has zero connected instances,
+  - reject requests where selected instances are disconnected or invalid.
+
+### Lesson Learned
+
+Critical business prerequisites must be enforced at both UX and API layers. Frontend guards improve guidance; backend guards guarantee correctness.
+
+---
+
+## ERR-037: Frontend Build Failure - Invalid JSX Token in Admin Layout
+
+| Field        | Value                                           |
+| ------------ | ----------------------------------------------- |
+| **Date**     | 2026-04-08                                      |
+| **Severity** | Critical                                        |
+| **Source**   | `frontend/src/components/admin/AdminLayout.jsx` |
+| **Trigger**  | `npm run build` (`vite build`)                  |
+
+### Description
+
+Frontend production build fails with:
+`Expected identifier but found "-"` at the line rendering `"<- Exit Admin Mode"` in `AdminLayout.jsx`.
+
+### Root Cause
+
+A raw text token that starts with `<-` was placed directly in JSX children. JSX parser interprets `<` as the start of a tag and throws a syntax error.
+
+### Fix
+- Replaced invalid raw JSX text `"<- Exit Admin Mode"` with JSX-safe entity text:
+  - `&larr; Exit Admin Mode`
+- Re-ran frontend production build (`npm run build`) successfully after the fix.
+
+### Lesson Learned
+
+Run `npm run build` after UI copy tweaks, not only after logic changes. Small text edits can still break JSX compilation.
+
+---
 ## ERR-036: Production Build Failure — Webpack/Rollup Module Not Found
 
 | Field        | Value                                |

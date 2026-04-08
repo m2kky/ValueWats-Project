@@ -1,5 +1,25 @@
 ---
 
+## [2026-04-08] - AI Agent Actions Docs Refresh & Help Route Repair
+
+### Added
+- **AI Agent action documentation overhaul**: Rewrote `/help/ai-agents/actions` content in `frontend/src/pages/public/help/FeatureHelp.jsx` with:
+  - Action-by-action guides for all 8 agent actions (`CLOSE_CONVERSATION`, `ASSIGN`, `UPDATE_CONTACT`, `UPDATE_LIFECYCLE`, `TRIGGER_WORKFLOW`, `ADD_TAG/REMOVE_TAG`, `ADD_COMMENT`, `HTTP_REQUEST`).
+  - Practical instruction formula plus copy-ready sample instructions for each action.
+  - HTTP placeholder reference for dynamic variables (`{{contact.*}}`, `{{agent.*}}`, `{{message.content}}`).
+  - Execution notes aligned with backend behavior (workflow expects ID, lifecycle matches by name, HTTP body must be valid JSON for non-GET).
+
+### Changed
+- **Prompt helper deep-link**: Updated `RichTextarea.jsx` "Learn how to write this" link from `/help/ai-agents` to `/help/ai-agents/actions`.
+- **Help routing consistency**: Replaced remaining `/help/agents` links with `/help/ai-agents` in:
+  - `frontend/src/components/public/HelpCenterLayout.jsx`
+  - `frontend/src/pages/public/help/HelpCenter.jsx`
+  - `frontend/src/pages/public/help/GettingStarted.jsx`
+  - `frontend/src/pages/Channels.jsx`
+
+### Notes
+- Frontend production build now passes after fixing invalid JSX text in `frontend/src/components/admin/AdminLayout.jsx` (`&larr; Exit Admin Mode`).
+
 ## [2026-03-10] — Realtime Inbox Socket.io Fix
 
 ### Fixed

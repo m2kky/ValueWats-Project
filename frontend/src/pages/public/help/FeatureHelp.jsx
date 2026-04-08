@@ -1,17 +1,149 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import HelpCenterLayout from '../../../components/public/HelpCenterLayout';
-import { 
-    CheckCircleIcon,
-    InformationCircleIcon,
+import {
     ArrowRightIcon,
     SparklesIcon,
     ChevronRightIcon,
     BoltIcon,
-    CodeBracketIcon,
     UserPlusIcon,
-    ChatBubbleOvalLeftEllipsisIcon
+    ChatBubbleLeftRightIcon,
+    MegaphoneIcon
 } from '@heroicons/react/24/outline';
+
+const AGENT_ACTION_GUIDES = [
+    {
+        id: 'close-conversation',
+        title: 'Close conversations',
+        command: '[ACTION: CLOSE_CONVERSATION]',
+        whatItDoes: 'Marks the conversation as closed and removes the current AI assignment.',
+        tips: [
+            'Only close when the user clearly confirms the issue is solved.',
+            'Do not close if the user asks a new question in the same message.',
+            'Send a final confirmation line before ending.'
+        ],
+        sample: `Close the conversation only after explicit user confirmation like "thanks, solved" or "that's all".
+If the message contains a new question, keep the conversation open.`
+    },
+    {
+        id: 'assign-conversation',
+        title: 'Assign conversations',
+        command: '[ACTION: ASSIGN: <Target>]',
+        whatItDoes: 'Routes the conversation to a specific AI agent by name, or escalates to human when target is HUMAN.',
+        tips: [
+            'Use exact target names from your workspace to improve match accuracy.',
+            'Use HUMAN for handoff requests, legal complaints, or angry sentiment.',
+            'Define priority logic (human handoff first, then specialist routing).'
+        ],
+        sample: `If the user asks for a human, asks for a manager, or sentiment is angry, assign to HUMAN immediately.
+If the topic is billing, assign to Billing Agent.`
+    },
+    {
+        id: 'update-contact',
+        title: 'Update contact information',
+        command: '[ACTION: UPDATE_CONTACT: {"field":"value"}]',
+        whatItDoes: 'Updates contact name and custom fields from details collected in chat.',
+        tips: [
+            'Specify exactly which fields to save (name, email, company, budget, etc.).',
+            'Ask the model to update only when value is explicit, not guessed.',
+            'Prefer normalized formats (lowercase email, country code in phone).'
+        ],
+        sample: `When the user provides profile details, update contact fields for name, email, company, and budget.
+Only update fields that were explicitly provided in this conversation.`
+    },
+    {
+        id: 'update-lifecycle',
+        title: 'Update lifecycle stage',
+        command: '[ACTION: UPDATE_LIFECYCLE: <StageName>]',
+        whatItDoes: 'Moves the contact to a lifecycle stage that matches your sales/support flow.',
+        tips: [
+            'Reference existing stage names exactly as they appear in Lifecycle settings.',
+            'Define clear promotion and demotion conditions.',
+            'Avoid switching stage when user intent is uncertain.'
+        ],
+        sample: `If user asks for pricing or demo and business need is clear, move to Qualified Lead.
+If user says they are not interested, move to Closed Lost.`
+    },
+    {
+        id: 'trigger-workflow',
+        title: 'Trigger workflow',
+        command: '[ACTION: TRIGGER_WORKFLOW: <WorkflowId>]',
+        whatItDoes: 'Executes a workflow using its workflow ID (not display name).',
+        tips: [
+            'Use the workflow ID copied from Workflows page.',
+            'Require minimum data before triggering (for example email + phone).',
+            'Prevent duplicate triggers by requiring a clear event boundary.'
+        ],
+        sample: `When lead is qualified and both email and phone are available, trigger workflow wf_9f2a41c.
+If required fields are missing, ask follow-up questions and do not trigger.`
+    },
+    {
+        id: 'tag-modification',
+        title: 'Tag modification',
+        command: '[ACTION: ADD_TAG: <TagName>] / [ACTION: REMOVE_TAG: <TagName>]',
+        whatItDoes: 'Adds or removes contact tags based on user intent and conversation state.',
+        tips: [
+            'Use short, stable tag names (for example hot_lead, needs_followup).',
+            'Define both add and remove conditions to keep tags clean.',
+            'Avoid adding and removing the same tag in one response.'
+        ],
+        sample: `Add tag hot_lead when the user requests a demo within 7 days.
+Remove tag needs_followup after the user confirms the issue is fully resolved.`
+    },
+    {
+        id: 'internal-comments',
+        title: 'Internal comments',
+        command: '[ACTION: ADD_COMMENT: "text"]',
+        whatItDoes: 'Creates an internal note for team context and handoff continuity.',
+        tips: [
+            'Use concise operational notes, not user-facing language.',
+            'Include summary + blocker + next step in one short note.',
+            'Write comments only when they add team value.'
+        ],
+        sample: `When handing off to human, add an internal note with customer goal, blocker, and promised next step.
+Keep the note under 250 characters and actionable.`
+    },
+    {
+        id: 'http-requests',
+        title: 'Network command center (HTTP requests)',
+        command: '[ACTION: HTTP_REQUEST: <ActionName>]',
+        whatItDoes: 'Runs a preconfigured HTTP action (method, URL, headers, params, body) against external APIs.',
+        tips: [
+            'Create clear action names like send_lead_to_crm or verify_order_status.',
+            'For non-GET methods, body must be valid JSON.',
+            'Tell the agent when to run the request and what data is required first.'
+        ],
+        sample: `When user confirms they want a callback and phone is present, run send_lead_to_crm.
+If callback data is incomplete, ask for missing details before running the request.`
+    }
+];
+
+function ActionGuideCard({ title, command, whatItDoes, tips, sample }) {
+    return (
+        <div className="p-6 bg-[#111113] border border-white/5 rounded-3xl">
+            <div className="flex items-center justify-between gap-4 mb-4">
+                <h4 className="text-white font-bold m-0">{title}</h4>
+                <code className="text-[11px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded-md whitespace-nowrap">
+                    {command}
+                </code>
+            </div>
+
+            <p className="text-zinc-400 text-sm mb-4">{whatItDoes}</p>
+
+            <h5 className="text-zinc-200 text-xs uppercase tracking-widest font-bold mb-2">Writing Tips</h5>
+            <ul className="list-disc pl-5 text-sm text-zinc-400 space-y-1 mb-4">
+                {tips.map((tip, index) => (
+                    <li key={index}>{tip}</li>
+                ))}
+            </ul>
+
+            <h5 className="text-zinc-200 text-xs uppercase tracking-widest font-bold mb-2">Sample Instruction</h5>
+            <pre className="bg-black/40 border border-white/10 rounded-xl p-4 text-xs text-emerald-300 overflow-x-auto">
+                <code>{sample}</code>
+            </pre>
+        </div>
+    );
+}
 
 const featureData = {
     'ai-agents': {
@@ -22,52 +154,84 @@ const featureData = {
             title: 'Getting Started with AI Agents',
             content: (
                 <>
-                    <p>AI Agents in ValueWats are autonomous entities that can understand context, query your knowledge base, and perform specific actions to help your customers.</p>
+                    <p>
+                        AI Agents in ValueWats can understand context, search your knowledge base, and execute workspace actions.
+                        For best results, combine a focused system prompt, high-quality knowledge content, and strict action rules.
+                    </p>
                     <h3>The Neural Lab</h3>
-                    <p>Our "Neural Lab" is where you train and test your agents. You can provide them with documents (PDF, Text, Website URLs) to build a specialized knowledge base.</p>
+                    <p>
+                        Neural Lab is where you configure the agent persona, upload knowledge, and define action instructions.
+                        Use the Test Chat panel to validate behavior before publishing.
+                    </p>
+
                     <div className="bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-2xl p-6 my-8">
-                        <h4 className="text-fuchsia-400 font-bold mb-2">Pro Tip</h4>
-                        <p className="text-sm text-zinc-400 m-0">Combine agents with <strong>Actions</strong> to allow them to update CRM data or trigger external webhooks automatically.</p>
+                        <h4 className="text-fuchsia-400 font-bold mb-2">Quick Workflow</h4>
+                        <ol className="list-decimal pl-5 m-0 text-sm text-zinc-300 space-y-1">
+                            <li>Write clear role instructions and boundaries.</li>
+                            <li>Upload or paste reliable knowledge sources.</li>
+                            <li>Enable only the actions you really need.</li>
+                            <li>Test in preview and verify each action path.</li>
+                        </ol>
                     </div>
                 </>
             )
         },
         actions: {
-            title: 'AI Agent Actions',
+            title: 'Write Better Action Instructions',
             content: (
                 <>
-                    <p>Actions allow your AI Agent to step beyond just answering questions. They can interact with your workspace data and external systems.</p>
-                    
-                    <div className="grid grid-cols-1 gap-6 mt-10">
-                        <div className="p-6 bg-white/5 border border-white/5 rounded-3xl">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="p-3 bg-blue-500/10 rounded-2xl">
-                                    <UserPlusIcon className="w-6 h-6 text-blue-400" />
-                                </div>
-                                <h4 className="text-white font-bold m-0">Action: Update Contact Fields</h4>
-                            </div>
-                            <p className="text-zinc-400 text-sm">The agent can automatically extract information (like email or name) from a conversation and save it to the personal contact record.</p>
-                        </div>
+                    <p>
+                        The Action instruction box controls when the model emits an internal action command.
+                        Strong instructions are explicit, conditional, and target-specific.
+                    </p>
 
-                        <div className="p-6 bg-white/5 border border-white/5 rounded-3xl">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="p-3 bg-amber-500/10 rounded-2xl">
-                                    <CodeBracketIcon className="w-6 h-6 text-amber-400" />
-                                </div>
-                                <h4 className="text-white font-bold m-0">Action: Trigger Webhook</h4>
-                            </div>
-                            <p className="text-zinc-400 text-sm">Enable your agent to notify your backend, Zapier, or Make.com when a specific goal is reached (e.g., "Lead Qualified").</p>
-                        </div>
+                    <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-6 my-8">
+                        <h4 className="text-indigo-300 font-bold mb-3">Instruction Formula</h4>
+                        <pre className="bg-black/40 border border-white/10 rounded-xl p-4 text-xs text-indigo-200 overflow-x-auto m-0">
+                            <code>{`When [trigger happens], and [required data exists], then [run action with exact target].
+If requirements are missing, do not run the action.`}</code>
+                        </pre>
+                        <p className="text-xs text-zinc-400 mt-3 mb-0">
+                            Keep each action instruction focused on one job. Avoid vague wording like "if needed" or "when appropriate".
+                        </p>
+                    </div>
 
-                        <div className="p-6 bg-white/5 border border-white/5 rounded-3xl">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="p-3 bg-emerald-500/10 rounded-2xl">
-                                    <ChatBubbleOvalLeftEllipsisIcon className="w-6 h-6 text-emerald-400" />
-                                </div>
-                                <h4 className="text-white font-bold m-0">Action: Handover to Human</h4>
-                            </div>
-                            <p className="text-zinc-400 text-sm">When an agent detects frustration or a specific request, it can gracefully exit the chat and notify a human agent.</p>
+                    <div className="space-y-6 mt-10">
+                        {AGENT_ACTION_GUIDES.map((action) => (
+                            <ActionGuideCard
+                                key={action.id}
+                                title={action.title}
+                                command={action.command}
+                                whatItDoes={action.whatItDoes}
+                                tips={action.tips}
+                                sample={action.sample}
+                            />
+                        ))}
+                    </div>
+
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6 mt-10">
+                        <h4 className="text-amber-300 font-bold mb-3">HTTP Variable Reference</h4>
+                        <p className="text-sm text-zinc-300 mb-4">
+                            These placeholders are available inside HTTP URL, headers, params, and JSON body:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            <code className="px-2 py-1 rounded-md bg-black/40 border border-white/10 text-xs">{'{{contact.name}}'}</code>
+                            <code className="px-2 py-1 rounded-md bg-black/40 border border-white/10 text-xs">{'{{contact.number}}'}</code>
+                            <code className="px-2 py-1 rounded-md bg-black/40 border border-white/10 text-xs">{'{{contact.id}}'}</code>
+                            <code className="px-2 py-1 rounded-md bg-black/40 border border-white/10 text-xs">{'{{agent.name}}'}</code>
+                            <code className="px-2 py-1 rounded-md bg-black/40 border border-white/10 text-xs">{'{{agent.id}}'}</code>
+                            <code className="px-2 py-1 rounded-md bg-black/40 border border-white/10 text-xs">{'{{message.content}}'}</code>
                         </div>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mt-8">
+                        <h4 className="text-white font-bold mb-3">Important Behavior Notes</h4>
+                        <ul className="list-disc pl-5 text-sm text-zinc-400 space-y-2">
+                            <li>Conversation assignment currently supports AI agent name matching and HUMAN handoff.</li>
+                            <li>Workflow trigger expects a workflow ID string (copied from Workflows), not a display label.</li>
+                            <li>Lifecycle updates match by stage name text, so stage naming consistency matters.</li>
+                            <li>For HTTP actions, invalid JSON body will cause execution failure for non-GET requests.</li>
+                        </ul>
                     </div>
                 </>
             )
@@ -118,7 +282,7 @@ const featureData = {
                     <p>ValueWats allows you to send bulk messages to your contacts or specific segments while mitigating the risk of account bans.</p>
                     <h3>Best Practices</h3>
                     <ol className="list-decimal pl-5">
-                        <li><strong>Use Spintax:</strong> Use `{"{Hi|Hello|Hey}"}` to vary your message content.</li>
+                        <li><strong>Use Spintax:</strong> Use <code>{`{Hi|Hello|Hey}`}</code> to vary your message content.</li>
                         <li><strong>Set Delays:</strong> Add random delays between messages.</li>
                         <li><strong>Warm up accounts:</strong> Start with small batches and increase over time.</li>
                     </ol>
@@ -159,8 +323,7 @@ export default function FeatureHelp() {
     const hasTopic = topic && activeFeature[topic];
 
     return (
-        <HelpCenterLayout title={hasTopic ? (activeFeature[topic].title) : `${activeFeature.name} Center`} lastUpdated="March 2026">
-            {/* Breadcrumbs */}
+        <HelpCenterLayout title={hasTopic ? activeFeature[topic].title : `${activeFeature.name} Center`} lastUpdated="April 2026">
             <nav className="flex items-center gap-2 mb-10 text-sm font-medium">
                 <Link to="/help" className="text-zinc-500 hover:text-white transition-colors">Help Center</Link>
                 <ChevronRightIcon className="w-4 h-4 text-zinc-700" />
@@ -181,20 +344,22 @@ export default function FeatureHelp() {
 
                     <div className="grid grid-cols-1 gap-4">
                         {Object.keys(activeFeature)
-                            .filter(k => k !== 'name' && k !== 'icon' && k !== 'description')
-                            .map(topicKey => (
-                            <Link 
-                                key={topicKey}
-                                to={`/help/${feature}/${topicKey}`}
-                                className="group p-6 bg-[#111113] border border-white/5 rounded-3xl hover:bg-white/[0.03] hover:border-white/10 transition-all flex items-center justify-between"
-                            >
-                                <div>
-                                    <h4 className="text-lg font-bold text-white group-hover:text-fuchsia-400 transition-colors mb-1">{activeFeature[topicKey].title}</h4>
-                                    <p className="text-zinc-500 text-sm">Comprehensive guide and best practices.</p>
-                                </div>
-                                <ArrowRightIcon className="w-6 h-6 text-zinc-700 group-hover:text-fuchsia-400 transition-all group-hover:translate-x-1" />
-                            </Link>
-                        ))}
+                            .filter((k) => k !== 'name' && k !== 'icon' && k !== 'description')
+                            .map((topicKey) => (
+                                <Link
+                                    key={topicKey}
+                                    to={`/help/${feature}/${topicKey}`}
+                                    className="group p-6 bg-[#111113] border border-white/5 rounded-3xl hover:bg-white/[0.03] hover:border-white/10 transition-all flex items-center justify-between"
+                                >
+                                    <div>
+                                        <h4 className="text-lg font-bold text-white group-hover:text-fuchsia-400 transition-colors mb-1">
+                                            {activeFeature[topicKey].title}
+                                        </h4>
+                                        <p className="text-zinc-500 text-sm">Comprehensive guide and best practices.</p>
+                                    </div>
+                                    <ArrowRightIcon className="w-6 h-6 text-zinc-700 group-hover:text-fuchsia-400 transition-all group-hover:translate-x-1" />
+                                </Link>
+                            ))}
                     </div>
                 </div>
             ) : (
@@ -209,7 +374,7 @@ export default function FeatureHelp() {
             <div className="mt-16 pt-8 border-t border-white/5">
                 <h3 className="text-lg font-bold text-white mb-6">Related Topics</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <Link 
+                    <Link
                         to="/help/product"
                         className="group p-5 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/[0.08] hover:border-white/10 transition-all"
                     >

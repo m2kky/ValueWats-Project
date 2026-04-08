@@ -210,7 +210,7 @@ export default function RichTextarea({
 
                 <div className="flex items-center gap-4">
                     <a
-                        href="/help/ai-agents"
+                        href="/help/ai-agents/actions"
                         className="text-[10px] font-bold text-zinc-600 hover:text-indigo-400 flex items-center gap-1.5 uppercase tracking-widest transition-colors"
                     >
                         <QuestionMarkCircleIcon className="h-3 w-3" />

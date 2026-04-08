@@ -157,7 +157,7 @@ const catalog = [
     description: 'Connect any channels not natively available in respond.io to expand your messaging capabilities.',
     category: 'messaging',
     color: 'amber',
-    helpLink: '/help/agents',
+    helpLink: '/help/ai-agents',
     icon: (
       <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-6 h-6">

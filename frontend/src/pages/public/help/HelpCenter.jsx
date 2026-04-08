@@ -71,7 +71,7 @@ const categories = [
         color: 'text-fuchsia-400',
         bg: 'bg-fuchsia-500/10',
         border: 'border-fuchsia-500/20',
-        link: '/help/agents'
+        link: '/help/ai-agents'
     },
     {
         id: 'settings',
