@@ -73,11 +73,11 @@ export default function Pricing() {
                   </p>
 
                   <ul className="space-y-3 mb-8 flex-1 text-sm">
-                    <li>• Daily messages: <strong>{plan.maxMessagesPerDay}</strong></li>
-                    <li>• Max contacts/campaign: <strong>{plan.maxContactsPerCampaign}</strong></li>
-                    <li>• Max channels: <strong>{plan.maxInstances}</strong></li>
+                    <li>- Daily messages: <strong>{plan.maxMessagesPerDay}</strong></li>
+                    <li>- Max contacts/campaign: <strong>{plan.maxContactsPerCampaign}</strong></li>
+                    <li>- Max channels: <strong>{plan.maxInstances}</strong></li>
                     <li>
-                      • Working hours: <strong>{plan.workingHoursEnabled ? `${plan.workingHoursStart} - ${plan.workingHoursEnd}` : 'Disabled'}</strong>
+                      - Working hours: <strong>{plan.workingHoursEnabled ? `${plan.workingHoursStart} - ${plan.workingHoursEnd}` : 'Disabled'}</strong>
                     </li>
                   </ul>
 
