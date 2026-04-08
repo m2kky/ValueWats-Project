@@ -55,6 +55,8 @@ export default function Register() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify({
         ...response.data.user,
+        tenantId: response.data.user?.tenantId || response.data.tenant?.id,
+        subscriptionPlan: response.data.tenant?.subscriptionPlan,
         onboardingCompleted: response.data.tenant?.onboardingCompleted,
       }));
       if (response.data.tenant?.onboardingCompleted === false) {
@@ -120,6 +122,8 @@ export default function Register() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify({
         ...response.data.user,
+        tenantId: response.data.user?.tenantId || response.data.tenant?.id,
+        subscriptionPlan: response.data.tenant?.subscriptionPlan,
         onboardingCompleted: response.data.tenant?.onboardingCompleted,
       }));
       // New users always go to onboarding

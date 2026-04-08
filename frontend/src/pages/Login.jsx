@@ -22,6 +22,8 @@ export default function Login() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify({
         ...response.data.user,
+        tenantId: response.data.user?.tenantId || response.data.tenant?.id,
+        subscriptionPlan: response.data.tenant?.subscriptionPlan,
         onboardingCompleted: response.data.tenant?.onboardingCompleted,
       }));
       // Redirect based on onboarding status
@@ -47,6 +49,8 @@ export default function Login() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify({
         ...response.data.user,
+        tenantId: response.data.user?.tenantId || response.data.tenant?.id,
+        subscriptionPlan: response.data.tenant?.subscriptionPlan,
         onboardingCompleted: response.data.tenant?.onboardingCompleted,
       }));
       // Redirect based on onboarding status

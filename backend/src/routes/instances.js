@@ -4,6 +4,23 @@ const prisma = require('../config/database');
 
 const router = express.Router();
 
+const resolveTenantPlan = async (tenantId) => {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    include: { plan: true }
+  });
+
+  if (!tenant) return { tenant: null, plan: null };
+  if (tenant.plan) return { tenant, plan: tenant.plan };
+  if (!tenant.subscriptionPlan) return { tenant, plan: null };
+
+  const fallbackPlan = await prisma.plan.findUnique({
+    where: { name: tenant.subscriptionPlan }
+  });
+
+  return { tenant, plan: fallbackPlan || null };
+};
+
 /**
  * GET /api/instances - List all instances for tenant
  * Syncs status from Evolution API for WhatsApp instances
@@ -67,6 +84,21 @@ router.post('/', async (req, res) => {
 
     if (!instanceName) {
       return res.status(400).json({ error: 'Instance name is required' });
+    }
+
+    const { plan } = await resolveTenantPlan(req.tenantId);
+    if (plan) {
+      const existingInstancesCount = await prisma.instance.count({
+        where: { tenantId: req.tenantId }
+      });
+
+      if (existingInstancesCount >= plan.maxInstances) {
+        return res.status(402).json({
+          error: `You reached your plan limit (${plan.maxInstances}) for connected channels. Please upgrade your plan to add more channels.`,
+          limit: plan.maxInstances,
+          current: existingInstancesCount
+        });
+      }
     }
 
     // Check if instance name already exists for this tenant

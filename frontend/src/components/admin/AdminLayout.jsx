@@ -9,12 +9,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { ShieldCheckIcon } from '@heroicons/react/24/solid';
 import { useState } from 'react';
+import { getStoredUser } from '../../utils/authUser';
 
 export default function AdminLayout({ children }) {
-  const [user] = useState(() => {
-    const userData = localStorage.getItem('user');
-    return userData ? JSON.parse(userData) : null;
-  });
+  const [user] = useState(() => getStoredUser());
   const location = useLocation();
 
   const handleLogout = () => {
@@ -28,7 +26,7 @@ export default function AdminLayout({ children }) {
     { name: 'Tenants', path: '/admin/tenants', icon: BuildingOfficeIcon },
     { name: 'Plans', path: '/admin/plans', icon: ArchiveBoxIcon },
     { name: 'Users', path: '/admin/users', icon: UsersIcon },
-    { name: 'System Logs', path: '/admin/logs', icon: BoltIcon }
+    { name: 'Notifications', path: '/admin/logs', icon: BoltIcon }
   ];
 
   const isActive = (path, exact) => {

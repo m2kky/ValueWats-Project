@@ -13,6 +13,7 @@ router.get('/stats', adminController.getSystemStats);
 router.get('/tenants', adminController.getTenants);
 router.get('/tenants/:id', adminController.getTenantDetails);
 router.patch('/tenants/:id/status', adminController.updateTenantStatus);
+router.patch('/tenants/:id/plan', adminController.updateTenantPlan);
 router.post('/tenants/:id/impersonate', adminController.impersonateTenant);
 
 // --- Plans Management ---
@@ -24,8 +25,11 @@ router.put('/plans/:id', adminController.updatePlan);
 router.get('/users', adminController.getUsers);
 router.post('/users/:id/reset-password', adminController.resetUserPassword);
 
-// --- Webhooks & Logs ---
-// router.get('/logs/webhooks', adminController.getWebhookLogs);
-// router.get('/logs/system', adminController.getSystemLogs);
+// --- Global Notifications ---
+router.get('/notifications', adminController.getGlobalNotifications);
+router.post('/notifications', adminController.createGlobalNotification);
+router.put('/notifications/:id', adminController.updateGlobalNotification);
+router.patch('/notifications/:id/toggle', adminController.toggleGlobalNotification);
+router.delete('/notifications/:id', adminController.deleteGlobalNotification);
 
 module.exports = router;

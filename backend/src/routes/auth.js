@@ -186,6 +186,7 @@ const verifyOtp = async (req, res) => {
         email: result.user.email,
         role: result.user.role,
         isSuperAdmin: result.user.isSuperAdmin,
+        tenantId: result.tenant.id,
       },
       tenant: {
         id: result.tenant.id,
@@ -205,11 +206,17 @@ const verifyOtp = async (req, res) => {
  */
 async function createNewTenant(tenantName, email, passwordHash) {
   return await prisma.$transaction(async (tx) => {
+    const basicPlan = await tx.plan.findUnique({
+      where: { name: 'basic' },
+      select: { id: true, name: true }
+    });
+
     const tenant = await tx.tenant.create({
       data: {
         name: tenantName,
         email,
-        subscriptionPlan: 'basic',
+        subscriptionPlan: basicPlan?.name || 'basic',
+        planId: basicPlan?.id || null,
         status: 'trial',
       },
     });
@@ -325,6 +332,7 @@ const login = async (req, res) => {
         email: user.email,
         role: user.role,
         isSuperAdmin: user.isSuperAdmin,
+        tenantId: user.tenantId,
       },
       tenant: {
         id: user.tenant.id,
@@ -359,6 +367,8 @@ const me = async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        isSuperAdmin: user.isSuperAdmin,
+        tenantId: user.tenantId,
         name: user.name,
         tenant: {
           id: user.tenant.id,
@@ -455,6 +465,7 @@ const googleAuth = async (req, res) => {
         email: user.email,
         role: user.role,
         isSuperAdmin: user.isSuperAdmin,
+        tenantId: user.tenant.id || user.tenantId,
       },
       tenant: {
         id: user.tenant.id,

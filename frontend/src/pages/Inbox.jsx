@@ -7,6 +7,7 @@ import ChatWindow from '../components/chat/ChatWindow';
 import ContactSidebar from '../components/chat/ContactSidebar';
 import InboxFiltersSidebar from '../components/chat/InboxFiltersSidebar';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
+import { getStoredUser } from '../utils/authUser';
 import '../styles/inbox.css';
 
 export default function Inbox() {
@@ -23,9 +24,14 @@ export default function Inbox() {
   const [showFilters, setShowFilters] = useState(true);
   const [showContactSidebar, setShowContactSidebar] = useState(true);
 
+  const fetchConversations = useCallback(async () => {
+    const { data } = await api.get('/chat/conversations');
+    setConversations(data.conversations || []);
+  }, []);
+
   // Setup socket connection
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = getStoredUser();
     if (!user.tenantId) {
       console.warn('[Inbox] No tenantId found — skipping socket setup');
       return;
@@ -41,22 +47,40 @@ export default function Inbox() {
       timeout: 10000
     });
 
-    newSocket.on('connect', () => {
+    const handleConnect = () => {
       newSocket.emit('join_tenant', user.tenantId);
-      console.log(`[Inbox] ✅ Socket connected (${newSocket.id}), joined tenant_${user.tenantId}`);
-    });
+      console.log(`[Inbox] Socket connected (${newSocket.id}), joined tenant_${user.tenantId}`);
+      fetchConversations().catch((error) => {
+        console.warn('[Inbox] Failed to refresh conversations after socket connect:', error.message);
+      });
+    };
+
+    const handleReconnect = (attempt) => {
+      console.log(`[Inbox] Socket reconnected after ${attempt} attempts`);
+      newSocket.emit('join_tenant', user.tenantId);
+      fetchConversations().catch((error) => {
+        console.warn('[Inbox] Failed to refresh conversations after reconnect:', error.message);
+      });
+    };
+
+    newSocket.on('connect', handleConnect);
+    newSocket.io.on('reconnect', handleReconnect);
 
     newSocket.on('connect_error', (err) => {
-      console.error('[Inbox] ❌ Socket connection error:', err.message);
+      console.error('[Inbox] Socket connection error:', err.message);
     });
 
     newSocket.on('disconnect', (reason) => {
-      console.warn('[Inbox] ⚠️ Socket disconnected:', reason);
+      console.warn('[Inbox] Socket disconnected:', reason);
     });
 
     setSocket(newSocket);
-    return () => newSocket.disconnect();
-  }, []);
+    return () => {
+      newSocket.off('connect', handleConnect);
+      newSocket.io.off('reconnect', handleReconnect);
+      newSocket.disconnect();
+    };
+  }, [fetchConversations]);
 
   // Listen for real-time messages
   useEffect(() => {
@@ -73,17 +97,19 @@ export default function Inbox() {
             .map(c => c.id === conversation.id ? { ...c, ...conversation } : c)
             .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
         }
-        return [conversation, ...prev];
+        return [conversation, ...prev]
+          .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
       });
 
       // If this conversation is selected, add message to it
       setSelectedConversation(prev => {
         if (prev && prev.id === conversation.id) {
+          const exists = prev.messages?.some(m => m.id === message.id);
           return {
             ...prev,
             ...conversation,
             unreadCount: 0,
-            messages: [...(prev.messages || []), message]
+            messages: exists ? (prev.messages || []) : [...(prev.messages || []), message]
           };
         }
         return prev;
@@ -126,8 +152,7 @@ export default function Inbox() {
         setSyncing(false);
 
         // 2. Then fetch conversations
-        const { data } = await api.get('/chat/conversations');
-        setConversations(data.conversations || []);
+        await fetchConversations();
         setInitialSynced(true);
       } catch (error) {
         console.error('Failed to initialize inbox:', error);
@@ -140,7 +165,7 @@ export default function Inbox() {
     initInbox();
     fetchInstances();
     fetchSupportData();
-  }, []);
+  }, [fetchConversations]);
 
   const fetchSupportData = async () => {
     try {
@@ -162,8 +187,7 @@ export default function Inbox() {
     try {
       setSyncing(true);
       await api.post('/chat/sync');
-      const { data } = await api.get('/chat/conversations');
-      setConversations(data.conversations || []);
+      await fetchConversations();
     } catch (error) {
       console.error('Failed to sync chats:', error);
       alert('Failed to sync chats. Check logs.');
@@ -324,3 +348,4 @@ export default function Inbox() {
     </div>
   );
 }
+

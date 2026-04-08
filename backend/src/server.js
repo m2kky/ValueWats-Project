@@ -43,6 +43,10 @@ app.use(cors({
     'http://app.muhammedmekky.com',
     'https://apptest.muhammedmekky.com',
     'http://apptest.muhammedmekky.com',
+    'https://valuechat.app',
+    'http://valuechat.app',
+    'https://www.valuechat.app',
+    'http://www.valuechat.app',
     'http://j4k0g4s4kssk8g0wksg0csk8.72.62.50.238.sslip.io',
     'http://i0kwck044gc80s0osco8w0wg.72.62.50.238.sslip.io',
     /^https?:\/\/[a-z0-9-]+\.72\.62\.50\.238\.sslip\.io$/, // Strictly matching Coolify VPS subdomains
@@ -74,6 +78,7 @@ app.get('/health', (req, res) => {
 // Public routes (no authentication required)
 app.use('/api/auth', authRoutes);
 app.use('/auth', authRoutes); // Fallback for stripped /api prefix
+app.use('/api/plans', require('./routes/plans'));
 
 // Onboarding (protected but separate from tenant-scoped routes)
 app.use('/api/onboarding', require('./routes/onboarding'));
@@ -100,6 +105,7 @@ app.use('/api/lifecycle-rules', tenantContext, require('./routes/lifecycleRules.
 app.use('/api/integrations', tenantContext, require('./routes/integrations'));
 app.use('/api/segments', tenantContext, require('./routes/segments'));
 app.use('/api/settings', tenantContext, require('./routes/settings'));
+app.use('/api/notifications', tenantContext, require('./routes/notifications'));
 
 // Super Admin Routes (Protected internally by isAdmin middleware)
 app.use('/api/admin', require('./routes/admin'));

@@ -110,7 +110,7 @@ export default function AdminUsers() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col">
                         <span className="text-sm text-indigo-400 font-medium">{user.tenant?.name || 'Unknown'}</span>
-                        <span className="text-[10px] text-zinc-600 mt-0.5">ID: {user.tenantId.substring(0,8)}...</span>
+                        <span className="text-[10px] text-zinc-600 mt-0.5">ID: {user.tenantId ? `${user.tenantId.substring(0, 8)}...` : 'N/A'}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
