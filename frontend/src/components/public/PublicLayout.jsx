@@ -313,6 +313,7 @@ function PublicLayout({ children }) {
                 <li><Link to="/privacy" className="text-sm text-zinc-400 hover:text-white transition-colors">Privacy Policy</Link></li>
                 <li><Link to="/terms" className="text-sm text-zinc-400 hover:text-white transition-colors">Terms of Service</Link></li>
                 <li><Link to="/cookie-policy" className="text-sm text-zinc-400 hover:text-white transition-colors">Cookie Policy</Link></li>
+                <li><Link to="/data-deletion" className="text-sm text-zinc-400 hover:text-white transition-colors">Data Deletion</Link></li>
                 <li><Link to="/security" className="text-sm text-zinc-400 hover:text-white transition-colors">Security</Link></li>
                 <li><Link to="/subprocessors" className="text-sm text-zinc-400 hover:text-white transition-colors">Subprocessors</Link></li>
                 <li><Link to="/dpa" className="text-sm text-zinc-400 hover:text-white transition-colors">DPA</Link></li>

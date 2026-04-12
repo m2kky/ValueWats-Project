@@ -5,6 +5,7 @@ const legalLinks = [
     { name: 'Privacy Policy', path: '/privacy' },
     { name: 'Terms of Service', path: '/terms' },
     { name: 'Cookie Policy', path: '/cookie-policy' },
+    { name: 'Data Deletion', path: '/data-deletion' },
     { name: 'Security', path: '/security' },
     { name: 'Subprocessors', path: '/subprocessors' },
     { name: 'Data Protection Addendum', path: '/dpa' },

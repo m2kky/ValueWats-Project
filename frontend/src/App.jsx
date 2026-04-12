@@ -68,6 +68,7 @@ const FeatureHelp = React.lazy(() => import('./pages/public/help/FeatureHelp'));
 const PrivacyPolicy = React.lazy(() => import('./pages/public/legal/PrivacyPolicy'));
 const TermsOfService = React.lazy(() => import('./pages/public/legal/TermsOfService'));
 const CookiePolicy = React.lazy(() => import('./pages/public/legal/CookiePolicy'));
+const DataDeletion = React.lazy(() => import('./pages/public/legal/DataDeletion'));
 const Security = React.lazy(() => import('./pages/public/legal/Security'));
 const Subprocessors = React.lazy(() => import('./pages/public/legal/Subprocessors'));
 const DPA = React.lazy(() => import('./pages/public/legal/DPA'));
@@ -155,6 +156,7 @@ function App() {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/data-deletion" element={<DataDeletion />} />
           <Route path="/security" element={<Security />} />
           <Route path="/subprocessors" element={<Subprocessors />} />
           <Route path="/dpa" element={<DPA />} />
