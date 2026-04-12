@@ -21,6 +21,27 @@ const DEFAULT_CHANNEL_CONFIG = {
   }
 };
 
+const buildDefaultPayloadFromTitle = (title, index) => {
+  const normalized = String(title || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 1000);
+
+  return normalized || `MENU_${index + 1}`;
+};
+
+const normalizeHttpsUrl = (rawUrl = '') => {
+  let safeUrl = String(rawUrl).trim();
+  if (!safeUrl) return '';
+
+  if (!/^https?:\/\//i.test(safeUrl)) {
+    safeUrl = `https://${safeUrl.replace(/^\/+/, '')}`;
+  }
+
+  return safeUrl;
+};
+
 const normalizeButton = (button, index) => {
   const safeType = button?.type === 'web_url' ? 'web_url' : 'postback';
   const safeTitle = String(button?.title || '').trim().slice(0, 20);
@@ -30,7 +51,7 @@ const normalizeButton = (button, index) => {
   }
 
   if (safeType === 'web_url') {
-    const safeUrl = String(button?.url || '').trim();
+    const safeUrl = normalizeHttpsUrl(button?.url || '');
     if (!safeUrl || !/^https:\/\//i.test(safeUrl)) {
       throw new Error(`Chat menu button #${index + 1} must include a valid HTTPS URL.`);
     }
@@ -43,10 +64,8 @@ const normalizeButton = (button, index) => {
     };
   }
 
-  const safePayload = String(button?.payload || '').trim().slice(0, 1000);
-  if (!safePayload) {
-    throw new Error(`Chat menu button #${index + 1} must include a payload.`);
-  }
+  const safePayload = String(button?.payload || '').trim().slice(0, 1000)
+    || buildDefaultPayloadFromTitle(safeTitle, index);
 
   return {
     type: 'postback',
