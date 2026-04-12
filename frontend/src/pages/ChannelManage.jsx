@@ -160,6 +160,36 @@ const tabLabels = {
   troubleshoot: { label: 'Troubleshoot', icon: WrenchScrewdriverIcon },
 };
 
+const defaultChannelConfig = {
+  chatMenu: {
+    enabled: false,
+    allowUserInput: true,
+    locale: 'default',
+    buttons: []
+  },
+  privateReplies: {
+    enabled: false,
+    track: 'all',
+    postId: '',
+    message: 'Thanks for your comment! We just sent you a private message.'
+  },
+  templates: {
+    items: []
+  }
+};
+
+const templatePayloadExample = `{
+  "template_type": "button",
+  "text": "Thanks for reaching out. Choose an option:",
+  "buttons": [
+    {
+      "type": "postback",
+      "title": "Talk to sales",
+      "payload": "TALK_TO_SALES"
+    }
+  ]
+}`;
+
 // ─── Main Component ─────────────────────────────────────────────────────
 export default function ChannelManage() {
   const { instanceId } = useParams();
@@ -174,9 +204,27 @@ export default function ChannelManage() {
   const [qrCode, setQrCode] = useState(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [channelConfig, setChannelConfig] = useState(defaultChannelConfig);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
+  const [configMessage, setConfigMessage] = useState('');
+  const [menuSyncing, setMenuSyncing] = useState(false);
+  const [menuSyncMessage, setMenuSyncMessage] = useState('');
+  const [templateName, setTemplateName] = useState('');
+  const [templatePayloadText, setTemplatePayloadText] = useState(templatePayloadExample);
+  const [templateRecipientId, setTemplateRecipientId] = useState('');
+  const [sendingTemplateId, setSendingTemplateId] = useState('');
+  const [privateReplyTestPostId, setPrivateReplyTestPostId] = useState('');
+  const [privateReplyTestCommentId, setPrivateReplyTestCommentId] = useState('');
+  const [privateReplySending, setPrivateReplySending] = useState(false);
 
   useEffect(() => {
     fetchInstance();
+  }, [instanceId]);
+
+  useEffect(() => {
+    if (!instanceId) return;
+    fetchChannelConfig();
   }, [instanceId]);
 
   const fetchInstance = async () => {
@@ -188,6 +236,207 @@ export default function ChannelManage() {
       console.error('Failed to fetch instance:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchChannelConfig = async () => {
+    setConfigLoading(true);
+    try {
+      const res = await api.get(`/instances/${instanceId}/channel-config`);
+      if (res.data?.config) {
+        setChannelConfig({
+          ...defaultChannelConfig,
+          ...res.data.config,
+          chatMenu: { ...defaultChannelConfig.chatMenu, ...(res.data.config.chatMenu || {}) },
+          privateReplies: { ...defaultChannelConfig.privateReplies, ...(res.data.config.privateReplies || {}) },
+          templates: { ...defaultChannelConfig.templates, ...(res.data.config.templates || {}) }
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to load channel config, falling back to defaults:', err.response?.data || err.message);
+      setChannelConfig(defaultChannelConfig);
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const saveChannelConfig = async (nextConfig, successMessage = 'Configuration saved successfully') => {
+    setConfigSaving(true);
+    setConfigMessage('');
+    try {
+      const res = await api.put(`/instances/${instanceId}/channel-config`, { config: nextConfig });
+      const saved = res.data?.config || nextConfig;
+      setChannelConfig(saved);
+      setConfigMessage(successMessage);
+      setTimeout(() => setConfigMessage(''), 3000);
+      return true;
+    } catch (err) {
+      setConfigMessage(err.response?.data?.error || 'Failed to save configuration');
+      return false;
+    } finally {
+      setConfigSaving(false);
+    }
+  };
+
+  const addMenuButton = () => {
+    setChannelConfig((prev) => ({
+      ...prev,
+      chatMenu: {
+        ...prev.chatMenu,
+        buttons: [
+          ...(prev.chatMenu?.buttons || []),
+          { type: 'postback', title: '', payload: '', url: '' }
+        ]
+      }
+    }));
+  };
+
+  const updateMenuButton = (index, patch) => {
+    setChannelConfig((prev) => ({
+      ...prev,
+      chatMenu: {
+        ...prev.chatMenu,
+        buttons: (prev.chatMenu?.buttons || []).map((button, i) =>
+          i === index ? { ...button, ...patch } : button
+        )
+      }
+    }));
+  };
+
+  const removeMenuButton = (index) => {
+    setChannelConfig((prev) => ({
+      ...prev,
+      chatMenu: {
+        ...prev.chatMenu,
+        buttons: (prev.chatMenu?.buttons || []).filter((_, i) => i !== index)
+      }
+    }));
+  };
+
+  const handleSaveChatMenu = async () => {
+    await saveChannelConfig(channelConfig, 'Chat menu draft saved');
+  };
+
+  const handleSyncChatMenu = async () => {
+    setMenuSyncing(true);
+    setMenuSyncMessage('');
+    try {
+      const res = await api.post(`/instances/${instanceId}/messenger/chat-menu/sync`, {
+        chatMenu: channelConfig.chatMenu
+      });
+      if (res.data?.config) {
+        setChannelConfig(res.data.config);
+      }
+      setMenuSyncMessage(res.data?.message || 'Chat menu synced successfully');
+    } catch (err) {
+      setMenuSyncMessage(err.response?.data?.error || 'Failed to sync chat menu');
+    } finally {
+      setMenuSyncing(false);
+    }
+  };
+
+  const handleAddTemplate = async () => {
+    let payload;
+    try {
+      payload = JSON.parse(templatePayloadText);
+    } catch (e) {
+      setConfigMessage('Template payload must be valid JSON');
+      return;
+    }
+
+    if (!payload.template_type) {
+      setConfigMessage('Template payload must include template_type');
+      return;
+    }
+
+    if (!templateName.trim()) {
+      setConfigMessage('Template name is required');
+      return;
+    }
+
+    const nextConfig = {
+      ...channelConfig,
+      templates: {
+        ...channelConfig.templates,
+        items: [
+          ...(channelConfig.templates?.items || []),
+          {
+            id: `tpl_${Date.now()}`,
+            name: templateName.trim(),
+            payload,
+            createdAt: new Date().toISOString()
+          }
+        ]
+      }
+    };
+
+    setChannelConfig(nextConfig);
+    setTemplateName('');
+    await saveChannelConfig(nextConfig, 'Template saved');
+  };
+
+  const handleDeleteTemplate = async (templateId) => {
+    const nextConfig = {
+      ...channelConfig,
+      templates: {
+        ...channelConfig.templates,
+        items: (channelConfig.templates?.items || []).filter((item) => item.id !== templateId)
+      }
+    };
+    setChannelConfig(nextConfig);
+    await saveChannelConfig(nextConfig, 'Template deleted');
+  };
+
+  const handleSendTemplateTest = async (template) => {
+    if (!templateRecipientId.trim()) {
+      setConfigMessage('Recipient PSID is required for template test');
+      return;
+    }
+
+    setSendingTemplateId(template.id);
+    try {
+      await api.post(`/instances/${instanceId}/messenger/templates/send-test`, {
+        recipientId: templateRecipientId.trim(),
+        templatePayload: template.payload
+      });
+      setConfigMessage('Template test sent successfully');
+    } catch (err) {
+      setConfigMessage(err.response?.data?.error || 'Failed to send template test');
+    } finally {
+      setSendingTemplateId('');
+    }
+  };
+
+  const handleSavePrivateReplies = async () => {
+    await saveChannelConfig(channelConfig, 'Private replies configuration saved');
+  };
+
+  const handleSendPrivateReplyTest = async () => {
+    const message = String(channelConfig.privateReplies?.message || '').trim();
+    const postId = privateReplyTestPostId.trim();
+    const commentId = privateReplyTestCommentId.trim();
+
+    if (!message) {
+      setConfigMessage('Private reply message is required');
+      return;
+    }
+    if (!postId && !commentId) {
+      setConfigMessage('Provide Post ID or Comment ID for private reply test');
+      return;
+    }
+
+    setPrivateReplySending(true);
+    try {
+      await api.post(`/instances/${instanceId}/messenger/private-replies/send`, {
+        postId,
+        commentId,
+        text: message
+      });
+      setConfigMessage('Private reply sent successfully');
+    } catch (err) {
+      setConfigMessage(err.response?.data?.error || 'Failed to send private reply');
+    } finally {
+      setPrivateReplySending(false);
     }
   };
 
@@ -362,6 +611,11 @@ export default function ChannelManage() {
       {/* ─── Main Content ─────────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto p-8">
         <div className="max-w-3xl mx-auto">
+          {(configMessage || menuSyncMessage) && (
+            <div className="mb-6 bg-indigo-500/10 border border-indigo-500/20 rounded-xl px-4 py-3 text-xs text-indigo-200">
+              {configMessage || menuSyncMessage}
+            </div>
+          )}
           {/* ── Configuration Tab ───────────────────────────────── */}
           {activeTab === 'configuration' && (
             <div>
@@ -518,43 +772,84 @@ export default function ChannelManage() {
             <div>
               <div className="mb-8">
                 <h2 className="text-xl font-bold text-white mb-1">{meta.name} Message Templates</h2>
-                <p className="text-zinc-500 text-sm">Manage message templates for this channel.</p>
+                <p className="text-zinc-500 text-sm">Save reusable Messenger template payloads and send test messages.</p>
               </div>
 
-              {instance.channelType === 'messenger' && (
-                <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-6 mb-6">
-                  <h4 className="text-sm font-bold text-white mb-2">What are Facebook Message Templates?</h4>
-                  <p className="text-zinc-400 text-sm leading-relaxed mb-3">
-                    Facebook Message Templates are pre-approved message formats provided by Meta's template library. 
-                    They are intended for utility messages such as account updates, transaction confirmations, 
-                    post-purchase notifications, and customer support follow-ups.
-                  </p>
-                  <p className="text-zinc-500 text-xs">
-                    Templates are required when sending messages outside the 24-hour messaging window.
-                  </p>
+              <div className="bg-[#14171c]/80 border border-white/5 rounded-2xl p-6 space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">Template Name</label>
+                  <input
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    placeholder="Welcome Template"
+                    className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  />
                 </div>
-              )}
 
-              {instance.channelType === 'whatsapp_cloud' && (
-                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-6 mb-6">
-                  <h4 className="text-sm font-bold text-white mb-2">WhatsApp Message Templates</h4>
-                  <p className="text-zinc-400 text-sm leading-relaxed mb-3">
-                    WhatsApp Message Templates allow you to engage with contacts at any time. 
-                    Templates must be pre-approved by Meta and can include utility, marketing, and authentication messages.
-                  </p>
-                  <p className="text-zinc-500 text-xs">
-                    You can manage templates in the Meta Business Suite and sync them here.
-                  </p>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">Template Payload (JSON)</label>
+                  <textarea
+                    rows={10}
+                    value={templatePayloadText}
+                    onChange={(e) => setTemplatePayloadText(e.target.value)}
+                    className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono resize-y"
+                  />
                 </div>
-              )}
 
-              <div className="bg-[#14171c]/80 border border-white/5 rounded-2xl p-10 text-center">
-                <DocumentTextIcon className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-                <p className="text-zinc-400 font-bold mb-2">No templates synced yet</p>
-                <p className="text-zinc-600 text-sm mb-6">Templates will appear here once synced from the platform.</p>
-                <button className="px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white uppercase tracking-wider transition-all">
-                  Sync Templates
+                <button
+                  onClick={handleAddTemplate}
+                  disabled={configSaving}
+                  className="px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 text-white uppercase tracking-wider transition-all"
+                >
+                  {configSaving ? 'Saving...' : 'Add Template'}
                 </button>
+
+                <div className="pt-4 border-t border-white/5">
+                  <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">Recipient PSID for Test Send</label>
+                  <input
+                    value={templateRecipientId}
+                    onChange={(e) => setTemplateRecipientId(e.target.value)}
+                    placeholder="Enter recipient PSID"
+                    className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  />
+                </div>
+
+                {(channelConfig.templates?.items || []).length === 0 ? (
+                  <div className="bg-[#1c1f26] border border-white/5 rounded-xl p-6 text-center">
+                    <p className="text-zinc-500 text-sm">No templates saved yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(channelConfig.templates?.items || []).map((template) => (
+                      <div key={template.id} className="bg-[#1c1f26] border border-white/10 rounded-xl p-4">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div>
+                            <p className="text-white font-bold text-sm">{template.name}</p>
+                            <p className="text-zinc-500 text-xs mt-1">template_type: {template.payload?.template_type || '-'}</p>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteTemplate(template.id)}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-black bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                          >
+                            Delete
+                          </button>
+                        </div>
+
+                        <pre className="text-[11px] text-zinc-300 bg-[#111318] border border-white/5 rounded-lg p-3 overflow-x-auto">
+                          {JSON.stringify(template.payload, null, 2)}
+                        </pre>
+
+                        <button
+                          onClick={() => handleSendTemplateTest(template)}
+                          disabled={sendingTemplateId === template.id}
+                          className="mt-3 px-4 py-2 rounded-lg text-xs font-black bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 text-white"
+                        >
+                          {sendingTemplateId === template.id ? 'Sending...' : 'Send Test'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -577,27 +872,113 @@ export default function ChannelManage() {
                     <h4 className="text-sm font-bold text-white">Enable Auto Private Replies</h4>
                     <p className="text-zinc-500 text-xs mt-1">Automatically send a DM when someone comments on your posts</p>
                   </div>
-                  <button className="w-11 h-6 bg-zinc-700 rounded-full relative transition-colors cursor-pointer hover:bg-zinc-600">
-                    <div className="w-5 h-5 bg-zinc-400 rounded-full absolute left-0.5 top-0.5 transition-transform" />
+                  <button
+                    onClick={() =>
+                      setChannelConfig((prev) => ({
+                        ...prev,
+                        privateReplies: {
+                          ...prev.privateReplies,
+                          enabled: !prev.privateReplies?.enabled
+                        }
+                      }))
+                    }
+                    className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${
+                      channelConfig.privateReplies?.enabled ? 'bg-indigo-600' : 'bg-zinc-700'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
+                        channelConfig.privateReplies?.enabled ? 'left-[1.35rem]' : 'left-0.5'
+                      }`}
+                    />
                   </button>
                 </div>
 
                 <div className="border-t border-white/5 pt-5">
                   <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">Track Comments Under</label>
-                  <select className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all appearance-none">
+                  <select
+                    value={channelConfig.privateReplies?.track || 'all'}
+                    onChange={(e) =>
+                      setChannelConfig((prev) => ({
+                        ...prev,
+                        privateReplies: {
+                          ...prev.privateReplies,
+                          track: e.target.value
+                        }
+                      }))
+                    }
+                    className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all appearance-none"
+                  >
                     <option value="all">All Posts</option>
                     <option value="specific">Specific Post</option>
                   </select>
                 </div>
 
+                {channelConfig.privateReplies?.track === 'specific' && (
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">Specific Post ID</label>
+                    <input
+                      value={channelConfig.privateReplies?.postId || ''}
+                      onChange={(e) =>
+                        setChannelConfig((prev) => ({
+                          ...prev,
+                          privateReplies: {
+                            ...prev.privateReplies,
+                            postId: e.target.value
+                          }
+                        }))
+                      }
+                      placeholder="Enter post ID"
+                      className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                    />
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">Auto-Reply Message</label>
                   <textarea
                     rows={3}
-                    placeholder="Thanks for reaching out! How can we help you today?"
+                    value={channelConfig.privateReplies?.message || ''}
+                    onChange={(e) =>
+                      setChannelConfig((prev) => ({
+                        ...prev,
+                        privateReplies: {
+                          ...prev.privateReplies,
+                          message: e.target.value
+                        }
+                      }))
+                    }
+                    placeholder="Thanks for your comment. We sent you a private message."
                     className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all resize-none placeholder-zinc-600"
                   />
                 </div>
+
+                {instance.channelType === 'messenger' && (
+                  <div className="bg-[#1c1f26] border border-white/10 rounded-xl p-4 space-y-3">
+                    <p className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Test Private Reply</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        value={privateReplyTestPostId}
+                        onChange={(e) => setPrivateReplyTestPostId(e.target.value)}
+                        placeholder="Post ID (optional)"
+                        className="w-full bg-[#111318] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                      />
+                      <input
+                        value={privateReplyTestCommentId}
+                        onChange={(e) => setPrivateReplyTestCommentId(e.target.value)}
+                        placeholder="Comment ID (optional)"
+                        className="w-full bg-[#111318] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSendPrivateReplyTest}
+                      disabled={privateReplySending}
+                      className="px-4 py-2 rounded-lg text-xs font-black bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 text-white uppercase tracking-wider"
+                    >
+                      {privateReplySending ? 'Sending...' : 'Send Test Reply'}
+                    </button>
+                  </div>
+                )}
 
                 <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
                   <div className="flex items-start gap-2">
@@ -613,8 +994,12 @@ export default function ChannelManage() {
                   </div>
                 </div>
 
-                <button className="px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white uppercase tracking-wider transition-all">
-                  Save Configuration
+                <button
+                  onClick={handleSavePrivateReplies}
+                  disabled={configSaving}
+                  className="px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 text-white uppercase tracking-wider transition-all"
+                >
+                  {configSaving ? 'Saving...' : 'Save Configuration'}
                 </button>
               </div>
             </div>
@@ -632,39 +1017,170 @@ export default function ChannelManage() {
               </div>
 
               <div className="bg-[#14171c]/80 border border-white/5 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <h4 className="text-sm font-bold text-white">Menu Buttons</h4>
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-600/20 transition-colors">
-                    + Add Button
-                  </button>
-                </div>
+                {configLoading ? (
+                  <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-5">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">Enable Chat Menu</h4>
+                        <p className="text-zinc-500 text-xs mt-1">When disabled, sync clears persistent menu from Meta.</p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          setChannelConfig((prev) => ({
+                            ...prev,
+                            chatMenu: {
+                              ...prev.chatMenu,
+                              enabled: !prev.chatMenu?.enabled
+                            }
+                          }))
+                        }
+                        className={`w-11 h-6 rounded-full relative transition-colors ${
+                          channelConfig.chatMenu?.enabled ? 'bg-indigo-600' : 'bg-zinc-700'
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
+                            channelConfig.chatMenu?.enabled ? 'left-[1.35rem]' : 'left-0.5'
+                          }`}
+                        />
+                      </button>
+                    </div>
 
-                <div className="bg-[#1c1f26] border border-white/5 rounded-xl p-8 text-center">
-                  <Bars3BottomLeftIcon className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
-                  <p className="text-zinc-400 font-bold text-sm mb-1">No menu buttons yet</p>
-                  <p className="text-zinc-600 text-xs">Add buttons to create a persistent chat menu for your Messenger audience.</p>
-                </div>
+                    <div className="flex items-center justify-between mb-5">
+                      <h4 className="text-sm font-bold text-white">Menu Buttons</h4>
+                      <button
+                        onClick={addMenuButton}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-600/20 transition-colors"
+                      >
+                        + Add Button
+                      </button>
+                    </div>
 
-                <div className="mt-5 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <input type="checkbox" defaultChecked className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500/50" />
-                    <label className="text-sm text-zinc-300 font-medium">Allow User Input</label>
-                  </div>
-                </div>
+                    {(channelConfig.chatMenu?.buttons || []).length === 0 ? (
+                      <div className="bg-[#1c1f26] border border-white/5 rounded-xl p-8 text-center">
+                        <Bars3BottomLeftIcon className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
+                        <p className="text-zinc-400 font-bold text-sm mb-1">No menu buttons yet</p>
+                        <p className="text-zinc-600 text-xs">Add buttons to create a persistent chat menu for your Messenger audience.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {(channelConfig.chatMenu?.buttons || []).map((button, index) => (
+                          <div key={`${index}-${button.title || 'menu'}`} className="bg-[#1c1f26] border border-white/10 rounded-xl p-4 space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                              <div>
+                                <label className="text-[11px] text-zinc-500">Type</label>
+                                <select
+                                  value={button.type || 'postback'}
+                                  onChange={(e) =>
+                                    updateMenuButton(index, {
+                                      type: e.target.value,
+                                      payload: e.target.value === 'postback' ? (button.payload || '') : '',
+                                      url: e.target.value === 'web_url' ? (button.url || '') : ''
+                                    })
+                                  }
+                                  className="w-full mt-1 bg-[#111318] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                                >
+                                  <option value="postback">Payload</option>
+                                  <option value="web_url">URL</option>
+                                </select>
+                              </div>
 
-                <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 mt-5">
-                  <div className="flex items-start gap-2">
-                    <InformationCircleIcon className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-indigo-200/50 leading-relaxed">
-                      Two button types are available: <strong className="text-indigo-300">Payload</strong> (sends a message with the button name) 
-                      and <strong className="text-indigo-300">URL</strong> (opens a webpage). You can drag to reorder buttons.
-                    </p>
-                  </div>
-                </div>
+                              <div className="md:col-span-2">
+                                <label className="text-[11px] text-zinc-500">Title</label>
+                                <input
+                                  value={button.title || ''}
+                                  onChange={(e) => updateMenuButton(index, { title: e.target.value })}
+                                  placeholder="Button title"
+                                  className="w-full mt-1 bg-[#111318] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                                />
+                              </div>
 
-                <button className="mt-5 px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white uppercase tracking-wider transition-all">
-                  Save Menu
-                </button>
+                              <div className="flex items-end">
+                                <button
+                                  onClick={() => removeMenuButton(index)}
+                                  className="w-full px-3 py-2 rounded-lg text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+
+                            {button.type === 'web_url' ? (
+                              <div>
+                                <label className="text-[11px] text-zinc-500">URL</label>
+                                <input
+                                  value={button.url || ''}
+                                  onChange={(e) => updateMenuButton(index, { url: e.target.value })}
+                                  placeholder="https://example.com"
+                                  className="w-full mt-1 bg-[#111318] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                                />
+                              </div>
+                            ) : (
+                              <div>
+                                <label className="text-[11px] text-zinc-500">Payload</label>
+                                <input
+                                  value={button.payload || ''}
+                                  onChange={(e) => updateMenuButton(index, { payload: e.target.value })}
+                                  placeholder="MENU_HELP"
+                                  className="w-full mt-1 bg-[#111318] border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={channelConfig.chatMenu?.allowUserInput !== false}
+                          onChange={(e) =>
+                            setChannelConfig((prev) => ({
+                              ...prev,
+                              chatMenu: {
+                                ...prev.chatMenu,
+                                allowUserInput: e.target.checked
+                              }
+                            }))
+                          }
+                          className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500/50"
+                        />
+                        <label className="text-sm text-zinc-300 font-medium">Allow User Input</label>
+                      </div>
+                    </div>
+
+                    <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 mt-5">
+                      <div className="flex items-start gap-2">
+                        <InformationCircleIcon className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                        <p className="text-xs text-indigo-200/50 leading-relaxed">
+                          Two button types are available: <strong className="text-indigo-300">Payload</strong> and <strong className="text-indigo-300">URL</strong>.
+                          Max buttons allowed by Meta is 20.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex items-center gap-3">
+                      <button
+                        onClick={handleSaveChatMenu}
+                        disabled={configSaving}
+                        className="px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 text-white uppercase tracking-wider transition-all"
+                      >
+                        {configSaving ? 'Saving...' : 'Save Menu Draft'}
+                      </button>
+                      <button
+                        onClick={handleSyncChatMenu}
+                        disabled={menuSyncing}
+                        className="px-5 py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 text-white uppercase tracking-wider transition-all"
+                      >
+                        {menuSyncing ? 'Syncing...' : 'Sync to Meta'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}

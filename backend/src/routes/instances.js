@@ -1,6 +1,13 @@
 const express = require('express');
 const axios = require('axios');
 const evolutionApi = require('../services/evolutionApi');
+const metaApi = require('../services/metaApi');
+const {
+  getChannelConfig,
+  saveChannelConfig,
+  sanitizeChannelConfig,
+  DEFAULT_CHANNEL_CONFIG
+} = require('../services/channelConfig.service');
 const prisma = require('../config/database');
 
 const router = express.Router();
@@ -100,6 +107,12 @@ const getMetaPagesFromUserToken = async (userAccessToken) => {
       : null,
     instagramUsername: page.instagram_business_account?.username || null
   }));
+};
+
+const getTenantInstanceById = async (tenantId, instanceId) => {
+  return prisma.instance.findFirst({
+    where: { id: instanceId, tenantId }
+  });
 };
 
 /**
@@ -382,6 +395,174 @@ router.get('/:id/details', async (req, res) => {
   } catch (error) {
     console.error('Get instance details error:', error);
     res.status(500).json({ error: 'Failed to fetch instance details' });
+  }
+});
+
+/**
+ * GET /api/instances/:id/channel-config
+ * Retrieve saved channel feature config (chat menu, private replies, templates)
+ */
+router.get('/:id/channel-config', async (req, res) => {
+  try {
+    const instance = await getTenantInstanceById(req.tenantId, req.params.id);
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
+
+    const config = await getChannelConfig({
+      tenantId: req.tenantId,
+      instanceId: instance.id
+    });
+
+    res.json({ config });
+  } catch (error) {
+    console.error('Get channel config error:', error);
+    res.status(500).json({ error: 'Failed to load channel configuration' });
+  }
+});
+
+/**
+ * PUT /api/instances/:id/channel-config
+ * Save channel feature config (chat menu, private replies, templates)
+ */
+router.put('/:id/channel-config', async (req, res) => {
+  try {
+    const instance = await getTenantInstanceById(req.tenantId, req.params.id);
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
+
+    const sanitized = sanitizeChannelConfig(req.body?.config || DEFAULT_CHANNEL_CONFIG);
+    const config = await saveChannelConfig({
+      tenantId: req.tenantId,
+      instanceId: instance.id,
+      config: sanitized
+    });
+
+    res.json({ message: 'Channel configuration saved', config });
+  } catch (error) {
+    console.error('Save channel config error:', error);
+    res.status(400).json({ error: error.message || 'Failed to save channel configuration' });
+  }
+});
+
+/**
+ * POST /api/instances/:id/messenger/chat-menu/sync
+ * Sync saved chat menu config to Meta Messenger Profile API
+ */
+router.post('/:id/messenger/chat-menu/sync', async (req, res) => {
+  try {
+    const instance = await getTenantInstanceById(req.tenantId, req.params.id);
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
+    if (instance.channelType !== 'messenger') {
+      return res.status(400).json({ error: 'Chat Menu is currently supported only for Messenger channels.' });
+    }
+    if (!instance.accessToken || !instance.phoneNumberId) {
+      return res.status(400).json({ error: 'Messenger channel is missing required access token or page id.' });
+    }
+
+    const existingConfig = await getChannelConfig({ tenantId: req.tenantId, instanceId: instance.id });
+    const incomingChatMenu = req.body?.chatMenu || existingConfig.chatMenu;
+    const mergedConfig = sanitizeChannelConfig({
+      ...existingConfig,
+      chatMenu: incomingChatMenu
+    });
+
+    const menu = mergedConfig.chatMenu;
+    let metaResponse;
+
+    if (!menu.enabled || menu.buttons.length === 0) {
+      metaResponse = await metaApi.clearMessengerPersistentMenu(instance);
+    } else {
+      metaResponse = await metaApi.setMessengerPersistentMenu(instance, {
+        locale: menu.locale,
+        allowUserInput: menu.allowUserInput,
+        buttons: menu.buttons
+      });
+    }
+
+    await saveChannelConfig({
+      tenantId: req.tenantId,
+      instanceId: instance.id,
+      config: mergedConfig
+    });
+
+    res.json({
+      message: menu.enabled && menu.buttons.length > 0
+        ? 'Messenger chat menu synced successfully.'
+        : 'Messenger chat menu cleared successfully.',
+      metaResponse,
+      config: mergedConfig
+    });
+  } catch (error) {
+    console.error('Sync messenger chat menu error:', error.response?.data || error.message);
+    res.status(400).json({
+      error: error.response?.data?.error?.message || error.message || 'Failed to sync Messenger chat menu'
+    });
+  }
+});
+
+/**
+ * POST /api/instances/:id/messenger/templates/send-test
+ * Send a template test message to a PSID
+ */
+router.post('/:id/messenger/templates/send-test', async (req, res) => {
+  try {
+    const instance = await getTenantInstanceById(req.tenantId, req.params.id);
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
+    if (instance.channelType !== 'messenger') {
+      return res.status(400).json({ error: 'Template testing here is supported only for Messenger channels.' });
+    }
+
+    const recipientId = String(req.body?.recipientId || '').trim();
+    const templatePayload = req.body?.templatePayload;
+
+    if (!recipientId) {
+      return res.status(400).json({ error: 'recipientId (PSID) is required.' });
+    }
+
+    if (!templatePayload || typeof templatePayload !== 'object') {
+      return res.status(400).json({ error: 'templatePayload is required and must be a valid object.' });
+    }
+
+    if (!templatePayload.template_type) {
+      return res.status(400).json({ error: 'templatePayload.template_type is required.' });
+    }
+
+    const result = await metaApi.sendMessengerTemplate(instance, recipientId, templatePayload);
+    res.json({ message: 'Template sent successfully', result });
+  } catch (error) {
+    console.error('Send messenger template test error:', error.response?.data || error.message);
+    res.status(400).json({
+      error: error.response?.data?.error?.message || error.message || 'Failed to send template test message'
+    });
+  }
+});
+
+/**
+ * POST /api/instances/:id/messenger/private-replies/send
+ * Send one private reply to a post or comment (manual test endpoint)
+ */
+router.post('/:id/messenger/private-replies/send', async (req, res) => {
+  try {
+    const instance = await getTenantInstanceById(req.tenantId, req.params.id);
+    if (!instance) return res.status(404).json({ error: 'Instance not found' });
+    if (instance.channelType !== 'messenger') {
+      return res.status(400).json({ error: 'Private Replies are currently supported only for Messenger channels.' });
+    }
+
+    const postId = String(req.body?.postId || '').trim();
+    const commentId = String(req.body?.commentId || '').trim();
+    const text = String(req.body?.text || '').trim();
+
+    if (!text) return res.status(400).json({ error: 'Reply text is required.' });
+    if (!postId && !commentId) {
+      return res.status(400).json({ error: 'Either postId or commentId is required.' });
+    }
+
+    const result = await metaApi.sendMessengerPrivateReply(instance, { postId, commentId, text });
+    res.json({ message: 'Private reply sent successfully', result });
+  } catch (error) {
+    console.error('Send private reply test error:', error.response?.data || error.message);
+    res.status(400).json({
+      error: error.response?.data?.error?.message || error.message || 'Failed to send private reply'
+    });
   }
 });
 

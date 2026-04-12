@@ -68,6 +68,79 @@ class MetaApi {
     return res.data;
   }
 
+  async postToMessengerPage(instance, payload) {
+    const res = await axios.post(`${FB_BASE}/${instance.phoneNumberId}/messages`, payload, {
+      params: { access_token: instance.accessToken },
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return res.data;
+  }
+
+  async sendMessengerTemplate(instance, recipientId, templatePayload) {
+    const payload = {
+      messaging_type: 'RESPONSE',
+      recipient: { id: recipientId },
+      message: {
+        attachment: {
+          type: 'template',
+          payload: templatePayload
+        }
+      }
+    };
+
+    const data = await this.postToMessengerPage(instance, payload);
+    console.log(`[MetaApi:Messenger] Template sent to ${recipientId}:`, data);
+    return data;
+  }
+
+  async sendMessengerPrivateReply(instance, { postId, commentId, text }) {
+    const recipient = commentId ? { comment_id: commentId } : { post_id: postId };
+
+    const payload = {
+      messaging_type: 'RESPONSE',
+      recipient,
+      message: {
+        text
+      }
+    };
+
+    const data = await this.postToMessengerPage(instance, payload);
+    console.log(
+      `[MetaApi:Messenger] Private reply sent for ${commentId ? `comment ${commentId}` : `post ${postId}`}:`,
+      data
+    );
+    return data;
+  }
+
+  async setMessengerPersistentMenu(instance, { locale = 'default', allowUserInput = true, buttons = [] }) {
+    const payload = {
+      persistent_menu: [
+        {
+          locale,
+          composer_input_disabled: !allowUserInput,
+          call_to_actions: buttons
+        }
+      ]
+    };
+
+    const res = await axios.post(`${FB_BASE}/me/messenger_profile`, payload, {
+      params: { access_token: instance.accessToken },
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    return res.data;
+  }
+
+  async clearMessengerPersistentMenu(instance) {
+    const res = await axios.delete(`${FB_BASE}/me/messenger_profile`, {
+      params: { access_token: instance.accessToken },
+      headers: { 'Content-Type': 'application/json' },
+      data: { fields: ['persistent_menu'] }
+    });
+
+    return res.data;
+  }
+
   // --- INSTAGRAM MESSAGING API ---
   // Docs: https://developers.facebook.com/docs/messenger-platform/instagram/features/send-message
   // Endpoint: POST graph.facebook.com/{version}/me/messages?access_token={PAGE_ACCESS_TOKEN}
