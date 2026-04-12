@@ -36,7 +36,7 @@ const categories = [
     {
         id: 'channels',
         title: 'Messaging Channels',
-        description: 'Connect and configure WhatsApp, FB, IG, TikTok, and Telegram instances.',
+        description: 'Connect and configure WhatsApp, Facebook Messenger, and Instagram channels.',
         icon: ChatBubbleLeftRightIcon,
         color: 'text-emerald-400',
         bg: 'bg-emerald-500/10',

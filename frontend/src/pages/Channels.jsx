@@ -22,6 +22,8 @@ const categories = [
   { id: 'livechat', name: 'Live Chat' }
 ];
 
+const VISIBLE_CHANNEL_TYPES = new Set(['whatsapp', 'messenger', 'instagram']);
+
 const catalog = [
   {
     id: 'whatsapp-instance',
@@ -186,9 +188,10 @@ export default function Channels() {
     try {
       const response = await api.get('/instances');
       const instances = response.data.instances || [];
-      setConnectedChannels(instances);
+      const visibleInstances = instances.filter((instance) => VISIBLE_CHANNEL_TYPES.has(instance.channelType));
+      setConnectedChannels(visibleInstances);
       // If no connected channels, default to catalog view
-      if (instances.length === 0) {
+      if (visibleInstances.length === 0) {
         setView('catalog');
       }
     } catch (err) {
@@ -211,10 +214,11 @@ export default function Channels() {
 
   const filteredCatalog = useMemo(() => {
     return catalog.filter(item => {
+      const isVisible = VISIBLE_CHANNEL_TYPES.has(item.type);
       const matchesTab = activeTab === 'all' || item.category === activeTab;
       const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                            item.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesTab && matchesSearch;
+      return isVisible && matchesTab && matchesSearch;
     });
   }, [activeTab, searchQuery]);
 

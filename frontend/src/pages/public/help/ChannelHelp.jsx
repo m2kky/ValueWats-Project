@@ -99,9 +99,6 @@ const channelData = {
                                 </a>
                             </li>
                         </ul>
-                        <p className="text-xs text-zinc-500 mt-4 mb-0">
-                            Need Meta&apos;s official API flow instead of QR? Use <Link to="/help/channels/whatsapp_cloud" className="text-blue-400">WhatsApp Cloud API</Link>.
-                        </p>
                     </div>
                 </>
             )
@@ -120,6 +117,9 @@ const channelData = {
                         <li><strong>Social Presence:</strong> Meet customers where they already follow your brand.</li>
                         <li><strong>Persistent History:</strong> Chat history is maintained both in Value chat and your FB Page manager.</li>
                         <li><strong>No Phone Required:</strong> Unlike WhatsApp, Messenger runs through your Meta Page using Embedded Signup.</li>
+                        <li><strong>Chat Menu:</strong> Configure persistent menu buttons and sync directly to Meta.</li>
+                        <li><strong>Private Replies:</strong> Automatically send private replies to new post comments from Channel Manage.</li>
+                        <li><strong>Template Tester:</strong> Save template JSON blocks and test-send to a PSID.</li>
                     </ul>
                 </>
             )
@@ -133,9 +133,10 @@ const channelData = {
                     <h3>Step-by-Step Setup (Official Meta Flow)</h3>
                     <ol className="list-decimal pl-5 space-y-4">
                         <li><strong>Create or open your Meta app:</strong> In Meta for Developers, add the <strong>Messenger</strong> product and complete app basics (app domains, privacy policy URL, and data deletion URL).</li>
-                        <li><strong>Configure webhooks in Meta:</strong> Set callback URL to <code>https://valuechat.app/api/webhooks/meta</code> and verify token. Subscribe to required events (at minimum <code>messages</code> and <code>messaging_postbacks</code>).</li>
+                        <li><strong>Configure webhooks in Meta:</strong> Set callback URL to <code>https://valuechat.app/api/webhooks/meta</code> and verify token. Subscribe to <code>messages</code>, <code>messaging_postbacks</code>, <code>messaging_referrals</code>, and <code>feed</code>.</li>
                         <li><strong>Use Embedded Signup in Value chat:</strong> Go to <Link to="/channels" className="text-blue-400">Channels</Link>, choose <strong>Facebook Messenger</strong>, then click <strong>Connect with Meta</strong>.</li>
                         <li><strong>Approve permissions and pick Page:</strong> Complete Meta popup flow, grant requested permissions, and select the Page to connect.</li>
+                        <li><strong>Configure channel features:</strong> Open <strong>Channel Manage</strong> to configure Chat Menu, Private Replies, and Template tests.</li>
                     </ol>
 
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 my-8">
@@ -162,14 +163,15 @@ const channelData = {
                 <>
                     <p>Use this script to record a full Messenger connection tutorial with no missing steps.</p>
 
-                    <h3>Recommended Video Script (6 Chapters)</h3>
+                    <h3>Recommended Video Script (7 Chapters)</h3>
                     <ol className="list-decimal pl-5 space-y-4">
                         <li><strong>Prerequisites:</strong> Confirm you have a Facebook Page and admin-level access.</li>
                         <li><strong>Meta App setup:</strong> Open Meta for Developers, select your app, and add <strong>Messenger</strong>.</li>
-                        <li><strong>Webhook setup:</strong> Configure callback URL <code>https://valuechat.app/api/webhooks/meta</code>, set verify token, then subscribe to required events.</li>
+                        <li><strong>Webhook setup:</strong> Configure callback URL <code>https://valuechat.app/api/webhooks/meta</code>, set verify token, then subscribe to <code>messages</code>, <code>messaging_postbacks</code>, <code>messaging_referrals</code>, and <code>feed</code>.</li>
                         <li><strong>Embedded Signup flow:</strong> Open <Link to="/channels" className="text-blue-400">Channels</Link>, select Messenger, click <strong>Connect with Meta</strong>, and complete the popup.</li>
                         <li><strong>Page selection:</strong> Show selecting the exact Facebook Page when Meta returns multiple pages.</li>
-                        <li><strong>Validation test:</strong> Send a message to the Page and show it arriving in Value chat inbox.</li>
+                        <li><strong>Feature setup:</strong> In Channel Manage, sync Chat Menu and save Private Replies message.</li>
+                        <li><strong>Validation test:</strong> Send a message to the Page and add a comment to verify inbox + private reply workflow.</li>
                     </ol>
 
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 my-8">
@@ -555,8 +557,9 @@ const channelData = {
 export default function ChannelHelp() {
     const { channel, topic } = useParams();
     const activeChannel = channelData[channel];
+    const visibleChannels = new Set(['whatsapp', 'messenger', 'instagram']);
 
-    if (!activeChannel) {
+    if (!activeChannel || !visibleChannels.has(channel)) {
         return (
             <HelpCenterLayout title="Channel Not Found">
                 <p>The channel you are looking for does not exist in our documentation.</p>
@@ -571,7 +574,7 @@ export default function ChannelHelp() {
     const hasTopic = isConnect || isOverview || isVideo;
 
     return (
-        <HelpCenterLayout title={hasTopic ? (activeChannel[topic].title) : `${activeChannel.name} Guide`} lastUpdated="March 2026">
+        <HelpCenterLayout title={hasTopic ? (activeChannel[topic].title) : `${activeChannel.name} Guide`} lastUpdated="April 2026">
             {/* Breadcrumbs */}
             <nav className="flex items-center gap-2 mb-10 text-sm font-medium">
                 <Link to="/help" className="text-zinc-500 hover:text-white transition-colors">Help Center</Link>

@@ -110,7 +110,14 @@ const channelConfigs = {
 export default function ConnectChannel() {
   const navigate = useNavigate();
   const { type } = useParams();
-  const config = channelConfigs[type] || channelConfigs.whatsapp;
+  const visibleChannelTypes = ['whatsapp', 'messenger', 'instagram'];
+  const isSupportedChannel = visibleChannelTypes.includes(type);
+  const config = channelConfigs[type] || {
+    name: 'Channel',
+    description: 'This channel is not available at the moment.',
+    resources: [],
+    icon: null
+  };
 
   const [instanceName, setInstanceName] = useState('');
   const [phoneNumberId, setPhoneNumberId] = useState('');
@@ -139,10 +146,11 @@ export default function ConnectChannel() {
     : 'business_management,pages_show_list,pages_manage_metadata,pages_messaging';
 
   useEffect(() => {
+    if (!isSupportedChannel) return;
     setMetaPages([]);
     setSelectedMetaPageId('');
     setMetaUserAccessToken('');
-  }, [type]);
+  }, [type, isSupportedChannel]);
 
   const loadMetaSdk = () => new Promise((resolve, reject) => {
     if (!metaAppId) {
@@ -261,6 +269,7 @@ export default function ConnectChannel() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isSupportedChannel) return;
 
     if (isMetaChannel) {
       if (metaPages.length > 0) {
@@ -316,6 +325,23 @@ export default function ConnectChannel() {
   };
 
   return (
+    !isSupportedChannel ? (
+      <div className="max-w-2xl mx-auto p-8 text-white">
+        <button
+          onClick={() => navigate('/channels')}
+          className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors mb-8 group"
+        >
+          <ArrowLeftIcon className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm font-bold tracking-tight">Back</span>
+        </button>
+        <div className="bg-[#14171c]/80 border border-white/10 rounded-2xl p-6">
+          <h1 className="text-2xl font-bold mb-2">Channel Unavailable</h1>
+          <p className="text-zinc-400 text-sm">
+            This channel is temporarily hidden. Currently available channels are WhatsApp, Facebook Messenger, and Instagram.
+          </p>
+        </div>
+      </div>
+    ) : (
     <div className="flex flex-col md:flex-row h-full text-white">
       {/* LEFT SIDEBAR - Informative */}
       <aside className="w-full md:w-[320px] bg-[#0c0c0e] border-r border-white/5 p-8 flex flex-col shrink-0">
@@ -635,6 +661,7 @@ export default function ConnectChannel() {
         </div>
       </main>
     </div>
+    )
   );
 }
 

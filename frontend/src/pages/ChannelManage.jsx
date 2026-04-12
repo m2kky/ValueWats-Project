@@ -90,11 +90,11 @@ const channelMeta = {
     name: 'Instagram',
     color: 'rose',
     icon: <img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg" className="w-8 h-8" alt="Instagram" />,
-    tabs: ['configuration', 'private_replies', 'troubleshoot'],
+    tabs: ['configuration', 'troubleshoot'],
     chatLinkPrefix: null,
     helpLinks: [
       { label: 'About Instagram Direct', url: '/help/channels/instagram' },
-      { label: 'Instagram Auto Private Replies', url: '/help/channels/instagram' },
+      { label: 'How to Connect Instagram', url: '/help/channels/instagram/connect' },
     ],
     statusPage: 'https://metastatus.com/',
     troubleshootSteps: [
