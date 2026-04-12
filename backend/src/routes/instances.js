@@ -1,8 +1,11 @@
 const express = require('express');
+const axios = require('axios');
 const evolutionApi = require('../services/evolutionApi');
 const prisma = require('../config/database');
 
 const router = express.Router();
+const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
+const FB_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 
 const resolveTenantPlan = async (tenantId) => {
   const tenant = await prisma.tenant.findUnique({
@@ -20,6 +23,208 @@ const resolveTenantPlan = async (tenantId) => {
 
   return { tenant, plan: fallbackPlan || null };
 };
+
+const enforceInstanceLimit = async (tenantId) => {
+  const { plan } = await resolveTenantPlan(tenantId);
+  if (!plan) return;
+
+  const existingInstancesCount = await prisma.instance.count({
+    where: { tenantId }
+  });
+
+  if (existingInstancesCount >= plan.maxInstances) {
+    const err = new Error(`You reached your plan limit (${plan.maxInstances}) for connected channels. Please upgrade your plan to add more channels.`);
+    err.status = 402;
+    err.payload = {
+      error: err.message,
+      limit: plan.maxInstances,
+      current: existingInstancesCount
+    };
+    throw err;
+  }
+};
+
+const ensureUniqueInstanceName = async (tenantId, preferredName) => {
+  const baseName = (preferredName || 'Meta Channel').trim().slice(0, 120);
+  let candidate = baseName || 'Meta Channel';
+  let suffix = 2;
+
+  while (true) {
+    const existing = await prisma.instance.findFirst({
+      where: { tenantId, instanceName: candidate },
+      select: { id: true }
+    });
+    if (!existing) return candidate;
+    candidate = `${baseName} (${suffix})`;
+    suffix += 1;
+  }
+};
+
+const subscribeMetaPage = async ({ pageId, pageAccessToken, channelType }) => {
+  if (!pageId || !pageAccessToken) return;
+
+  const subscribedFields = channelType === 'instagram'
+    ? 'messages,messaging_postbacks,messaging_seen,messaging_referrals'
+    : 'messages,messaging_postbacks,messaging_seen,messaging_referrals';
+
+  try {
+    await axios.post(`${FB_BASE}/${pageId}/subscribed_apps`, null, {
+      params: {
+        subscribed_fields: subscribedFields,
+        access_token: pageAccessToken
+      }
+    });
+  } catch (err) {
+    console.warn(
+      `[Meta] Failed to subscribe page ${pageId} for ${channelType}:`,
+      err.response?.data?.error?.message || err.message
+    );
+  }
+};
+
+const getMetaPagesFromUserToken = async (userAccessToken) => {
+  const response = await axios.get(`${FB_BASE}/me/accounts`, {
+    params: {
+      fields: 'id,name,access_token,instagram_business_account{id,username}',
+      access_token: userAccessToken
+    }
+  });
+
+  const pages = response.data?.data || [];
+  return pages.map((page) => ({
+    pageId: String(page.id),
+    pageName: page.name || `Page ${page.id}`,
+    pageAccessToken: page.access_token || null,
+    instagramId: page.instagram_business_account?.id
+      ? String(page.instagram_business_account.id)
+      : null,
+    instagramUsername: page.instagram_business_account?.username || null
+  }));
+};
+
+/**
+ * POST /api/instances/meta/embedded
+ * Connect Messenger / Instagram via Meta Embedded Signup (no manual token input)
+ */
+router.post('/meta/embedded', async (req, res) => {
+  try {
+    const { channelType, userAccessToken, selectedPageId, instanceName } = req.body;
+
+    if (!['messenger', 'instagram'].includes(channelType)) {
+      return res.status(400).json({ error: 'channelType must be messenger or instagram' });
+    }
+
+    if (!userAccessToken) {
+      return res.status(400).json({ error: 'userAccessToken is required' });
+    }
+
+    await enforceInstanceLimit(req.tenantId);
+
+    const pages = await getMetaPagesFromUserToken(userAccessToken);
+    const eligiblePages = pages.filter((page) => {
+      if (!page.pageAccessToken) return false;
+      if (channelType === 'instagram') return Boolean(page.instagramId);
+      return true;
+    });
+
+    if (!eligiblePages.length) {
+      return res.status(400).json({
+        error: channelType === 'instagram'
+          ? 'No Instagram Professional account linked to your pages was found.'
+          : 'No eligible Facebook pages were found for this account.'
+      });
+    }
+
+    if (!selectedPageId && eligiblePages.length > 1) {
+      return res.status(409).json({
+        code: 'MULTIPLE_PAGES',
+        error: 'Multiple pages found. Please choose the page to connect.',
+        pages: eligiblePages.map((page) => ({
+          pageId: page.pageId,
+          pageName: page.pageName,
+          instagramId: page.instagramId,
+          instagramUsername: page.instagramUsername
+        }))
+      });
+    }
+
+    const chosenPage = selectedPageId
+      ? eligiblePages.find((page) => page.pageId === String(selectedPageId))
+      : eligiblePages[0];
+
+    if (!chosenPage) {
+      return res.status(400).json({ error: 'Selected page not found in your Meta account.' });
+    }
+
+    const identifier = channelType === 'instagram'
+      ? chosenPage.instagramId
+      : chosenPage.pageId;
+
+    if (!identifier) {
+      return res.status(400).json({
+        error: 'Selected page is missing the required identifier for this channel.'
+      });
+    }
+
+    const alreadyConnected = await prisma.instance.findFirst({
+      where: {
+        tenantId: req.tenantId,
+        channelType,
+        phoneNumberId: String(identifier)
+      }
+    });
+
+    if (alreadyConnected) {
+      return res.json({
+        message: 'This channel is already connected.',
+        alreadyConnected: true,
+        instance: alreadyConnected
+      });
+    }
+
+    const defaultName = channelType === 'instagram'
+      ? `Instagram ${chosenPage.instagramUsername ? `@${chosenPage.instagramUsername}` : chosenPage.pageName}`
+      : `Messenger ${chosenPage.pageName}`;
+
+    const uniqueName = await ensureUniqueInstanceName(req.tenantId, instanceName || defaultName);
+
+    const instance = await prisma.instance.create({
+      data: {
+        tenantId: req.tenantId,
+        channelType,
+        instanceName: uniqueName,
+        phoneNumberId: String(identifier),
+        phoneNumber: channelType === 'instagram' ? chosenPage.pageId : null,
+        accessToken: chosenPage.pageAccessToken,
+        status: 'connected'
+      }
+    });
+
+    await subscribeMetaPage({
+      pageId: chosenPage.pageId,
+      pageAccessToken: chosenPage.pageAccessToken,
+      channelType
+    });
+
+    res.status(201).json({
+      message: `${channelType === 'instagram' ? 'Instagram' : 'Messenger'} connected successfully via Embedded Signup.`,
+      instance,
+      connectedAsset: {
+        pageId: chosenPage.pageId,
+        pageName: chosenPage.pageName,
+        instagramId: chosenPage.instagramId,
+        instagramUsername: chosenPage.instagramUsername
+      }
+    });
+  } catch (error) {
+    if (error.status && error.payload) {
+      return res.status(error.status).json(error.payload);
+    }
+
+    console.error('Meta embedded connect error:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to connect via Meta Embedded Signup' });
+  }
+});
 
 /**
  * GET /api/instances - List all instances for tenant
@@ -86,20 +291,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Instance name is required' });
     }
 
-    const { plan } = await resolveTenantPlan(req.tenantId);
-    if (plan) {
-      const existingInstancesCount = await prisma.instance.count({
-        where: { tenantId: req.tenantId }
-      });
-
-      if (existingInstancesCount >= plan.maxInstances) {
-        return res.status(402).json({
-          error: `You reached your plan limit (${plan.maxInstances}) for connected channels. Please upgrade your plan to add more channels.`,
-          limit: plan.maxInstances,
-          current: existingInstancesCount
-        });
-      }
-    }
+    await enforceInstanceLimit(req.tenantId);
 
     // Check if instance name already exists for this tenant
     const existing = await prisma.instance.findFirst({
@@ -118,35 +310,18 @@ router.post('/', async (req, res) => {
     if (channelType === 'whatsapp') {
       // WhatsApp handled via Evolution API
       instance = await evolutionApi.createInstance(req.tenantId, instanceName);
-    } else if (channelType === 'messenger' || channelType === 'instagram' || channelType === 'whatsapp_cloud') {
-      // Messenger/Instagram/WhatsApp Cloud handled manually via Meta tokens
+    } else if (channelType === 'messenger' || channelType === 'instagram') {
+      return res.status(400).json({
+        error: `${channelType} must be connected using Meta Embedded Signup.`,
+        code: 'USE_META_EMBEDDED_SIGNUP'
+      });
+    } else if (channelType === 'whatsapp_cloud') {
       if (!accessToken) {
-        return res.status(400).json({ error: 'Access Token is required for this channel type' });
+        return res.status(400).json({ error: 'Access Token is required for WhatsApp Cloud API' });
       }
 
-      // For WhatsApp Cloud, phoneNumberId is always required from user
-      if (channelType === 'whatsapp_cloud' && !phoneNumberId) {
+      if (!phoneNumberId) {
         return res.status(400).json({ error: 'Phone Number ID is required for WhatsApp Cloud API' });
-      }
-
-      // For Messenger/Instagram: auto-fetch the real Page ID from Access Token
-      let resolvedPageId = phoneNumberId;
-      if ((channelType === 'messenger' || channelType === 'instagram') && accessToken) {
-        try {
-          const axios = require('axios');
-          const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
-          const res = await axios.get(`https://graph.facebook.com/${META_API_VERSION}/me`, {
-            params: { fields: 'id,name', access_token: accessToken }
-          });
-          resolvedPageId = res.data.id;
-          console.log(`[Instance] Auto-detected Page ID: ${resolvedPageId} (${res.data.name}) from Access Token`);
-        } catch (apiErr) {
-          console.warn('[Instance] Failed to auto-detect Page ID:', apiErr.response?.data?.error?.message || apiErr.message);
-          if (!phoneNumberId) {
-            return res.status(400).json({ error: 'Failed to auto-detect Page ID. Please provide it manually or check your Access Token.' });
-          }
-          // Fall back to user-provided phoneNumberId
-        }
       }
 
       instance = await prisma.instance.create({
@@ -154,7 +329,7 @@ router.post('/', async (req, res) => {
           tenantId: req.tenantId,
           instanceName,
           channelType,
-          phoneNumberId: resolvedPageId,
+          phoneNumberId: String(phoneNumberId),
           accessToken,
           status: 'connected'
         }

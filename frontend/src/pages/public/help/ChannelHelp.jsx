@@ -119,7 +119,7 @@ const channelData = {
                     <ul className="list-disc pl-5 space-y-2">
                         <li><strong>Social Presence:</strong> Meet customers where they already follow your brand.</li>
                         <li><strong>Persistent History:</strong> Chat history is maintained both in Value chat and your FB Page manager.</li>
-                        <li><strong>No Phone Required:</strong> Unlike WhatsApp, Messenger runs entirely via API tokens.</li>
+                        <li><strong>No Phone Required:</strong> Unlike WhatsApp, Messenger runs through your Meta Page using Embedded Signup.</li>
                     </ul>
                 </>
             )
@@ -128,14 +128,14 @@ const channelData = {
             title: 'How to connect Facebook Messenger',
             content: (
                 <>
-                    <p>To connect Messenger in Value chat, follow the official Meta Messenger setup flow, then paste the Page Access Token in Value chat.</p>
+                    <p>To connect Messenger in Value chat, use Meta Embedded Signup. Value chat will handle token exchange and secure page linking automatically.</p>
 
                     <h3>Step-by-Step Setup (Official Meta Flow)</h3>
                     <ol className="list-decimal pl-5 space-y-4">
-                        <li><strong>Create or open your Meta app:</strong> In Meta for Developers, add the <strong>Messenger</strong> product.</li>
-                        <li><strong>Generate user token and permissions:</strong> Request the required Messenger/Page permissions, then get a Page Access Token from <code>/me/accounts</code>.</li>
-                        <li><strong>Configure webhooks in Meta:</strong> Set callback URL to <code>https://valuechat.app/api/webhooks/meta</code> and use your verify token. Subscribe to messaging events (at minimum <code>messages</code> and <code>messaging_postbacks</code>).</li>
-                        <li><strong>Connect in Value chat:</strong> Go to <Link to="/channels" className="text-blue-400">Channels</Link>, choose <strong>Facebook Messenger</strong>, paste the <strong>Page Access Token</strong>, and complete connection.</li>
+                        <li><strong>Create or open your Meta app:</strong> In Meta for Developers, add the <strong>Messenger</strong> product and complete app basics (app domains, privacy policy URL, and data deletion URL).</li>
+                        <li><strong>Configure webhooks in Meta:</strong> Set callback URL to <code>https://valuechat.app/api/webhooks/meta</code> and verify token. Subscribe to required events (at minimum <code>messages</code> and <code>messaging_postbacks</code>).</li>
+                        <li><strong>Use Embedded Signup in Value chat:</strong> Go to <Link to="/channels" className="text-blue-400">Channels</Link>, choose <strong>Facebook Messenger</strong>, then click <strong>Connect with Meta</strong>.</li>
+                        <li><strong>Approve permissions and pick Page:</strong> Complete Meta popup flow, grant requested permissions, and select the Page to connect.</li>
                     </ol>
 
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 my-8">
@@ -166,9 +166,9 @@ const channelData = {
                     <ol className="list-decimal pl-5 space-y-4">
                         <li><strong>Prerequisites:</strong> Confirm you have a Facebook Page and admin-level access.</li>
                         <li><strong>Meta App setup:</strong> Open Meta for Developers, select your app, and add <strong>Messenger</strong>.</li>
-                        <li><strong>Token generation:</strong> Show how to get a User Token, then fetch Page data via <code>/me/accounts</code> and copy the Page Access Token.</li>
                         <li><strong>Webhook setup:</strong> Configure callback URL <code>https://valuechat.app/api/webhooks/meta</code>, set verify token, then subscribe to required events.</li>
-                        <li><strong>Connect in Value chat:</strong> Open <Link to="/channels" className="text-blue-400">Channels</Link>, select Messenger, paste Page Access Token, and complete setup.</li>
+                        <li><strong>Embedded Signup flow:</strong> Open <Link to="/channels" className="text-blue-400">Channels</Link>, select Messenger, click <strong>Connect with Meta</strong>, and complete the popup.</li>
+                        <li><strong>Page selection:</strong> Show selecting the exact Facebook Page when Meta returns multiple pages.</li>
                         <li><strong>Validation test:</strong> Send a message to the Page and show it arriving in Value chat inbox.</li>
                     </ol>
 
@@ -181,8 +181,8 @@ const channelData = {
                                 </a>
                             </li>
                             <li>
-                                <a href="https://developers.facebook.com/docs/pages/access-tokens" target="_blank" rel="noreferrer" className="text-blue-400 underline">
-                                    Pages API — Access Tokens
+                                <a href="https://developers.facebook.com/docs/facebook-login/for-business" target="_blank" rel="noreferrer" className="text-blue-400 underline">
+                                    Facebook Login for Business (Embedded Signup)
                                 </a>
                             </li>
                             <li>
@@ -217,15 +217,15 @@ const channelData = {
             title: 'How to connect Instagram',
             content: (
                 <>
-                    <p>Instagram Messaging in Value chat follows Meta&apos;s official Instagram Messaging setup. Complete these steps once, then connect using your Page Access Token.</p>
+                    <p>Instagram Messaging in Value chat follows Meta&apos;s official setup through Embedded Signup. Value chat handles secure linking and token flow automatically.</p>
 
                     <h3>Step-by-Step Setup (Official Meta Flow)</h3>
                     <ol className="list-decimal pl-5 space-y-4">
                         <li><strong>Prepare accounts:</strong> Use an Instagram <strong>Professional</strong> account and link it to a Facebook Page.</li>
-                        <li><strong>Enable messaging access:</strong> Make sure message access is enabled for the Instagram professional account.</li>
-                        <li><strong>Get required permissions:</strong> Generate token with required permissions (including <code>instagram_manage_messages</code> and Page metadata permissions), then fetch Pages via <code>/me/accounts</code>.</li>
-                        <li><strong>Configure webhooks:</strong> In Meta app dashboard set callback URL <code>https://valuechat.app/api/webhooks/meta</code>, set verify token, and subscribe to Instagram messaging webhook topic(s).</li>
-                        <li><strong>Connect in Value chat:</strong> Go to <Link to="/channels" className="text-blue-400">Channels</Link>, choose <strong>Instagram</strong>, paste Page Access Token, and finish connection.</li>
+                        <li><strong>Enable messaging access:</strong> Make sure Instagram message access is enabled for the professional account.</li>
+                        <li><strong>Configure webhooks:</strong> In Meta app dashboard set callback URL <code>https://valuechat.app/api/webhooks/meta</code>, set verify token, and subscribe to Instagram messaging events.</li>
+                        <li><strong>Use Embedded Signup in Value chat:</strong> Go to <Link to="/channels" className="text-blue-400">Channels</Link>, choose <strong>Instagram</strong>, then click <strong>Connect with Meta</strong>.</li>
+                        <li><strong>Approve permissions and choose Page:</strong> Complete the Meta popup flow and select the Page that is linked to your Instagram professional account.</li>
                     </ol>
 
                     <div className="bg-pink-500/10 border border-pink-500/20 rounded-2xl p-6 my-8">
@@ -256,9 +256,9 @@ const channelData = {
                     <ol className="list-decimal pl-5 space-y-4">
                         <li><strong>Account requirements:</strong> Show that Instagram account is Professional and linked to a Facebook Page.</li>
                         <li><strong>Meta app preparation:</strong> Open Meta app and explain required Instagram Messaging permissions.</li>
-                        <li><strong>Token flow:</strong> Generate token, call <code>/me/accounts</code>, and identify Page + access token.</li>
                         <li><strong>Webhook setup:</strong> Use callback URL <code>https://valuechat.app/api/webhooks/meta</code> with verify token and subscribe Instagram messaging events.</li>
-                        <li><strong>Connect in Value chat:</strong> Open <Link to="/channels" className="text-blue-400">Channels</Link>, select Instagram, paste Page Access Token, and complete setup.</li>
+                        <li><strong>Embedded Signup flow:</strong> Open <Link to="/channels" className="text-blue-400">Channels</Link>, select Instagram, click <strong>Connect with Meta</strong>, and complete the popup.</li>
+                        <li><strong>Page selection:</strong> Show selecting the Page linked to the Instagram professional account.</li>
                         <li><strong>Final verification:</strong> Send a DM to the connected Instagram account and confirm it appears in Value chat.</li>
                     </ol>
 

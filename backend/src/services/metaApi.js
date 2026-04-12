@@ -2,7 +2,6 @@ const axios = require('axios');
 
 const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
 const FB_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
-const IG_BASE = `https://graph.instagram.com/${META_API_VERSION}`;
 
 class MetaApi {
   // Common headers builder (Bearer token auth — used by WhatsApp + Instagram)
@@ -70,12 +69,13 @@ class MetaApi {
   }
 
   // --- INSTAGRAM MESSAGING API ---
-  // Docs: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/messaging-api
-  // Endpoint: POST graph.instagram.com/{IG_ID}/messages (Bearer token)
+  // Docs: https://developers.facebook.com/docs/messenger-platform/instagram/features/send-message
+  // Endpoint: POST graph.facebook.com/{version}/me/messages?access_token={PAGE_ACCESS_TOKEN}
   // - recipient.id = IGSID (Instagram-Scoped ID)
-  // - Different host: graph.instagram.com (NOT graph.facebook.com)
+  // - Uses the Page Access Token tied to the connected Instagram Professional account
   async sendInstagramMessage(instance, recipientId, text, mediaUrl = null, messageType = 'text') {
     const payload = {
+      messaging_type: 'RESPONSE',
       recipient: { id: recipientId },
       message: {}
     };
@@ -91,8 +91,9 @@ class MetaApi {
       payload.message.text = text;
     }
 
-    const res = await axios.post(`${IG_BASE}/${instance.phoneNumberId}/messages`, payload, {
-      headers: this.getHeaders(instance.accessToken)
+    const res = await axios.post(`${FB_BASE}/me/messages`, payload, {
+      params: { access_token: instance.accessToken },
+      headers: { 'Content-Type': 'application/json' }
     });
     console.log(`[MetaApi:Instagram] Sent to ${recipientId}:`, res.data);
     return res.data;

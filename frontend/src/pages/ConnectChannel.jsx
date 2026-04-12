@@ -120,13 +120,163 @@ export default function ConnectChannel() {
   const [error, setError] = useState(null);
   const [qrCode, setQrCode] = useState(null);
   const [step, setStep] = useState('config'); // config, qr
+  const [metaPages, setMetaPages] = useState([]);
+  const [selectedMetaPageId, setSelectedMetaPageId] = useState('');
+  const [metaUserAccessToken, setMetaUserAccessToken] = useState('');
+  const [metaSdkLoading, setMetaSdkLoading] = useState(false);
 
   const isWhatsAppQR = type === 'whatsapp';
   const isCloudAPI = type === 'whatsapp_cloud';
   const isMetaChannel = type === 'messenger' || type === 'instagram';
+  const metaAppId = import.meta.env.VITE_META_APP_ID;
+  const metaApiVersion = import.meta.env.VITE_META_API_VERSION || 'v20.0';
+  const fallbackMetaConfigId = import.meta.env.VITE_META_LOGIN_CONFIG_ID || '';
+  const metaConfigId = type === 'instagram'
+    ? (import.meta.env.VITE_META_LOGIN_CONFIG_ID_INSTAGRAM || fallbackMetaConfigId)
+    : (import.meta.env.VITE_META_LOGIN_CONFIG_ID_MESSENGER || fallbackMetaConfigId);
+  const metaScopes = type === 'instagram'
+    ? 'business_management,pages_show_list,pages_manage_metadata,instagram_basic,instagram_manage_messages'
+    : 'business_management,pages_show_list,pages_manage_metadata,pages_messaging';
+
+  useEffect(() => {
+    setMetaPages([]);
+    setSelectedMetaPageId('');
+    setMetaUserAccessToken('');
+  }, [type]);
+
+  const loadMetaSdk = () => new Promise((resolve, reject) => {
+    if (!metaAppId) {
+      reject(new Error('Missing VITE_META_APP_ID. Please set it in frontend environment variables.'));
+      return;
+    }
+
+    const initSdk = () => {
+      try {
+        window.FB.init({
+          appId: metaAppId,
+          cookie: true,
+          xfbml: false,
+          version: metaApiVersion.startsWith('v') ? metaApiVersion : `v${metaApiVersion}`
+        });
+        resolve(window.FB);
+      } catch (err) {
+        reject(err);
+      }
+    };
+
+    if (window.FB) {
+      initSdk();
+      return;
+    }
+
+    const existingScript = document.getElementById('facebook-jssdk');
+    if (existingScript) {
+      const waitForSdk = () => {
+        if (window.FB) {
+          initSdk();
+        } else {
+          setTimeout(waitForSdk, 100);
+        }
+      };
+      waitForSdk();
+      return;
+    }
+
+    window.fbAsyncInit = initSdk;
+    const script = document.createElement('script');
+    script.id = 'facebook-jssdk';
+    script.async = true;
+    script.defer = true;
+    script.src = 'https://connect.facebook.net/en_US/sdk.js';
+    script.onerror = () => reject(new Error('Failed to load Facebook SDK'));
+    document.body.appendChild(script);
+  });
+
+  const connectMetaWithToken = async (userToken, pageId = '') => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const payload = {
+        channelType: type,
+        userAccessToken: userToken,
+        instanceName: instanceName || config.name
+      };
+
+      if (pageId) payload.selectedPageId = pageId;
+
+      await api.post('/instances/meta/embedded', payload);
+      navigate('/channels');
+    } catch (err) {
+      if (err.response?.status === 409 && err.response?.data?.code === 'MULTIPLE_PAGES') {
+        setMetaPages(err.response.data.pages || []);
+        setError('Please select the Page you want to connect.');
+        return;
+      }
+
+      setError(err.response?.data?.error || 'Meta connection failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startMetaEmbeddedSignup = async () => {
+    setError(null);
+    setMetaPages([]);
+    setSelectedMetaPageId('');
+    setMetaSdkLoading(true);
+
+    try {
+      const FB = await loadMetaSdk();
+      const loginOptions = metaConfigId
+        ? {
+            config_id: metaConfigId,
+            response_type: 'token',
+            override_default_response_type: true
+          }
+        : {
+            scope: metaScopes
+          };
+
+      FB.login(async (response) => {
+        setMetaSdkLoading(false);
+
+        const token = response?.authResponse?.accessToken;
+        if (!token) {
+          setError('Meta login was cancelled or required permissions were not granted.');
+          return;
+        }
+
+        setMetaUserAccessToken(token);
+        await connectMetaWithToken(token);
+      }, loginOptions);
+    } catch (err) {
+      setMetaSdkLoading(false);
+      setError(err.message || 'Unable to start Meta Embedded Signup');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (isMetaChannel) {
+      if (metaPages.length > 0) {
+        if (!selectedMetaPageId) {
+          setError('Please choose a Page first.');
+          return;
+        }
+        if (!metaUserAccessToken) {
+          setError('Session expired. Please start Meta login again.');
+          return;
+        }
+        await connectMetaWithToken(metaUserAccessToken, selectedMetaPageId);
+        return;
+      }
+
+      await startMetaEmbeddedSignup();
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -141,9 +291,6 @@ export default function ConnectChannel() {
         payload.phoneNumberId = phoneNumberId;
         payload.accessToken = accessToken;
         // wabaId stored in phoneNumberId for now (can be extended later)
-      } else if (isMetaChannel) {
-        if (phoneNumberId) payload.phoneNumberId = phoneNumberId; // Optional — auto-detected from token
-        payload.accessToken = accessToken;
       }
 
       const response = await api.post('/instances', payload);
@@ -324,7 +471,7 @@ export default function ConnectChannel() {
                       </>
                     )}
 
-                    {/* Messenger / Instagram specific fields */}
+                    {/* Messenger / Instagram now use Embedded Signup only */}
                     {isMetaChannel && (
                       <>
                         <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-5 space-y-4 mb-4 mt-2">
@@ -348,41 +495,50 @@ export default function ConnectChannel() {
                                     <strong>Important:</strong> If you get a verification error in Meta, ensure <code className="text-white px-1">META_WEBHOOK_VERIFY_TOKEN</code> is set to the value above in your Coolify Environment Variables.
                                   </p>
                                 </div>
-                                <p className="text-[10px] text-zinc-600 mt-2">Make sure you subscribe to the `messages` and `messaging_postbacks` events.</p>
+                                <p className="text-[10px] text-zinc-600 mt-2">
+                                  {type === 'messenger'
+                                    ? 'Subscribe to at least `messages` and `messaging_postbacks`.'
+                                    : 'Subscribe to Instagram messaging events from your connected Page.'}
+                                </p>
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-xs font-medium text-zinc-400 mb-2 mt-4">2. Connect your {config.name}</label>
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-[11px] font-bold text-zinc-500 mb-1 uppercase tracking-wider">Page Access Token <span className="text-rose-400">*</span></label>
-                              <input
-                                type="password"
-                                className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
-                                value={accessToken}
-                                onChange={(e) => setAccessToken(e.target.value)}
-                                placeholder="Paste your Page Access Token here"
-                                required
-                              />
-                              <p className="text-[11px] text-emerald-500/80 mt-1.5">✨ The Page ID will be auto-detected from your token — no need to find it manually!</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-[11px] font-bold text-zinc-500 mb-1 uppercase tracking-wider">{config.name} ID <span className="text-zinc-600">(Optional)</span></label>
-                                <input
-                                  type="text"
-                                  className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
-                                  value={phoneNumberId}
-                                  onChange={(e) => setPhoneNumberId(e.target.value)}
-                                  placeholder="Auto-detected from token (override only if needed)"
-                                />
-                                <p className="text-[11px] text-zinc-600 mt-1.5">Leave empty — we'll fetch it automatically. Only fill if auto-detection fails.</p>
-                            </div>
-                          </div>
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4">
+                          <h4 className="text-sm font-bold text-emerald-400 mb-1">2. Connect with Meta Embedded Signup</h4>
+                          <p className="text-xs text-zinc-400">
+                            No manual token is required. Click <strong>Connect with Meta</strong> below, approve permissions, and choose your Page when asked.
+                          </p>
                         </div>
+
+                        {metaPages.length > 0 && (
+                          <div className="mt-4">
+                            <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">
+                              Select Page
+                            </label>
+                            <select
+                              className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                              value={selectedMetaPageId}
+                              onChange={(e) => setSelectedMetaPageId(e.target.value)}
+                              required
+                            >
+                              <option value="">Choose a Page</option>
+                              {metaPages.map((page) => (
+                                <option key={page.pageId} value={page.pageId}>
+                                  {type === 'instagram'
+                                    ? `${page.pageName}${page.instagramUsername ? ` (@${page.instagramUsername})` : ''}`
+                                    : page.pageName}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="text-[11px] text-zinc-600 mt-1.5">
+                              {type === 'instagram'
+                                ? 'Page must be linked to an Instagram Professional account with messaging enabled.'
+                                : 'Select the Facebook Page you want to connect to your inbox.'}
+                            </p>
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -421,11 +577,18 @@ export default function ConnectChannel() {
               <div className="pt-6">
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (isMetaChannel && metaSdkLoading)}
                   className={`px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-xl
-                    ${loading ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#6366f1] hover:bg-[#5558e3] text-white shadow-indigo-500/20'}`}
+                    ${(loading || (isMetaChannel && metaSdkLoading)) ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#6366f1] hover:bg-[#5558e3] text-white shadow-indigo-500/20'}`}
                 >
-                  {loading ? 'Processing...' : isWhatsAppQR ? 'Generate QR Code' : isCloudAPI ? 'Connect Cloud API' : 'Complete'}
+                  {loading ? 'Processing...'
+                    : isMetaChannel
+                      ? (metaSdkLoading ? 'Opening Meta...' : (metaPages.length > 0 ? 'Complete Connection' : 'Connect with Meta'))
+                      : isWhatsAppQR
+                        ? 'Generate QR Code'
+                        : isCloudAPI
+                          ? 'Connect Cloud API'
+                          : 'Complete'}
                 </button>
               </div>
             </form>
