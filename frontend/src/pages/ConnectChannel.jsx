@@ -238,7 +238,7 @@ export default function ConnectChannel() {
             scope: metaScopes
           };
 
-      FB.login(async (response) => {
+      FB.login((response) => {
         setMetaSdkLoading(false);
 
         const token = response?.authResponse?.accessToken;
@@ -248,7 +248,10 @@ export default function ConnectChannel() {
         }
 
         setMetaUserAccessToken(token);
-        await connectMetaWithToken(token);
+        connectMetaWithToken(token).catch((connectError) => {
+          console.error('Meta embedded connect error:', connectError);
+          setError(connectError?.response?.data?.error || 'Meta connection failed');
+        });
       }, loginOptions);
     } catch (err) {
       setMetaSdkLoading(false);

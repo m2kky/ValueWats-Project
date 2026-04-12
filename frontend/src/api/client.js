@@ -11,6 +11,16 @@ const api = axios.create({
 
 // Add token to requests if available
 api.interceptors.request.use((config) => {
+  // Normalize accidental double-prefix calls like '/api/notifications'
+  // when baseURL is already '.../api'
+  if (typeof config.url === 'string') {
+    if (config.url === '/api') {
+      config.url = '/';
+    } else if (config.url.startsWith('/api/')) {
+      config.url = config.url.slice(4);
+    }
+  }
+
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
