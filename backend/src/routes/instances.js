@@ -459,10 +459,13 @@ router.post('/:id/messenger/chat-menu/sync', async (req, res) => {
 
     const existingConfig = await getChannelConfig({ tenantId: req.tenantId, instanceId: instance.id });
     const incomingChatMenu = req.body?.chatMenu || existingConfig.chatMenu;
-    const mergedConfig = sanitizeChannelConfig({
-      ...existingConfig,
-      chatMenu: incomingChatMenu
-    });
+    const mergedConfig = sanitizeChannelConfig(
+      {
+        ...existingConfig,
+        chatMenu: incomingChatMenu
+      },
+      { strictButtons: true }
+    );
 
     const menu = mergedConfig.chatMenu;
     let metaResponse;

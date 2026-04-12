@@ -99,15 +99,26 @@ const sanitizeTemplates = (templates) => {
   };
 };
 
-const sanitizeChannelConfig = (inputConfig = {}) => {
+const sanitizeChannelConfig = (inputConfig = {}, options = {}) => {
+  const strictButtons = options?.strictButtons === true;
   const chatMenuInput = inputConfig.chatMenu || {};
   const buttons = Array.isArray(chatMenuInput.buttons) ? chatMenuInput.buttons : [];
+  const normalizedButtons = [];
+
+  buttons.forEach((button, index) => {
+    try {
+      normalizedButtons.push(normalizeButton(button, index));
+    } catch (error) {
+      if (strictButtons) throw error;
+      // For draft saves, skip invalid buttons instead of blocking unrelated sections.
+    }
+  });
 
   const normalizedChatMenu = {
     enabled: Boolean(chatMenuInput.enabled),
     allowUserInput: chatMenuInput.allowUserInput !== false,
     locale: String(chatMenuInput.locale || 'default').trim() || 'default',
-    buttons: buttons.map(normalizeButton).slice(0, 20)
+    buttons: normalizedButtons.slice(0, 20)
   };
 
   const privateRepliesInput = inputConfig.privateReplies || {};

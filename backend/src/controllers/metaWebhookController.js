@@ -73,6 +73,9 @@ const processPageFeedPrivateReplies = async (entry) => {
   if (!config.privateReplies?.enabled) return;
 
   const changes = Array.isArray(entry.changes) ? entry.changes : [];
+  if (changes.length) {
+    console.log(`[MetaWebhook] Processing ${changes.length} page feed changes for page ${pageId}`);
+  }
 
   for (const change of changes) {
     if (change.field !== 'feed') continue;
@@ -103,6 +106,7 @@ const processPageFeedPrivateReplies = async (entry) => {
         postId: postId || null,
         text: replyText
       });
+      console.log(`[MetaWebhook] Auto private reply sent for page ${pageId} (${commentId || postId})`);
 
       privateReplyCache.set(dedupeKey, Date.now());
       setTimeout(() => privateReplyCache.delete(dedupeKey), 30 * 60 * 1000);
