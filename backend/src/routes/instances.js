@@ -72,7 +72,7 @@ const subscribeMetaPage = async ({ pageId, pageAccessToken, channelType }) => {
 
   const subscribedFields = channelType === 'instagram'
     ? 'messages,messaging_postbacks,messaging_seen,messaging_referrals'
-    : 'messages,messaging_postbacks,messaging_seen,messaging_referrals';
+    : 'messages,messaging_postbacks,messaging_seen,messaging_referrals,feed';
 
   try {
     await axios.post(`${FB_BASE}/${pageId}/subscribed_apps`, null, {
