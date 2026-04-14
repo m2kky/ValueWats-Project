@@ -186,7 +186,7 @@ export default function AdminTenants() {
                         <option value="">Unassigned</option>
                         {plans.map((plan) => (
                           <option key={plan.id} value={plan.id}>
-                            {plan.name} (${plan.price})
+                            {plan.name} ({plan.unlimitedUsers && Number(plan.price) === 0 ? 'Custom' : `$${plan.price}`})
                           </option>
                         ))}
                       </select>
@@ -198,8 +198,23 @@ export default function AdminTenants() {
 
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col gap-1">
-                      <span className="text-xs text-zinc-400">Users: <span className="text-white font-bold">{tenant._count?.users || 0}</span></span>
-                      <span className="text-xs text-zinc-400">Instances: <span className="text-white font-bold">{tenant._count?.instances || 0}</span></span>
+                      <span className="text-xs text-zinc-400">
+                        Paid Seats:{' '}
+                        <span className="text-white font-bold">
+                          {tenant.usage?.paidUsers ?? 0}
+                          {tenant.usage?.unlimitedUsers ? ' / Unlimited' : ` / ${tenant.usage?.seatLimit ?? 0}`}
+                        </span>
+                      </span>
+                      <span className="text-xs text-zinc-400">
+                        Viewers: <span className="text-white font-bold">{tenant.usage?.viewerUsers ?? 0}</span>
+                      </span>
+                      <span className="text-xs text-zinc-400">
+                        Channels:{' '}
+                        <span className="text-white font-bold">
+                          {tenant.usage?.channelsUsed ?? 0}
+                          {tenant.usage?.channelsLimit ? ` / ${tenant.usage.channelsLimit}` : ''}
+                        </span>
+                      </span>
                     </div>
                   </td>
 

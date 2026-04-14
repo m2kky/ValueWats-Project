@@ -37,7 +37,7 @@ const isAdmin = async (req, res, next) => {
       select: { isSuperAdmin: true, role: true }
     });
 
-    if (!user || user.role !== 'admin' || !user.isSuperAdmin) {
+    if (!user || !['admin', 'owner'].includes(user.role) || !user.isSuperAdmin) {
       return res.status(403).json({ error: 'Forbidden: Super Admin access required' });
     }
 

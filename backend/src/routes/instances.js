@@ -9,30 +9,15 @@ const {
   DEFAULT_CHANNEL_CONFIG
 } = require('../services/channelConfig.service');
 const prisma = require('../config/database');
+const { resolveTenantPlanByTenantId } = require('../services/planLimit.service');
+const checkPermission = require('../middleware/checkPermission');
 
 const router = express.Router();
 const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
 const FB_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 
-const resolveTenantPlan = async (tenantId) => {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    include: { plan: true }
-  });
-
-  if (!tenant) return { tenant: null, plan: null };
-  if (tenant.plan) return { tenant, plan: tenant.plan };
-  if (!tenant.subscriptionPlan) return { tenant, plan: null };
-
-  const fallbackPlan = await prisma.plan.findUnique({
-    where: { name: tenant.subscriptionPlan }
-  });
-
-  return { tenant, plan: fallbackPlan || null };
-};
-
 const enforceInstanceLimit = async (tenantId) => {
-  const { plan } = await resolveTenantPlan(tenantId);
+  const { plan } = await resolveTenantPlanByTenantId(tenantId);
   if (!plan) return;
 
   const existingInstancesCount = await prisma.instance.count({
@@ -119,7 +104,7 @@ const getTenantInstanceById = async (tenantId, instanceId) => {
  * POST /api/instances/meta/embedded
  * Connect Messenger / Instagram via Meta Embedded Signup (no manual token input)
  */
-router.post('/meta/embedded', async (req, res) => {
+router.post('/meta/embedded', checkPermission('channels.manage'), async (req, res) => {
   try {
     const { channelType, userAccessToken, selectedPageId, instanceName } = req.body;
 
@@ -296,7 +281,7 @@ router.get('/', async (req, res) => {
 /**
  * POST /api/instances - Create new instance
  */
-router.post('/', async (req, res) => {
+router.post('/', checkPermission('channels.manage'), async (req, res) => {
   try {
     const { instanceName, channelType = 'whatsapp', phoneNumberId, accessToken } = req.body;
 
@@ -423,7 +408,7 @@ router.get('/:id/channel-config', async (req, res) => {
  * PUT /api/instances/:id/channel-config
  * Save channel feature config (chat menu, private replies, templates)
  */
-router.put('/:id/channel-config', async (req, res) => {
+router.put('/:id/channel-config', checkPermission('channels.manage'), async (req, res) => {
   try {
     const instance = await getTenantInstanceById(req.tenantId, req.params.id);
     if (!instance) return res.status(404).json({ error: 'Instance not found' });
@@ -446,7 +431,7 @@ router.put('/:id/channel-config', async (req, res) => {
  * POST /api/instances/:id/messenger/chat-menu/sync
  * Sync saved chat menu config to Meta Messenger Profile API
  */
-router.post('/:id/messenger/chat-menu/sync', async (req, res) => {
+router.post('/:id/messenger/chat-menu/sync', checkPermission('channels.manage'), async (req, res) => {
   try {
     const instance = await getTenantInstanceById(req.tenantId, req.params.id);
     if (!instance) return res.status(404).json({ error: 'Instance not found' });
@@ -505,7 +490,7 @@ router.post('/:id/messenger/chat-menu/sync', async (req, res) => {
  * POST /api/instances/:id/messenger/templates/send-test
  * Send a template test message to a PSID
  */
-router.post('/:id/messenger/templates/send-test', async (req, res) => {
+router.post('/:id/messenger/templates/send-test', checkPermission('channels.manage'), async (req, res) => {
   try {
     const instance = await getTenantInstanceById(req.tenantId, req.params.id);
     if (!instance) return res.status(404).json({ error: 'Instance not found' });
@@ -542,7 +527,7 @@ router.post('/:id/messenger/templates/send-test', async (req, res) => {
  * POST /api/instances/:id/messenger/private-replies/send
  * Send one private reply to a post or comment (manual test endpoint)
  */
-router.post('/:id/messenger/private-replies/send', async (req, res) => {
+router.post('/:id/messenger/private-replies/send', checkPermission('channels.manage'), async (req, res) => {
   try {
     const instance = await getTenantInstanceById(req.tenantId, req.params.id);
     if (!instance) return res.status(404).json({ error: 'Instance not found' });
@@ -572,7 +557,7 @@ router.post('/:id/messenger/private-replies/send', async (req, res) => {
 /**
  * PATCH /api/instances/:id - Update instance name/settings
  */
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', checkPermission('channels.manage'), async (req, res) => {
   try {
     const { instanceName } = req.body;
 
@@ -680,7 +665,7 @@ router.get('/:id/connect', async (req, res) => {
 /**
  * POST /api/instances/:id/disconnect - Logout WhatsApp session
  */
-router.post('/:id/disconnect', async (req, res) => {
+router.post('/:id/disconnect', checkPermission('channels.manage'), async (req, res) => {
   try {
     const instance = await prisma.instance.findFirst({
       where: { id: req.params.id, tenantId: req.tenantId },
@@ -699,7 +684,7 @@ router.post('/:id/disconnect', async (req, res) => {
 /**
  * PATCH /api/instances/:id/toggle - Enable or disable an instance
  */
-router.patch('/:id/toggle', async (req, res) => {
+router.patch('/:id/toggle', checkPermission('channels.manage'), async (req, res) => {
   try {
     const instance = await prisma.instance.findFirst({
       where: { id: req.params.id, tenantId: req.tenantId },
@@ -721,7 +706,7 @@ router.patch('/:id/toggle', async (req, res) => {
 /**
  * DELETE /api/instances/:id - Delete instance
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', checkPermission('channels.manage'), async (req, res) => {
   try {
     const instance = await prisma.instance.findFirst({
       where: { id: req.params.id, tenantId: req.tenantId },

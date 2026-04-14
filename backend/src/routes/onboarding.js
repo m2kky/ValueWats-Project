@@ -23,10 +23,11 @@ router.post('/', tenantContext, async (req, res) => {
             phone,
             name,
             referralSource,
+            workspaceName,
         } = req.body;
 
         // Validate required fields
-        if (!organizationName || !industry || !orgSize || !customerType || !chatPurposes?.length || !role) {
+        if (!organizationName || !industry || !orgSize || !customerType || !chatPurposes?.length || !role || !workspaceName?.trim()) {
             return res.status(400).json({ error: 'Please complete all required fields' });
         }
 
@@ -34,7 +35,8 @@ router.post('/', tenantContext, async (req, res) => {
         const tenant = await prisma.tenant.update({
             where: { id: req.user.tenantId },
             data: {
-                name: organizationName,
+                // Workspace name becomes the canonical tenant/workspace name across the app.
+                name: workspaceName.trim(),
                 website: website || null,
                 industry,
                 orgSize,

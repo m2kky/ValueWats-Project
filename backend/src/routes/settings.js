@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const checkPermission = require('../middleware/checkPermission');
 const prisma = require('../config/database');
 
 // GET /api/settings
@@ -21,7 +22,7 @@ router.get('/', async (req, res) => {
 });
 
 // PUT /api/settings
-router.put('/', async (req, res) => {
+router.put('/', checkPermission('settings.manage'), async (req, res) => {
   try {
     const { optoutEnabled, optoutMessage, optoutKeywords } = req.body;
     const tenant = await prisma.tenant.update({

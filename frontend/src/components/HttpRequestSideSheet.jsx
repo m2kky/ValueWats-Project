@@ -8,7 +8,8 @@ export default function HttpRequestSideSheet({
     action,
     onSave,
     availableTags,
-    availableAgents
+    availableAgents,
+    availableVariables = []
 }) {
     const [formData, setFormData] = useState({
         name: '',
@@ -126,6 +127,7 @@ export default function HttpRequestSideSheet({
                                     placeholder="Tell the AI what conditions trigger this and what parameters to collect..."
                                     mentions={availableAgents}
                                     tags={availableTags}
+                                    variables={availableVariables}
                                     showTags={true}
                                     showMentions={true}
                                 />
@@ -263,7 +265,7 @@ export default function HttpRequestSideSheet({
                     <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-4 flex gap-4 backdrop-blur-sm">
                         <InformationCircleIcon className="h-5 w-5 text-indigo-400 shrink-0" />
                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-relaxed">
-                            Use <code className="text-indigo-400">{`{{contact.field}}`}</code> or <code className="text-indigo-400">{`{{agent.variable}}`}</code> for dynamic values.
+                            Use <code className="text-indigo-400">{`{{contact.field}}`}</code>, <code className="text-indigo-400">{`{{agent.variable}}`}</code>, or <code className="text-indigo-400">$contact.email</code> for dynamic values.
                             The agent will automatically interpret JSON responses from this endpoint.
                         </p>
                     </div>

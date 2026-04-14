@@ -13,6 +13,7 @@ const chatRoutes = require('./routes/chat');
 const agentRoutes = require('./agents/agent.routes');
 
 const integrationRoutes = require('./routes/integrations');
+const workflowRoutes = require('./routes/workflows');
 
 // Middleware
 const tenantContext = require('./middleware/tenantContext');
@@ -102,6 +103,7 @@ app.use('/api/integrations', tenantContext, require('./routes/integrations'));
 app.use('/api/segments', tenantContext, require('./routes/segments'));
 app.use('/api/settings', tenantContext, require('./routes/settings'));
 app.use('/api/notifications', tenantContext, require('./routes/notifications'));
+app.use('/api/workflows', tenantContext, workflowRoutes);
 
 // Super Admin Routes (Protected internally by isAdmin middleware)
 app.use('/api/admin', require('./routes/admin'));

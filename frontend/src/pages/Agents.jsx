@@ -49,11 +49,26 @@ const templateMeta = {
 };
 
 const toneOptions = [
-  { value: 'professional', label: '💼 Professional' },
-  { value: 'friendly', label: '😊 Friendly' },
-  { value: 'casual', label: '🤙 Casual' },
-  { value: 'formal', label: '🎩 Formal' },
+  { value: 'professional', label: 'Professional' },
+  { value: 'friendly', label: 'Friendly' },
+  { value: 'casual', label: 'Casual' },
+  { value: 'formal', label: 'Formal' },
 ];
+
+const REQUIRED_INSTRUCTION_SECTIONS = [
+  '# CONTEXT',
+  '# ROLE & COMMUNICATION STYLE',
+  '# TOP-LEVEL FLOW',
+  '# BOUNDARIES',
+];
+
+function getInstructionChecklist(instructions = '') {
+  const normalized = instructions.toUpperCase();
+  return REQUIRED_INSTRUCTION_SECTIONS.map((section) => ({
+    section,
+    present: normalized.includes(section),
+  }));
+}
 
 const defaultForm = {
   name: '',
@@ -135,11 +150,19 @@ export default function Agents() {
   const [isHttpSheetOpen, setIsHttpSheetOpen] = useState(false);
   const [editingHttpIndex, setEditingHttpIndex] = useState(-1);
 
+  const instructionCharacters = form.instructions?.length || 0;
+  const instructionOverLimit = instructionCharacters > 10000;
+  const instructionChecklist = getInstructionChecklist(form.instructions);
+  const missingInstructionSections = instructionChecklist.filter(item => !item.present);
+
   // ─── State for RichTextarea Lookups ───
   const [availableTags, setAvailableTags] = useState([]);
   const [availableAgents, setAvailableAgents] = useState([]);
+  const [availableAiAgents, setAvailableAiAgents] = useState([]);
   const [availableTeams, setAvailableTeams] = useState([]);
   const [availableLifecycleStages, setAvailableLifecycleStages] = useState([]);
+  const [availableVariables, setAvailableVariables] = useState([]);
+  const mentionTargets = [...availableAgents, ...availableAiAgents, ...availableTeams];
 
   useEffect(() => {
     fetchAgents();
@@ -148,25 +171,51 @@ export default function Agents() {
       try {
         const { default: api } = await import('../api/client');
 
-        // Use Promise.all if endpoint exists. Fallback to empty if not.
-        const [tagsRes, usersRes, teamsRes, stagesRes] = await Promise.allSettled([
+        const [tagsRes, teamRes, stagesRes, fieldDefsRes] = await Promise.allSettled([
           api.get('/tags'),
-          api.get('/users/all'),
-          api.get('/teams'),
-          api.get('/lifecycle-stages'),
+          api.get('/team'),
+          api.get('/lifecycle'),
+          api.get('/contact-fields/definitions'),
         ]);
 
         if (tagsRes.status === 'fulfilled') setAvailableTags((tagsRes.value.data.tags || []).map(t => ({ label: t.name, value: `%${t.name}` })));
-        if (usersRes.status === 'fulfilled') setAvailableAgents((usersRes.value.data.users || []).map(u => ({ label: u.name, value: `@${u.name}` })));
-        if (teamsRes.status === 'fulfilled') setAvailableTeams((teamsRes.value.data.teams || []).map(t => ({ label: t.name, value: `@${t.name}` })));
-        if (stagesRes.status === 'fulfilled') setAvailableLifecycleStages(stagesRes.value.data.stages || []);
+        if (teamRes.status === 'fulfilled') {
+          const teamUsers = teamRes.value.data.users || [];
+          setAvailableAgents(teamUsers.map((u) => ({
+            label: u.name?.trim() || u.email?.split('@')[0] || 'User',
+            value: `@user:${u.id}`,
+            subtitle: `${u.role || 'agent'} | ${u.email || ''}`,
+            group: 'human',
+          })));
+        }
+        setAvailableTeams([
+          { label: 'Team Agents', value: '@team:agents', subtitle: 'Assign to agent role users' },
+          { label: 'Team Admins', value: '@team:admins', subtitle: 'Assign to admin users' },
+          { label: 'All Humans', value: '@team:humans', subtitle: 'Assign to any human user' },
+        ]);
+        if (stagesRes.status === 'fulfilled') setAvailableLifecycleStages(stagesRes.value.data || []);
 
-        const integrationsRes = await api.get('/integrations');
-        setTenantIntegrations(integrationsRes.data.integrations || []);
+        if (fieldDefsRes.status === 'fulfilled') {
+          const fieldVariables = (fieldDefsRes.value.data || []).map((field) => ({
+            label: field.name || field.key,
+            value: `{{contact.${field.key}}}`,
+            subtitle: field.fieldType ? `contact.${field.key} (${field.fieldType})` : `contact.${field.key}`,
+          }));
+          setAvailableVariables(fieldVariables);
+        }
       } catch (e) { console.warn('Could not load lookups', e); }
     };
     loadLookups();
   }, [fetchAgents]);
+
+  useEffect(() => {
+    setAvailableAiAgents((agents || []).map((agent) => ({
+      label: agent.name,
+      value: `@agent:${agent.id}`,
+      subtitle: 'AI Agent',
+      group: 'ai',
+    })));
+  }, [agents]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -430,14 +479,14 @@ export default function Agents() {
             </button>
             <button
               onClick={() => handleSave(false)}
-              disabled={saving || !form.name || !form.instructions}
+              disabled={saving || !form.name || !form.instructions || instructionOverLimit}
               className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest transition-all active:scale-95"
             >
               SAVE DRAFT
             </button>
             <button
               onClick={() => handleSave(true)}
-              disabled={saving || !form.name || !form.instructions}
+              disabled={saving || !form.name || !form.instructions || instructionOverLimit}
               className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-lg shadow-indigo-500/10 transition-all active:scale-95"
             >
               {saving ? 'UPLOADING...' : (form.isPublished ? 'UPDATE PUBLISHED' : 'PUBLISH MODULE')}
@@ -508,12 +557,46 @@ export default function Agents() {
                     onChange={e => setForm({ ...form, instructions: e.target.value })}
                     rows={12}
                     className="relative w-full bg-[#0c0c0e] border border-white/5 rounded-xl p-5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30 transition-all font-mono leading-relaxed custom-scrollbar"
-                    placeholder={`# ROLE\nYou are a high-level enterprise strategist...\n\n# PARAMETERS\n- Maintain total professionalism\n- Analyze user intent before responding`}
+                    placeholder={`# CONTEXT\n- Who is contacting us and what is the goal?\n\n# ROLE & COMMUNICATION STYLE\n- Tone, pacing, and one-question-at-a-time rule.\n\n# TOP-LEVEL FLOW\n1. Greet\n2. Clarify intent\n3. Execute or route\n4. Confirm next step\n\n# BOUNDARIES\n- What must never be done.\n- What should be escalated to a human.`}
                   />
                 </div>
-                <div className="flex items-center gap-2 mt-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
-                  <SparklesIcon className="w-3 h-3 text-indigo-400" />
-                  Higher precision yields superior results
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
+                    <div className="flex items-center gap-2 text-zinc-600">
+                      <SparklesIcon className="w-3 h-3 text-indigo-400" />
+                      Follow structured sections for best results
+                    </div>
+                    <span className={instructionOverLimit ? 'text-rose-400' : 'text-zinc-500'}>
+                      {instructionCharacters}/10000
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {instructionChecklist.map((item) => (
+                      <div
+                        key={item.section}
+                        className={`px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-widest ${item.present
+                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                          : 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+                          }`}
+                      >
+                        <span className="mr-2">{item.present ? 'Ready' : 'Missing'}</span>
+                        <span>{item.section.replace('# ', '')}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {missingInstructionSections.length > 0 && (
+                    <p className="text-[10px] font-bold text-amber-300/90 uppercase tracking-widest">
+                      Missing sections: {missingInstructionSections.map(item => item.section).join(', ')}
+                    </p>
+                  )}
+
+                  {instructionOverLimit && (
+                    <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">
+                      Instructions exceed the 10,000 character limit.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -707,9 +790,10 @@ export default function Agents() {
                     config={form.actionConfig?.closeConversation?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, closeConversation: { ...f.actionConfig.closeConversation, instructions: val } } }))}
                     placeholder="CRITERIA: USER SIGN-OFF, RESOLVED QUERY, OR END-OF-FLOW..."
-                    mentions={[...availableAgents, ...availableTeams]}
+                    mentions={mentionTargets}
                     showMentions={true}
                     tags={availableTags}
+                    variables={availableVariables}
                     showTags={true}
                   />
 
@@ -721,9 +805,10 @@ export default function Agents() {
                     config={form.actionConfig?.assignAgent?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, assignAgent: { ...f.actionConfig.assignAgent, instructions: val } } }))}
                     placeholder="IF: TECHNICAL ANOMALY DETECTED -> ROUTE TO SUPPORT_TIER_2..."
-                    mentions={[...availableAgents, ...availableTeams]}
+                    mentions={mentionTargets}
                     showMentions={true}
                     tags={availableTags}
+                    variables={availableVariables}
                     showTags={true}
                   />
 
@@ -735,9 +820,10 @@ export default function Agents() {
                     config={form.actionConfig?.updateFields?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateFields: { ...f.actionConfig.updateFields, instructions: val } } }))}
                     placeholder="FIELDS TO SYNC: EMAIL, PHONE_ORIGIN, CORPORATE_ID..."
-                    mentions={[...availableAgents, ...availableTeams]}
+                    mentions={mentionTargets}
                     showMentions={true}
                     tags={availableTags}
+                    variables={availableVariables}
                     showTags={true}
                   />
 
@@ -749,9 +835,10 @@ export default function Agents() {
                     config={form.actionConfig?.updateLifecycle?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, instructions: val } } }))}
                     placeholder="UPON HIGH_INTENT DETECTION -> TRIGGER STAGE: QUALIFIED_LEAD..."
-                    mentions={[...availableAgents, ...availableTeams]}
+                    mentions={mentionTargets}
                     showMentions={true}
                     tags={availableTags}
+                    variables={availableVariables}
                     showTags={true}
                   >
                     <div className="flex flex-wrap gap-2 mb-2">
@@ -779,9 +866,10 @@ export default function Agents() {
                     config={form.actionConfig?.triggerWorkflow?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, triggerWorkflow: { ...f.actionConfig.triggerWorkflow, instructions: val } } }))}
                     placeholder="POST-ONBOARDING: TRIGGER GOOGLE_SHEET_APPEND..."
-                    mentions={[...availableAgents, ...availableTeams]}
+                    mentions={mentionTargets}
                     showMentions={true}
                     tags={availableTags}
+                    variables={availableVariables}
                     showTags={true}
                   />
 
@@ -794,8 +882,9 @@ export default function Agents() {
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateTags: { ...f.actionConfig.updateTags, instructions: val } } }))}
                     placeholder="IF: ISSUE RESOLVED -> REMOVE_TAG: %needs_support..."
                     tags={availableTags}
+                    variables={availableVariables}
                     showTags={true}
-                    mentions={[...availableAgents, ...availableTeams]}
+                    mentions={mentionTargets}
                     showMentions={true}
                   />
 
@@ -807,9 +896,10 @@ export default function Agents() {
                     config={form.actionConfig?.addComment?.instructions || ''}
                     setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, addComment: { ...f.actionConfig.addComment, instructions: val } } }))}
                     placeholder="NOTE: USER IS UPSET. PRIORITIZE IMMEDIATE RETENTION FLOW..."
-                    mentions={[...availableAgents, ...availableTeams]}
+                    mentions={mentionTargets}
                     showMentions={true}
                     tags={availableTags}
+                    variables={availableVariables}
                     showTags={true}
                   />
 
@@ -1282,7 +1372,8 @@ export default function Agents() {
           onClose={() => { setIsHttpSheetOpen(false); setHttpActionToEdit(null); }}
           action={httpActionToEdit}
           availableTags={availableTags}
-          availableAgents={[...availableAgents, ...availableTeams]}
+          availableAgents={mentionTargets}
+          availableVariables={availableVariables}
           onSave={(data) => {
             const currentActions = form.actionConfig.httpRequests?.actions || [];
             let newActions;
@@ -1450,7 +1541,8 @@ export default function Agents() {
         onClose={() => { setIsHttpSheetOpen(false); setHttpActionToEdit(null); }}
         action={httpActionToEdit}
         availableTags={availableTags}
-        availableAgents={[...availableAgents, ...availableTeams]}
+        availableAgents={mentionTargets}
+        availableVariables={availableVariables}
         onSave={(data) => {
           const currentActions = form.actionConfig.httpRequests?.actions || [];
           let newActions;
@@ -1466,3 +1558,9 @@ export default function Agents() {
     </div>
   );
 }
+
+
+
+
+
+

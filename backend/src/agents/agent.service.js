@@ -214,77 +214,83 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
    * Build system prompt
    */
   buildSystemPrompt(agent, context) {
-    let prompt = agent.instructions;
+    const baseInstructions = (agent.instructions || '').trim() || 'You are a helpful assistant.';
+    let prompt = `# INSTRUCTION FRAMEWORK
+- Follow this priority order when generating responses:
+  1) CONTEXT
+  2) ROLE & COMMUNICATION STYLE
+  3) TOP-LEVEL FLOW / SCENARIOS
+  4) BOUNDARIES
+- Ask one question at a time unless the user explicitly asks for a summary.
+- Keep outputs concise, direct, and easy to act on.
 
-    // Add tone and style
-    prompt += `\n\nTone: ${agent.tone}`;
-    prompt += `\nResponse Style: ${agent.responseStyle}`;
+# AGENT INSTRUCTIONS
+${baseInstructions}
 
-    // Add knowledge base context
-    if (context && context.length > 0) {
-      prompt += `\n\nKnowledge Base:\n${context.join('\n\n')}`;
-    }
+# EXECUTION PARAMETERS
+- Tone: ${agent.tone}
+- Response Style: ${agent.responseStyle}`;
 
-    // Add greeting if first message
     if (agent.greeting) {
-      prompt += `\n\nGreeting (use this for first interaction): ${agent.greeting}`;
+      prompt += `\n- First-message greeting: ${agent.greeting}`;
     }
 
-    // AI Agent Redesign: 8 Respond.io Actions
+    if (context && context.length > 0) {
+      prompt += `\n\n# KNOWLEDGE BASE CONTEXT
+- Use this context as the primary source of truth.
+- If information is missing, say so clearly and avoid guessing.
+${context.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}`;
+    }
+
     if (agent.actionConfig) {
       const actions = agent.actionConfig;
-      let actionPrompts = [];
+      const actionPrompts = [];
 
-      // 1. Close Conversation
       if (actions.closeConversation?.enabled) {
-        actionPrompts.push(`- TERMINATE_SESSION: When ${actions.closeConversation.instructions}, output [ACTION: CLOSE_CONVERSATION]`);
+        actionPrompts.push(`- Close conversation: When ${actions.closeConversation.instructions}, append [ACTION: CLOSE_CONVERSATION].`);
       }
 
-      // 2. Assign Agent/Team
       if (actions.assignAgent?.enabled) {
-        actionPrompts.push(`- ROUTING_PROTOCOL: When ${actions.assignAgent.instructions}, output [ACTION: ASSIGN: <AgentName or TEAM:TeamName>]`);
+        actionPrompts.push(`- Assign conversation: When ${actions.assignAgent.instructions}, append [ACTION: ASSIGN: <target>]. Supported targets: @agent:<id>, @user:<id>, @team:agents, @team:admins, @team:humans, HUMAN, or a partial name/email.`);
       }
 
-      // 3. Update Contact Fields
       if (actions.updateFields?.enabled) {
-        actionPrompts.push(`- IDENTITY_INDEXING: When ${actions.updateFields.instructions}, output [ACTION: UPDATE_CONTACT: {"field": "value"}]`);
+        actionPrompts.push(`- Update contact fields: When ${actions.updateFields.instructions}, append [ACTION: UPDATE_CONTACT: {"field": "value"}].`);
       }
 
-      // 4. Update Lifecycle
       if (actions.updateLifecycle?.enabled) {
-        actionPrompts.push(`- STAGE_TRANSITION: When ${actions.updateLifecycle.instructions}, output [ACTION: UPDATE_LIFECYCLE: <StageName>]`);
+        actionPrompts.push(`- Update lifecycle stage: When ${actions.updateLifecycle.instructions}, append [ACTION: UPDATE_LIFECYCLE: <StageName>].`);
       }
 
-      // 5. Trigger Workflow
       if (actions.triggerWorkflow?.enabled) {
-        actionPrompts.push(`- WORKFLOW_INJECTION: When ${actions.triggerWorkflow.instructions}, output [ACTION: TRIGGER_WORKFLOW: <WorkflowName>]`);
+        actionPrompts.push(`- Trigger workflow: When ${actions.triggerWorkflow.instructions}, append [ACTION: TRIGGER_WORKFLOW: <WorkflowName or ID>].`);
       }
 
-      // 6. Update Tags (Unified)
       if (actions.updateTags?.enabled) {
-        actionPrompts.push(`- TAG_MODIFICATION: When ${actions.updateTags.instructions}, output [ACTION: ADD_TAG: <TagName>] or [ACTION: REMOVE_TAG: <TagName>]`);
+        actionPrompts.push(`- Manage tags: When ${actions.updateTags.instructions}, append [ACTION: ADD_TAG: <TagName>] or [ACTION: REMOVE_TAG: <TagName>].`);
       }
 
-      // 7. Add Internal Comment
       if (actions.addComment?.enabled) {
-        actionPrompts.push(`- INTERNAL_CONTEXT: When ${actions.addComment.instructions}, output [ACTION: ADD_COMMENT: "your internal note here"]`);
+        actionPrompts.push(`- Add internal comment: When ${actions.addComment.instructions}, append [ACTION: ADD_COMMENT: "internal note"].`);
       }
 
-      // 8. HTTP Requests (Multiple)
       if (actions.httpRequests?.enabled && actions.httpRequests.actions?.length > 0) {
         actions.httpRequests.actions.forEach(req => {
-          actionPrompts.push(`- NETWORK_COMMAND (${req.name}): When ${req.instructions}, output [ACTION: HTTP_REQUEST: ${req.name}]`);
+          actionPrompts.push(`- Custom HTTP action (${req.name}): When ${req.instructions}, append [ACTION: HTTP_REQUEST: ${req.name}].`);
         });
       }
 
       if (actionPrompts.length > 0) {
-        prompt += `\n\nDYNAMIC CAPABILITIES (PROTOCOL ENFORCED):\nYou are authorized to execute the following actions by appending the exact command tag to your final response. 
-Actions must be performed BEFORE or DURING your response to the user.
+        prompt += `\n\n# ACTION SETTINGS (NON-SEQUENTIAL RULES)
+- These action rules can trigger at any time and are not tied to top-level flow order.
+- Keep the customer-facing text natural.
+- Put action tags at the end of the same reply when an action is required.
+- Do not reveal action tags or internal logic in normal prose.
 ${actionPrompts.join('\n')}`;
       }
     }
 
-    return prompt;
+    return prompt.trim();
   }
 
   /**
@@ -462,27 +468,20 @@ ${actionPrompts.join('\n')}`;
 
         // ASSIGN AGENT / TEAM
         else if (actionString.startsWith('ASSIGN:')) {
-          const target = actionString.split(':')[1]?.trim();
-          // Logic to find agent/team by name or ID could go here.
-          // For now, if it's an ID, assign it. If "HUMAN", escalate.
-          if (target === 'HUMAN') {
-            await prisma.conversation.update({
-              where: { id: conversation.id },
-              data: { currentAgentId: null, escalated: true, escalationReason: 'Agent requested handoff' }
-            });
+          const target = actionString.replace(/^ASSIGN:/, '').trim();
+          const assignment = await this.assignConversationTarget({
+            tenantId: agent.tenantId,
+            conversationId: conversation.id,
+            contactId: conversation.contactId,
+            requesterAgentId: agent.id,
+            targetRaw: target
+          });
+
+          if (assignment?.assigned) {
+            console.log(`[AgentService] Action: Assigned to ${target} (${assignment.targetType})`);
           } else {
-            // Try to find agent by name
-            const targetAgent = await prisma.aIAgent.findFirst({
-              where: { tenantId: agent.tenantId, name: { contains: target, mode: 'insensitive' } }
-            });
-            if (targetAgent) {
-              await prisma.conversation.update({
-                where: { id: conversation.id },
-                data: { currentAgentId: targetAgent.id }
-              });
-            }
+            console.warn(`[AgentService] Action: Failed to resolve ASSIGN target "${target}"`);
           }
-          console.log(`[AgentService] Action: Assigned to ${target}`);
         }
 
         // UPDATE CONTACT FIELDS
@@ -538,33 +537,42 @@ ${actionPrompts.join('\n')}`;
 
         // TRIGGER WORKFLOW
         else if (actionString.startsWith('TRIGGER_WORKFLOW:')) {
-          const workflowId = actionString.replace('TRIGGER_WORKFLOW:', '').trim();
-          console.log(`[AgentService] Action: Trigger workflow ${workflowId}`);
-
-          // Lazy load to avoid circular deps if any
+          const workflowIdOrName = actionString.replace('TRIGGER_WORKFLOW:', '').trim();
+          console.log('[AgentService] Action: Trigger workflow ' + workflowIdOrName);
           const workflowService = require('../services/workflow.service');
-
-          // context for variable replacement
-          const context = {
-            conversation,
-            contact: {
-              name: conversation.contactName,
-              number: conversation.contactNumber,
-              ...conversation // limit fields?
-            },
-            agent: agent,
-            message: message // current user message
-          };
-
-          // Fire and forget (don't await purely)
-          workflowService.executeWorkflow(workflowId, context).catch(err => {
-            console.error(`[AgentService] Workflow trigger failed:`, err);
+          const workflow = await prisma.workflow.findFirst({
+            where: {
+              tenantId: agent.tenantId,
+              OR: [
+                { id: workflowIdOrName },
+                { name: { contains: workflowIdOrName, mode: 'insensitive' } }
+              ]
+            }
           });
+          if (workflow) {
+            const wfContext = {
+              tenantId: agent.tenantId,
+              eventType: 'agent_action',
+              conversation,
+              contact: {
+                name: conversation.contactName,
+                number: conversation.contactNumber
+              },
+              agent: { id: agent.id, name: agent.name },
+              message: { content: typeof message === 'string' ? message : '' }
+            };
+            workflowService.executeWorkflowRecord(workflow, wfContext, { force: true }).catch(err => {
+              console.error('[AgentService] Workflow trigger failed:', err.message);
+            });
+          } else {
+            console.warn('[AgentService] Workflow not found: ' + workflowIdOrName);
+          }
         }
 
         // ADD TAG
         else if (actionString.startsWith('ADD_TAG:')) {
-          const tagName = actionString.replace('ADD_TAG:', '').trim();
+          const tagName = actionString.replace('ADD_TAG:', '').trim().replace(/^%+/, '');
+          if (!tagName) continue;
 
           // 1. Get or create the tag (ContactLabel)
           const label = await prisma.contactLabel.upsert({
@@ -623,7 +631,8 @@ ${actionPrompts.join('\n')}`;
 
         // REMOVE TAG
         else if (actionString.startsWith('REMOVE_TAG:')) {
-          const tagName = actionString.replace('REMOVE_TAG:', '').trim();
+          const tagName = actionString.replace('REMOVE_TAG:', '').trim().replace(/^%+/, '');
+          if (!tagName) continue;
 
           if (conversation.contactId) {
             const label = await prisma.contactLabel.findUnique({
@@ -720,51 +729,485 @@ ${actionPrompts.join('\n')}`;
     }
   }
 
+  async assignConversationTarget({ tenantId, conversationId, contactId, requesterAgentId, targetRaw }) {
+    const target = String(targetRaw || '').trim();
+    if (!target) return { assigned: false, targetType: 'none' };
+
+    const normalized = target.replace(/^@/, '');
+    const normalizedUpper = normalized.toUpperCase();
+
+    if (normalizedUpper === 'HUMAN' || normalizedUpper === 'ESCALATE') {
+      await this.assignToHumanUser({
+        tenantId,
+        conversationId,
+        contactId,
+        requesterAgentId,
+        userId: null,
+        description: 'AI requested human handoff'
+      });
+      return { assigned: true, targetType: 'human' };
+    }
+
+    if (/^(USER:|@user:)/i.test(target)) {
+      const userId = target.replace(/^@?user:/i, '').trim();
+      const user = await prisma.user.findFirst({
+        where: { id: userId, tenantId },
+        select: { id: true, name: true, email: true, role: true }
+      });
+      if (user) {
+        await this.assignToHumanUser({
+          tenantId,
+          conversationId,
+          contactId,
+          requesterAgentId,
+          userId: user.id,
+          description: `AI assigned conversation to user ${user.email || user.name || user.id}`
+        });
+        return { assigned: true, targetType: 'user' };
+      }
+      return { assigned: false, targetType: 'user' };
+    }
+
+    if (/^(AGENT:|@agent:)/i.test(target)) {
+      const targetAgentId = target.replace(/^@?agent:/i, '').trim();
+      const targetAgent = await prisma.aIAgent.findFirst({
+        where: { id: targetAgentId, tenantId, isActive: true },
+        select: { id: true, name: true }
+      });
+      if (targetAgent) {
+        await this.assignToAiAgent({
+          tenantId,
+          conversationId,
+          contactId,
+          requesterAgentId,
+          targetAgentId: targetAgent.id,
+          description: `AI assigned conversation to agent ${targetAgent.name}`
+        });
+        return { assigned: true, targetType: 'agent' };
+      }
+      return { assigned: false, targetType: 'agent' };
+    }
+
+    if (/^(TEAM:|@team:)/i.test(target)) {
+      const teamPayload = target.replace(/^@?team:/i, '').trim();
+      const { teamName, strategy } = this.parseTeamPayload(teamPayload);
+      const roleFilter = this.resolveTeamRoles(teamName);
+      const selectedUser = await this.selectUserForTeam({
+        tenantId,
+        roleFilter,
+        strategy
+      });
+
+      if (selectedUser) {
+        await this.assignToHumanUser({
+          tenantId,
+          conversationId,
+          contactId,
+          requesterAgentId,
+          userId: selectedUser.id,
+          description: `AI assigned to ${teamName || 'team'} (${strategy}) -> ${selectedUser.email || selectedUser.name || selectedUser.id}`
+        });
+        return { assigned: true, targetType: 'team' };
+      }
+      return { assigned: false, targetType: 'team' };
+    }
+
+    const userByName = await prisma.user.findFirst({
+      where: {
+        tenantId,
+        OR: [
+          { id: normalized },
+          { email: { contains: normalized, mode: 'insensitive' } },
+          { name: { contains: normalized, mode: 'insensitive' } }
+        ]
+      },
+      select: { id: true, name: true, email: true, role: true }
+    });
+
+    if (userByName) {
+      await this.assignToHumanUser({
+        tenantId,
+        conversationId,
+        contactId,
+        requesterAgentId,
+        userId: userByName.id,
+        description: `AI assigned conversation to user ${userByName.email || userByName.name || userByName.id}`
+      });
+      return { assigned: true, targetType: 'user' };
+    }
+
+    const agentByName = await prisma.aIAgent.findFirst({
+      where: {
+        tenantId,
+        isActive: true,
+        OR: [
+          { id: normalized },
+          { name: { contains: normalized, mode: 'insensitive' } }
+        ]
+      },
+      select: { id: true, name: true }
+    });
+
+    if (agentByName) {
+      await this.assignToAiAgent({
+        tenantId,
+        conversationId,
+        contactId,
+        requesterAgentId,
+        targetAgentId: agentByName.id,
+        description: `AI assigned conversation to agent ${agentByName.name}`
+      });
+      return { assigned: true, targetType: 'agent' };
+    }
+
+    return { assigned: false, targetType: 'unknown' };
+  }
+
+  parseTeamPayload(teamPayload = '') {
+    let payload = String(teamPayload || '').trim();
+    let strategy = 'round_robin';
+    let teamName = payload;
+
+    const separatorMatch = payload.match(/^(.*?)([|#])(.*)$/);
+    if (separatorMatch) {
+      teamName = separatorMatch[1].trim();
+      strategy = separatorMatch[3].trim().toLowerCase();
+      return { teamName, strategy: this.normalizeTeamStrategy(strategy) };
+    }
+
+    const parts = payload.split(':').map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 1) {
+      const maybeStrategy = this.normalizeTeamStrategy(parts[parts.length - 1], false);
+      if (maybeStrategy) {
+        strategy = maybeStrategy;
+        teamName = parts.slice(0, -1).join(':').trim();
+      }
+    }
+
+    return { teamName, strategy: this.normalizeTeamStrategy(strategy) };
+  }
+
+  normalizeTeamStrategy(rawStrategy, fallbackToDefault = true) {
+    const strategy = String(rawStrategy || '').trim().toLowerCase();
+    if (['round_robin', 'least_open', 'least_loaded'].includes(strategy)) return strategy;
+    if (fallbackToDefault) return 'round_robin';
+    return null;
+  }
+
+  resolveTeamRoles(teamName = '') {
+    const team = String(teamName || '').trim().toLowerCase();
+    if (!team || team === 'default') return ['agent', 'admin', 'viewer'];
+    if (team.includes('agent')) return ['agent'];
+    if (team.includes('admin')) return ['admin'];
+    if (team.includes('viewer')) return ['viewer'];
+    if (team.includes('human') || team.includes('all')) return ['agent', 'admin', 'viewer'];
+    return ['agent', 'admin', 'viewer'];
+  }
+
+  async selectUserForTeam({ tenantId, roleFilter, strategy = 'round_robin' }) {
+    const users = await prisma.user.findMany({
+      where: {
+        tenantId,
+        role: { in: roleFilter && roleFilter.length ? roleFilter : ['agent', 'admin', 'viewer'] }
+      },
+      select: { id: true, email: true, name: true, role: true, createdAt: true },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    if (!users.length) return null;
+    if (users.length === 1) return users[0];
+
+    if (strategy === 'least_open' || strategy === 'least_loaded') {
+      const counts = await prisma.conversation.groupBy({
+        by: ['assignedUserId'],
+        where: {
+          tenantId,
+          status: { not: 'closed' },
+          assignedUserId: { in: users.map((u) => u.id) }
+        },
+        _count: { _all: true }
+      });
+
+      const countMap = new Map(counts.map((row) => [row.assignedUserId, row._count?._all || 0]));
+      return [...users].sort((a, b) => {
+        const aCount = countMap.get(a.id) || 0;
+        const bCount = countMap.get(b.id) || 0;
+        if (aCount !== bCount) return aCount - bCount;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      })[0];
+    }
+
+    const latestAssignments = await prisma.conversation.groupBy({
+      by: ['assignedUserId'],
+      where: {
+        tenantId,
+        assignedUserId: { in: users.map((u) => u.id) }
+      },
+      _max: { updatedAt: true }
+    });
+
+    const latestMap = new Map(latestAssignments.map((row) => [row.assignedUserId, row._max?.updatedAt || null]));
+    return [...users].sort((a, b) => {
+      const aTime = latestMap.get(a.id) ? new Date(latestMap.get(a.id)).getTime() : 0;
+      const bTime = latestMap.get(b.id) ? new Date(latestMap.get(b.id)).getTime() : 0;
+      if (aTime !== bTime) return aTime - bTime;
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    })[0];
+  }
+
+  async assignToHumanUser({ tenantId, conversationId, contactId, requesterAgentId, userId, description }) {
+    await prisma.conversationAgent.updateMany({
+      where: { conversationId, endedAt: null },
+      data: { endedAt: new Date(), handoffReason: 'human_takeover' }
+    });
+
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        currentAgentId: null,
+        assignedUserId: userId || null,
+        escalated: true,
+        escalationReason: 'Agent requested handoff',
+        aiEnabled: false
+      }
+    });
+
+    await this.logAssignmentActivity({
+      tenantId,
+      conversationId,
+      contactId,
+      requesterAgentId,
+      description: description || 'AI assigned conversation to human'
+    });
+  }
+
+  async assignToAiAgent({ tenantId, conversationId, contactId, requesterAgentId, targetAgentId, description }) {
+    await prisma.conversationAgent.updateMany({
+      where: { conversationId, endedAt: null },
+      data: { endedAt: new Date(), handoffReason: 'user_reassigned' }
+    });
+
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        currentAgentId: targetAgentId,
+        assignedUserId: null,
+        escalated: false,
+        escalatedAt: null,
+        escalationReason: null,
+        aiEnabled: true
+      }
+    });
+
+    await prisma.conversationAgent.create({
+      data: {
+        conversationId,
+        agentId: targetAgentId,
+        startedAt: new Date()
+      }
+    });
+
+    await this.logAssignmentActivity({
+      tenantId,
+      conversationId,
+      contactId,
+      requesterAgentId,
+      description: description || 'AI assigned conversation to another AI agent'
+    });
+  }
+
+  async logAssignmentActivity({ tenantId, conversationId, contactId, requesterAgentId, description }) {
+    try {
+      await prisma.activityLog.create({
+        data: {
+          tenantId,
+          contactId: contactId || null,
+          conversationId,
+          actionType: 'assigned',
+          description,
+          agentId: requesterAgentId || null
+        }
+      });
+    } catch (error) {
+      console.warn('[AgentService] Failed to write assignment activity log:', error.message);
+    }
+  }
+
+  async createTemplateContext({ conversation, agent, message }) {
+    const messageText = typeof message === 'string' ? message : (message?.text || message?.message?.conversation || '');
+    const now = new Date();
+
+    let contact = null;
+    if (conversation.contactId) {
+      contact = await prisma.contact.findUnique({
+        where: { id: conversation.contactId },
+        include: {
+          lifecycleStage: true,
+          labels: { include: { label: true } }
+        }
+      });
+    }
+
+    if (!contact) {
+      contact = await prisma.contact.findUnique({
+        where: {
+          tenantId_phoneNumber: {
+            tenantId: agent.tenantId,
+            phoneNumber: conversation.contactNumber
+          }
+        },
+        include: {
+          lifecycleStage: true,
+          labels: { include: { label: true } }
+        }
+      });
+    }
+
+    const contactFieldRows = await prisma.contactField.findMany({
+      where: {
+        tenantId: agent.tenantId,
+        contactNumber: conversation.contactNumber
+      },
+      select: { fieldName: true, fieldValue: true }
+    });
+
+    const contactFieldMap = {};
+    for (const row of contactFieldRows) {
+      if (!row.fieldName) continue;
+      contactFieldMap[row.fieldName] = row.fieldValue;
+    }
+
+    const contactName = conversation.contactName || contact?.name || '';
+    const [firstName = '', ...restName] = String(contactName).trim().split(/\s+/).filter(Boolean);
+    const lastName = restName.join(' ');
+
+    const labelNames = (contact?.labels || [])
+      .map((assignment) => assignment?.label?.name)
+      .filter(Boolean);
+
+    return {
+      contact: {
+        id: conversation.contactId || contact?.id || '',
+        name: contactName,
+        firstName: contactFieldMap.firstName || firstName || '',
+        lastName: contactFieldMap.lastName || lastName || '',
+        phone: conversation.contactNumber || '',
+        number: conversation.contactNumber || '',
+        email: contact?.email || contactFieldMap.email || '',
+        lifecycleStage: contact?.lifecycleStage?.name || '',
+        tags: labelNames.join(','),
+        ...contactFieldMap
+      },
+      agent: {
+        id: agent.id,
+        name: agent.name,
+        tone: agent.tone,
+        responseStyle: agent.responseStyle
+      },
+      conversation: {
+        id: conversation.id,
+        status: conversation.status,
+        channelType: conversation.channelType
+      },
+      message: {
+        content: messageText
+      },
+      date: {
+        today: now.toISOString().slice(0, 10),
+        now: now.toISOString(),
+        timestamp: String(now.getTime())
+      }
+    };
+  }
+
+  resolveTemplatePath(context, path) {
+    if (!path) return undefined;
+    const cleanPath = String(path).trim().replace(/^\$+/, '');
+    if (!cleanPath) return undefined;
+
+    const parts = cleanPath.split('.').filter(Boolean);
+    let value = context;
+    for (const part of parts) {
+      if (value === null || value === undefined) return undefined;
+      value = value[part];
+    }
+    return value;
+  }
+
+  interpolateTemplate(input, context) {
+    if (typeof input !== 'string') return input;
+
+    const braceInterpolated = input.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (match, rawPath) => {
+      const resolved = this.resolveTemplatePath(context, rawPath);
+      if (resolved === undefined || resolved === null) return match;
+      if (typeof resolved === 'object') return JSON.stringify(resolved);
+      return String(resolved);
+    });
+
+    return braceInterpolated.replace(/\$([a-zA-Z_][\w.-]*)/g, (match, rawPath) => {
+      const resolved = this.resolveTemplatePath(context, rawPath);
+      if (resolved === undefined || resolved === null) return match;
+      if (typeof resolved === 'object') return JSON.stringify(resolved);
+      return String(resolved);
+    });
+  }
+
+  interpolateObject(input, context) {
+    if (Array.isArray(input)) {
+      return input.map((item) => this.interpolateObject(item, context));
+    }
+    if (input && typeof input === 'object') {
+      const output = {};
+      for (const [key, value] of Object.entries(input)) {
+        output[key] = this.interpolateObject(value, context);
+      }
+      return output;
+    }
+    if (typeof input === 'string') {
+      return this.interpolateTemplate(input, context);
+    }
+    return input;
+  }
+
   /**
    * Execute custom HTTP Request from Agent Config
    */
   async executeHttpRequest(config, { conversation, agent, message }) {
     const axios = require('axios');
 
-    // 1. Variable Substitution
-    let url = config.url;
+    // 1. Variable interpolation context
+    const context = await this.createTemplateContext({ conversation, agent, message });
+
+    let url = this.interpolateTemplate(config.url, context);
     let body = config.body || '';
-
-    const context = {
-      contact: {
-        name: conversation.contactName,
-        number: conversation.contactNumber,
-        id: conversation.contactId
-      },
-      agent: {
-        name: agent.name,
-        id: agent.id
-      },
-      message: {
-        content: message
-      }
-    };
-
-    // Simple placeholder replacement: {{contact.name}} -> context.contact.name
-    const replaceVars = (str) => {
-      return str.replace(/\{\{(.*?)\}\}/g, (match, path) => {
-        const parts = path.trim().split('.');
-        let val = context;
-        for (const part of parts) {
-          val = val?.[part];
-        }
-        return val !== undefined ? val : match;
-      });
-    };
-
-    url = replaceVars(url);
-    if (typeof body === 'string') body = replaceVars(body);
+    if (typeof body === 'string') {
+      body = this.interpolateTemplate(body, context);
+    } else {
+      body = this.interpolateObject(body, context);
+    }
 
     const headers = {};
-    (config.headers || []).forEach(h => { if (h.key) headers[h.key] = replaceVars(h.value); });
+    (config.headers || []).forEach((header) => {
+      if (header.key) headers[header.key] = this.interpolateTemplate(header.value, context);
+    });
 
     const params = {};
-    (config.params || []).forEach(p => { if (p.key) params[p.key] = replaceVars(p.value); });
+    (config.params || []).forEach((param) => {
+      if (param.key) params[param.key] = this.interpolateTemplate(param.value, context);
+    });
+
+    let requestData;
+    if ((config.method || 'POST') !== 'GET') {
+      if (typeof body === 'string') {
+        try {
+          requestData = JSON.parse(body);
+        } catch {
+          requestData = body;
+        }
+      } else {
+        requestData = body;
+      }
+    }
 
     // 2. Perform Request
     try {
@@ -773,7 +1216,7 @@ ${actionPrompts.join('\n')}`;
         url,
         headers,
         params,
-        data: (config.method !== 'GET') ? (typeof body === 'string' ? JSON.parse(body) : body) : undefined,
+        data: requestData,
         timeout: 10000
       });
 

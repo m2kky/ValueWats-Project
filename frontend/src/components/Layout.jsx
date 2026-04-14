@@ -21,6 +21,7 @@ import { getSocketUrl } from '../utils/socketUtils';
 import GlobalProgressBar from './GlobalProgressBar';
 import apiClient from '../api/client';
 import { getStoredUser } from '../utils/authUser';
+import { useNavFilter } from '../hooks/usePermission';
 
 const typeColors = {
   info: 'border-blue-400/20 bg-blue-400/10 text-blue-200',
@@ -38,6 +39,7 @@ export default function Layout({ children }) {
 
   const notificationRef = useRef(null);
   const location = useLocation();
+  const canShowNav = useNavFilter();
 
   const dismissedStorageKey = `dismissedGlobalNotifications:${user?.id || user?.email || 'anonymous'}`;
 
@@ -131,6 +133,7 @@ export default function Layout({ children }) {
     { name: 'AI Agents', path: '/agents', icon: SparklesIcon },
     { name: 'Channels', path: '/channels', icon: Squares2X2Icon },
     { name: 'Automations', path: '/automations', icon: BoltIcon },
+    { name: 'Workflows', path: '/workflows', icon: BoltIcon },
     { name: 'Settings', path: '/settings', icon: Cog6ToothIcon },
     { name: 'Help Center', path: '/help', icon: QuestionMarkCircleIcon },
   ];
@@ -157,7 +160,7 @@ export default function Layout({ children }) {
         </div>
 
         <nav className={`flex-1 space-y-2 ${isInboxRoute ? 'px-2 flex flex-col items-center' : 'px-4'}`}>
-          {navItems.map((item) => {
+          {navItems.filter(canShowNav).map((item) => {
             const active = isActive(item.path);
             return (
               <Link
@@ -184,7 +187,7 @@ export default function Layout({ children }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{user?.email?.split('@')[0]}</p>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">{user?.subscriptionPlan || 'Workspace'}</p>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">{user?.role || 'member'} * {user?.subscriptionPlan || 'Workspace'}</p>
               </div>
             </div>
           ) : (

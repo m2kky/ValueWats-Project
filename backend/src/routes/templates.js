@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const checkPermission = require('../middleware/checkPermission');
 const templateController = require('../controllers/templateController');
 
 // All routes here are protected by the auth middleware mounted in server.js
@@ -8,12 +9,12 @@ const templateController = require('../controllers/templateController');
 router.get('/', templateController.getTemplates);
 
 // Create a template
-router.post('/', templateController.createTemplate);
+router.post('/', checkPermission('templates.manage'), templateController.createTemplate);
 
 // Update a template
-router.patch('/:id', templateController.updateTemplate);
+router.patch('/:id', checkPermission('templates.manage'), templateController.updateTemplate);
 
 // Delete a template
-router.delete('/:id', templateController.deleteTemplate);
+router.delete('/:id', checkPermission('templates.manage'), templateController.deleteTemplate);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const tenantContext = require('../middleware/tenantContext');
+const checkPermission = require('../middleware/checkPermission');
 const upload = require('../middleware/upload');
 const {
   listContacts, getContact, createContact, updateContact, deleteContact,
@@ -13,24 +14,24 @@ router.use(tenantContext);
 
 // Contacts CRUD
 router.get('/', listContacts);
-router.post('/', createContact);
+router.post('/', checkPermission('contacts.manage'), createContact);
 router.get('/activity', getActivityLogs);
-router.post('/import', upload.single('file'), importContacts);
+router.post('/import', checkPermission('contacts.manage'), upload.single('file'), importContacts);
 
 // Labels
 router.get('/labels', listLabels);
-router.post('/labels', createLabel);
-router.put('/labels/:id', updateLabel);
-router.delete('/labels/:id', deleteLabel);
+router.post('/labels', checkPermission('contacts.manage'), createLabel);
+router.put('/labels/:id', checkPermission('contacts.manage'), updateLabel);
+router.delete('/labels/:id', checkPermission('contacts.manage'), deleteLabel);
 
 // Single contact
 router.get('/:id', getContact);
-router.put('/:id', updateContact);
-router.delete('/:id', deleteContact);
+router.put('/:id', checkPermission('contacts.manage'), updateContact);
+router.delete('/:id', checkPermission('contacts.manage'), deleteContact);
 
 // Notes
-router.post('/:id/notes', addNote);
-router.delete('/:id/notes/:noteId', deleteNote);
+router.post('/:id/notes', checkPermission('contacts.manage'), addNote);
+router.delete('/:id/notes/:noteId', checkPermission('contacts.manage'), deleteNote);
 
 // Contact Custom Field Values
 const prisma = require('../config/database');

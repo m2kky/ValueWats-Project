@@ -3,6 +3,12 @@ const router = express.Router();
 const prisma = require('../config/database');
 const emailService = require('../services/emailService');
 const tenantContext = require('../middleware/tenantContext');
+const checkPermission = require('../middleware/checkPermission');
+const { INVITABLE_ROLES } = require('../config/permissions');
+const {
+  enforceSeatLimitForRole,
+  getSeatUsageForTenant,
+} = require('../services/planLimit.service');
 
 // Protect all routes
 router.use(tenantContext);
@@ -32,7 +38,9 @@ router.get('/', async (req, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ users, invitations });
+    const seatUsage = await getSeatUsageForTenant(req.tenantId);
+
+    res.json({ users, invitations, seatUsage });
   } catch (error) {
     console.error('List team error:', error);
     res.status(500).json({ error: 'Failed to list team members' });
@@ -42,17 +50,27 @@ router.get('/', async (req, res) => {
 /**
  * POST /api/team/invite - Invite a new member
  */
-router.post('/invite', async (req, res) => {
+router.post('/invite', checkPermission('team.manage'), async (req, res) => {
   try {
-    const { email, role = 'agent' } = req.body;
+    const { email } = req.body;
+    const role = String(req.body?.role || 'agent').trim().toLowerCase();
     const inviterEmail = req.user.email;
-
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can invite members' });
-    }
+    const allowedRoles = new Set(INVITABLE_ROLES);
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
+    }
+    if (!allowedRoles.has(role)) {
+      return res.status(400).json({ error: 'Role must be one of: ' + INVITABLE_ROLES.join(', ') });
+    }
+
+    try {
+      await enforceSeatLimitForRole({ tenantId: req.tenantId, role });
+    } catch (seatLimitError) {
+      if (seatLimitError.status && seatLimitError.payload) {
+        return res.status(seatLimitError.status).json(seatLimitError.payload);
+      }
+      throw seatLimitError;
     }
 
     // Check if user already exists
@@ -94,7 +112,8 @@ router.post('/invite', async (req, res) => {
     // Send email
     await emailService.sendInvitation(email, invitation.tenant.name, inviterEmail, role);
 
-    res.status(201).json({ message: 'Invitation sent', invitation });
+    const seatUsage = await getSeatUsageForTenant(req.tenantId);
+    res.status(201).json({ message: 'Invitation sent', invitation, seatUsage });
   } catch (error) {
     console.error('Invite error:', error);
     res.status(500).json({ error: 'Failed to send invitation' });
@@ -104,13 +123,9 @@ router.post('/invite', async (req, res) => {
 /**
  * DELETE /api/team/:userId - Remove a member
  */
-router.delete('/:userId', async (req, res) => {
+router.delete('/:userId', checkPermission('team.manage'), async (req, res) => {
   try {
     const { userId } = req.params;
-
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can remove members' });
-    }
 
     if (userId === req.user.id) {
       return res.status(400).json({ error: 'Cannot remove yourself' });
@@ -142,13 +157,9 @@ router.delete('/:userId', async (req, res) => {
 /**
  * DELETE /api/team/invitation/:inviteId - Cancel invitation
  */
-router.delete('/invitation/:inviteId', async (req, res) => {
+router.delete('/invitation/:inviteId', checkPermission('team.manage'), async (req, res) => {
   try {
     const { inviteId } = req.params;
-
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can cancel invitations' });
-    }
 
     await prisma.invitation.deleteMany({
       where: {

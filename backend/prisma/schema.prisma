@@ -15,10 +15,15 @@ datasource db {
 // Subscription Plans — defines limits per tier
 model Plan {
   id                     String   @id @default(uuid())
-  name                   String   @unique // 'basic', 'pro', 'enterprise'
+  name                   String   @unique // 'starter', 'growth', 'scale', 'enterprise'
   maxMessagesPerDay      Int      @default(300)
   maxContactsPerCampaign Int      @default(500)
   maxInstances           Int      @default(2)
+  includedUsers          Int      @default(5)
+  additionalUserPrice    Decimal  @default(0) @db.Decimal(10, 2)
+  includedMac            Int      @default(1000)
+  macOveragePer100       Decimal  @default(0) @db.Decimal(10, 2)
+  unlimitedUsers         Boolean  @default(false)
   workingHoursEnabled    Boolean  @default(false)
   workingHoursStart      String   @default("09:00") // HH:MM (Cairo time)
   workingHoursEnd        String   @default("22:00")
@@ -35,7 +40,7 @@ model Tenant {
   id               String   @id @default(uuid())
   name             String
   email            String   @unique
-  subscriptionPlan String?  @map("subscription_plan") // 'basic', 'pro', 'enterprise'
+  subscriptionPlan String?  @map("subscription_plan") // 'starter', 'growth', 'scale', 'enterprise'
   status           String   @default("active") // 'active', 'suspended', 'trial'
   createdAt        DateTime @default(now()) @map("created_at")
 
@@ -89,7 +94,7 @@ model User {
   tenantId      String   @map("tenant_id")
   email         String   @unique
   passwordHash  String   @map("password_hash")
-  role          String // 'admin', 'agent', 'viewer'
+  role          String // 'owner', 'admin', 'supervisor', 'agent', 'viewer'
   isSuperAdmin  Boolean  @default(false) @map("is_super_admin")
   emailVerified Boolean  @default(false) @map("email_verified")
   createdAt     DateTime @default(now()) @map("created_at")

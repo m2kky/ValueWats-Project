@@ -6,6 +6,11 @@ import { PencilSquareIcon, XMarkIcon } from '@heroicons/react/24/outline';
 const INITIAL_FORM = {
   name: '',
   price: '',
+  includedUsers: 5,
+  additionalUserPrice: 12,
+  includedMac: 1000,
+  macOveragePer100: 10,
+  unlimitedUsers: false,
   maxMessagesPerDay: 200,
   maxContactsPerCampaign: 300,
   maxInstances: 1,
@@ -28,7 +33,12 @@ export default function AdminPlans() {
   }, []);
 
   const sortedPlans = useMemo(
-    () => [...plans].sort((a, b) => Number(a.price) - Number(b.price)),
+    () => [...plans].sort((a, b) => {
+      const aCustom = Boolean(a.unlimitedUsers);
+      const bCustom = Boolean(b.unlimitedUsers);
+      if (aCustom !== bCustom) return aCustom ? 1 : -1;
+      return Number(a.price) - Number(b.price);
+    }),
     [plans]
   );
 
@@ -56,6 +66,11 @@ export default function AdminPlans() {
     setForm({
       name: plan.name || '',
       price: String(plan.price ?? ''),
+      includedUsers: plan.includedUsers ?? 0,
+      additionalUserPrice: plan.additionalUserPrice ?? 0,
+      includedMac: plan.includedMac ?? 0,
+      macOveragePer100: plan.macOveragePer100 ?? 0,
+      unlimitedUsers: Boolean(plan.unlimitedUsers),
       maxMessagesPerDay: plan.maxMessagesPerDay,
       maxContactsPerCampaign: plan.maxContactsPerCampaign,
       maxInstances: plan.maxInstances,
@@ -79,6 +94,11 @@ export default function AdminPlans() {
     const payload = {
       name: form.name.trim().toLowerCase(),
       price: Number(form.price),
+      includedUsers: Number(form.includedUsers),
+      additionalUserPrice: Number(form.additionalUserPrice),
+      includedMac: Number(form.includedMac),
+      macOveragePer100: Number(form.macOveragePer100),
+      unlimitedUsers: Boolean(form.unlimitedUsers),
       maxMessagesPerDay: Number(form.maxMessagesPerDay),
       maxContactsPerCampaign: Number(form.maxContactsPerCampaign),
       maxInstances: Number(form.maxInstances),
@@ -98,6 +118,22 @@ export default function AdminPlans() {
 
     if (!Number.isFinite(payload.price) || payload.price < 0) {
       alert('Price must be zero or a positive number');
+      return;
+    }
+    if (!payload.unlimitedUsers && (!Number.isFinite(payload.includedUsers) || payload.includedUsers < 1)) {
+      alert('Included paid users must be at least 1 unless unlimited users is enabled');
+      return;
+    }
+    if (!Number.isFinite(payload.additionalUserPrice) || payload.additionalUserPrice < 0) {
+      alert('Additional user price must be zero or a positive number');
+      return;
+    }
+    if (!Number.isFinite(payload.includedMac) || payload.includedMac < 0) {
+      alert('Included MAC must be zero or a positive number');
+      return;
+    }
+    if (!Number.isFinite(payload.macOveragePer100) || payload.macOveragePer100 < 0) {
+      alert('MAC overage (per 100) must be zero or a positive number');
       return;
     }
 
@@ -150,7 +186,7 @@ export default function AdminPlans() {
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                 className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-3 py-2 text-white"
-                placeholder="basic / pro / enterprise"
+                placeholder="starter / growth / scale / enterprise"
                 required
               />
             </label>
@@ -163,6 +199,56 @@ export default function AdminPlans() {
                 step="0.01"
                 value={form.price}
                 onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
+                className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-3 py-2 text-white"
+                required
+              />
+            </label>
+
+            <label className="space-y-2 text-sm text-zinc-300">
+              <span>Included Paid Users (Admin + Agent)</span>
+              <input
+                type="number"
+                min="0"
+                value={form.includedUsers}
+                onChange={(e) => setForm((prev) => ({ ...prev, includedUsers: e.target.value }))}
+                className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-3 py-2 text-white"
+                required
+              />
+            </label>
+
+            <label className="space-y-2 text-sm text-zinc-300">
+              <span>Additional User Price (Monthly)</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.additionalUserPrice}
+                onChange={(e) => setForm((prev) => ({ ...prev, additionalUserPrice: e.target.value }))}
+                className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-3 py-2 text-white"
+                required
+              />
+            </label>
+
+            <label className="space-y-2 text-sm text-zinc-300">
+              <span>Included MAC / Month</span>
+              <input
+                type="number"
+                min="0"
+                value={form.includedMac}
+                onChange={(e) => setForm((prev) => ({ ...prev, includedMac: e.target.value }))}
+                className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-3 py-2 text-white"
+                required
+              />
+            </label>
+
+            <label className="space-y-2 text-sm text-zinc-300">
+              <span>MAC Overage Price (Per 100)</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.macOveragePer100}
+                onChange={(e) => setForm((prev) => ({ ...prev, macOveragePer100: e.target.value }))}
                 className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-3 py-2 text-white"
                 required
               />
@@ -245,6 +331,16 @@ export default function AdminPlans() {
             Enable working-hour sending windows for this plan
           </label>
 
+          <label className="inline-flex items-center gap-2 text-sm text-zinc-300">
+            <input
+              type="checkbox"
+              checked={form.unlimitedUsers}
+              onChange={(e) => setForm((prev) => ({ ...prev, unlimitedUsers: e.target.checked }))}
+              className="rounded border-white/20 bg-[#1c1f26]"
+            />
+            Unlimited paid users (Enterprise-style seat model)
+          </label>
+
           <div className="flex justify-end gap-3">
             <button type="button" onClick={resetForm} className="px-4 py-2 rounded-xl bg-white/5 text-zinc-300 hover:bg-white/10">
               Cancel
@@ -280,12 +376,32 @@ export default function AdminPlans() {
                 </button>
               </div>
               <div className="mt-4 flex items-baseline">
-                <span className="text-3xl font-black text-white">${plan.price}</span>
+                <span className="text-3xl font-black text-white">
+                  {plan.unlimitedUsers && Number(plan.price) === 0 ? 'Custom' : `$${plan.price}`}
+                </span>
                 <span className="text-sm text-zinc-500 ml-1">/mo</span>
               </div>
             </div>
             <div className="p-6 flex-1 bg-[#1c1f26]/30">
               <ul className="space-y-3">
+                <li className="flex justify-between text-sm">
+                  <span className="text-zinc-400">Paid Users</span>
+                  <span className="text-white font-bold">
+                    {plan.unlimitedUsers ? 'Unlimited' : plan.includedUsers}
+                  </span>
+                </li>
+                <li className="flex justify-between text-sm">
+                  <span className="text-zinc-400">Extra User</span>
+                  <span className="text-white font-bold">${plan.additionalUserPrice}/mo</span>
+                </li>
+                <li className="flex justify-between text-sm">
+                  <span className="text-zinc-400">Included MAC</span>
+                  <span className="text-white font-bold">{plan.includedMac}</span>
+                </li>
+                <li className="flex justify-between text-sm">
+                  <span className="text-zinc-400">MAC Overage</span>
+                  <span className="text-white font-bold">${plan.macOveragePer100}/100</span>
+                </li>
                 <li className="flex justify-between text-sm">
                   <span className="text-zinc-400">Daily Messages</span>
                   <span className="text-white font-bold">{plan.maxMessagesPerDay}</span>

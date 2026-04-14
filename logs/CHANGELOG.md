@@ -1,5 +1,152 @@
 ---
 
+## [2026-04-14] - RBAC System + Workflow Trigger Wiring
+
+### Added
+- **Role-Based Access Control (RBAC) system**:
+  - Created `backend/src/config/permissions.js` — Permission matrix for 5 roles: `owner`, `admin`, `supervisor`, `agent`, `viewer`.
+  - Created `backend/src/middleware/checkPermission.js` — Route-level authorization middleware.
+  - Created `frontend/src/hooks/usePermission.js` — Frontend hooks `usePermission()` and `useNavFilter()` for role-based UI guards.
+- **Workflow automation trigger wiring**:
+  - `webhookController.js` now auto-triggers matching workflows on inbound messages via `workflowService`.
+  - Added "Workflows" navigation link in sidebar (`Layout.jsx`).
+
+### Changed
+- **RBAC applied to ALL write routes** across 8 route files:
+  - `team.js` — `team.manage`
+  - `campaigns.js` — `campaigns.manage`
+  - `templates.js` — `templates.manage`
+  - `agent.routes.js` — `agents.manage`
+  - `workflows.js` — `automations.manage`
+  - `settings.js` — `settings.manage`
+  - `instances.js` — `channels.manage`
+  - `contacts.js` — `contacts.manage`
+- **First user per tenant now gets `owner` role** instead of `admin` (in `auth.js`).
+- **`isAdmin.js`** now accepts both `owner` and `admin` roles for super-admin check.
+- **`planLimit.service.js`** PAID_SEAT_ROLES updated to include `owner` and `supervisor`.
+- **Frontend sidebar** now filters nav items by user role permissions.
+- **User profile badge** now shows `{role} * {plan}` instead of just plan name.
+
+### Fixed
+- **`agent.service.js`** TRIGGER_WORKFLOW action — was calling nonexistent `executeWorkflow()`, fixed to `executeWorkflowRecord()` with proper workflow lookup (by ID or name).
+- **`agent.routes.js`** — Fixed incorrect `require('../../middleware/checkPermission')` import path to `../middleware/checkPermission`.
+
+---
+
+## [2026-04-14] - AI Agent Prompt Quality Alignment (respond.io style)
+
+### Added
+- **Instruction quality guardrails in Agent Editor**:
+  - Added required-section checklist for `# CONTEXT`, `# ROLE & COMMUNICATION STYLE`, `# TOP-LEVEL FLOW`, and `# BOUNDARIES`.
+  - Added live instruction character counter with 10,000-character limit visibility.
+  - Added over-limit warning and blocked save/publish when instructions exceed 10,000 characters.
+
+### Changed
+- **Default AI agent templates upgraded to structured prompts**:
+  - Rewrote `receptionist`, `sales`, and `support` template instructions into explicit sections with context, communication style, flow, action rules, and boundaries.
+- **System prompt assembly improved**:
+  - Updated backend prompt builder to enforce a clear section execution order and explicitly separate top-level flow from action settings.
+  - Improved knowledge-base usage guidance to reduce unsupported answers.
+- **Agent test preview now matches production prompt logic**:
+  - `/api/agents/:id/test` now reuses `buildSystemPrompt()` for parity with live conversation behavior.
+
+### Fixed
+- **Create-agent API parity with editor capabilities**:
+  - Added support for saving `actionConfig`, `allowGroupResponse`, and `allowedGroups` during agent creation.
+  - Added validation for required/non-empty instructions and hard 10,000-character limit in create/update APIs.
+
+### Verification
+- `npm run build` completed successfully in `frontend`.
+- Backend modules loaded successfully via Node (`agent.service.js`, `agent.routes.js`).
+
+## [2026-04-14] - Agent Mentions, Variables, and Tags Parity Pass
+
+### Changed
+- **Frontend mention/tag/variable lookup sources aligned with backend APIs**:
+  - Replaced non-existing lookup calls (`/users/all`, `/teams`, `/lifecycle-stages`) with tenant-scoped routes that actually exist: `/team`, `/lifecycle`, and `/contact-fields/definitions`.
+  - Added dynamic mention options for:
+    - Human users (`@user:<id>`)
+    - AI agents (`@agent:<id>`)
+    - Team selectors (`@team:agents`, `@team:admins`, `@team:humans`)
+  - Added dynamic variables sourced from contact field definitions (`{{contact.<fieldKey>}}`).
+- **Rich textarea UX upgraded toward respond.io behavior**:
+  - Added searchable picker with tabs for Mention, Variable, and Tag insertion.
+  - Kept trigger autocomplete while typing (`@`, `%`, `{{`, `$`).
+  - Improved filtering and insertion behavior for all token types.
+- **Action editors now receive dynamic variables explicitly**:
+  - Passed `variables` into all `ActionCard` instruction editors.
+  - Passed `availableVariables` into HTTP Request side-sheet instruction editor.
+
+### Fixed
+- **Backend ASSIGN action resolution made robust**:
+  - Replaced brittle `split(':')[1]` parsing with full-target parsing.
+  - Added assignment target resolver supporting:
+    - `@user:<id>` / `USER:<id>`
+    - `@agent:<id>` / `AGENT:<id>`
+    - `@team:<name>` / `TEAM:<name>` (with strategy support)
+    - `HUMAN` / `ESCALATE`
+    - Fallback by partial name/email matching.
+  - Added team assignment strategies:
+    - `round_robin` (least recently assigned fallback)
+    - `least_open` / `least_loaded`
+  - Assignment now updates conversation ownership flags consistently and logs assignment activity.
+- **Tag action normalization**:
+  - `ADD_TAG` / `REMOVE_TAG` now normalize `%tag` and `tag` to the same stored label name.
+- **HTTP variable interpolation parity improved**:
+  - Added unified template interpolation for both `{{path.to.value}}` and `$path.to.value`.
+  - Added richer interpolation context (`contact`, `agent`, `conversation`, `message`, `date`) including dynamic contact fields.
+  - Added safe request-body handling when JSON parsing is not possible.
+
+## [2026-04-12] - Meta Embedded Signup Completion, Messenger Controls, and Channel Scope Lock
+
+### Added
+- **Meta App compliance pages and domain ownership support**:
+  - Added public Data Deletion page and legal footer links for Meta app requirements.
+  - Added Facebook domain verification meta tag on the public website.
+- **Meta Embedded Signup channel flow**:
+  - Switched Messenger and Instagram connect flow to Embedded Signup.
+  - Added separate frontend config support for Messenger and Instagram Meta login configuration IDs.
+- **Messenger control features in Channel Manage**:
+  - Added Messenger Chat Menu templates for faster setup.
+  - Added Messenger Private Replies management for post comments.
+  - Added Template Tester support for validating Messenger message payloads before production use.
+
+### Changed
+- **Channel catalog scope is now Meta-only (temporary product scope)**:
+  - Hidden channel options except `WhatsApp`, `Messenger`, and `Instagram` on the Channels page.
+  - Filtered connected channels to show only the active supported channel types.
+  - Blocked unsupported direct connect routes with a clear "Channel Unavailable" state.
+- **Help Center scope alignment**:
+  - Removed TikTok and Telegram from channel collections.
+  - Updated Messaging Channels category copy to reflect only current supported channels.
+  - Updated WhatsApp docs text to match current QR-first flow.
+  - Updated Messenger docs with current operational features: Chat Menu, Private Replies, and Template Tester.
+  - Updated docs freshness marker to `April 2026`.
+
+### Fixed
+- **Frontend API path and Meta login callback issues**:
+  - Fixed duplicated `/api/api` path bug in notifications calls.
+  - Fixed async callback misuse in Facebook login flow.
+- **Messenger webhook subscription compatibility**:
+  - Replaced invalid subscription fields with supported Meta fields and added `feed` subscription support for private-reply scenarios.
+- **Channel config save robustness**:
+  - Improved validation messaging for Chat Menu buttons (payload/URL requirements).
+  - Allowed partial config saves for Private Replies with clearer debug logging during feed event processing.
+
+### Verification
+- `npm run build:frontend` completed successfully after channel-scope and docs updates.
+
+### Related Commits (2026-04-12)
+- `0aa6407` chore: add facebook domain verification meta tag
+- `da9a472` feat: add public data deletion page and legal links
+- `d4edb15` feat: switch messenger/instagram to meta embedded signup
+- `e582910` fix: normalize api paths and remove async fb.login callback
+- `368e1cc` feat(channels): add messenger chat menu templates and private replies
+- `22ea932` fix(messenger): subscribe page feed field for auto private replies
+- `8a45f2f` fix(meta): valid webhook fields and friendlier chat menu validation
+- `181c5f0` fix(private-replies): allow partial config saves and add feed debug logs
+- `2864824` feat: hide non-meta channels and align channel docs
+
 ## [2026-04-08] - Rebrand Assets Finalization & Campaign Prerequisite Guard
 
 ### Changed

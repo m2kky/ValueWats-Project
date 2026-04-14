@@ -17,6 +17,17 @@ function toDecimal(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function toBoolean(value, fallback = false) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+  }
+  return Boolean(value);
+}
+
 function normalizePlanPayload(input, { requireName = false } = {}) {
   const payload = {};
 
@@ -52,6 +63,38 @@ function normalizePlanPayload(input, { requireName = false } = {}) {
     }
   }
 
+  if (input.includedUsers !== undefined) {
+    payload.includedUsers = toInt(input.includedUsers, NaN);
+    if (!Number.isFinite(payload.includedUsers) || payload.includedUsers < 0) {
+      return { error: 'includedUsers must be zero or a positive number' };
+    }
+  }
+
+  if (input.additionalUserPrice !== undefined) {
+    payload.additionalUserPrice = toDecimal(input.additionalUserPrice, NaN);
+    if (!Number.isFinite(payload.additionalUserPrice) || payload.additionalUserPrice < 0) {
+      return { error: 'additionalUserPrice must be zero or a positive number' };
+    }
+  }
+
+  if (input.includedMac !== undefined) {
+    payload.includedMac = toInt(input.includedMac, NaN);
+    if (!Number.isFinite(payload.includedMac) || payload.includedMac < 0) {
+      return { error: 'includedMac must be zero or a positive number' };
+    }
+  }
+
+  if (input.macOveragePer100 !== undefined) {
+    payload.macOveragePer100 = toDecimal(input.macOveragePer100, NaN);
+    if (!Number.isFinite(payload.macOveragePer100) || payload.macOveragePer100 < 0) {
+      return { error: 'macOveragePer100 must be zero or a positive number' };
+    }
+  }
+
+  if (input.unlimitedUsers !== undefined) {
+    payload.unlimitedUsers = toBoolean(input.unlimitedUsers);
+  }
+
   if (input.price !== undefined) {
     payload.price = toDecimal(input.price, NaN);
     if (!Number.isFinite(payload.price) || payload.price < 0) {
@@ -60,7 +103,7 @@ function normalizePlanPayload(input, { requireName = false } = {}) {
   }
 
   if (input.workingHoursEnabled !== undefined) {
-    payload.workingHoursEnabled = Boolean(input.workingHoursEnabled);
+    payload.workingHoursEnabled = toBoolean(input.workingHoursEnabled);
   }
 
   if (input.workingHoursStart !== undefined) {
@@ -206,12 +249,40 @@ exports.getTenants = async (req, res) => {
         _count: {
           select: { users: true, instances: true }
         },
-        plan: true
+        plan: true,
+        users: {
+          select: { role: true }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json(tenants);
+    const enriched = tenants.map((tenant) => {
+      const paidUsers = tenant.users.filter((user) => ['admin', 'agent'].includes(user.role)).length;
+      const viewerUsers = tenant.users.filter((user) => user.role === 'viewer').length;
+      const unlimitedUsers = Boolean(tenant.plan?.unlimitedUsers);
+      const includedUsers = tenant.plan?.includedUsers ?? null;
+      const seatLimit = unlimitedUsers ? null : includedUsers;
+      const seatRemaining = seatLimit === null ? null : Math.max(seatLimit - paidUsers, 0);
+      const channelsLimit = tenant.plan?.maxInstances ?? null;
+
+      return {
+        ...tenant,
+        users: undefined,
+        usage: {
+          paidUsers,
+          viewerUsers,
+          totalUsers: tenant._count?.users || paidUsers + viewerUsers,
+          seatLimit,
+          seatRemaining,
+          unlimitedUsers,
+          channelsUsed: tenant._count?.instances || 0,
+          channelsLimit
+        }
+      };
+    });
+
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch tenants' });
   }

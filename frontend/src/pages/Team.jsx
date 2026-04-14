@@ -11,6 +11,7 @@ import {
 export default function Team() {
   const [users, setUsers] = useState([]);
   const [invitations, setInvitations] = useState([]);
+  const [seatUsage, setSeatUsage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
 
@@ -31,6 +32,7 @@ export default function Team() {
       const res = await api.get('/team');
       setUsers(res.data.users);
       setInvitations(res.data.invitations || []);
+      setSeatUsage(res.data.seatUsage || null);
     } catch (error) {
       console.error('Failed to fetch team:', error);
     } finally {
@@ -38,14 +40,23 @@ export default function Team() {
     }
   };
 
+  const hasPaidSeatAvailability = seatUsage?.unlimitedUsers || (seatUsage?.availablePaidSeats ?? 0) > 0;
+  const inviteRequiresPaidSeat = ['admin', 'agent'].includes(inviteRole);
+  const inviteBlockedBySeatLimit = Boolean(!hasPaidSeatAvailability && inviteRequiresPaidSeat);
+
   const handleInvite = async (e) => {
     e.preventDefault();
+    if (inviteBlockedBySeatLimit) {
+      alert('Paid user seats are fully used for your current plan. Upgrade or buy extra seats to invite more admins/agents.');
+      return;
+    }
     setSendingInvite(true);
     try {
-      await api.post('/team/invite', { email: inviteEmail, role: inviteRole });
+      const res = await api.post('/team/invite', { email: inviteEmail, role: inviteRole });
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteRole('agent');
+      if (res.data?.seatUsage) setSeatUsage(res.data.seatUsage);
       fetchTeam();
     } catch (error) {
       alert(error.response?.data?.error || 'Failed to send invitation');
@@ -108,6 +119,46 @@ export default function Team() {
       </div>
 
       <div className="grid gap-8">
+        {seatUsage && (
+          <div className="glass-card overflow-hidden">
+            <div className="px-6 py-5 border-b border-white/5 bg-white/[0.02]">
+              <h3 className="text-sm font-black text-white uppercase tracking-widest italic">Plan Seat Usage</h3>
+            </div>
+            <div className="p-6 text-sm text-zinc-300">
+              <div className="flex flex-wrap items-center gap-6">
+                <span>
+                  Paid Seats:{' '}
+                  <strong className="text-white">
+                    {seatUsage.paidUsers}
+                    {seatUsage.unlimitedUsers ? ' / Unlimited' : ` / ${seatUsage.includedUsers}`}
+                  </strong>
+                </span>
+                {!seatUsage.unlimitedUsers && (
+                  <span>
+                    Available:{' '}
+                    <strong className="text-white">{seatUsage.availablePaidSeats}</strong>
+                  </span>
+                )}
+                <span>
+                  Pending Invites:{' '}
+                  <strong className="text-white">{seatUsage.pendingPaidInvitations}</strong>
+                </span>
+                {!seatUsage.unlimitedUsers && (
+                  <span>
+                    Extra Seat Price:{' '}
+                    <strong className="text-white">${seatUsage.additionalUserPrice}/month</strong>
+                  </span>
+                )}
+              </div>
+              {!seatUsage.unlimitedUsers && seatUsage.availablePaidSeats === 0 && (
+                <p className="mt-3 text-amber-300">
+                  Paid seat limit reached. You can still invite viewer users, or upgrade the plan for more paid seats.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Team Members List */}
         <div className="glass-card overflow-hidden">
           <div className="px-6 py-5 border-b border-white/5 bg-white/[0.02]">
@@ -222,6 +273,11 @@ export default function Team() {
                   <option value="admin" className="text-white bg-zinc-800">Admin (Full access)</option>
                   <option value="viewer" className="text-white bg-zinc-800">Viewer (Read only)</option>
                 </select>
+                {inviteBlockedBySeatLimit && (
+                  <p className="mt-2 text-xs text-amber-300">
+                    This role consumes a paid seat and your current plan has no available paid seats.
+                  </p>
+                )}
               </div>
 
               <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-white/5">
@@ -234,8 +290,8 @@ export default function Team() {
                 </button>
                 <button
                   type="submit"
-                  disabled={sendingInvite}
-                  className="btn-premium"
+                  disabled={sendingInvite || inviteBlockedBySeatLimit}
+                  className="btn-premium disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {sendingInvite ? (
                     <div className="flex items-center gap-2">

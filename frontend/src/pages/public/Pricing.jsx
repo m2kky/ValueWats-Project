@@ -23,7 +23,12 @@ export default function Pricing() {
   }, []);
 
   const sortedPlans = useMemo(
-    () => [...plans].sort((a, b) => Number(a.price) - Number(b.price)),
+    () => [...plans].sort((a, b) => {
+      const aCustom = Boolean(a.unlimitedUsers);
+      const bCustom = Boolean(b.unlimitedUsers);
+      if (aCustom !== bCustom) return aCustom ? 1 : -1;
+      return Number(a.price) - Number(b.price);
+    }),
     [plans]
   );
 
@@ -64,15 +69,25 @@ export default function Pricing() {
 
                   <h3 className="text-2xl font-semibold mb-2 capitalize">{plan.name}</h3>
                   <div className="flex items-baseline mb-4">
-                    <span className="text-4xl font-extrabold">${plan.price}</span>
-                    <span className={`ml-2 ${isFeatured ? 'text-[#232318]/70' : 'text-[#fffed9]/60'}`}>/month</span>
+                    <span className="text-4xl font-extrabold">
+                      {plan.unlimitedUsers && Number(plan.price) === 0 ? 'Custom' : `$${plan.price}`}
+                    </span>
+                    <span className={`ml-2 ${isFeatured ? 'text-[#232318]/70' : 'text-[#fffed9]/60'}`}>
+                      {plan.unlimitedUsers && Number(plan.price) === 0 ? '' : '/month'}
+                    </span>
                   </div>
 
                   <p className={`mb-6 text-sm ${isFeatured ? 'text-[#232318]/80' : 'text-[#fffed9]/70'}`}>
-                    Message limits and campaign controls for your team size.
+                    Platform subscription + usage-based WhatsApp billing, built for predictable growth.
                   </p>
 
                   <ul className="space-y-3 mb-8 flex-1 text-sm">
+                    <li>
+                      - Paid users (admin + agent): <strong>{plan.unlimitedUsers ? 'Unlimited' : (plan.includedUsers ?? 'N/A')}</strong>
+                    </li>
+                    <li>- Extra paid user: <strong>${plan.additionalUserPrice ?? 0}/month</strong></li>
+                    <li>- Included monthly active contacts (MAC): <strong>{plan.includedMac ?? 0}</strong></li>
+                    <li>- MAC overage: <strong>${plan.macOveragePer100 ?? 0} / 100 contacts</strong></li>
                     <li>- Daily messages: <strong>{plan.maxMessagesPerDay}</strong></li>
                     <li>- Max contacts/campaign: <strong>{plan.maxContactsPerCampaign}</strong></li>
                     <li>- Max channels: <strong>{plan.maxInstances}</strong></li>
@@ -82,14 +97,14 @@ export default function Pricing() {
                   </ul>
 
                   <Link
-                    to="/register"
+                    to={plan.unlimitedUsers ? '/contact' : '/register'}
                     className={`w-full text-center py-3 px-4 rounded-lg font-medium transition-colors ${
                       isFeatured
                         ? 'bg-[#232318] text-[#e2f300] hover:bg-[#11110d]'
                         : 'bg-[#fffed9]/10 hover:bg-[#fffed9]/15 text-[#fffed9]'
                     }`}
                   >
-                    Start now
+                    {plan.unlimitedUsers ? 'Talk to Sales' : 'Start now'}
                   </Link>
                 </div>
               );

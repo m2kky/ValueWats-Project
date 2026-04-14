@@ -82,6 +82,7 @@ export default function Onboarding() {
     const [role, setRole] = useState('');
     const [phone, setPhone] = useState('');
     const [referralSource, setReferralSource] = useState('');
+    const [workspaceName, setWorkspaceName] = useState('');
 
     // Get user name from localStorage
     const [userName, setUserName] = useState('');
@@ -97,6 +98,12 @@ export default function Onboarding() {
         }
     }, []);
 
+    useEffect(() => {
+        if (!workspaceName && organizationName) {
+            setWorkspaceName(organizationName);
+        }
+    }, [organizationName, workspaceName]);
+
     const toggleChatPurpose = (purpose) => {
         setChatPurposes((prev) =>
             prev.includes(purpose) ? prev.filter((p) => p !== purpose) : [...prev, purpose]
@@ -105,7 +112,7 @@ export default function Onboarding() {
 
     const canProceedStep1 = organizationName && industry && orgSize;
     const canProceedStep2 = customerType && chatPurposes.length > 0;
-    const canProceedStep3 = role;
+    const canProceedStep3 = Boolean(role && workspaceName.trim().length > 0);
 
     const handleSubmit = async () => {
         setError('');
@@ -122,12 +129,15 @@ export default function Onboarding() {
                 phone,
                 name: userNameInput || userName,
                 referralSource,
+                workspaceName,
             });
 
             // Update localStorage with new tenant data
             const userData = JSON.parse(localStorage.getItem('user') || '{}');
             userData.onboardingCompleted = true;
             userData.name = userNameInput || userName;
+            userData.workspaceName = res.data?.tenant?.name || workspaceName;
+            userData.tenantName = res.data?.tenant?.name || workspaceName;
             localStorage.setItem('user', JSON.stringify(userData));
 
             navigate('/dashboard');
@@ -293,7 +303,7 @@ export default function Onboarding() {
                     {/* Step 3 */}
                     {step === 3 && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h1 className="text-2xl font-bold text-white mb-8">Last step, let's set up your profile</h1>
+                            <h1 className="text-2xl font-bold text-white mb-8">Last step, let's set up your profile & workspace</h1>
 
                             <div className="space-y-5">
                                 {/* Role */}
@@ -347,6 +357,20 @@ export default function Onboarding() {
                                     onChange={setReferralSource}
                                     options={REFERRAL_SOURCES}
                                 />
+
+                                {/* Workspace name */}
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-300 mb-2">
+                                        Workspace name <span className="text-rose-400">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={workspaceName}
+                                        onChange={(e) => setWorkspaceName(e.target.value)}
+                                        placeholder="E.g. Value chat - Egypt Team"
+                                        className="w-full px-4 py-3 bg-[#2a2a1f] border border-white/10 rounded-xl focus:outline-none focus:border-[#e2f300] focus:ring-1 focus:ring-[#e2f300] text-white placeholder-zinc-500 transition-colors"
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}

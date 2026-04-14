@@ -206,7 +206,12 @@ const verifyOtp = async (req, res) => {
  */
 async function createNewTenant(tenantName, email, passwordHash) {
   return await prisma.$transaction(async (tx) => {
-    const basicPlan = await tx.plan.findUnique({
+    const starterPlan = await tx.plan.findUnique({
+      where: { name: 'starter' },
+      select: { id: true, name: true }
+    });
+
+    const fallbackPlan = starterPlan || await tx.plan.findUnique({
       where: { name: 'basic' },
       select: { id: true, name: true }
     });
@@ -215,8 +220,8 @@ async function createNewTenant(tenantName, email, passwordHash) {
       data: {
         name: tenantName,
         email,
-        subscriptionPlan: basicPlan?.name || 'basic',
-        planId: basicPlan?.id || null,
+        subscriptionPlan: fallbackPlan?.name || 'starter',
+        planId: fallbackPlan?.id || null,
         status: 'trial',
       },
     });
@@ -226,7 +231,7 @@ async function createNewTenant(tenantName, email, passwordHash) {
         tenantId: tenant.id,
         email,
         passwordHash,
-        role: 'admin',
+        role: 'owner',
         emailVerified: true,
       },
     });

@@ -2,6 +2,7 @@ const prisma = require('../config/database');
 const queueService = require('../services/queueService');
 const googleSheetService = require('../services/googleSheetService');
 const crmService = require('../services/crmService');
+const { resolveTenantPlanByTenant } = require('../services/planLimit.service');
 
 const fs = require('fs');
 const xlsx = require('xlsx');
@@ -12,15 +13,6 @@ const urlRegex = /(https?:\/\/[^\s]+)/g;
 // Strip invisible/zero-width unicode characters from URLs
 const sanitizeUrl = (url) => url.replace(/[\u200B-\u200D\uFEFF\u00AD\u200C\u200E\u200F]/g, '').trim();
 const CONNECT_NUMBER_FIRST_ERROR = 'Please connect a WhatsApp number first before launching a campaign.';
-
-const resolveTenantPlan = async (tenant) => {
-  if (!tenant) return null;
-  if (tenant.plan) return tenant.plan;
-  if (!tenant.subscriptionPlan) return null;
-  return prisma.plan.findUnique({
-    where: { name: tenant.subscriptionPlan },
-  });
-};
 
 const createCampaign = async (req, res) => {
   try {
@@ -227,7 +219,7 @@ const createCampaign = async (req, res) => {
     }
 
     // ====== PHASE 2: Plan-Based Contact Limit ======
-    const plan = await resolveTenantPlan(tenant);
+    const plan = await resolveTenantPlanByTenant(tenant);
     if (plan && contacts.length > plan.maxContactsPerCampaign) {
       return res.status(402).json({
         error: `Contact list exceeds your plan limit of ${plan.maxContactsPerCampaign} contacts per campaign. Please upgrade your plan or reduce the contact list.`,

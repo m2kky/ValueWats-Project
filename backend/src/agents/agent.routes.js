@@ -3,6 +3,8 @@ const router = express.Router();
 const prisma = require('../config/database');
 // CORRECTED: Use tenantContext instead of missing auth middleware
 const tenantContext = require('../middleware/tenantContext');
+const checkPermission = require('../middleware/checkPermission');
+const agentService = require('./agent.service');
 
 // Get all agents for tenant
 router.get('/', tenantContext, async (req, res) => {
@@ -64,7 +66,7 @@ router.get('/:id', tenantContext, async (req, res) => {
 });
 
 // Create agent
-router.post('/', tenantContext, async (req, res) => {
+router.post('/', tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
     const {
       name,
@@ -87,9 +89,21 @@ router.post('/', tenantContext, async (req, res) => {
       workingHoursEnabled,
       workingHours,
       outOfHoursMessage,
+      allowGroupResponse,
+      allowedGroups,
+      actionConfig,
       isActive,
       priority
     } = req.body;
+
+    const normalizedInstructions = typeof instructions === 'string' ? instructions.trim() : '';
+    if (!name || !normalizedInstructions) {
+      return res.status(400).json({ error: 'Name and instructions are required' });
+    }
+
+    if (normalizedInstructions.length > 10000) {
+      return res.status(400).json({ error: 'Instructions cannot exceed 10000 characters' });
+    }
 
     const agent = await prisma.aIAgent.create({
       data: {
@@ -98,7 +112,7 @@ router.post('/', tenantContext, async (req, res) => {
         description,
         avatar,
         templateType,
-        instructions,
+        instructions: normalizedInstructions,
         aiProvider: aiProvider || 'deepseek',
         aiModel: aiModel || 'deepseek-chat',
         temperature: temperature ?? 0.7,
@@ -114,6 +128,9 @@ router.post('/', tenantContext, async (req, res) => {
         workingHoursEnabled: workingHoursEnabled ?? false,
         workingHours,
         outOfHoursMessage,
+        allowGroupResponse: allowGroupResponse ?? false,
+        allowedGroups: Array.isArray(allowedGroups) ? allowedGroups : [],
+        actionConfig: actionConfig || undefined,
         isActive: isActive ?? true,
         priority: priority ?? 0
       }
@@ -127,7 +144,7 @@ router.post('/', tenantContext, async (req, res) => {
 });
 
 // Update agent
-router.put('/:id', tenantContext, async (req, res) => {
+router.put('/:id', tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
     const updateData = { ...req.body };
 
@@ -135,6 +152,22 @@ router.put('/:id', tenantContext, async (req, res) => {
     if (updateData.model) {
       updateData.aiModel = updateData.model;
       delete updateData.model;
+    }
+
+    if (updateData.instructions !== undefined) {
+      const normalizedInstructions = typeof updateData.instructions === 'string'
+        ? updateData.instructions.trim()
+        : '';
+
+      if (!normalizedInstructions) {
+        return res.status(400).json({ error: 'Instructions cannot be empty' });
+      }
+
+      if (normalizedInstructions.length > 10000) {
+        return res.status(400).json({ error: 'Instructions cannot exceed 10000 characters' });
+      }
+
+      updateData.instructions = normalizedInstructions;
     }
 
     // Filter only valid Prisma fields to prevent validation errors
@@ -178,7 +211,7 @@ router.put('/:id', tenantContext, async (req, res) => {
 });
 
 // Delete agent
-router.delete('/:id', tenantContext, async (req, res) => {
+router.delete('/:id', tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
     await prisma.aIAgent.deleteMany({
       where: {
@@ -197,7 +230,7 @@ router.delete('/:id', tenantContext, async (req, res) => {
 // Test chat with agent (for live preview in editor)
 const deepseekService = require('../ai/deepseek.service');
 
-router.post('/:id/test', tenantContext, async (req, res) => {
+router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
     const { message } = req.body;
     if (!message) {
@@ -218,20 +251,12 @@ router.post('/:id/test', tenantContext, async (req, res) => {
       return res.status(404).json({ error: 'Agent not found' });
     }
 
-    // Build system prompt from agent config
-    let systemPrompt = agent.instructions || 'You are a helpful assistant.';
-    systemPrompt += `\n\nTone: ${agent.tone || 'professional'}`;
-    systemPrompt += `\nResponse Style: ${agent.responseStyle || 'concise'}`;
+    const contextLines = (agent.knowledgeSources || [])
+      .filter(k => k && k.content)
+      .map(k => `${k.title || 'Knowledge'}: ${k.content}`);
 
-    if (agent.greeting) {
-      systemPrompt += `\n\nGreeting (use for first interaction): ${agent.greeting}`;
-    }
-
-    // Add knowledge base context
-    if (agent.knowledgeSources && agent.knowledgeSources.length > 0) {
-      const knowledge = agent.knowledgeSources.map(k => k.content).join('\n\n');
-      systemPrompt += `\n\nKnowledge Base:\n${knowledge}`;
-    }
+    // Reuse production prompt builder so preview behavior matches real conversations.
+    const systemPrompt = agentService.buildSystemPrompt(agent, contextLines);
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -261,7 +286,7 @@ router.get('/templates/list', tenantContext, async (req, res) => {
 });
 
 // Create agent from template
-router.post('/templates/:templateName', tenantContext, async (req, res) => {
+router.post('/templates/:templateName', tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
     const { templateName } = req.params;
     const template = agentTemplates[templateName];

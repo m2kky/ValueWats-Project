@@ -12,6 +12,7 @@ export default function ActionCard({
   placeholder,
   mentions = [],
   tags = [],
+  variables = [],
   onOptimize,
   showTags = false,
   showMentions = false,
@@ -61,6 +62,7 @@ export default function ActionCard({
               placeholder={placeholder || "Describe context criteria..."}
               mentions={mentions}
               tags={tags}
+              variables={variables}
               onOptimize={onOptimize}
               showTags={showTags}
               showMentions={showMentions}

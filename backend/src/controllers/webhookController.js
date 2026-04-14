@@ -5,6 +5,7 @@ const agentService = require('../agents/agent.service');
 const socketService = require('../services/socketService');
 const prisma = require('../config/database');
 const { uploadBase64 } = require('../services/storageService');
+const workflowService = require('../services/workflow.service');
 
 // Download media from Evolution API and upload to MinIO, returns permanent URL or null
 async function resolveMediaUrl(instanceName, msgKey, messageContent, messageType) {
@@ -432,6 +433,24 @@ const handleIncomingMessage = async (req, res) => {
         }
       } catch (error) {
         console.error('[Webhook] AI processing error:', error);
+      }
+    }
+
+    // ====== WORKFLOW ENGINE: Auto-trigger workflows ======
+    if (conversation) {
+      try {
+        const contact = await prisma.contact.findFirst({
+          where: { tenantId: instance.tenantId, phoneNumber: contactNumber }
+        });
+        await workflowService.executeTriggeredWorkflows('inbound_message', {
+          tenantId: instance.tenantId,
+          conversation,
+          contact,
+          instance,
+          message: { content: text, text, type: messageType }
+        });
+      } catch (wfErr) {
+        console.error('[Webhook] Workflow trigger error:', wfErr.message);
       }
     }
 
