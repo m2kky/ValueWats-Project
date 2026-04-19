@@ -1,4 +1,4 @@
-﻿# TODO â€” Active Tasks & Backlog
+# TODO â€” Active Tasks & Backlog
 
 > This file is the single source of truth for what needs to be done. Update it after every session.
 > Last updated: 2026-04-08
@@ -12,7 +12,7 @@
 - [x] 4. **Implement Agent Actions** (8 distinct actions like respond.io) - Premium single-page UI, RichTextarea, and universal HTTP connector.
 - [ ] 5. **Implement Agent Tools** (Google Calendar, Google Sheets, Google Drive, Email, WhatsApp Notifications)
 - [ ] 6. **Implement Activity Feed** (Chat Banner & CRM Timeline)
-- [ ] 7. **Implement Saved Segments & Retargeting** (Smart filtering)
+- [x] 7. **Implement Saved Segments & Retargeting** (Smart filtering) — 2026-04-19
 - [ ] 8. **Implement Analytics Dashboard** (Campaigns, Agents, Funnel) â€” Dashboard overview enhanced with delivery stats, team insights, leads pipeline, response time, failed messages, top keywords, disconnected instances alert.
 - [ ] 11. **Implement Webhook API** (For business external integrations)
 
@@ -32,10 +32,11 @@
 - [ ] `crypto.randomUUID` polyfill needed because production uses HTTP (not HTTPS) â€” permanent fix is SSL
 - [ ] Socket.io CORS set to `"*"` â€” should restrict to production domain
 
-## âœ… Done
+## ✅ Done
 
-- [x] Rebrand platform name and visual identity to **Value chat** across app shell/docs (logo, favicon, color palette) â€” 2026-04-08
-- [x] Enforce connected-instance prerequisite before creating/starting campaigns (frontend + backend guard) â€” 2026-04-08
+- [x] Integrate OpenRouter Qwen3 Embeddings for RAG File Uploads — 2026-04-19
+- [x] Rebrand platform name and visual identity to **Value chat** across app shell/docs (logo, favicon, color palette) — 2026-04-08
+- [x] Enforce connected-instance prerequisite before creating/starting campaigns (frontend + backend guard) — 2026-04-08
 
 - [x] Implement Agent Tools (Google Calendar, Google Sheets, Google Drive, Email, WhatsApp Notifications) â€” 2026-03-05
 - [x] Implement Quick Replies & Auto-Contact Creation â€” 2026-03-04
