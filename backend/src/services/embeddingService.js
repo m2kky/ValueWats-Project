@@ -2,7 +2,7 @@ const axios = require('axios');
 
 class EmbeddingService {
   constructor() {
-    this.apiKey = process.env.OPENROUTER_API_KEY || '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';
+    this.apiKey = process.env.OPENROUTER_API_KEY;
     this.baseURL = 'https://openrouter.ai/api/v1';
     // Using Qwen3 Embedding 8B for massive 32K Context and half the price. Forcing 768 dimensions for Prisma.
     this.model = 'qwen/qwen3-embedding-8b';
