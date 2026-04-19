@@ -940,6 +940,65 @@ const updateCampaign = async (req, res) => {
   }
 };
 
+// Duplicate a campaign
+const duplicateCampaign = async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const { id } = req.params;
+
+    const original = await prisma.campaign.findFirst({
+      where: { id, tenantId },
+      include: {
+        campaignInstances: true,
+        messageTemplates: true
+      }
+    });
+
+    if (!original) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+
+    const newCampaign = await prisma.campaign.create({
+      data: {
+        tenantId,
+        instanceId: original.instanceId,
+        type: original.type,
+        targetConfig: original.targetConfig || undefined,
+        name: `Copy of ${original.name}`,
+        messageTemplate: original.messageTemplate,
+        status: 'DRAFT',
+        totalContacts: 0,
+        sentCount: 0,
+        failedCount: 0,
+        delayMin: original.delayMin,
+        delayMax: original.delayMax,
+        instanceSwitchCount: original.instanceSwitchCount,
+        messageRotationCount: original.messageRotationCount,
+        mediaUrl: original.mediaUrl,
+        mediaType: original.mediaType,
+        savedSegmentId: original.savedSegmentId,
+        campaignInstances: {
+          create: original.campaignInstances.map(ci => ({
+            instanceId: ci.instanceId,
+            orderIndex: ci.orderIndex
+          }))
+        },
+        messageTemplates: {
+          create: original.messageTemplates.map(mt => ({
+            content: mt.content,
+            orderIndex: mt.orderIndex
+          }))
+        }
+      }
+    });
+
+    res.status(201).json(newCampaign);
+  } catch (error) {
+    console.error('Duplicate Campaign Error:', error);
+    res.status(500).json({ error: 'Failed to duplicate campaign' });
+  }
+};
+
 module.exports = {
   createCampaign,
   getCampaigns,
@@ -948,6 +1007,7 @@ module.exports = {
   pauseCampaign,
   resumeCampaign,
   stopCampaign,
+  duplicateCampaign,
   deleteCampaign,
   getActiveCampaigns,
   exportCampaignContacts,
