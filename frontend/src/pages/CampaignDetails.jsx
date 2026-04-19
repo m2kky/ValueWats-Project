@@ -40,6 +40,8 @@ export default function CampaignDetails() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [failReasons, setFailReasons] = useState([]);
+  const [liveEvents, setLiveEvents] = useState([]);
+  const eventsEndRef = useRef(null);
   const [showFailReasons, setShowFailReasons] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
@@ -119,13 +121,8 @@ export default function CampaignDetails() {
     });
 
     socketRef.current.on('campaign_progress', (data) => {
-      console.log('Campaign progress update:', data);
-
       if (data.type === 'MESSAGE_UPDATE') {
-        setStats(prev => {
-          const newStats = { ...prev };
-          return newStats;
-        });
+        setLiveEvents(prev => [...prev, data].slice(-50));
         fetchCampaignDetails();
       }
     });
@@ -134,6 +131,10 @@ export default function CampaignDetails() {
       if (socketRef.current) socketRef.current.disconnect();
     };
   }, [id, fetchCampaignDetails]);
+
+  useEffect(() => {
+    eventsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [liveEvents]);
 
   // Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);

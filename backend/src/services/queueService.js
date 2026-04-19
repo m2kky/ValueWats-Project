@@ -3,6 +3,7 @@ const { redisConfig } = require('../config/redis');
 const evolutionApi = require('./evolutionApi');
 const metaApi = require('./metaApi');
 const prisma = require('../config/database');
+const { emitCampaignProgress } = require('./socketService');
 
 
 
@@ -104,10 +105,20 @@ messageQueue.on('completed', async (job) => {
 
   // Update campaign sent count
   try {
-    const { campaignId } = job.data;
+    const { campaignId, tenantId, number, channelType, instanceName } = job.data;
     await prisma.campaign.update({
       where: { id: campaignId },
       data: { sentCount: { increment: 1 } }
+    });
+
+    // Emit real-time update for live feed
+    emitCampaignProgress(campaignId, tenantId, {
+      type: 'MESSAGE_SENT',
+      recipientNumber: number,
+      channelType: channelType || 'whatsapp',
+      instanceName: instanceName,
+      status: 'sent',
+      sentAt: new Date().toISOString()
     });
 
     // Check if all messages for this campaign are processed
@@ -122,10 +133,21 @@ messageQueue.on('failed', async (job, err) => {
 
   // Update campaign failed count
   try {
-    const { campaignId } = job.data;
+    const { campaignId, tenantId, number, channelType, instanceName } = job.data;
     await prisma.campaign.update({
       where: { id: campaignId },
       data: { failedCount: { increment: 1 } }
+    });
+
+    // Emit real-time failure for live feed
+    emitCampaignProgress(campaignId, tenantId, {
+      type: 'MESSAGE_FAILED',
+      recipientNumber: number,
+      channelType: channelType || 'whatsapp',
+      instanceName: instanceName,
+      status: 'failed',
+      error: err.message,
+      sentAt: new Date().toISOString()
     });
 
     // Check if all messages for this campaign are processed
@@ -205,7 +227,7 @@ function getWorkingHoursOffset(plan) {
  * @param {number} messageRotationCount - Switch template every N messages
  * @param {object|null} plan - Tenant's subscription plan (for working hours enforcement)
  */
-const addToQueue = async (instances, contacts, messageTemplates, campaignId, tenantId, delayMin = 15, delayMax = 25, instanceSwitchCount = 50, messageRotationCount = 1, mediaUrl = null, mediaType = null, plan = null) => {
+const addToQueue = async (instances, contacts, messageTemplates, campaignId, tenantId, delayMin = 15, delayMax = 25, instanceSwitchCount = 50, messageRotationCount = 1, mediaUrl = null, mediaType = null, plan = null, type = 'marketing') => {
   // Phase 4: Working Hours — offset the entire campaign start time
   let cumulativeDelay = getWorkingHoursOffset(plan);
   const jobs = [];
@@ -220,7 +242,35 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
 
     // Determine which instance to use
     const instanceIndex = Math.floor(i / intVal(instanceSwitchCount)) % instanceList.length;
-    const currentInstance = instanceList[instanceIndex];
+    let currentInstance = instanceList[instanceIndex];
+    
+    if (type === 'retargeting' && contact.source) {
+       const mappedChannel = String(contact.source).toLowerCase() === 'system' ? 'whatsapp' : String(contact.source).toLowerCase();
+       const matchedInstance = instanceList.find(inst => String(inst.channelType).toLowerCase() === mappedChannel);
+       if (matchedInstance) {
+          currentInstance = matchedInstance;
+       } else {
+          // If retargeting and no connected instance exists for their platform, skip & fail.
+          console.log(`[Queue] Skipping contact ${contact.number} due to missing channel instance ${mappedChannel}`);
+          await prisma.message.create({
+            data: {
+              campaignId,
+              status: 'FAILED',
+              failReason: `No connected instance for channel ${mappedChannel}`,
+              recipientNumber: contact.number,
+              tenantId,
+              mediaUrl,
+              mediaType,
+              variables: contact.variables || null
+            }
+          });
+          await prisma.campaign.update({
+            where: { id: campaignId },
+            data: { failedCount: { increment: 1 } }
+          });
+          continue;
+       }
+    }
 
     // Determine which message template to use
     const templateIndex = Math.floor(i / intVal(messageRotationCount)) % templates.length;
@@ -274,6 +324,9 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
         variables: contact.variables || null
       }
     });
+
+    // Determine target delay for this message based on instance (which holds channelType)
+    // Wait... jobs list receives data. Let's make sure channelType and instanceName are passed down to bullmq data.
 
     // Random delay between delayMin and delayMax
     const dMin = intVal(delayMin);

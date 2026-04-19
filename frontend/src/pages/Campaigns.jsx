@@ -189,7 +189,14 @@ export default function Campaigns() {
                             <MegaphoneIcon className="w-5 h-5 text-zinc-400 group-hover:text-indigo-400" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-bold text-white truncate">{campaign.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold text-white truncate">{campaign.name}</p>
+                              {campaign.type === 'retargeting' ? (
+                                <span className="bg-purple-500/20 text-purple-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-500/20 uppercase tracking-widest">Retargeting</span>
+                              ) : (
+                                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/20 uppercase tracking-widest">Marketing</span>
+                              )}
+                            </div>
                             <p className="text-xs text-zinc-500 mt-1 truncate max-w-[250px] sm:max-w-xs">
                               {campaign.messageTemplate || 'No message content'}
                             </p>

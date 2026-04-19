@@ -19,6 +19,7 @@ router.get('/:id/export', campaignController.exportCampaignContacts);
 router.post('/:id/pause', checkPermission('campaigns.manage'), campaignController.pauseCampaign);
 router.post('/:id/resume', checkPermission('campaigns.manage'), campaignController.resumeCampaign);
 router.post('/:id/stop', checkPermission('campaigns.manage'), campaignController.stopCampaign);
+router.post('/:id/duplicate', checkPermission('campaigns.manage'), campaignController.duplicateCampaign);
 router.put('/:id', checkPermission('campaigns.manage'), campaignController.updateCampaign);
 router.delete('/:id', checkPermission('campaigns.manage'), campaignController.deleteCampaign);
 

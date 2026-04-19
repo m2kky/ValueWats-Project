@@ -94,7 +94,7 @@ model User {
   tenantId      String   @map("tenant_id")
   email         String   @unique
   passwordHash  String   @map("password_hash")
-  role          String // 'owner', 'admin', 'supervisor', 'agent', 'viewer'
+  role          String // 'admin', 'agent', 'viewer'
   isSuperAdmin  Boolean  @default(false) @map("is_super_admin")
   emailVerified Boolean  @default(false) @map("email_verified")
   createdAt     DateTime @default(now()) @map("created_at")
@@ -177,6 +177,8 @@ model Campaign {
   id                   String    @id @default(uuid())
   tenantId             String    @map("tenant_id")
   instanceId           String?   @map("instance_id") // Made optional for multi-instance campaigns
+  type                 String    @default("marketing") // 'marketing' | 'retargeting'
+  targetConfig         Json?     @map("target_config") // Retargeting: { segmentId, labelIds, lifecycleStageId, source, dateFrom, dateTo, assignedUserIds }
   name                 String
   messageTemplate      String    @map("message_template") @db.Text
   status               String // 'draft', 'scheduled', 'running', 'completed'

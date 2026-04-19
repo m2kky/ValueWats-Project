@@ -23,7 +23,10 @@ import {
 export default function NewCampaign() {
   const [instances, setInstances] = useState([]);
   const [segments, setSegments] = useState([]);
+  const [stages, setStages] = useState([]);
+  const [labels, setLabels] = useState([]);
   const [formData, setFormData] = useState({
+    type: '', // 'marketing' | 'retargeting',
     name: '',
     instanceIds: [],
     message: '', // Kept for backward compatibility, will sync with messages[0]
@@ -46,11 +49,19 @@ export default function NewCampaign() {
   const [phoneColumn, setPhoneColumn] = useState('');
   const [fetchingColumns, setFetchingColumns] = useState(false);
   const [segmentId, setSegmentId] = useState('');
+  const [retargetConfig, setRetargetConfig] = useState({
+    segmentId: '',
+    labelIds: [],
+    lifecycleStageId: '',
+    source: ''
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchInstances();
     fetchSegments();
+    api.get('/lifecycle').then(r => setStages(r.data)).catch(() => {});
+    api.get('/contacts/labels').then(r => setLabels(r.data)).catch(() => {});
   }, []);
 
   const fetchSegments = async () => {
@@ -183,13 +194,13 @@ export default function NewCampaign() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (instances.length === 0) {
+    if (formData.type === 'marketing' && instances.length === 0) {
       alert('Please connect a WhatsApp number first before launching a campaign.');
       navigate('/instances');
       return;
     }
 
-    if (formData.instanceIds.length === 0) {
+    if (formData.type === 'marketing' && formData.instanceIds.length === 0) {
       alert('Please select at least one connected WhatsApp number before launching the campaign.');
       return;
     }
@@ -199,6 +210,7 @@ export default function NewCampaign() {
     try {
       const data = new FormData();
       data.append('name', formData.name);
+      data.append('type', formData.type);
 
       // Append each instance ID
       formData.instanceIds.forEach(id => {
@@ -223,15 +235,19 @@ export default function NewCampaign() {
         data.append('endAt', new Date(formData.endAt).toISOString());
       }
 
-      if (activeTab === 'manual') {
-        data.append('numbers', formData.numbers);
-      } else if (activeTab === 'csv' && file) {
-        data.append('file', file);
-      } else if (activeTab === 'sheet') {
-        data.append('googleSheetUrl', sheetUrl);
-        data.append('phoneColumn', phoneColumn);
-      } else if (activeTab === 'segment' && segmentId) {
-        data.append('segmentId', segmentId);
+      if (formData.type === 'retargeting') {
+        data.append('targetConfig', JSON.stringify(retargetConfig));
+      } else {
+        if (activeTab === 'manual') {
+          data.append('numbers', formData.numbers);
+        } else if (activeTab === 'csv' && file) {
+          data.append('file', file);
+        } else if (activeTab === 'sheet') {
+          data.append('googleSheetUrl', sheetUrl);
+          data.append('phoneColumn', phoneColumn);
+        } else if (activeTab === 'segment' && segmentId) {
+          data.append('segmentId', segmentId);
+        }
       }
 
       if (mediaFile) {
@@ -263,6 +279,42 @@ export default function NewCampaign() {
           </div>
         </div>
 
+        {/* --- STEP 0: SELECT CAMPAIGN TYPE --- */}
+        {!formData.type ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div 
+              onClick={() => setFormData({ ...formData, type: 'marketing' })}
+              className="bg-zinc-900 hover:bg-zinc-800/80 border border-white/10 hover:border-indigo-500/50 rounded-3xl p-8 cursor-pointer transition-all hover:scale-[1.02] group"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <DevicePhoneMobileIcon className="w-8 h-8 text-emerald-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-3">Marketing Campaign</h2>
+              <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                Standard WhatsApp broadcast to CSV lists, Sheets, saved segments or manual numbers.
+              </p>
+              <div className="text-emerald-400 text-sm font-semibold flex items-center gap-2">
+                Use this mode <span className="text-lg">→</span>
+              </div>
+            </div>
+
+            <div 
+              onClick={() => setFormData({ ...formData, type: 'retargeting' })}
+              className="bg-zinc-900 hover:bg-zinc-800/80 border border-white/10 hover:border-purple-500/50 rounded-3xl p-8 cursor-pointer transition-all hover:scale-[1.02] group"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <SparklesIcon className="w-8 h-8 text-purple-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-3">Retargeting Flow</h2>
+              <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                Multi-channel broadcast (WhatsApp, Messenger, IG) targeting CRM contacts based on rules.
+              </p>
+              <div className="text-purple-400 text-sm font-semibold flex items-center gap-2">
+                Build flow <span className="text-lg">→</span>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div className="relative isolate">
           {/* Subtle gradient background for the form */}
           <div className="absolute inset-0 -z-10 bg-gradient-to-b from-indigo-500/5 to-transparent rounded-3xl" aria-hidden="true" />
@@ -283,7 +335,9 @@ export default function NewCampaign() {
                 />
               </div>
 
-              {/* Instance Selection (Multi-Select) */}
+                            {formData.type === 'marketing' && (
+                <>
+                  {/* Instance Selection (Multi-Select) */}
               <div className="pt-2">
                 <label className="block text-sm font-semibold text-zinc-300 mb-2">Select WhatsApp Instances <span className="text-indigo-400 font-mono font-normal ml-1">({formData.instanceIds.length})</span></label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -349,6 +403,74 @@ export default function NewCampaign() {
                       Instance 1 sends {formData.instanceSwitchCount} messages, then Instance 2 sends {formData.instanceSwitchCount}, etc.
                     </div>
                   </div>
+                </div>
+              )}
+
+              
+                </>
+              )}
+
+              {formData.type === 'retargeting' && (
+                <div className="bg-purple-500/5 border border-purple-500/20 rounded-2xl p-6 mb-6">
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <UserGroupIcon className="w-5 h-5 text-purple-400" />
+                    Target Audience Rules
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-1">CRM Segment</label>
+                      <select
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-purple-500 focus:border-purple-500"
+                        value={retargetConfig.segmentId || ''}
+                        onChange={e => setRetargetConfig({ ...retargetConfig, segmentId: e.target.value })}
+                      >
+                        <option value="">Any Segment</option>
+                        {segments.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-1">Lifecycle Stage</label>
+                      <select
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-purple-500 focus:border-purple-500"
+                        value={retargetConfig.lifecycleStageId || ''}
+                        onChange={e => setRetargetConfig({ ...retargetConfig, lifecycleStageId: e.target.value })}
+                      >
+                        <option value="">Any Stage</option>
+                        {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-1">Contact Source</label>
+                      <select
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-purple-500 focus:border-purple-500"
+                        value={retargetConfig.source || ''}
+                        onChange={e => setRetargetConfig({ ...retargetConfig, source: e.target.value })}
+                      >
+                        <option value="">Any Source</option>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Messenger">Messenger</option>
+                        <option value="Instagram">Instagram</option>
+                        <option value="System">System/Manual</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-1">Labels/Tags</label>
+                      <select
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-purple-500 focus:border-purple-500"
+                        value={retargetConfig.labelIds[0] || ''}
+                        onChange={e => setRetargetConfig({ ...retargetConfig, labelIds: e.target.value ? [e.target.value] : [] })}
+                      >
+                        <option value="">Any Label</option>
+                        {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-xs text-purple-400 bg-purple-500/10 p-3 rounded-lg border border-purple-500/20">
+                    <strong className="font-semibold">Note:</strong> ValueWats will automatically match each contact to their original channel (WhatsApp, Messenger, Instagram). No instance selection is required.
+                  </p>
                 </div>
               )}
 
@@ -779,7 +901,7 @@ export default function NewCampaign() {
                 <button
                   type="submit"
                   className="inline-flex items-center justify-center min-w-[180px] px-6 py-2.5 border border-transparent text-sm font-semibold rounded-xl shadow-[0_0_20px_rgba(79,70,229,0.3)] text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5"
-                  disabled={loading || instances.length === 0 || formData.instanceIds.length === 0 || (activeTab === 'csv' && !file) || (activeTab === 'sheet' && (!sheetUrl || !phoneColumn)) || (activeTab === 'segment' && !segmentId)}
+                  disabled={loading || (formData.type === 'marketing' && formData.instanceIds.length === 0) || (formData.type === 'marketing' && activeTab === 'csv' && !file) || (formData.type === 'marketing' && activeTab === 'sheet' && (!sheetUrl || !phoneColumn)) || (formData.type === 'marketing' && activeTab === 'segment' && !segmentId)}
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -803,6 +925,7 @@ export default function NewCampaign() {
             </form>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
