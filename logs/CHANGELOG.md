@@ -1,12 +1,15 @@
 ## 2026-04-19
 
 ### Multi-Channel Retargeting Campaigns
-- **Database**: Updated Campaign schema with 	ype and 	argetConfig JSON for rules configuration.
+- **Database**: Updated Campaign schema with `type` and `targetConfig` JSON for rules configuration.
 - **Backend Flow**: Restructured campaignController.js to process Retargeting campaign targets via CRM filters.
-- **Auto-Routing**: Enabled logic to automatically map contacts to their original social platform instances matching their CRM \source\.
-- **Live Feed System**: Updated \queueService.js\ socket events on \campaign_progress\ and implemented Live Delivery Feed panel in \CampaignDetails.jsx\.
-- **New Feature**: Added \/api/campaigns/:id/duplicate\ route and frontend duplicate button inside \Campaigns.jsx\.
-- **UI Rewrite**: Completely overhauled \NewCampaign.jsx\ to handle two distinct flows with Step 0 'Marketing vs Retargeting' card selection.
+- **Auto-Routing**: Enabled logic to automatically map contacts to their original social platform instances matching their CRM `source`.
+- **Live Feed System**: Updated `queueService.js` socket events on `campaign_progress` and implemented Live Delivery Feed panel in `CampaignDetails.jsx`.
+- **New Feature**: Added `/api/campaigns/:id/duplicate` route and frontend duplicate button inside `Campaigns.jsx`.
+- **UI Rewrite**: Completely overhauled `NewCampaign.jsx` to handle two distinct flows with Step 0 'Marketing vs Retargeting' card selection.
+
+### AI Embeddings Fix
+- **AI / RAG Settings**: Migrated from hard-coded local Ollama URL embeddings to OpenAI-compatible OpenRouter API using `qwen/qwen3-embedding-8b`. Added enforced `dimensions: 768` parameter to comply with `pgvector` Prisma Schema expectations.
 
 ---
 
