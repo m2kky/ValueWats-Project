@@ -251,7 +251,8 @@ class KnowledgeService {
       ORDER BY MIN("createdAt") DESC
     `, agentId);
 
-    return sources;
+    // PostgreSQL COUNT(*) returns BigInt — convert to Number for JSON serialization
+    return sources.map(s => ({ ...s, chunkCount: Number(s.chunkCount) }));
   }
 
   /**
