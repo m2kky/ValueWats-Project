@@ -45,9 +45,7 @@ class KnowledgeService {
 
     switch (ext) {
       case 'pdf': {
-        // pdf-parse v2.x changed its export structure
-        const pdfParseModule = require('pdf-parse');
-        const pdfParse = pdfParseModule.default || pdfParseModule;
+        const pdfParse = require('pdf-parse');
         const buffer = fs.readFileSync(file.path);
         const data = await pdfParse(buffer);
         return data.text;
