@@ -345,6 +345,38 @@ If requirements are missing, do not run the action.`}</code>
                     </div>
                 </>
             )
+        },
+        notion: {
+            title: 'How to setup Notion Public Integration (OAuth)',
+            content: (
+                <>
+                    <p>
+                        To securely connect your Notion Workspace allowing your AI Agents to read wikis or create database entries, you need to create a Developer Integration.
+                    </p>
+
+                    <div className="bg-zinc-800/50 border border-white/10 rounded-2xl p-6 my-8">
+                        <h4 className="text-zinc-300 font-bold mb-2">Step 1: Create a Notion Integration</h4>
+                        <ol className="list-decimal pl-5 m-0 text-sm text-zinc-400 space-y-1">
+                            <li>Go to <a href="https://www.notion.so/my-integrations" target="_blank" className="text-indigo-400 underline">Notion My Integrations</a>.</li>
+                            <li>Click <strong>New integration</strong>.</li>
+                            <li>Select your desired Notion workspace and enter a name (e.g. <code>ValueWats AI</code>).</li>
+                            <li>Under <strong>Integration Type</strong>, you MUST select <strong>Public</strong> to enable OAuth flow!</li>
+                            <li>Save the integration.</li>
+                        </ol>
+                    </div>
+
+                    <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-6 my-8">
+                        <h4 className="text-indigo-300 font-bold mb-3">Step 2: Configure OAuth Settings</h4>
+                        <ol className="list-decimal pl-5 m-0 text-sm text-zinc-300 space-y-1">
+                            <li>Go to the <strong>Configuration</strong> tab in your new integration.</li>
+                            <li>Under <strong>OAuth Domain & URIs</strong>, paste the <strong>OAuth Redirect URL</strong> shown in the ValueWats connect window into the Redirect URI list.</li>
+                            <li>Open the <strong>Capabilities</strong> tab and enable the permissions you want the AI to have (e.g. <code>Read content</code>, <code>Update content</code>, <code>Insert content</code>).</li>
+                            <li>Go back to <strong>Configuration</strong> and copy the <strong>OAuth Client ID</strong> and <strong>OAuth Client Secret</strong>.</li>
+                            <li>Paste them back into ValueWats and click Sign in with Notion!</li>
+                        </ol>
+                    </div>
+                </>
+            )
         }
     },
 

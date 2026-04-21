@@ -10,7 +10,7 @@
 - [x] 2. **Resolve Evolution API DNS/Instance Issues** (Monitoring needed)
 - [x] 3. **Implement CRM System** (Contacts, Labels, Notes, Lifecycle Stages) â€” Schema + Backend + Frontend
 - [x] 4. **Implement Agent Actions** (8 distinct actions like respond.io) - Premium single-page UI, RichTextarea, and universal HTTP connector.
-- [ ] 5. **Implement Agent Tools** (Google Calendar, Google Sheets, Google Drive, Email, WhatsApp Notifications)
+- [x] 5. **Implement Agent Tools** (Google Calendar, Google Sheets, Google Drive, Email, WhatsApp Notifications, Notion)
 - [ ] 6. **Implement Activity Feed** (Chat Banner & CRM Timeline)
 - [x] 7. **Implement Saved Segments & Retargeting** (Smart filtering) — 2026-04-19
 - [ ] 8. **Implement Analytics Dashboard** (Campaigns, Agents, Funnel) â€” Dashboard overview enhanced with delivery stats, team insights, leads pipeline, response time, failed messages, top keywords, disconnected instances alert.

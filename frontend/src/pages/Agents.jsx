@@ -808,6 +808,37 @@ export default function Agents() {
                   />
 
                   <ActionCard
+                    title="Notion Workspace"
+                    description="GRANT AGENT ACCESS TO SEARCH WIKIS, APPEND BLOCKS OR RUN DATABASE CRUD OPERATIONS SECURELY."
+                    enabled={form.actionConfig?.notion?.enabled || false}
+                    setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, notion: { ...f.actionConfig.notion, enabled: val } } }))}
+                    config={form.actionConfig?.notion?.instructions || ''}
+                    setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, notion: { ...f.actionConfig.notion, instructions: val } } }))}
+                    placeholder="INSTRUCT AI ON WHICH NOTION PAGES OR DATABASES IT CAN MODIFY..."
+                    mentions={mentionTargets}
+                    showMentions={true}
+                    tags={availableTags}
+                    variables={availableVariables}
+                    showTags={true}
+                  >
+                    <div className="mb-4">
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
+                        LINKED NOTION CONNECTION
+                      </label>
+                      <select
+                        className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs font-medium text-white outline-none focus:border-indigo-500/50 appearance-none cursor-pointer"
+                        value={form.actionConfig?.notion?.integrationId || ''}
+                        onChange={(e) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, notion: { ...f.actionConfig.notion, integrationId: e.target.value } } }))}
+                      >
+                        <option value="">-- Select Notion Workspace Connection --</option>
+                        {availableIntegrations.filter(i => i.type === 'notion_oauth').map(i => (
+                          <option key={i.id} value={i.id}>{i.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </ActionCard>
+
+                  <ActionCard
                     title="Internal comments"
                     description="ALLOW AGENT TO ADD INTERNAL COMMENTS FOR AGENT HANDOFF OR AUDIT LOGS."
                     enabled={form.actionConfig?.addComment?.enabled || false}

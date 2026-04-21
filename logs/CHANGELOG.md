@@ -1,5 +1,12 @@
 ## 2026-04-21
 
+### Integration updates & Fixes
+- **Notion Agent Tools**: Integrated Notion natively with custom OAuth. Built backend services (`notionService.js`) to handle wiki searches, block appends, and database entry creation/updates.
+- **Agent Configuration**: Added an actionable Notion Workspace connector directly within `Agents.jsx` to dynamically assign Notion connections to agents.
+- **Feature Docs**: Updated `FeatureHelp.jsx` to guide users on configuring their own Notion public OAuth app safely.
+- **Team Management**: Fixed "Invite Member" button visibility missing for platform owners and added a direct "Copy Invite Link" workflow component.
+- **Google SVG Icons**: Standardized Google and Notion icons within `Integrations.jsx` using high-fidelity local SVG objects.
+
 ### UI/UX Refinement
 - **Retargeting Campaigns**: Removed the "black box" background (`bg-[#09090b]`) from `NewCampaign.jsx` to improve visual flow and hierarchy.
 - **Agent Setup Simplification**:

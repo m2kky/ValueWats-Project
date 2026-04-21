@@ -4,6 +4,7 @@ const driveService = require('./driveService');
 const sheetsService = require('./sheetsService');
 const prisma = require('../config/database');
 const { decrypt } = require('../utils/encryption');
+const NotionService = require('./notionService');
 
 class ToolService {
     constructor() {
@@ -15,7 +16,12 @@ class ToolService {
             search_drive_files: this.handleDriveSearch.bind(this),
             create_spreadsheet: this.handleCreateSpreadsheet.bind(this),
             append_sheet_row: this.handleAppendSheetRow.bind(this),
-            read_sheet_data: this.handleReadSheetData.bind(this)
+            read_sheet_data: this.handleReadSheetData.bind(this),
+            search_notion: this.handleSearchNotion.bind(this),
+            create_notion_page: this.handleCreateNotionPage.bind(this),
+            update_notion_page: this.handleUpdateNotionPage.bind(this),
+            append_notion_block: this.handleAppendNotionBlock.bind(this),
+            archive_notion_page: this.handleArchiveNotionPage.bind(this)
         };
     }
 
@@ -148,6 +154,82 @@ class ToolService {
                             range: { type: 'string', description: 'The range to read, e.g. Sheet1!A1:D10' }
                         },
                         required: ['spreadsheetId']
+                    }
+                }
+            });
+        }
+
+        // Notion
+        if (actionConfig.notion?.enabled) {
+            tools.push({
+                type: 'function',
+                function: {
+                    name: 'search_notion',
+                    description: 'Search the Notion workspace for pages and databases',
+                    parameters: {
+                        type: 'object',
+                        properties: { query: { type: 'string', description: 'Search term' } },
+                        required: ['query']
+                    }
+                }
+            });
+            tools.push({
+                type: 'function',
+                function: {
+                    name: 'create_notion_page',
+                    description: 'Create a new Notion page or add a database row',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            parent: { type: 'object', description: 'JSON object specifying the parent e.g., {"database_id": "..."}' },
+                            properties: { type: 'object', description: 'JSON object of page properties / database row data' },
+                            children: { type: 'array', description: 'Optional array of block objects to add into the new page' }
+                        },
+                        required: ['parent', 'properties']
+                    }
+                }
+            });
+            tools.push({
+                type: 'function',
+                function: {
+                    name: 'update_notion_page',
+                    description: 'Update properties of an existing Notion database row or page',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            pageId: { type: 'string', description: 'ID of the page/row to update' },
+                            properties: { type: 'object', description: 'JSON object of properties to update' }
+                        },
+                        required: ['pageId', 'properties']
+                    }
+                }
+            });
+            tools.push({
+                type: 'function',
+                function: {
+                    name: 'append_notion_block',
+                    description: 'Append content block to an existing Notion page',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            blockId: { type: 'string', description: 'ID of the block/page to append to' },
+                            children: { type: 'array', description: 'Array of block objects' }
+                        },
+                        required: ['blockId', 'children']
+                    }
+                }
+            });
+            tools.push({
+                type: 'function',
+                function: {
+                    name: 'archive_notion_page',
+                    description: 'Archive (delete) a Notion page or database row',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            pageId: { type: 'string', description: 'ID of the page/row to archive' }
+                        },
+                        required: ['pageId']
                     }
                 }
             });
@@ -288,6 +370,46 @@ class ToolService {
             console.error('[ToolService] Read Sheet Data Error:', error);
             return { success: false, error: error.message };
         }
+    }
+
+    async getNotionClient(tenantId, actionConfig) {
+        const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'notion');
+        return new NotionService(credentials.accessToken);
+    }
+
+    async handleSearchNotion(args, { tenantId, actionConfig }) {
+        try {
+            const client = await this.getNotionClient(tenantId, actionConfig);
+            return await client.searchWorkspace(args.query);
+        } catch (error) { return { success: false, error: `Notion API Error: ${error.response?.data?.message || error.message}` }; }
+    }
+
+    async handleCreateNotionPage(args, { tenantId, actionConfig }) {
+        try {
+            const client = await this.getNotionClient(tenantId, actionConfig);
+            return await client.createPage(args.parent, args.properties, args.children);
+        } catch (error) { return { success: false, error: `Notion API Error: ${error.response?.data?.message || error.message}` }; }
+    }
+
+    async handleUpdateNotionPage(args, { tenantId, actionConfig }) {
+        try {
+            const client = await this.getNotionClient(tenantId, actionConfig);
+            return await client.updatePage(args.pageId, args.properties);
+        } catch (error) { return { success: false, error: `Notion API Error: ${error.response?.data?.message || error.message}` }; }
+    }
+
+    async handleAppendNotionBlock(args, { tenantId, actionConfig }) {
+        try {
+            const client = await this.getNotionClient(tenantId, actionConfig);
+            return await client.appendBlock(args.blockId, args.children);
+        } catch (error) { return { success: false, error: `Notion API Error: ${error.response?.data?.message || error.message}` }; }
+    }
+
+    async handleArchiveNotionPage(args, { tenantId, actionConfig }) {
+        try {
+            const client = await this.getNotionClient(tenantId, actionConfig);
+            return await client.archivePage(args.pageId);
+        } catch (error) { return { success: false, error: `Notion API Error: ${error.response?.data?.message || error.message}` }; }
     }
 }
 

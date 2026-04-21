@@ -96,6 +96,8 @@ export default function Integrations() {
 
   const getIntegrationConfig = (type) => {
     switch (type) {
+      case 'notion_oauth':
+        return { icon: <img src="/assets/google-icons/notion.svg" alt="Notion" className="w-5 h-5 invert object-contain" />, color: 'text-zinc-100', bg: 'bg-zinc-100/10', border: 'border-white/20' };
       case 'google_calendar_oauth':
         return { icon: <CalendarIcon className="h-6 w-6" />, color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20' };
       case 'google_drive_oauth':
@@ -139,6 +141,13 @@ export default function Integrations() {
       desc: 'Read, modify and append data directly to your sheets on your behalf. Ideal for AI data collection and seamless CRM syncing.',
       icon: <img src="/assets/google-icons/google-sheets.svg" alt="Google Sheets" className="w-10 h-10 object-contain drop-shadow-lg" />,
       color: 'bg-white'
+    },
+    {
+      id: 'notion_oauth',
+      name: 'Notion',
+      desc: 'Connect your Notion workspace. Let AI search your wikis, create pages, or append notes automatically.',
+      icon: <img src="/assets/google-icons/notion.svg" alt="Notion" className="w-10 h-10 object-contain drop-shadow-lg invert" />,
+      color: 'bg-zinc-800'
     },
     {
       id: 'webhook',
@@ -293,7 +302,8 @@ export default function Integrations() {
                  <h2 className="text-lg font-semibold text-white truncate w-full pr-10">
                    {type === 'google_calendar_oauth' ? 'Connect Google Calendar' : 
                     type === 'google_drive_oauth' ? 'Connect Google Drive' : 
-                    type === 'google_sheets_oauth' ? 'Connect Google Sheets' : 'Add Connection'}
+                    type === 'google_sheets_oauth' ? 'Connect Google Sheets' : 
+                    type === 'notion_oauth' ? 'Connect Notion Workspace' : 'Add Connection'}
                  </h2>
               </div>
             </div>
@@ -304,12 +314,12 @@ export default function Integrations() {
               {type.includes('_oauth') ? (
                 <>
                   <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl space-y-3">
-                    <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">About this integration</p>
-                    <p className="text-sm text-indigo-200/80 leading-relaxed">
-                      Securely connect your own Google Custom OAuth application to grant the AI Agents and workflows access to this specific Google service.
+                    <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">About this integration</p>
+                    <p className="text-sm text-zinc-300 leading-relaxed">
+                      Securely connect your own Custom OAuth application to grant the AI Agents and workflows access to this specific service.
                     </p>
                     <p className="text-xs font-bold text-zinc-400 uppercase">
-                      Need help? <a href="/help/integrations/google" target="_blank" className="text-indigo-400 hover:text-white transition-colors underline ml-1">Open Setup Guide</a>
+                      Need help? <a href={`/help/integrations/${type.includes('notion') ? 'notion' : 'google'}`} target="_blank" className="text-indigo-400 hover:text-indigo-300 transition-colors underline ml-1">Open Setup Guide</a>
                     </p>
                   </div>
 
@@ -318,7 +328,7 @@ export default function Integrations() {
                     <input
                       type="text"
                       readOnly
-                      value={`${window.location.origin}/api/oauth/google/callback`}
+                      value={`${window.location.origin}/api/oauth/${type.includes('notion') ? 'notion' : 'google'}/callback`}
                       className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm font-mono text-indigo-300 select-all focus:outline-none"
                     />
                   </div>
@@ -402,10 +412,14 @@ export default function Integrations() {
                 >
                   {type.includes('_oauth') ? (
                     <>
-                      <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center p-1">
-                        <img src="https://www.google.com/favicon.ico" alt="G" className="w-full h-full object-contain" />
+                      <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center p-1 overflow-hidden">
+                        {type.includes('notion') ? (
+                          <img src="/assets/google-icons/notion.svg" alt="N" className="w-full h-full object-contain" />
+                        ) : (
+                          <img src="https://www.google.com/favicon.ico" alt="G" className="w-full h-full object-contain" />
+                        )}
                       </div>
-                      Sign in with Google
+                      {type.includes('notion') ? 'Sign in with Notion' : 'Sign in with Google'}
                     </>
                   ) : (
                     'Connect Integration'
