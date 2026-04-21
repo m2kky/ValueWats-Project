@@ -11,6 +11,7 @@ const upload = require('../middleware/upload');
 // Handle both CSV file (contacts) and Media file (attachment)
 router.post('/', checkPermission('campaigns.manage'), upload.fields([{ name: 'file', maxCount: 1 }, { name: 'media', maxCount: 1 }]), campaignController.createCampaign);
 router.post('/preview-sheet', checkPermission('campaigns.manage'), campaignController.previewSheet);
+router.post('/estimate-audience', checkPermission('campaigns.manage'), campaignController.calculateAudienceCoverage);
 router.get('/', campaignController.getCampaigns);
 router.get('/active', campaignController.getActiveCampaigns);
 router.get('/:id', campaignController.getCampaignById);

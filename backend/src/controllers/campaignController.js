@@ -16,7 +16,7 @@ const CONNECT_NUMBER_FIRST_ERROR = 'Please connect a WhatsApp number first befor
 
 const createCampaign = async (req, res) => {
   try {
-    const { name, instanceIds, message, messages, numbers, googleSheetUrl, phoneColumn, segmentId, delayMin = 15, delayMax = 25, instanceSwitchCount = 50, messageRotationCount = 1, scheduledAt, endAt } = req.body;
+    const { name, instanceIds, message, messages, numbers, googleSheetUrl, phoneColumn, segmentId, delayMin = 15, delayMax = 25, instanceSwitchCount = 50, messageRotationCount = 1, scheduledAt, endAt, type = 'marketing', targetConfig } = req.body;
 
     const tenantId = req.user.tenantId;
 
@@ -996,12 +996,52 @@ const duplicateCampaign = async (req, res) => {
   } catch (error) {
     console.error('Duplicate Campaign Error:', error);
     res.status(500).json({ error: 'Failed to duplicate campaign' });
+
+const calculateAudienceCoverage = async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const { targetConfig } = req.body;
+
+    if (!targetConfig) {
+      return res.status(400).json({ error: 'targetConfig is required' });
+    }
+
+    const config = typeof targetConfig === 'string' ? JSON.parse(targetConfig) : targetConfig;
+
+    let crmReq = { limit: 9999999 };
+    if (config.segmentId) {
+      const segment = await prisma.savedSegment.findUnique({ where: { id: config.segmentId, tenantId } });
+      if (segment) {
+        crmReq.search = segment.rules.search;
+        crmReq.lifecycleStageId = segment.rules.filters?.lifecycleStageId;
+        crmReq.labelIds = segment.rules.filters?.labelIds?.length > 0 ? segment.rules.filters.labelIds : undefined;
+        crmReq.governorate = segment.rules.filters?.governorate;
+        crmReq.source = segment.rules.filters?.source;
+      }
+    }
+
+    // Override segment rules with specific selections from advanced filters
+    if (config.lifecycleStageId) crmReq.lifecycleStageId = config.lifecycleStageId;
+    if (config.labelIds && config.labelIds.length > 0) crmReq.labelIds = config.labelIds;
+    if (config.source) crmReq.source = config.source;
+
+    const result = await crmService.listContacts(tenantId, crmReq);
+    
+    // Calculate how many contacts
+    const count = result.contacts ? result.contacts.length : 0;
+
+    res.json({ count });
+  } catch (error) {
+    console.error('Calculate Audience Coverage Error:', error);
+    res.status(500).json({ error: 'Failed to calculate audience coverage' });
   }
 };
 
 module.exports = {
   createCampaign,
   getCampaigns,
+  calculateAudienceCoverage,
+
   getCampaignById,
   getCampaignMessages,
   pauseCampaign,
