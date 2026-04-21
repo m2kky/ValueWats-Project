@@ -17,7 +17,8 @@ import {
   TagIcon,
   ClockIcon,
   SparklesIcon,
-  MegaphoneIcon
+  MegaphoneIcon,
+  ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 
 export default function NewCampaign() {
@@ -285,6 +286,18 @@ export default function NewCampaign() {
 
         {/* Header Section */}
         <div className="flex items-center gap-4 mb-8">
+          <ArrowLeftIcon 
+            className="w-6 h-6 text-zinc-400 cursor-pointer hover:text-white transition-colors" 
+            onClick={() => {
+              if (formData.type) {
+                // If they are in a flow, clear it to go back to type selection
+                setFormData({ ...formData, type: '' });
+              } else {
+                // If on type selection, go back to campaigns list
+                navigate('/campaigns');
+              }
+            }}
+          />
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <MegaphoneIcon className="w-7 h-7 text-white" />
           </div>
@@ -616,6 +629,7 @@ export default function NewCampaign() {
               )}
 
               {/* Recipient Source Selection */}
+              {formData.type === 'marketing' && (
               <div className="pt-2">
                 <label className="block text-sm font-semibold text-zinc-300 mb-3">Recipients</label>
                 <div className="flex bg-black/40 border border-white/5 rounded-xl p-1 mb-5">
@@ -809,6 +823,7 @@ export default function NewCampaign() {
                   </div>
                 ) : null}
               </div>
+              )}
 
               {/* Delay Configuration - P1 Feature */}
               <div className="bg-black/20 rounded-2xl p-5 border border-white/5">
