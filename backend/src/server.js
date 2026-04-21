@@ -110,6 +110,7 @@ app.use('/api/admin', require('./routes/admin'));
 
 // Public routes (Webhooks)
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/oauth', require('./routes/oauth'));
 
 // Serve frontend static files in production
 const frontendPath = path.join(__dirname, '../../frontend/dist');

@@ -162,6 +162,7 @@ export default function Agents() {
   const [availableTeams, setAvailableTeams] = useState([]);
   const [availableLifecycleStages, setAvailableLifecycleStages] = useState([]);
   const [availableVariables, setAvailableVariables] = useState([]);
+  const [availableIntegrations, setAvailableIntegrations] = useState([]);
   const mentionTargets = [...availableAgents, ...availableAiAgents, ...availableTeams];
 
   useEffect(() => {
@@ -171,7 +172,7 @@ export default function Agents() {
       try {
         const { default: api } = await import('../api/client');
 
-        const [tagsRes, teamRes, stagesRes, fieldDefsRes] = await Promise.allSettled([
+        const [tagsRes, teamRes, stagesRes, fieldDefsRes, intRes] = await Promise.allSettled([
           api.get('/tags'),
           api.get('/team'),
           api.get('/lifecycle'),
@@ -195,7 +196,11 @@ export default function Agents() {
         ]);
         if (stagesRes.status === 'fulfilled') setAvailableLifecycleStages(stagesRes.value.data || []);
 
-        if (fieldDefsRes.status === 'fulfilled') {
+        if (intRes && intRes.status === 'fulfilled') {
+            setAvailableIntegrations(intRes.value.data.integrations || []);
+          }
+
+          if (fieldDefsRes.status === 'fulfilled') {
           const fieldVariables = (fieldDefsRes.value.data || []).map((field) => ({
             label: field.name || field.key,
             value: `{{contact.${field.key}}}`,

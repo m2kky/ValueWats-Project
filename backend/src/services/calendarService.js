@@ -2,38 +2,30 @@ const { google } = require('googleapis');
 
 /**
  * Google Calendar Service
- * Requires GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
- * and per-user/tenant tokens (access_token, refresh_token)
+ * Uses dynamically supplied auth tokens and OAuth credentials.
  */
 class CalendarService {
-    constructor() {
-        this.oauth2Client = new google.auth.OAuth2(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_CLIENT_SECRET,
-            process.env.GOOGLE_REDIRECT_URI
-        );
-    }
-
-    /**
-     * Set credentials for the current operation
-     */
-    setCredentials(tokens) {
-        this.oauth2Client.setCredentials(tokens);
-    }
+    constructor() {}
 
     /**
      * Get calendar client
      */
-    getCalendar() {
-        return google.calendar({ version: 'v3', auth: this.oauth2Client });
+    getCalendar(creds) {
+        const oauth2Client = new google.auth.OAuth2(creds.clientId, creds.clientSecret);
+        oauth2Client.setCredentials({
+            access_token: creds.access_token,
+            refresh_token: creds.refresh_token,
+            expiry_date: creds.expiry_date
+        });
+        return google.calendar({ version: 'v3', auth: oauth2Client });
     }
 
     /**
      * Create an event
      */
-    async createEvent({ summary, description, start, end }) {
+    async createEvent(creds, { summary, description, start, end }) {
         try {
-            const calendar = this.getCalendar();
+            const calendar = this.getCalendar(creds);
             const event = {
                 summary,
                 description,
@@ -56,9 +48,9 @@ class CalendarService {
     /**
      * List events
      */
-    async listEvents(maxResults = 10) {
+    async listEvents(creds, maxResults = 10) {
         try {
-            const calendar = this.getCalendar();
+            const calendar = this.getCalendar(creds);
             const response = await calendar.events.list({
                 calendarId: 'primary',
                 timeMin: (new Date()).toISOString(),

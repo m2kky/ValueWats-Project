@@ -1,13 +1,17 @@
 const emailService = require('./emailService');
 const calendarService = require('./calendarService');
+const driveService = require('./driveService');
 const prisma = require('../config/database');
+const { decrypt } = require('../utils/encryption');
 
 class ToolService {
     constructor() {
         this.handlers = {
             send_email: this.handleSendEmail.bind(this),
             create_calendar_event: this.handleCreateCalendarEvent.bind(this),
-            get_calendar_events: this.handleGetCalendarEvents.bind(this)
+            get_calendar_events: this.handleGetCalendarEvents.bind(this),
+            upload_drive_file: this.handleDriveUpload.bind(this),
+            search_drive_files: this.handleDriveSearch.bind(this)
         };
     }
 
@@ -17,9 +21,7 @@ class ToolService {
     getToolDefinitions(actionConfig = {}) {
         const tools = [];
 
-        // Always available or standard integration could be email
-        // if (actionConfig.sendEmail?.enabled) ...
-
+        // Calendar
         if (actionConfig.google_calendar_create?.enabled || actionConfig.google_calendar_read?.enabled) {
             if (actionConfig.google_calendar_create?.enabled) {
                 tools.push({
@@ -51,6 +53,44 @@ class ToolService {
                             properties: {
                                 maxResults: { type: 'number', description: 'Maximum number of events to return' }
                             }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Drive
+        if (actionConfig.google_drive_upload?.enabled || actionConfig.google_drive_search?.enabled) {
+            if (actionConfig.google_drive_upload?.enabled) {
+                tools.push({
+                    type: 'function',
+                    function: {
+                        name: 'upload_drive_file',
+                        description: 'Upload text or content as a file to Google Drive',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                name: { type: 'string', description: 'Name of the file' },
+                                content: { type: 'string', description: 'The text content to save in the file' }
+                            },
+                            required: ['name', 'content']
+                        }
+                    }
+                });
+            }
+
+            if (actionConfig.google_drive_search?.enabled) {
+                tools.push({
+                    type: 'function',
+                    function: {
+                        name: 'search_drive_files',
+                        description: 'Search Google Drive for files and get their links',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                query: { type: 'string', description: 'The search query (e.g., file name like invoice, report)' }
+                            },
+                            required: ['query']
                         }
                     }
                 });
@@ -100,7 +140,7 @@ class ToolService {
             throw new Error(`Integration not found or inactive`);
         }
 
-        return JSON.parse(integration.credentials);
+        return JSON.parse(decrypt(integration.credentials));
     }
 
     /**
@@ -109,12 +149,7 @@ class ToolService {
     async handleCreateCalendarEvent(args, { tenantId, actionConfig }) {
         try {
             const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_calendar_create');
-            calendarService.setCredentials({
-                access_token: credentials.access_token,
-                refresh_token: credentials.refresh_token,
-                expiry_date: credentials.expiry_date
-            });
-            return await calendarService.createEvent(args);
+            return await calendarService.createEvent(credentials, args);
         } catch (error) {
             console.error('[ToolService] Create Calendar Event Error:', error);
             return { success: false, error: error.message };
@@ -127,14 +162,35 @@ class ToolService {
     async handleGetCalendarEvents(args, { tenantId, actionConfig }) {
         try {
             const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_calendar_read');
-            calendarService.setCredentials({
-                access_token: credentials.access_token,
-                refresh_token: credentials.refresh_token,
-                expiry_date: credentials.expiry_date
-            });
-            return await calendarService.listEvents(args.maxResults || 10);
+            return await calendarService.listEvents(credentials, args.maxResults || 10);
         } catch (error) {
             console.error('[ToolService] Get Calendar Events Error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * HANDLER: Drive Upload
+     */
+    async handleDriveUpload(args, { tenantId, actionConfig }) {
+        try {
+            const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_drive_upload');
+            return await driveService.uploadFile(credentials, { name: args.name, content: args.content });
+        } catch (error) {
+            console.error('[ToolService] Drive Upload Error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * HANDLER: Drive Search
+     */
+    async handleDriveSearch(args, { tenantId, actionConfig }) {
+        try {
+            const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_drive_search');
+            return await driveService.searchFiles(credentials, args.query);
+        } catch (error) {
+            console.error('[ToolService] Drive Search Error:', error);
             return { success: false, error: error.message };
         }
     }
