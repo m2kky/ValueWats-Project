@@ -250,8 +250,6 @@ class ToolService {
             return { success: false, error: error.message };
         }
     }
-}
-
 
     /**
      * HANDLER: Create Spreadsheet
@@ -291,5 +289,6 @@ class ToolService {
             return { success: false, error: error.message };
         }
     }
+}
 
 module.exports = new ToolService();
