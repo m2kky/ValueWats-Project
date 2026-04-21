@@ -134,6 +134,11 @@ class KnowledgeService {
     try { fs.unlinkSync(file.path); } catch (e) { /* ignore */ }
 
     console.log(`[KnowledgeService] Processed file "${title}": ${results.length}/${chunks.length} chunks`);
+
+    if (results.length === 0 && chunks.length > 0) {
+      throw new Error('فشلت عملية الذكاء الاصطناعي في قراءة أي نص. قد يكون نموذج OpenRouter يرفض الطلب (تأكد من وجود رصيد كافي) أو لا يدعم التحويل المطلوب.');
+    }
+
     return { title, chunks: results.length, totalChunks: chunks.length, fileUrl };
   }
 
