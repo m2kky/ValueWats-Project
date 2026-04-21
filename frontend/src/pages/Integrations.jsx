@@ -123,22 +123,22 @@ export default function Integrations() {
       id: 'google_calendar_oauth',
       name: 'Google Calendar',
       desc: 'Connect your personal or team calendar. Allow AI agents to read availability and schedule precise meetings autonomously.',
-      icon: <CalendarIcon className="w-12 h-12 text-indigo-100" />,
-      color: 'bg-indigo-600'
+      icon: <img src="/assets/google-icons/google-calendar.svg" alt="Google Calendar" className="w-10 h-10 object-contain drop-shadow-lg" />,
+      color: 'bg-white'
     },
     {
       id: 'google_drive_oauth',
       name: 'Google Drive',
       desc: 'Connect your Google Drive securely. Allow AI to search for documents (like pricing catalogs) and text-upload conversation records.',
-      icon: <DocumentIcon className="w-12 h-12 text-blue-100" />,
-      color: 'bg-blue-600'
+      icon: <img src="/assets/google-icons/google-drive.svg" alt="Google Drive" className="w-10 h-10 object-contain drop-shadow-lg" />,
+      color: 'bg-white'
     },
     {
       id: 'google_sheets_oauth',
       name: 'Google Sheets',
       desc: 'Read, modify and append data directly to your sheets on your behalf. Ideal for AI data collection and seamless CRM syncing.',
-      icon: <TableCellsIcon className="w-12 h-12 text-emerald-100" />,
-      color: 'bg-emerald-600'
+      icon: <img src="/assets/google-icons/google-sheets.svg" alt="Google Sheets" className="w-10 h-10 object-contain drop-shadow-lg" />,
+      color: 'bg-white'
     },
     {
       id: 'webhook',
