@@ -319,7 +319,7 @@ If requirements are missing, do not run the action.`}</code>
                             <li>Go to <a href="https://console.cloud.google.com" target="_blank" className="text-indigo-400 underline">Google Cloud Console</a>.</li>
                             <li>Create a <strong>New Project</strong> and name it (e.g., `ValueWats Integrations`).</li>
                             <li>Go to <strong>APIs & Services</strong> &gt; <strong>Library</strong>.</li>
-                            <li>Search for and enable <strong>Google Calendar API</strong> and <strong>Google Drive API</strong>.</li>
+                            <li>Search for and enable <strong>Google Calendar API</strong>, <strong>Google Drive API</strong>, and <strong>Google Sheets API</strong>.</li>
                         </ol>
                     </div>
 

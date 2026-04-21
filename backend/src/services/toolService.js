@@ -1,6 +1,7 @@
 const emailService = require('./emailService');
 const calendarService = require('./calendarService');
 const driveService = require('./driveService');
+const sheetsService = require('./sheetsService');
 const prisma = require('../config/database');
 const { decrypt } = require('../utils/encryption');
 
@@ -11,7 +12,10 @@ class ToolService {
             create_calendar_event: this.handleCreateCalendarEvent.bind(this),
             get_calendar_events: this.handleGetCalendarEvents.bind(this),
             upload_drive_file: this.handleDriveUpload.bind(this),
-            search_drive_files: this.handleDriveSearch.bind(this)
+            search_drive_files: this.handleDriveSearch.bind(this),
+            create_spreadsheet: this.handleCreateSpreadsheet.bind(this),
+            append_sheet_row: this.handleAppendSheetRow.bind(this),
+            read_sheet_data: this.handleReadSheetData.bind(this)
         };
     }
 
@@ -95,6 +99,58 @@ class ToolService {
                     }
                 });
             }
+        }
+
+        
+        // Sheets
+        if (actionConfig.google_sheets?.enabled) {
+            tools.push({
+                type: 'function',
+                function: {
+                    name: 'create_spreadsheet',
+                    description: 'Create a new blank Google Spreadsheet',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            title: { type: 'string', description: 'Name of the new spreadsheet' }
+                        },
+                        required: ['title']
+                    }
+                }
+            });
+
+            tools.push({
+                type: 'function',
+                function: {
+                    name: 'append_sheet_row',
+                    description: 'Append a new row of data to a Google Spreadsheet',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            spreadsheetId: { type: 'string', description: 'The ID of the spreadsheet (found in its URL)' },
+                            range: { type: 'string', description: 'The range or sheet name, e.g. Sheet1!A1' },
+                            values: { type: 'array', items: { type: 'string' }, description: 'Array of string values to append as a row, e.g. ["John", "Doe", "john@email.com"]' }
+                        },
+                        required: ['spreadsheetId', 'values']
+                    }
+                }
+            });
+
+            tools.push({
+                type: 'function',
+                function: {
+                    name: 'read_sheet_data',
+                    description: 'Read rows of data from a Google Spreadsheet',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            spreadsheetId: { type: 'string', description: 'The ID of the spreadsheet' },
+                            range: { type: 'string', description: 'The range to read, e.g. Sheet1!A1:D10' }
+                        },
+                        required: ['spreadsheetId']
+                    }
+                }
+            });
         }
 
         return tools;
@@ -195,5 +251,45 @@ class ToolService {
         }
     }
 }
+
+
+    /**
+     * HANDLER: Create Spreadsheet
+     */
+    async handleCreateSpreadsheet(args, { tenantId, actionConfig }) {
+        try {
+            const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_sheets');
+            return await sheetsService.createSpreadsheet(credentials, args.title);
+        } catch (error) {
+            console.error('[ToolService] Create Spreadsheet Error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * HANDLER: Append Sheet Row
+     */
+    async handleAppendSheetRow(args, { tenantId, actionConfig }) {
+        try {
+            const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_sheets');
+            return await sheetsService.appendRow(credentials, args.spreadsheetId, args.range, args.values);
+        } catch (error) {
+            console.error('[ToolService] Append Sheet Row Error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * HANDLER: Read Sheet Data
+     */
+    async handleReadSheetData(args, { tenantId, actionConfig }) {
+        try {
+            const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_sheets');
+            return await sheetsService.readRows(credentials, args.spreadsheetId, args.range);
+        } catch (error) {
+            console.error('[ToolService] Read Sheet Data Error:', error);
+            return { success: false, error: error.message };
+        }
+    }
 
 module.exports = new ToolService();

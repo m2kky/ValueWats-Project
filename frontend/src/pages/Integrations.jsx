@@ -118,7 +118,7 @@ export default function Integrations() {
   const AVAILABLE_TOOLS = [
     {
       id: 'google_oauth',
-      name: 'Google Workspace',
+      name: 'Google Workspace (Drive, Calendar, Sheets)',
       desc: 'Connect Drive & Calendar. AI can search files, upload records, and schedule Google meetings autonomously.',
       icon: (
         <svg className="w-12 h-12 text-white" viewBox="0 0 24 24" fill="currentColor">
@@ -315,7 +315,7 @@ export default function Integrations() {
                   <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl space-y-3">
                     <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">About this integration</p>
                     <p className="text-sm text-indigo-200/80 leading-relaxed">
-                      By securely connecting your own Google Custom OAuth application, your agents gain immediate access to <strong>Google Drive</strong> (File search & text uploads) and <strong>Google Calendar</strong> (creating and reading appointments).
+                      By securely connecting your own Google Custom OAuth application, your agents gain immediate access to <strong>Google Drive</strong>, <strong>Google Calendar</strong>, and <strong>Google Sheets</strong> (Create, append, read data).
                     </p>
                     <p className="text-xs font-bold text-zinc-400 uppercase">
                       Need help? <a href="/help/integrations/google" target="_blank" className="text-indigo-400 hover:text-white transition-colors underline ml-1">Open Setup Guide</a>
