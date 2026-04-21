@@ -1,3 +1,17 @@
+## 2026-04-21
+
+### Fixed
+- **RAG Embeddings**: Migrated from OpenRouter (API key was invalid/expired) to **local Ollama** `nomic-embed-text` model running on the same VPS. Zero cost, zero external dependency, 768-dimension vectors matching pgvector schema.
+- **Campaign Scheduler Crash**: Added missing DB migration for `campaigns.type` and `campaigns.target_config` columns. This was causing thousands of `P2022` errors every minute in the scheduler.
+- **Campaign Duplicate**: Implemented `duplicateCampaign` controller function that was missing from exports, causing `TypeError: argument handler must be a function` on server startup.
+- **RAG Error Handling**: Added descriptive error message when all embedding chunks fail, instead of silently returning empty results.
+
+### Changed
+- **`embeddingService.js`**: Now connects to `OLLAMA_URL` env var (Ollama service on Coolify) instead of OpenRouter API.
+- **`.env`**: Added `OLLAMA_URL` variable pointing to the Ollama service public URL.
+
+---
+
 ## 2026-04-19
 
 ### Multi-Channel Retargeting Campaigns
