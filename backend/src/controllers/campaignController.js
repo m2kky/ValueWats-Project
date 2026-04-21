@@ -996,6 +996,8 @@ const duplicateCampaign = async (req, res) => {
   } catch (error) {
     console.error('Duplicate Campaign Error:', error);
     res.status(500).json({ error: 'Failed to duplicate campaign' });
+  }
+};
 
 const calculateAudienceCoverage = async (req, res) => {
   try {
