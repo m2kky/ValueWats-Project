@@ -2,9 +2,9 @@ const axios = require('axios');
 
 class EmbeddingService {
   constructor() {
-    // Ollama is running on the same VPS as a separate Coolify service.
-    // We use its public URL because they are on different Docker networks.
-    this.baseURL = process.env.OLLAMA_URL || 'http://ollama-lk4ocggoc4000ogw0wggkog8.72.62.50.238.sslip.io';
+    // Ollama is running on the same VPS. Use its direct port (11434) to bypass
+    // Open WebUI's auth proxy. The sslip.io URL routes through Open WebUI which requires login.
+    this.baseURL = process.env.OLLAMA_URL || 'http://72.62.50.238:11434';
     // nomic-embed-text produces exactly 768 dimensions — matches our pgvector(768) schema.
     this.model = 'nomic-embed-text';
   }

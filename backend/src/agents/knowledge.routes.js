@@ -11,7 +11,7 @@ const upload = multer({
   dest: path.join(__dirname, '../../uploads/'),
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB max
   fileFilter: (req, file, cb) => {
-    const allowed = ['.pdf', '.txt', '.md'];
+    const allowed = ['.pdf', '.docx', '.xlsx', '.xls', '.csv', '.txt', '.md'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) {
       cb(null, true);
@@ -98,7 +98,7 @@ router.post('/:agentId/knowledge/text', tenantContext, async (req, res) => {
   }
 });
 
-// Upload file knowledge source (PDF, TXT)
+// Upload file knowledge source (PDF, DOCX, XLSX, CSV, TXT)
 router.post('/:agentId/knowledge/file', tenantContext, upload.single('file'), async (req, res) => {
   try {
     const agent = await prisma.aIAgent.findFirst({
@@ -121,6 +121,31 @@ router.post('/:agentId/knowledge/file', tenantContext, upload.single('file'), as
   } catch (error) {
     console.error('[Knowledge] Upload file error:', error);
     res.status(500).json({ error: error.message || 'Failed to process file' });
+  }
+});
+
+// Add table/structured data knowledge (price lists, product catalogs, etc.)
+router.post('/:agentId/knowledge/table', tenantContext, async (req, res) => {
+  try {
+    const agent = await prisma.aIAgent.findFirst({
+      where: { id: req.params.agentId, tenantId: req.user.tenantId }
+    });
+    if (!agent) return res.status(404).json({ error: 'Agent not found' });
+
+    const { title, headers, rows, category, tags } = req.body;
+    if (!title || !headers || !rows || !Array.isArray(headers) || !Array.isArray(rows)) {
+      return res.status(400).json({ error: 'Title, headers (array), and rows (array of arrays) are required' });
+    }
+
+    const result = await knowledgeService.addTableKnowledge({
+      agentId: req.params.agentId,
+      title, headers, rows, category, tags
+    });
+
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('[Knowledge] Add table error:', error);
+    res.status(500).json({ error: error.message || 'Failed to add table knowledge' });
   }
 });
 

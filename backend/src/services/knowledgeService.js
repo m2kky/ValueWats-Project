@@ -45,18 +45,84 @@ class KnowledgeService {
 
     switch (ext) {
       case 'pdf': {
-        const pdfParse = require('pdf-parse');
+        // pdf-parse v2.x changed its export structure
+        const pdfParseModule = require('pdf-parse');
+        const pdfParse = pdfParseModule.default || pdfParseModule;
         const buffer = fs.readFileSync(file.path);
         const data = await pdfParse(buffer);
         return data.text;
+      }
+      case 'docx': {
+        const mammoth = require('mammoth');
+        const result = await mammoth.extractRawText({ path: file.path });
+        return result.value;
+      }
+      case 'xlsx':
+      case 'xls': {
+        const XLSX = require('xlsx');
+        const workbook = XLSX.readFile(file.path);
+        let allText = '';
+        for (const sheetName of workbook.SheetNames) {
+          const sheet = workbook.Sheets[sheetName];
+          // Convert to CSV-like text so the AI can understand table structure
+          const csv = XLSX.utils.sheet_to_csv(sheet);
+          allText += `--- Sheet: ${sheetName} ---\n${csv}\n\n`;
+        }
+        return allText;
+      }
+      case 'csv': {
+        return fs.readFileSync(file.path, 'utf-8');
       }
       case 'txt':
       case 'md': {
         return fs.readFileSync(file.path, 'utf-8');
       }
       default:
-        throw new Error(`Unsupported file type: .${ext}. Supported: .pdf, .txt, .md`);
+        throw new Error(`Unsupported file type: .${ext}. Supported: .pdf, .docx, .xlsx, .csv, .txt, .md`);
     }
+  }
+
+  /**
+   * Process and store table/structured data as knowledge (e.g. price lists, product catalogs)
+   * Each row becomes a separate knowledge chunk for precise retrieval.
+   */
+  async addTableKnowledge({ agentId, title, headers, rows, category, tags }) {
+    const results = [];
+
+    // Create a summary chunk with all headers
+    const headerLine = headers.join(' | ');
+    const summaryLines = [`جدول: ${title}`, `الأعمدة: ${headerLine}`, `عدد الصفوف: ${rows.length}`];
+    
+    // Batch rows into groups of 10 for embedding (too many individual chunks is wasteful)
+    const batchSize = 10;
+    for (let batchStart = 0; batchStart < rows.length; batchStart += batchSize) {
+      const batch = rows.slice(batchStart, batchStart + batchSize);
+      const batchText = batch.map(row => {
+        // Create natural language from row: "المنتج: X | السعر: Y | ..."
+        return headers.map((h, i) => `${h}: ${row[i] || ''}`).join(' | ');
+      }).join('\n');
+
+      const chunkText = `${headerLine}\n---\n${batchText}`;
+      const chunkIndex = Math.floor(batchStart / batchSize);
+
+      try {
+        const embedding = await embeddingService.generateEmbedding(chunkText);
+        const vectorStr = `[${embedding.join(',')}]`;
+
+        const result = await prisma.$queryRawUnsafe(`
+          INSERT INTO "AgentKnowledge" (id, "agentId", title, content, "sourceType", category, tags, "chunkIndex", embedding, "isActive", "createdAt", "updatedAt")
+          VALUES (gen_random_uuid(), $1, $2, $3, 'table', $4, $5::text[], $6, $7::vector, true, NOW(), NOW())
+          RETURNING id, title, "chunkIndex"
+        `, agentId, `${title} (${chunkIndex + 1}/${Math.ceil(rows.length / batchSize)})`, chunkText, category || null, tags || [], chunkIndex, vectorStr);
+
+        results.push(result[0]);
+      } catch (error) {
+        console.error(`[KnowledgeService] Error embedding table batch ${chunkIndex}:`, error.message);
+      }
+    }
+
+    console.log(`[KnowledgeService] Added table "${title}": ${results.length} chunks from ${rows.length} rows`);
+    return { title, chunks: results.length, totalRows: rows.length };
   }
 
   /**
@@ -136,7 +202,7 @@ class KnowledgeService {
     console.log(`[KnowledgeService] Processed file "${title}": ${results.length}/${chunks.length} chunks`);
 
     if (results.length === 0 && chunks.length > 0) {
-      throw new Error('فشلت عملية الذكاء الاصطناعي في قراءة أي نص. قد يكون نموذج OpenRouter يرفض الطلب (تأكد من وجود رصيد كافي) أو لا يدعم التحويل المطلوب.');
+      throw new Error('فشلت عملية توليد الـ Embeddings. تأكد من أن خدمة Ollama تعمل وأن نموذج nomic-embed-text متاح.');
     }
 
     return { title, chunks: results.length, totalChunks: chunks.length, fileUrl };
