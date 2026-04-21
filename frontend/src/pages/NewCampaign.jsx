@@ -79,7 +79,10 @@ export default function NewCampaign() {
   const fetchInstances = async () => {
     try {
       const response = await api.get('/instances');
-      setInstances(response.data.instances.filter(i => i.status === 'connected'));
+      setInstances(response.data.instances.filter(i => 
+        i.status === 'connected' && 
+        (i.channelType === 'whatsapp' || i.channelType === 'whatsapp_cloud')
+      ));
     } catch (error) {
       console.error('Failed to fetch instances', error);
     }
