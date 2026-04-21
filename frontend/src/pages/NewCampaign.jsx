@@ -281,7 +281,7 @@ export default function NewCampaign() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-indigo-500/30 py-8">
+    <div className="text-zinc-100 font-sans selection:bg-indigo-500/30 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Header Section */}

@@ -450,7 +450,7 @@ export default function Agents() {
     return (
       <div className="h-[calc(100vh-4rem)] flex flex-col">
         {/* Editor Header */}
-        <div className="flex items-center justify-between px-8 py-4 bg-zinc-950/60 backdrop-blur-2xl border-b border-white/5 shrink-0 z-20">
+        <div className="flex items-center justify-between px-8 py-4 bg-transparent backdrop-blur-2xl border-b border-white/5 shrink-0 z-20">
           <div className="flex items-center gap-4">
             <button
               onClick={() => { setView('list'); fetchAgents(); }}
@@ -460,12 +460,12 @@ export default function Agents() {
             </button>
             <div>
               <h2 className="text-xl font-black text-white tracking-tight italic uppercase">
-                {editingId ? 'MODULE CONFIGURATION' : 'INITIALIZE MODULE'}
+                {editingId ? 'Agent Configuration' : 'Create Agent'}
               </h2>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgba(71,37,244,0.5)]"></span>
                 <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                  {form.templateType !== 'custom' ? `PRE-BUILT: ${form.templateType}` : 'REBOOT SYSTEM'}
+                  {form.templateType !== 'custom' ? `Template: ${form.templateType}` : 'Custom Setup'}
                 </p>
               </div>
             </div>
@@ -475,27 +475,27 @@ export default function Agents() {
               onClick={() => { setView('list'); fetchAgents(); }}
               className="px-5 py-2 text-xs font-black text-zinc-400 hover:text-white uppercase tracking-widest transition-colors"
             >
-              ABORT
+              Cancel
             </button>
             <button
               onClick={() => handleSave(false)}
               disabled={saving || !form.name || !form.instructions || instructionOverLimit}
               className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest transition-all active:scale-95"
             >
-              SAVE DRAFT
+              Save Draft
             </button>
             <button
               onClick={() => handleSave(true)}
               disabled={saving || !form.name || !form.instructions || instructionOverLimit}
               className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-lg shadow-indigo-500/10 transition-all active:scale-95"
             >
-              {saving ? 'UPLOADING...' : (form.isPublished ? 'UPDATE PUBLISHED' : 'PUBLISH MODULE')}
+              {saving ? 'Uploading...' : (form.isPublished ? 'Update Published' : 'Publish Agent')}
             </button>
           </div>
         </div>
 
         {/* Split Content */}
-        <div className="flex flex-1 overflow-hidden bg-zinc-950/20">
+        <div className="flex flex-1 overflow-hidden bg-transparent">
           {/* ─── LEFT PANEL: All Sections (Single Page) ─── */}
           <div className="w-3/5 overflow-y-auto border-r border-white/5 custom-scrollbar">
             <div className="p-8 space-y-8">
@@ -503,12 +503,12 @@ export default function Agents() {
               <div className="glass-card p-6 border border-white/5 group bg-zinc-900/40">
                 <div className="flex items-center gap-2 mb-6 border-b border-white/5 pb-4">
                   <div className="w-1 h-4 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(71,37,244,0.5)]"></div>
-                  <h3 className="text-xs font-black text-white uppercase tracking-widest italic">MODULE IDENTITY</h3>
+                  <h3 className="text-xs font-black text-white uppercase tracking-widest italic">AGENT IDENTITY</h3>
                 </div>
 
                 <div className="space-y-6">
                   <div className="relative">
-                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1.5 block">Callsign *</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Agent Name *</label>
                     <input
                       type="text"
                       value={form.name}
@@ -520,7 +520,7 @@ export default function Agents() {
 
                   <div className="grid grid-cols-2 gap-6">
                     <div>
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1.5 block">Objective</label>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Description</label>
                       <input
                         type="text"
                         value={form.description}
@@ -530,7 +530,7 @@ export default function Agents() {
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1.5 block">Neutral Greeting</label>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Greeting Message</label>
                       <input
                         type="text"
                         value={form.greeting}
@@ -547,7 +547,7 @@ export default function Agents() {
               <div className="glass-card p-6 border border-white/5 bg-zinc-900/40">
                 <div className="flex items-center gap-2 mb-6 border-b border-white/5 pb-4">
                   <div className="w-1 h-4 bg-purple-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.5)]"></div>
-                  <h3 className="text-xs font-black text-white uppercase tracking-widest italic">LOGIC DIRECTIVES *</h3>
+                  <h3 className="text-xs font-black text-white uppercase tracking-widest italic">SYSTEM INSTRUCTIONS *</h3>
                 </div>
 
                 <div className="relative group">
@@ -600,91 +600,6 @@ export default function Agents() {
                 </div>
               </div>
 
-              {/* Settings */}
-              <div className="glass-card p-6 border border-white/5 bg-zinc-900/40">
-                <div className="flex items-center gap-2 mb-6 border-b border-white/5 pb-4">
-                  <div className="w-1 h-4 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                  <h3 className="text-xs font-black text-white uppercase tracking-widest italic">BEHAVIORAL PARAMETERS</h3>
-                </div>
-
-                <div className="space-y-8">
-                  {/* Tone & Style */}
-                  <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block">Neural Tone</label>
-                      <select
-                        value={form.tone}
-                        onChange={e => setForm({ ...form, tone: e.target.value })}
-                        className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/30 transition-all font-bold cursor-pointer"
-                      >
-                        {toneOptions.map(t => (
-                          <option key={t.value} value={t.value} className="bg-zinc-900 text-white">{t.label.toUpperCase()}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block">Response Verbosity</label>
-                      <select
-                        value={form.responseStyle}
-                        onChange={e => setForm({ ...form, responseStyle: e.target.value })}
-                        className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/30 transition-all font-bold cursor-pointer"
-                      >
-                        <option value="concise" className="bg-zinc-900">CONCISE</option>
-                        <option value="detailed" className="bg-zinc-900">DETAILED</option>
-                        <option value="conversational" className="bg-zinc-900">CONVERSATIONAL</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Temperature + Max Tokens */}
-                  <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Entropy (Temp)</label>
-                        <span className="text-xs font-black text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">{form.temperature}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={form.temperature}
-                        onChange={e => setForm({ ...form, temperature: parseFloat(e.target.value) })}
-                        className="w-full h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                      />
-                      <div className="flex justify-between text-[8px] font-black text-zinc-600 uppercase tracking-widest">
-                        <span>Precision</span>
-                        <span>Creativity</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block">Token Cap</label>
-                      <input
-                        type="number"
-                        value={form.maxTokens}
-                        onChange={e => setForm({ ...form, maxTokens: parseInt(e.target.value) || 500 })}
-                        className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/30 transition-all font-mono"
-                        min={50}
-                        max={4000}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Priority */}
-                  <div className="pt-4 border-t border-white/5">
-                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-2">Process Priority</label>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="number"
-                        value={form.priority}
-                        onChange={e => setForm({ ...form, priority: parseInt(e.target.value) || 0 })}
-                        className="bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/30 transition-all w-32 font-mono"
-                        min={0}
-                      />
-                      <span className="text-[10px] font-bold text-zinc-500 uppercase italic">Higher values receive routing preference</span>
-                    </div>
-                  </div>
-                </div>
               </div>
 
 
@@ -694,7 +609,7 @@ export default function Agents() {
                   <div className="flex items-center gap-2">
                     <div className={`w-1 h-4 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)] transition-colors ${form.followUpEnabled ? 'bg-amber-500' : 'bg-zinc-700'}`}></div>
                     <h3 className="text-xs font-black text-white uppercase tracking-widest italic flex items-center gap-2">
-                      <ClockIcon className="h-4 w-4 text-amber-500" /> RETENTION AUTOMATION
+                      <ClockIcon className="h-4 w-4 text-amber-500" /> FOLLOW-UP AUTOMATION
                     </h3>
                   </div>
                   <button
@@ -740,7 +655,7 @@ export default function Agents() {
                   <div className="flex items-center gap-2">
                     <div className={`w-1 h-4 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.5)] transition-colors ${form.workingHoursEnabled ? 'bg-rose-500' : 'bg-zinc-700'}`}></div>
                     <h3 className="text-xs font-black text-white uppercase tracking-widest italic flex items-center gap-2">
-                      <ShieldCheckIcon className="h-4 w-4 text-rose-500" /> OPERATIONAL WINDOWS
+                      <ShieldCheckIcon className="h-4 w-4 text-rose-500" /> WORKING HOURS
                     </h3>
                   </div>
                   <button
@@ -769,12 +684,12 @@ export default function Agents() {
                 )}
               </div>
 
-              {/* ═══ SYNAPTIC CAPABILITIES (Actions) ═══ */}
+              {/* ═══ AGENT CAPABILITIES (Actions) ═══ */}
               <div className="space-y-8">
                 <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-6 flex gap-4 backdrop-blur-sm shadow-[0_0_20px_rgba(71,37,244,0.05)]">
                   <SparklesIcon className="h-6 w-6 text-indigo-400 shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="text-sm font-black text-white uppercase tracking-widest italic">SYNAPTIC CAPABILITIES</h4>
+                    <h4 className="text-sm font-black text-white uppercase tracking-widest italic">AGENT CAPABILITIES</h4>
                     <p className="text-[10px] font-bold text-zinc-500 mt-1 uppercase tracking-widest leading-relaxed">
                       DEFINE NEURAL TRIGGERS AND EXTERNAL INTERFACING RULES. AGENT WILL EXECUTE THESE ACTIONS BASED ON PROBABILISTIC INTENT ANALYSIS.
                     </p>
@@ -1023,7 +938,7 @@ export default function Agents() {
                   <div className="glass-card p-6 border border-white/5 bg-zinc-900/40 animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="flex items-center justify-between mb-6">
                       <h4 className="text-[10px] font-black text-white uppercase tracking-widest">STRING BUFFER</h4>
-                      <button onClick={() => setKbMode(null)} className="text-[9px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors">ABORT_STREAM</button>
+                      <button onClick={() => setKbMode(null)} className="text-[9px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors">Cancel_STREAM</button>
                     </div>
                     <div className="space-y-4">
                       <input
@@ -1061,7 +976,7 @@ export default function Agents() {
                   <div className="glass-card p-6 border border-white/5 bg-zinc-900/40 animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="flex items-center justify-between mb-6">
                       <h4 className="text-[10px] font-black text-white uppercase tracking-widest">DATA PACKET READY</h4>
-                      <button onClick={() => { setKbMode(null); setKbFile(null); }} className="text-[9px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors">ABORT_UPLOAD</button>
+                      <button onClick={() => { setKbMode(null); setKbFile(null); }} className="text-[9px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors">Cancel_UPLOAD</button>
                     </div>
                     <div className="p-8 border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center gap-4 bg-white/5">
                       <DocumentIcon className="h-10 w-10 text-emerald-400/40" />
@@ -1271,7 +1186,7 @@ export default function Agents() {
               </div >
             ) : (
               /* Contact Fields View */
-              <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar bg-zinc-950/20">
+              <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar bg-transparent">
                 <div className="space-y-6">
                   {/* Lifecycle */}
                   <div>
@@ -1509,7 +1424,7 @@ export default function Agents() {
                     </div>
                   </div>
 
-                  <div className="mt-auto p-8 pt-0 border-t border-white/5 bg-zinc-950/20 flex items-center justify-between group/status h-20">
+                  <div className="mt-auto p-8 pt-0 border-t border-white/5 bg-transparent flex items-center justify-between group/status h-20">
                     <div className="flex flex-col">
                       <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-1">MODULE_STATUS</span>
                       <div className="flex items-center gap-2">
@@ -1558,6 +1473,9 @@ export default function Agents() {
     </div>
   );
 }
+
+
+
 
 
 

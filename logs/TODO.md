@@ -34,6 +34,7 @@
 
 ## ✅ Done
 
+- [x] Polish Retargeting Campaign UI and simplify Agent Setup interface — 2026-04-21
 - [x] Integrate OpenRouter Qwen3 Embeddings for RAG File Uploads — 2026-04-19
 - [x] Rebrand platform name and visual identity to **Value chat** across app shell/docs (logo, favicon, color palette) — 2026-04-08
 - [x] Enforce connected-instance prerequisite before creating/starting campaigns (frontend + backend guard) — 2026-04-08
