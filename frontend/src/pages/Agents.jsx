@@ -600,7 +600,6 @@ export default function Agents() {
                 </div>
               </div>
 
-              </div>
 
 
               {/* Follow Up */}
@@ -1473,6 +1472,8 @@ export default function Agents() {
     </div>
   );
 }
+
+
 
 
 
