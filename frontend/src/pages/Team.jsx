@@ -21,7 +21,7 @@ export default function Team() {
   const [sendingInvite, setSendingInvite] = useState(false);
 
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = currentUser.role === 'admin';
+  
 
   useEffect(() => {
     fetchTeam();
@@ -43,6 +43,8 @@ export default function Team() {
   const hasPaidSeatAvailability = seatUsage?.unlimitedUsers || (seatUsage?.availablePaidSeats ?? 0) > 0;
   const inviteRequiresPaidSeat = ['admin', 'agent'].includes(inviteRole);
   const inviteBlockedBySeatLimit = Boolean(!hasPaidSeatAvailability && inviteRequiresPaidSeat);
+
+  const isAdmin = ['admin', 'owner'].includes(currentUser.role) || currentUser.isSuperAdmin;
 
   const handleInvite = async (e) => {
     e.preventDefault();
