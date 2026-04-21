@@ -79,7 +79,7 @@ class IntegrationService {
   }
 
   
-  async createOAuthPending(tenantId, name, clientId, clientSecret, redirectUri) {
+  async createOAuthPending(tenantId, name, clientId, clientSecret, redirectUri, specificType) {
     const { google } = require('googleapis');
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
     const url = oauth2Client.generateAuthUrl({
@@ -91,7 +91,7 @@ class IntegrationService {
     const integration = await prisma.integration.create({
       data: {
         tenantId,
-        type: 'google_oauth',
+        type: specificType || 'google_oauth',
         name,
         credentials: encrypt(JSON.stringify({ clientId, clientSecret, redirectUri })),
         status: 'pending'

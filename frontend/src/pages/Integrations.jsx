@@ -8,7 +8,7 @@ import {
   GlobeAltIcon,
   DocumentIcon,
   CalendarIcon,
-  EnvelopeIcon,
+  TableCellsIcon,
   ServerStackIcon
 } from '@heroicons/react/24/outline';
 import api from '../api/client';
@@ -20,7 +20,7 @@ export default function Integrations() {
   const [authError, setAuthError] = useState(null);
 
   // Form State
-  const [type, setType] = useState('google_oauth');
+  const [type, setType] = useState('google_calendar_oauth');
   const [name, setName] = useState('');
   const [credentials, setCredentials] = useState(''); // JSON string for old stuff
   const [clientId, setClientId] = useState('');
@@ -54,13 +54,14 @@ export default function Integrations() {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      if (type === 'google_oauth') {
+      if (type.includes('_oauth')) {
         const redirectUri = `${window.location.origin}/api/oauth/google/callback`;
         const { data } = await api.post('/integrations/google/auth-url', {
           name,
           clientId,
           clientSecret,
-          redirectUri
+          redirectUri,
+          type
         });
         
         if (data.authUrl) {
@@ -95,14 +96,16 @@ export default function Integrations() {
 
   const getIntegrationConfig = (type) => {
     switch (type) {
-      case 'google_oauth':
-        return { icon: <GlobeAltIcon className="h-6 w-6" />, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' };
-      case 'google_sheets':
-        return { icon: <CircleStackIcon className="h-6 w-6" />, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' };
-      case 'google_drive':
-        return { icon: <DocumentIcon className="h-6 w-6" />, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' };
-      case 'google_calendar':
+      case 'google_calendar_oauth':
         return { icon: <CalendarIcon className="h-6 w-6" />, color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20' };
+      case 'google_drive_oauth':
+        return { icon: <DocumentIcon className="h-6 w-6" />, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' };
+      case 'google_sheets_oauth':
+        return { icon: <TableCellsIcon className="h-6 w-6" />, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' };
+      case 'google_oauth': // Generic legacy fallback
+        return { icon: <GlobeAltIcon className="h-6 w-6" />, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' };
+      case 'google_sheets':
+        return { icon: <TableCellsIcon className="h-6 w-6" />, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' };
       case 'webhook':
         return { icon: <ServerStackIcon className="h-6 w-6" />, color: 'text-fuchsia-400', bg: 'bg-fuchsia-400/10', border: 'border-fuchsia-400/20' };
       default:
@@ -117,45 +120,31 @@ export default function Integrations() {
 
   const AVAILABLE_TOOLS = [
     {
-      id: 'google_oauth',
-      name: 'Google Workspace (Drive, Calendar, Sheets)',
-      desc: 'Connect Drive & Calendar. AI can search files, upload records, and schedule Google meetings autonomously.',
-      icon: (
-        <svg className="w-12 h-12 text-white" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 
-1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.03 1.4-.44 2.79-1.35 
-3.84-1.31 1.63-3.6 2.31-5.59 1.71-2.1-.64-3.51-2.61-3.48-4.79.03-2.02 1.34-3.87 3.23-4.59.39-.15.8-.23 
-1.21-.28v4.04c-.4.07-.79.22-1.12.45-.61.43-.83 1.25-.56 1.94.31.74 1.18 1.1 1.93.84.58-.2 1-.78 
-1.02-1.4.02-4.14.01-8.28.02-12.42z"/>
-        </svg>
-      ),
+      id: 'google_calendar_oauth',
+      name: 'Google Calendar',
+      desc: 'Connect your personal or team calendar. Allow AI agents to read availability and schedule precise meetings autonomously.',
+      icon: <CalendarIcon className="w-12 h-12 text-indigo-100" />,
+      color: 'bg-indigo-600'
+    },
+    {
+      id: 'google_drive_oauth',
+      name: 'Google Drive',
+      desc: 'Connect your Google Drive securely. Allow AI to search for documents (like pricing catalogs) and text-upload conversation records.',
+      icon: <DocumentIcon className="w-12 h-12 text-blue-100" />,
       color: 'bg-blue-600'
     },
     {
-      id: 'google_sheets',
+      id: 'google_sheets_oauth',
       name: 'Google Sheets',
-      desc: 'Connect via Service Account JSON. Allow AI agents or workflows to securely append rows and log data.',
-      icon: (
-        <svg className="w-12 h-12 text-emerald-100" viewBox="0 0 24 24" fill="currentColor">
-           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.
-164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.
-606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242
--.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 
-2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 
-1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 
-01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 
-2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 
-11.815 0 0012.05 0C5.414 0 .018 5.394 0 12.03c0 2.119.554 4.188 1.607 6.04L0 24l6.117-1.605A11.793 11.793 0 0012.046 
-24c6.638 0 12.032-5.393 12.035-12.03a11.77 11.77 0 00-3.536-8.508z"/>
-        </svg>
-      ),
+      desc: 'Read, modify and append data directly to your sheets on your behalf. Ideal for AI data collection and seamless CRM syncing.',
+      icon: <TableCellsIcon className="w-12 h-12 text-emerald-100" />,
       color: 'bg-emerald-600'
     },
     {
       id: 'webhook',
       name: 'Custom Webhook',
-      desc: 'Set up advanced generic endpoints. Perfect for triggering Zapier, Make, or any internal system.',
-      icon: <ServerStackIcon className="w-12 h-12 text-white" />,
+      desc: 'Set up advanced generic endpoints. Perfect for triggering Zapier, Make, or sending notifications to any internal system.',
+      icon: <ServerStackIcon className="w-12 h-12 text-fuchsia-100" />,
       color: 'bg-fuchsia-600'
     }
   ];
@@ -265,25 +254,25 @@ export default function Integrations() {
              <h2 className="text-sm font-black uppercase tracking-[0.2em] text-zinc-500 border-t border-white/5 pt-12">Connect More Tools</h2>
            )}
 
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
              {AVAILABLE_TOOLS.map(tool => (
                 <div 
                   key={tool.id} 
                   onClick={() => openSetupModal(tool.id)}
-                  className="bg-[#111113] border border-white/5 rounded-3xl p-6 cursor-pointer hover:border-white/20 transition-all hover:-translate-y-1 group relative overflow-hidden"
+                  className="bg-[#111113] border border-white/5 rounded-3xl p-6 cursor-pointer hover:border-white/20 transition-all hover:-translate-y-1 group relative overflow-hidden flex flex-col h-full"
                 >
                    {/* Cool Gradient on Hover */}
                    <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/0 to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                    
-                   <div className={`w-20 h-20 rounded-2xl ${tool.color} flex items-center justify-center shadow-lg shadow-black/50 mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                   <div className={`w-16 h-16 rounded-2xl ${tool.color} flex items-center justify-center shadow-lg shadow-black/50 mb-5 group-hover:scale-110 transition-transform duration-300`}>
                      {tool.icon}
                    </div>
-                   <h3 className="text-xl font-bold text-white mb-3 tracking-tight">{tool.name}</h3>
-                   <p className="text-sm text-zinc-400 leading-relaxed font-medium">
+                   <h3 className="text-lg font-bold text-white mb-2 tracking-tight">{tool.name}</h3>
+                   <p className="text-xs text-zinc-400 leading-relaxed font-medium">
                      {tool.desc}
                    </p>
 
-                   <div className="mt-8 flex items-center text-xs font-bold uppercase tracking-widest text-zinc-500 group-hover:text-white transition-colors">
+                   <div className="mt-6 flex items-center text-[10px] font-bold uppercase tracking-widest text-zinc-500 group-hover:text-white transition-colors mt-auto pt-4">
                      Setup Connection &rarr;
                    </div>
                 </div>
@@ -302,7 +291,9 @@ export default function Integrations() {
               <div className="flex items-center gap-4 z-10 w-full">
                  {getIntegrationConfig(type).icon}
                  <h2 className="text-lg font-semibold text-white truncate w-full pr-10">
-                   {type === 'google_oauth' ? 'Connect Google Account' : 'Add Connection'}
+                   {type === 'google_calendar_oauth' ? 'Connect Google Calendar' : 
+                    type === 'google_drive_oauth' ? 'Connect Google Drive' : 
+                    type === 'google_sheets_oauth' ? 'Connect Google Sheets' : 'Add Connection'}
                  </h2>
               </div>
             </div>
@@ -310,12 +301,12 @@ export default function Integrations() {
             {/* Modal Body */}
             <form onSubmit={handleCreate} className="p-6 space-y-6">
               
-              {type === 'google_oauth' ? (
+              {type.includes('_oauth') ? (
                 <>
                   <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl space-y-3">
                     <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">About this integration</p>
                     <p className="text-sm text-indigo-200/80 leading-relaxed">
-                      By securely connecting your own Google Custom OAuth application, your agents gain immediate access to <strong>Google Drive</strong>, <strong>Google Calendar</strong>, and <strong>Google Sheets</strong> (Create, append, read data).
+                      Securely connect your own Google Custom OAuth application to grant the AI Agents and workflows access to this specific Google service.
                     </p>
                     <p className="text-xs font-bold text-zinc-400 uppercase">
                       Need help? <a href="/help/integrations/google" target="_blank" className="text-indigo-400 hover:text-white transition-colors underline ml-1">Open Setup Guide</a>
@@ -385,12 +376,12 @@ export default function Integrations() {
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Credentials (JSON)</label>
                     <textarea
-                      required
+                       required
                       rows={6}
                       value={credentials}
                       onChange={(e) => setCredentials(e.target.value)}
                       className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-xs text-zinc-300 font-mono focus:outline-none focus:border-indigo-500 placeholder:text-zinc-700"
-                      placeholder={type === 'google_sheets' ? '{\n  "client_email": "...",\n  "private_key": "..."\n}' : '{\n  "Headers": "..."\n}'}
+                      placeholder={'{\n  "Headers": "..."\n}'}
                     />
                   </div>
                 </>
@@ -409,7 +400,7 @@ export default function Integrations() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/25 flex justify-center items-center gap-3 transform hover:-translate-y-0.5"
                 >
-                  {type === 'google_oauth' ? (
+                  {type.includes('_oauth') ? (
                     <>
                       <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center p-1">
                         <img src="https://www.google.com/favicon.ico" alt="G" className="w-full h-full object-contain" />

@@ -47,7 +47,7 @@ router.delete('/integrations/:id', async (req, res) => {
 
 router.post('/google/auth-url', async (req, res) => {
   try {
-    const { name, clientId, clientSecret, redirectUri } = req.body;
+    const { name, clientId, clientSecret, redirectUri, type } = req.body;
     if (!clientId || !clientSecret || !redirectUri) {
        return res.status(400).json({ error: 'Missing OAuth parameters' });
     }
@@ -56,7 +56,8 @@ router.post('/google/auth-url', async (req, res) => {
       name || 'Google Connection',
       clientId,
       clientSecret,
-      redirectUri
+      redirectUri,
+      type
     );
     res.json(result); // { authUrl }
   } catch (error) {
