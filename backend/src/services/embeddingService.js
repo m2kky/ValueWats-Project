@@ -2,10 +2,11 @@ const axios = require('axios');
 
 class EmbeddingService {
   constructor() {
-    this.apiKey = process.env.OPENROUTER_API_KEY;
-    this.baseURL = 'https://openrouter.ai/api/v1';
-    // Using Qwen3 Embedding 8B for massive 32K Context and half the price. Forcing 768 dimensions for Prisma.
-    this.model = 'qwen/qwen3-embedding-8b';
+    // Ollama is running on the same VPS as a separate Coolify service.
+    // We use its public URL because they are on different Docker networks.
+    this.baseURL = process.env.OLLAMA_URL || 'http://ollama-lk4ocggoc4000ogw0wggkog8.72.62.50.238.sslip.io';
+    // nomic-embed-text produces exactly 768 dimensions — matches our pgvector(768) schema.
+    this.model = 'nomic-embed-text';
   }
 
   /**
@@ -15,21 +16,24 @@ class EmbeddingService {
    */
   async generateEmbedding(text) {
     try {
-      const response = await axios.post(`${this.baseURL}/embeddings`, {
+      const response = await axios.post(`${this.baseURL}/api/embeddings`, {
         model: this.model,
-        input: text,
-        dimensions: 768
+        prompt: text
       }, {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 60000 // 60s — local model may take time on first call
       });
 
-      return response.data.data[0].embedding;
+      const embedding = response.data.embedding;
+      if (!embedding || !Array.isArray(embedding)) {
+        throw new Error('Invalid embedding response from Ollama');
+      }
+
+      return embedding;
     } catch (error) {
-      console.error('[EmbeddingService] Error generating embedding:', error.response?.data || error.message);
-      throw error;
+      const detail = error.response?.data || error.message;
+      console.error('[EmbeddingService] Ollama error:', detail);
+      throw new Error(`Embedding failed: ${JSON.stringify(detail)}`);
     }
   }
 
@@ -48,13 +52,18 @@ class EmbeddingService {
   }
 
   /**
-   * Check if OpenRouter is available
+   * Health check — verify Ollama is reachable and model is loaded
    */
   async healthCheck() {
     try {
-      // Just a simple ping to OpenRouter models endpoint to verify network
-      await axios.get(`${this.baseURL}/models`);
-      return { available: true, modelLoaded: true, models: [this.model] };
+      const response = await axios.get(`${this.baseURL}/api/tags`, { timeout: 10000 });
+      const models = response.data.models || [];
+      const modelLoaded = models.some(m => m.name.startsWith('nomic-embed-text'));
+      return {
+        available: true,
+        modelLoaded,
+        models: models.map(m => m.name)
+      };
     } catch (error) {
       return { available: false, modelLoaded: false, error: error.message };
     }
