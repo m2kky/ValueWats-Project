@@ -17,7 +17,8 @@ import {
   TagIcon,
   ClockIcon,
   SparklesIcon,
-  MegaphoneIcon
+  MegaphoneIcon,
+  ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 
 export default function NewCampaign() {
@@ -55,6 +56,8 @@ export default function NewCampaign() {
     lifecycleStageId: '',
     source: ''
   });
+  const [audienceCount, setAudienceCount] = useState(null);
+  const [calculatingAudience, setCalculatingAudience] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -94,6 +97,19 @@ export default function NewCampaign() {
       alert(error.response?.data?.error || 'Failed to fetch sheet columns. Ensure it is public.');
     } finally {
       setFetchingColumns(false);
+    }
+  };
+
+  const calculateAudience = async () => {
+    setCalculatingAudience(true);
+    setAudienceCount(null);
+    try {
+      const response = await api.post('/campaigns/estimate-audience', { targetConfig: retargetConfig });
+      setAudienceCount(response.data.count);
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to calculate audience coverage.');
+    } finally {
+      setCalculatingAudience(false);
     }
   };
 
@@ -270,6 +286,16 @@ export default function NewCampaign() {
 
         {/* Header Section */}
         <div className="flex items-center gap-4 mb-8">
+          <ArrowLeftIcon 
+            className="w-6 h-6 text-zinc-400 cursor-pointer hover:text-white transition-colors" 
+            onClick={() => {
+              if (formData.type) {
+                setFormData({ ...formData, type: '' });
+              } else {
+                navigate('/campaigns');
+              }
+            }}
+          />
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <MegaphoneIcon className="w-7 h-7 text-white" />
           </div>
@@ -468,6 +494,30 @@ export default function NewCampaign() {
                       </select>
                     </div>
                   </div>
+
+                  <div className="mt-5 flex items-center justify-between bg-black/40 border border-white/5 p-4 rounded-xl">
+                    <div>
+                      <p className="text-sm font-semibold text-white">Estimated Coverage</p>
+                      <p className="text-xs text-zinc-400">Calculate how many contacts match these rules right now.</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {audienceCount !== null && (
+                        <div className="text-right">
+                          <span className="block text-2xl font-bold tracking-tight text-white">{audienceCount}</span>
+                          <span className="block text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Contacts</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={calculateAudience}
+                        disabled={calculatingAudience}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-lg transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {calculatingAudience ? 'Calculating...' : 'Calculate'}
+                      </button>
+                    </div>
+                  </div>
+
                   <p className="mt-4 text-xs text-purple-400 bg-purple-500/10 p-3 rounded-lg border border-purple-500/20">
                     <strong className="font-semibold">Note:</strong> Value Chat will automatically match each contact to their original channel (WhatsApp, Messenger, Instagram). No instance selection is required.
                   </p>
@@ -577,6 +627,7 @@ export default function NewCampaign() {
               )}
 
               {/* Recipient Source Selection */}
+              {formData.type === 'marketing' && (
               <div className="pt-2">
                 <label className="block text-sm font-semibold text-zinc-300 mb-3">Recipients</label>
                 <div className="flex bg-black/40 border border-white/5 rounded-xl p-1 mb-5">
@@ -770,6 +821,7 @@ export default function NewCampaign() {
                   </div>
                 ) : null}
               </div>
+              )}
 
               {/* Delay Configuration - P1 Feature */}
               <div className="bg-black/20 rounded-2xl p-5 border border-white/5">
