@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "ChatMessage" ADD COLUMN "isPrivate" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "chat_messages" ADD COLUMN "is_private" BOOLEAN NOT NULL DEFAULT false;
