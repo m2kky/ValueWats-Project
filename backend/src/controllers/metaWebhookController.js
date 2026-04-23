@@ -259,6 +259,8 @@ const handleMetaWebhook = async (req, res) => {
   try {
     const entries = Array.isArray(req.body?.entry) ? req.body.entry : [];
     if (!entries.length) return;
+    
+    console.log('[MetaWebhook] Received payload:', JSON.stringify(req.body, null, 2));
 
     for (const entry of entries) {
       if (entry.messaging?.length) {
