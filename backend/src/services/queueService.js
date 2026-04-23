@@ -39,12 +39,17 @@ messageQueue.process(async (job) => {
 
     let result;
     if (isMetaChannel) {
-      // Meta Cloud API (Messenger / Instagram)
+      // Meta API (WhatsApp Cloud, Messenger, Instagram)
       const metaInstance = { phoneNumberId, accessToken, channelType };
-      if (mediaUrl && mediaType) {
-        result = await metaApi.sendMedia(metaInstance, number, mediaUrl, mediaType, message);
+      if (channelType === 'messenger' || channelType === 'instagram') {
+        result = await metaApi.sendMetaMessage(metaInstance, number, message, mediaUrl, mediaType);
       } else {
-        result = await metaApi.sendMessage(metaInstance, number, message);
+        // whatsapp_cloud
+        if (mediaUrl && mediaType) {
+          result = await metaApi.sendMedia(metaInstance, number, mediaUrl, mediaType, message);
+        } else {
+          result = await metaApi.sendMessage(metaInstance, number, message);
+        }
       }
     } else {
       // Evolution API (WhatsApp) — with typing presence simulation
