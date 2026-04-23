@@ -22,7 +22,7 @@ const categories = [
   { id: 'livechat', name: 'Live Chat' }
 ];
 
-const VISIBLE_CHANNEL_TYPES = new Set(['whatsapp', 'messenger', 'instagram']);
+const VISIBLE_CHANNEL_TYPES = new Set(['whatsapp', 'messenger', 'instagram', 'whatsapp_cloud']);
 
 const catalog = [
   {

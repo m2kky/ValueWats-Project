@@ -110,7 +110,7 @@ const channelConfigs = {
 export default function ConnectChannel() {
   const navigate = useNavigate();
   const { type } = useParams();
-  const visibleChannelTypes = ['whatsapp', 'messenger', 'instagram'];
+  const visibleChannelTypes = ['whatsapp', 'messenger', 'instagram', 'whatsapp_cloud'];
   const isSupportedChannel = visibleChannelTypes.includes(type);
   const config = channelConfigs[type] || {
     name: 'Channel',
