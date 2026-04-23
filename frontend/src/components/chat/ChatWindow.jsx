@@ -14,19 +14,11 @@ import {
   XMarkIcon,
   CheckIcon,
   ChevronRightIcon,
-  DevicePhoneMobileIcon,
-  ChatBubbleBottomCenterTextIcon,
-  CameraIcon,
   LockClosedIcon
 } from '@heroicons/react/24/outline';
 import { formatPhoneNumber } from '../../utils/formatters';
+import { getChannelIcon, channelColors } from './ChannelIcons';
 import api from '../../api/client';
-
-const channelIcons = {
-  whatsapp: DevicePhoneMobileIcon,
-  messenger: ChatBubbleBottomCenterTextIcon,
-  instagram: CameraIcon
-};
 
 // Common emojis grouped
 const EMOJI_GROUPS = {
@@ -69,7 +61,8 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
   const searchInputRef = useRef(null);
 
   const channelType = conversation.channelType || 'whatsapp';
-  const ChannelIcon = channelIcons[channelType] || DevicePhoneMobileIcon;
+  const ChannelIcon = getChannelIcon(channelType);
+  const chColors = channelColors[channelType] || channelColors.whatsapp;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -285,8 +278,8 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
             <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white font-bold text-lg">
               {(conversation.contactName || conversation.contactNumber)?.[0]?.toUpperCase() || '?'}
             </div>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#121214] rounded-full flex items-center justify-center border border-white/10">
-              <ChannelIcon className={`w-3 h-3 ${channelType === 'whatsapp' ? 'text-emerald-500' : channelType === 'messenger' ? 'text-blue-500' : 'text-pink-500'}`} />
+            <div className={`absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#000] ${chColors.bg}`}>
+              <ChannelIcon className={`w-3 h-3 ${chColors.text}`} />
             </div>
           </div>
           <div className="flex flex-col">

@@ -407,6 +407,8 @@
   gap: 0.25rem;
   scrollbar-width: thin;
   scrollbar-color: #52525b transparent;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 .chat-messages-empty {
