@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeftIcon, SparklesIcon, ClockIcon, ShieldCheckIcon, CommandLineIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
-import ActionCard from '../components/ActionCard';
+import ActionCard from '../../components/ActionCard';
 import AgentKnowledgeBase from './AgentKnowledgeBase';
 
 export default function AgentEditor({

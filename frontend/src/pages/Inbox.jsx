@@ -5,7 +5,6 @@ import ConversationList from '../components/chat/ConversationList';
 import ChatWindow from '../components/chat/ChatWindow';
 import ContactSidebar from '../components/chat/ContactSidebar';
 import InboxFiltersSidebar from '../components/chat/InboxFiltersSidebar';
-import { useSocket } from '../hooks/useSocket';
 import { 
   UserCircleIcon, 
   ChatBubbleLeftRightIcon, 
@@ -27,7 +26,6 @@ export default function Inbox() {
   const [instances, setInstances] = useState([]);
   const [agents, setAgents] = useState([]);
   const [users, setUsers] = useState([]);
-  const socket = useSocket();
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -41,56 +39,12 @@ export default function Inbox() {
     }
   }, []);
 
-  // Socket listeners for real-time updates
+  // Polling fallback instead of sockets
   useEffect(() => {
-    if (!socket) return;
-
-    socket.on('chat:message_received', ({ conversation, message }) => {
-      // Update conversation list
-      setConversations(prev => {
-        const index = prev.findIndex(c => c.id === conversation.id);
-        if (index !== -1) {
-          const updated = [...prev];
-          updated[index] = { ...updated[index], ...conversation };
-          return updated.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
-        }
-        return [conversation, ...prev].sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
-      });
-
-      // If this conversation is selected, add message to it
-      setSelectedConversation(prev => {
-        if (prev && prev.id === conversation.id) {
-          const exists = prev.messages?.some(m => m.id === message.id);
-          return {
-            ...prev,
-            ...conversation,
-            unreadCount: 0,
-            messages: exists ? (prev.messages || []) : [...(prev.messages || []), message]
-          };
-        }
-        return prev;
-      });
-    });
-
-    socket.on('chat:message_sent', ({ conversationId, message }) => {
-      setSelectedConversation(prev => {
-        if (prev && prev.id === conversationId) {
-          const exists = prev.messages?.some(m => m.id === message.id);
-          if (exists) return prev;
-          return {
-            ...prev,
-            messages: [...(prev.messages || []), message]
-          };
-        }
-        return prev;
-      });
-    });
-
-    return () => {
-      socket.off('chat:message_received');
-      socket.off('chat:message_sent');
-    };
-  }, [socket]);
+    fetchConversations();
+    const interval = setInterval(fetchConversations, 10000);
+    return () => clearInterval(interval);
+  }, [fetchConversations]);
 
   // Auto-sync + fetch on mount
   useEffect(() => {

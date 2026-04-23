@@ -376,7 +376,6 @@ export default function Contacts() {
             </div>
           </div>
         )}
-      </div>
 
       {/* Add Contact Modal */}
       {showAddModal && (
