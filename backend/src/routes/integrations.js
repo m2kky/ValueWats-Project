@@ -65,6 +65,15 @@ router.post('/google/auth-url', async (req, res) => {
   }
 });
 
+router.get('/notion/auth-url', async (req, res) => {
+  try {
+    const result = await integrationService.createNotionOAuthPending(req.user.tenantId);
+    res.json(result); // { authUrl }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- WORKFLOWS ---
 
 router.get('/workflows', async (req, res) => {

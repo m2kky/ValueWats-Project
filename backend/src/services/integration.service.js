@@ -100,6 +100,28 @@ class IntegrationService {
     return { authUrl: url + '&state=' + integration.id };
   }
 
+  async createNotionOAuthPending(tenantId) {
+    const clientId = process.env.NOTION_CLIENT_ID;
+    const redirectUri = `${process.env.BACKEND_URL || 'https://valuechat.app'}/api/oauth/notion/callback`;
+    
+    if (!clientId) {
+      throw new Error('NOTION_CLIENT_ID is not configured in environment variables');
+    }
+
+    const integration = await prisma.integration.create({
+      data: {
+        tenantId,
+        type: 'notion_oauth',
+        name: 'Notion Workspace',
+        credentials: encrypt(JSON.stringify({ initialized: true })), // placeholder
+        status: 'pending'
+      }
+    });
+
+    const authUrl = `https://api.notion.com/v1/oauth/authorize?owner=user&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${integration.id}`;
+    return { authUrl };
+  }
+
   async completeOAuth(integrationId, code) {
     const { google } = require('googleapis');
     const integration = await prisma.integration.findUnique({ where: { id: integrationId } });
@@ -115,6 +137,51 @@ class IntegrationService {
       data: { credentials: encrypt(JSON.stringify(updatedCreds)), status: 'active' }
     });
     return true;
+  }
+
+  async completeNotionOAuth(integrationId, code) {
+    const integration = await prisma.integration.findUnique({ where: { id: integrationId } });
+    if (!integration) throw new Error('Integration not found');
+
+    const clientId = process.env.NOTION_CLIENT_ID;
+    const clientSecret = process.env.NOTION_CLIENT_SECRET;
+    const redirectUri = `${process.env.BACKEND_URL || 'https://valuechat.app'}/api/oauth/notion/callback`;
+
+    if (!clientId || !clientSecret) {
+      throw new Error('Notion OAuth credentials are not configured in the server');
+    }
+
+    const encoded = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+    try {
+      const response = await axios.post('https://api.notion.com/v1/oauth/token', {
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: redirectUri
+      }, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${encoded}`
+        }
+      });
+
+      const tokens = response.data; // { access_token, workspace_id, workspace_name, bot_id }
+      
+      await prisma.integration.update({
+        where: { id: integrationId },
+        data: { 
+          name: tokens.workspace_name ? `Notion (${tokens.workspace_name})` : 'Notion Workspace',
+          credentials: encrypt(JSON.stringify(tokens)), 
+          status: 'active' 
+        }
+      });
+
+      return true;
+    } catch (error) {
+      console.error('[Notion OAuth] Token Exchange Error:', error.response?.data || error.message);
+      throw new Error('Failed to authorize with Notion');
+    }
   }
 
   // --- Handlers ---

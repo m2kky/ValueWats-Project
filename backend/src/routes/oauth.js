@@ -39,7 +39,7 @@ router.get('/notion/callback', async (req, res) => {
 
   try {
     const integrationId = state;
-    await integrationService.completeOAuth(integrationId, code);
+    await integrationService.completeNotionOAuth(integrationId, code);
     res.redirect(`/integrations?success=true`);
   } catch (err) {
     console.error('OAuth Callback Error:', err);

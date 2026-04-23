@@ -115,7 +115,20 @@ export default function Integrations() {
     }
   };
 
-  const openSetupModal = (selectedType) => {
+  const openSetupModal = async (selectedType) => {
+    // 1-Click Notion Integration
+    if (selectedType === 'notion_oauth') {
+      try {
+        const { data } = await api.get('/integrations/notion/auth-url');
+        if (data.authUrl) {
+          window.location.href = data.authUrl;
+        }
+      } catch (error) {
+        alert('Failed to initialize Notion connection: ' + (error.response?.data?.error || error.message));
+      }
+      return;
+    }
+
     setType(selectedType);
     setShowModal(true);
   };
