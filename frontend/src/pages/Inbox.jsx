@@ -225,6 +225,7 @@ export default function Inbox() {
           onSync={handleSync}
           syncing={syncing}
           activeFilter={activeFilter}
+          setActiveFilter={setActiveFilter}
           showFilters={showFilters}
           onToggleFilters={() => setShowFilters(!showFilters)}
         />

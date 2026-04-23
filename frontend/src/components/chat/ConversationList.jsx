@@ -6,7 +6,6 @@ import {
   MagnifyingGlassIcon, 
   XMarkIcon,
   ChatBubbleBottomCenterTextIcon,
-  FunnelIcon,
   InboxIcon,
   UserIcon,
   UserGroupIcon,
@@ -14,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { getChannelIcon, channelColors, getChannelLabel } from './ChannelIcons';
 
-export default function ConversationList({ conversations, selectedId, onSelect, loading, onSync, syncing, activeFilter = 'all', showFilters, onToggleFilters }) {
+export default function ConversationList({ conversations, selectedId, onSelect, loading, onSync, syncing, activeFilter = 'all', setActiveFilter, showFilters, onToggleFilters }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showUnread, setShowUnread] = useState(false);
   const [showSearchBar, setShowSearchBar] = useState(false);
@@ -86,7 +85,10 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
               title={showFilters ? 'Close Filters' : 'Open Filters'}
               className={`p-1.5 rounded-lg hover:bg-white/5 transition-all flex items-center justify-center ${showFilters ? 'text-indigo-400 bg-white/5' : ''}`}
             >
-              <FunnelIcon className="w-4.5 h-4.5" />
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="3" x2="9" y2="21"></line>
+              </svg>
             </button>
             <button
               onClick={onSync}
@@ -94,14 +96,14 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
               title="Sync Chats"
               className={`p-1.5 rounded-full hover:bg-white/5 text-zinc-400 transition-all ${syncing ? 'animate-spin opacity-50' : ''}`}
             >
-              <ArrowPathIcon className="w-4.5 h-4.5" />
+              <ArrowPathIcon className="w-4 h-4" />
             </button>
             <button
               onClick={() => { setShowSearchBar(!showSearchBar); setSearchTerm(''); }}
               title="Search conversations"
               className={`p-1.5 rounded-full hover:bg-white/5 transition-all ${showSearchBar ? 'text-white bg-white/5' : 'text-zinc-400'}`}
             >
-              <MagnifyingGlassIcon className="w-4.5 h-4.5" />
+              <MagnifyingGlassIcon className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -127,8 +129,8 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
             return (
               <button
                 key={tab.key}
-                onClick={() => onToggleFilters ? null : null}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-200
+                onClick={() => setActiveFilter && setActiveFilter(tab.key)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer
                   ${isActive
                     ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20'
                     : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5 border border-transparent'
