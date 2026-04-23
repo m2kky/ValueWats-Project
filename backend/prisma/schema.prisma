@@ -362,6 +362,7 @@ model ChatMessage {
   mediaUrl        String?  @map("media_url") @db.Text
   wamid           String?  @unique @map("wamid") // Message ID from the provider (WhatsApp, etc.)
   status          String   @default("sent") // sent, delivered, read, failed
+  isPrivate       Boolean  @default(false) @map("is_private")
   createdAt       DateTime @default(now()) @map("created_at")
 
   senderUserId String? @map("sender_user_id")

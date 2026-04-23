@@ -16,7 +16,8 @@ import {
   ChevronRightIcon,
   DevicePhoneMobileIcon,
   ChatBubbleBottomCenterTextIcon,
-  CameraIcon
+  CameraIcon,
+  LockClosedIcon
 } from '@heroicons/react/24/outline';
 import { formatPhoneNumber } from '../../utils/formatters';
 import api from '../../api/client';
@@ -44,6 +45,7 @@ const FORMATTING_BUTTONS = [
 
 export default function ChatWindow({ conversation, instances, onSendMessage, onUpdate, showContactSidebar, onToggleContactSidebar }) {
   const [message, setMessage] = useState('');
+  const [isPrivateMode, setIsPrivateMode] = useState(false);
   const [selectedInstance, setSelectedInstance] = useState(instances[0]?.id || '');
   const [sending, setSending] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -139,9 +141,11 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
         conversationId: conversation.id,
         instanceId: selectedInstance,
         content,
-        messageType: 'text'
+        messageType: 'text',
+        isPrivate: isPrivateMode
       });
       setMessage('');
+      if (isPrivateMode) setIsPrivateMode(false);
       inputRef.current?.focus();
     } finally {
       setSending(false);
@@ -450,14 +454,19 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
                 <div className={`flex ${isOut ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[70%] group relative animate-in fade-in slide-in-from-bottom-2 duration-300 ${isHighlighted ? 'ring-2 ring-yellow-400/50 rounded-2xl' : ''}`}>
                     <div className={`px-4 py-2.5 rounded-2xl text-[15px] shadow-sm
-                      ${isOut
+                      ${msg.isPrivate
+                        ? 'bg-amber-500/20 border border-amber-500/30 text-amber-100 rounded-tr-sm'
+                        : isOut
                         ? 'bg-indigo-600 text-white rounded-tr-sm'
                         : 'bg-[#18181b] border border-white/5 text-zinc-200 rounded-tl-sm'
                       }`}>
 
                       {/* Text content — hide if it's just a media placeholder */}
                       {msg.content && !(['[image]','[video]','[audio]','[document]','[sticker]'].includes(msg.content)) && (
-                        <span>{msg.content}</span>
+                        <div className="flex items-start gap-2">
+                          {msg.isPrivate && <LockClosedIcon className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />}
+                          <span className="whitespace-pre-wrap">{msg.content}</span>
+                        </div>
                       )}
                       {!msg.content && !msg.mediaUrl && !['image','video','document','audio','sticker'].includes(msg.messageType) && (
                         <span className="italic opacity-60">Unsupported or reaction</span>
@@ -565,15 +574,15 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
 
           {/* Templates/Snippets Panel */}
           {showTemplates && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-40 max-h-64 overflow-y-auto custom-scrollbar">
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-zinc-950/50 sticky top-0 backdrop-blur-sm z-10">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Snippets & Templates</span>
-                <button onClick={() => setShowTemplates(false)} className="text-zinc-500 hover:text-white"><XMarkIcon className="w-4 h-4" /></button>
+            <div className="absolute bottom-full left-0 mb-3 w-[420px] max-w-full bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] z-40 max-h-80 overflow-y-auto custom-scrollbar animate-in slide-in-from-bottom-2 fade-in duration-200">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-zinc-950/50 sticky top-0 backdrop-blur-md z-10">
+                <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">Snippets & Templates</span>
+                <button onClick={() => setShowTemplates(false)} className="text-zinc-500 hover:text-white transition-colors p-1 rounded-md hover:bg-white/10"><XMarkIcon className="w-4 h-4" /></button>
               </div>
               {templatesLoading ? (
-                <div className="p-4 text-center text-zinc-500 text-sm">Loading...</div>
+                <div className="p-6 text-center text-zinc-500 text-sm">Loading...</div>
               ) : templates.length === 0 ? (
-                <div className="p-4 text-center text-zinc-500 text-sm">No items found. Create some in Settings!</div>
+                <div className="p-6 text-center text-zinc-500 text-sm">No items found. Create some in Settings!</div>
               ) : (
                 templates.map(t => (
                   <button
@@ -608,25 +617,25 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
                       setShowTemplates(false);
                       inputRef.current?.focus();
                     }}
-                    className="w-full text-left px-4 py-3 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors group"
+                    className="w-full text-left px-4 py-3 hover:bg-indigo-500/10 border-b border-white/5 last:border-0 transition-colors group"
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="font-semibold text-sm text-white flex items-center gap-2">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="font-bold text-[13px] text-zinc-200 group-hover:text-indigo-400 transition-colors flex items-center gap-2">
                         {t.name}
                         {t._itemType === 'snippet' && t.shortcut && (
-                          <span className="text-[10px] text-zinc-500 font-mono bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                          <span className="text-[10px] text-zinc-400 font-mono bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
                             {t.shortcut}
                           </span>
                         )}
                       </div>
-                      <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${t._itemType === 'snippet'
+                      <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${t._itemType === 'snippet'
                           ? 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20'
                           : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
                         }`}>
                         {t._itemType}
                       </span>
                     </div>
-                    <div className="text-xs text-zinc-500 truncate group-hover:text-zinc-400 transition-colors">{t.content}</div>
+                    <div className="text-xs text-zinc-500 line-clamp-2 leading-relaxed group-hover:text-zinc-300 transition-colors">{t.content}</div>
                   </button>
 
                 ))
@@ -702,16 +711,33 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
             </div>
           )}
 
+          {/* Text Input Header / Tabs */}
+          <div className="flex px-4 pt-3 gap-6 border-b border-white/5 pb-2 relative z-10 bg-[#18181b]">
+            <button
+              onClick={() => setIsPrivateMode(false)}
+              className={`text-xs font-black uppercase tracking-widest transition-all duration-200 ${!isPrivateMode ? 'text-white' : 'text-zinc-600 hover:text-zinc-400'}`}
+            >
+              Reply
+            </button>
+            <button
+              onClick={() => setIsPrivateMode(true)}
+              className={`text-xs font-black uppercase tracking-widest transition-all duration-200 flex items-center gap-1.5 ${isPrivateMode ? 'text-amber-400' : 'text-zinc-600 hover:text-zinc-400'}`}
+            >
+              <LockClosedIcon className="w-3.5 h-3.5" />
+              Private Note
+            </button>
+          </div>
+
           {/* Text Input */}
-          <div className="px-4 py-3 bg-[#18181b]">
+          <div className={`px-4 py-3 transition-colors duration-300 ${isPrivateMode ? 'bg-amber-500/5' : 'bg-[#18181b]'}`}>
             <textarea
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message... ('/' for templates, ':' for emojis)"
+              placeholder={isPrivateMode ? "Type a private note... (only visible to team)" : "Type a message... ('/' for templates, ':' for emojis)"}
               rows={1}
-              className="w-full bg-transparent text-[15px] text-zinc-100 outline-none resize-none placeholder:text-zinc-600"
+              className={`w-full bg-transparent text-[15px] outline-none resize-none transition-colors ${isPrivateMode ? 'text-amber-100 placeholder:text-amber-500/50' : 'text-zinc-100 placeholder:text-zinc-600'}`}
               style={{ maxHeight: '160px', minHeight: '24px' }}
             />
           </div>
@@ -779,16 +805,21 @@ export default function ChatWindow({ conversation, instances, onSendMessage, onU
               <button
                 onClick={handleSend}
                 disabled={!message.trim() || !selectedInstance || sending}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all
+                className={`px-4 h-8 rounded-lg flex items-center justify-center gap-2 transition-all font-bold text-xs uppercase tracking-wider
                   ${!message.trim() || sending
                     ? 'bg-zinc-800 text-zinc-600'
+                    : isPrivateMode
+                    ? 'bg-amber-500 text-[#18181b] hover:bg-amber-400 shadow-[0_0_16px_rgba(245,158,11,0.3)]'
                     : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-[0_0_16px_rgba(99,102,241,0.4)]'
                   }`}
               >
                 {sending ? (
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                 ) : (
-                  <PaperAirplaneIcon className="w-4 h-4 -rotate-45" />
+                  <>
+                    <span>{isPrivateMode ? 'Add Note' : 'Send'}</span>
+                    <PaperAirplaneIcon className={`w-3.5 h-3.5 ${isPrivateMode ? '' : '-rotate-45'}`} />
+                  </>
                 )}
               </button>
             </div>

@@ -13,9 +13,11 @@ import {
   UserCircleIcon as UserIcon, 
   InboxIcon 
 } from '@heroicons/react/24/outline';
+import { useSocket } from '../context/SocketContext';
 
 export default function Inbox() {
   usePageTitle('Inbox');
+  const socket = useSocket();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -40,12 +42,51 @@ export default function Inbox() {
     }
   }, []);
 
-  // Polling fallback instead of sockets
+  // Real-time socket event listeners
   useEffect(() => {
-    fetchConversations();
-    const interval = setInterval(fetchConversations, 10000);
-    return () => clearInterval(interval);
-  }, [fetchConversations]);
+    if (!socket) return;
+
+    const handleMessageReceived = (data) => {
+      const { conversation, message } = data;
+      
+      // Update conversations list (move to top, increment unread, etc)
+      setConversations(prev => {
+        const exists = prev.find(c => c.id === conversation.id);
+        const updatedConversation = {
+          ...(exists || conversation),
+          lastMessage: message.content?.substring(0, 100) || '[Media]',
+          lastMessageAt: message.createdAt || new Date().toISOString(),
+          unreadCount: (exists ? exists.unreadCount : 0) + 1
+        };
+        
+        return [updatedConversation, ...prev.filter(c => c.id !== conversation.id)];
+      });
+
+      // If this is the currently open conversation, append the message
+      setSelectedConversation(prev => {
+        if (!prev || prev.id !== conversation.id) return prev;
+        
+        // Prevent duplicate messages
+        if (prev.messages && prev.messages.some(m => m.id === message.id)) {
+          return prev;
+        }
+
+        // Mark as read immediately if it's the active chat
+        api.get(`/chat/conversations/${conversation.id}`).catch(() => {});
+        setConversations(list => list.map(c => c.id === conversation.id ? { ...c, unreadCount: 0 } : c));
+
+        return {
+          ...prev,
+          messages: [...(prev.messages || []), message]
+        };
+      });
+    };
+
+    socket.on('chat:message_received', handleMessageReceived);
+    return () => {
+      socket.off('chat:message_received', handleMessageReceived);
+    };
+  }, [socket]);
 
   // Auto-sync + fetch on mount
   useEffect(() => {

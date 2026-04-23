@@ -23,6 +23,8 @@ import GlobalProgressBar from './GlobalProgressBar';
 import apiClient from '../api/client';
 import { getStoredUser } from '../utils/authUser';
 import { useNavFilter } from '../hooks/usePermission';
+import { SocketProvider } from '../context/SocketContext';
+import { useNavFilter } from '../hooks/usePermission';
 
 const typeColors = {
   info: 'border-blue-400/20 bg-blue-400/10 text-blue-200',
@@ -209,101 +211,102 @@ export default function Layout({ children }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        {!isFullWidth && (
-          <header className="h-16 border-b border-[#fffed9]/8 bg-[#1f1f15]/70 backdrop-blur-md flex items-center justify-between px-8 z-40 shrink-0">
-            <div className="flex-1 max-w-xl">
-              <div className="relative group">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fffed9]/45 group-focus-within:text-[#e2f300] transition-colors" />
-                <input
-                  type="text"
-                  placeholder="Search anything..."
-                  className="w-full bg-[#fffed9]/5 border border-[#fffed9]/10 rounded-full pl-10 pr-4 py-2 text-sm outline-none focus:border-[#e2f300]/35 focus:ring-4 focus:ring-[#e2f300]/10 transition-all text-[#fffed9]"
-                />
+      <SocketProvider socket={socket}>
+        <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+          {!isFullWidth && (
+            <header className="h-16 border-b border-[#fffed9]/8 bg-[#1f1f15]/70 backdrop-blur-md flex items-center justify-between px-8 z-40 shrink-0">
+              <div className="flex-1 max-w-xl">
+                <div className="relative group">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#fffed9]/45 group-focus-within:text-[#e2f300] transition-colors" />
+                  <input
+                    type="text"
+                    placeholder="Search anything..."
+                    className="w-full bg-[#fffed9]/5 border border-[#fffed9]/10 rounded-full pl-10 pr-4 py-2 text-sm outline-none focus:border-[#e2f300]/35 focus:ring-4 focus:ring-[#e2f300]/10 transition-all text-[#fffed9]"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-4">
-              <div className="relative" ref={notificationRef}>
-                <button
-                  onClick={() => setIsNotificationOpen((prev) => !prev)}
-                  className="p-2 rounded-full hover:bg-white/5 text-zinc-400 hover:text-white transition-all relative"
-                >
-                  <BellIcon className="w-5 h-5" />
-                  {notifications.length > 0 && (
-                    <span className="absolute top-2 right-2 w-2 h-2 bg-[#e2f300] rounded-full ring-2 ring-[#232318]" />
-                  )}
-                </button>
-
-                {isNotificationOpen && (
-                  <div className="absolute right-0 mt-2 w-[360px] max-h-[420px] overflow-y-auto rounded-2xl border border-[#fffed9]/10 bg-[#1b1b13] shadow-2xl z-50">
-                    <div className="px-4 py-3 border-b border-[#fffed9]/10 flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-[#fffed9]">Notifications</h3>
-                      <button onClick={fetchNotifications} className="text-xs text-[#e2f300] hover:text-[#f5ff68]">
-                        Refresh
-                      </button>
-                    </div>
-
-                    {notificationsLoading ? (
-                      <div className="px-4 py-6 text-sm text-zinc-400">Loading notifications...</div>
-                    ) : notifications.length === 0 ? (
-                      <div className="px-4 py-6 text-sm text-zinc-500">No active notifications.</div>
-                    ) : (
-                      <div className="divide-y divide-[#fffed9]/10">
-                        {notifications.map((notification) => (
-                          <div key={notification.id} className="px-4 py-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className={`text-[10px] uppercase px-2 py-0.5 rounded border ${typeColors[notification.type] || typeColors.info}`}>
-                                    {notification.type}
-                                  </span>
-                                  <h4 className="text-sm font-semibold text-white truncate">{notification.title}</h4>
-                                </div>
-                                <p className="text-xs text-zinc-300 whitespace-pre-wrap">{notification.message}</p>
-                                <p className="text-[10px] text-zinc-500 mt-2">
-                                  {new Date(notification.createdAt).toLocaleString()}
-                                </p>
-                              </div>
-
-                              <button
-                                onClick={() => dismissNotification(notification.id)}
-                                className="p-1 rounded hover:bg-white/10 text-zinc-500 hover:text-white"
-                                title="Dismiss"
-                              >
-                                <XMarkIcon className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+              <div className="flex items-center gap-4">
+                <div className="relative" ref={notificationRef}>
+                  <button
+                    onClick={() => setIsNotificationOpen((prev) => !prev)}
+                    className="p-2 rounded-full hover:bg-white/5 text-zinc-400 hover:text-white transition-all relative"
+                  >
+                    <BellIcon className="w-5 h-5" />
+                    {notifications.length > 0 && (
+                      <span className="absolute top-2 right-2 w-2 h-2 bg-[#e2f300] rounded-full ring-2 ring-[#232318]" />
                     )}
-                  </div>
-                )}
+                  </button>
+
+                  {isNotificationOpen && (
+                    <div className="absolute right-0 mt-2 w-[360px] max-h-[420px] overflow-y-auto rounded-2xl border border-[#fffed9]/10 bg-[#1b1b13] shadow-2xl z-50">
+                      <div className="px-4 py-3 border-b border-[#fffed9]/10 flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-[#fffed9]">Notifications</h3>
+                        <button onClick={fetchNotifications} className="text-xs text-[#e2f300] hover:text-[#f5ff68]">
+                          Refresh
+                        </button>
+                      </div>
+
+                      {notificationsLoading ? (
+                        <div className="px-4 py-6 text-sm text-zinc-400">Loading notifications...</div>
+                      ) : notifications.length === 0 ? (
+                        <div className="px-4 py-6 text-sm text-zinc-500">No active notifications.</div>
+                      ) : (
+                        <div className="divide-y divide-[#fffed9]/10">
+                          {notifications.map((notification) => (
+                            <div key={notification.id} className="px-4 py-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`text-[10px] uppercase px-2 py-0.5 rounded border ${typeColors[notification.type] || typeColors.info}`}>
+                                      {notification.type}
+                                    </span>
+                                    <h4 className="text-sm font-semibold text-white truncate">{notification.title}</h4>
+                                  </div>
+                                  <p className="text-xs text-zinc-300 whitespace-pre-wrap">{notification.message}</p>
+                                  <p className="text-[10px] text-zinc-500 mt-2">
+                                    {new Date(notification.createdAt).toLocaleString()}
+                                  </p>
+                                </div>
+
+                                <button
+                                  onClick={() => dismissNotification(notification.id)}
+                                  className="p-1 rounded hover:bg-white/10 text-zinc-500 hover:text-white"
+                                  title="Dismiss"
+                                >
+                                  <XMarkIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="h-6 w-[1px] bg-white/10 mx-2" />
+                <Link to="/pricing" className="text-xs font-bold bg-[#e2f300] hover:bg-[#f0ff4e] text-[#232318] px-4 py-1.5 rounded-full uppercase tracking-wider transition-all">
+                  Upgrade
+                </Link>
               </div>
+            </header>
+          )}
 
-              <div className="h-6 w-[1px] bg-white/10 mx-2" />
-              <Link to="/pricing" className="text-xs font-bold bg-[#e2f300] hover:bg-[#f0ff4e] text-[#232318] px-4 py-1.5 rounded-full uppercase tracking-wider transition-all">
-                Upgrade
-              </Link>
-            </div>
-          </header>
-        )}
-
-        {isFullWidth ? (
-          <main className="flex-1 h-full overflow-hidden bg-[#232318]">
-            {children}
-          </main>
-        ) : (
-          <main className="flex-1 p-8 overflow-y-auto w-full bg-[#232318]">
-            <div className="max-w-7xl mx-auto">
+          {isFullWidth ? (
+            <main className="flex-1 h-full overflow-hidden bg-[#232318]">
               {children}
-            </div>
-          </main>
-        )}
-      </div>
-
-      <GlobalProgressBar socket={socket} />
+            </main>
+          ) : (
+            <main className="flex-1 p-8 overflow-y-auto w-full bg-[#232318]">
+              <div className="max-w-7xl mx-auto">
+                {children}
+              </div>
+            </main>
+          )}
+        </div>
+        <GlobalProgressBar socket={socket} />
+      </SocketProvider>
     </div>
   );
 }

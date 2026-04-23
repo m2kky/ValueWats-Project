@@ -58,7 +58,8 @@ class ChatService {
           content: messageData.content,
           mediaUrl: messageData.mediaUrl || null,
           wamid: messageData.wamid || null,
-          status: messageData.status || 'sent'
+          status: messageData.status || 'sent',
+          isPrivate: messageData.isPrivate || false
         }
       });
 
@@ -327,7 +328,7 @@ class ChatService {
    * Send a message from the inbox
    */
   async sendMessage(tenantId, messageData) {
-    const { conversationId, instanceId, content, mediaUrl, messageType } = messageData;
+    const { conversationId, instanceId, content, mediaUrl, messageType, isPrivate } = messageData;
 
     // Validate conversation
     const conversation = await prisma.conversation.findFirst({
@@ -344,36 +345,38 @@ class ChatService {
     let result;
     const channelType = instance.channelType || 'whatsapp';
 
-    if (channelType === 'whatsapp') {
-      if (instance.accessToken) {
-        // WhatsApp via Meta Cloud API
-        result = await metaApi.sendMessage(
+    if (!isPrivate) {
+      if (channelType === 'whatsapp') {
+        if (instance.accessToken) {
+          // WhatsApp via Meta Cloud API
+          result = await metaApi.sendMessage(
+            instance,
+            conversation.contactNumber,
+            content,
+            mediaUrl,
+            messageType
+          );
+        } else {
+          // WhatsApp via Evolution API
+          result = await evolutionApi.sendMessage(
+            tenantId,
+            instance.instanceName,
+            conversation.contactNumber,
+            content,
+            mediaUrl,
+            messageType
+          );
+        }
+      } else {
+        // Send via Meta API (Messenger/Instagram)
+        result = await metaApi.sendMetaMessage(
           instance,
           conversation.contactNumber,
           content,
           mediaUrl,
           messageType
         );
-      } else {
-        // WhatsApp via Evolution API
-        result = await evolutionApi.sendMessage(
-          tenantId,
-          instance.instanceName,
-          conversation.contactNumber,
-          content,
-          mediaUrl,
-          messageType
-        );
       }
-    } else {
-      // Send via Meta API (Messenger/Instagram)
-      result = await metaApi.sendMetaMessage(
-        instance,
-        conversation.contactNumber,
-        content,
-        mediaUrl,
-        messageType
-      );
     }
 
     // Save to DB
@@ -387,7 +390,8 @@ class ChatService {
       content,
       mediaUrl,
       wamid: result?.key?.id || result?.message_id || null,
-      status: 'sent',
+      status: isPrivate ? 'delivered' : 'sent',
+      isPrivate: isPrivate || false,
     });
 
     if (messageData.userId && savedMessage) {

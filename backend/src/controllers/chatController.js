@@ -47,7 +47,7 @@ const getConversation = async (req, res) => {
 const sendMessage = async (req, res) => {
   try {
     const tenantId = req.user.tenantId;
-    const { conversationId, instanceId, content, mediaUrl, messageType } = req.body;
+    const { conversationId, instanceId, content, mediaUrl, messageType, isPrivate } = req.body;
 
     if (!conversationId || !instanceId || !content) {
       return res.status(400).json({ error: 'conversationId, instanceId, and content are required' });
@@ -59,6 +59,7 @@ const sendMessage = async (req, res) => {
       content,
       mediaUrl,
       messageType,
+      isPrivate: isPrivate === true,
       userId: req.user.id
     };
     const message = await chatService.sendMessage(tenantId, messageData);
