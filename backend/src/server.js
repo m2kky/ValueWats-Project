@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 // Routes
@@ -55,6 +56,24 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// ====== Fix 1.3: Rate Limiting ======
+// Auth routes: 20 requests per 15 minutes (prevent brute-force)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts. Please try again later.' }
+});
+// Webhook routes: 500 requests per minute (prevent DoS while allowing high throughput)
+const webhookLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Webhook rate limit exceeded.' }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({
@@ -71,9 +90,13 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ... (routes remain same)
+// Fix 7.6: Health check at /api/health (alias)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+
 // Public routes (no authentication required)
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/auth', authRoutes); // Fallback for stripped /api prefix
 app.use('/api/plans', require('./routes/plans'));
 
@@ -109,7 +132,7 @@ app.use('/api/workflows', tenantContext, workflowRoutes);
 app.use('/api/admin', require('./routes/admin'));
 
 // Public routes (Webhooks)
-app.use('/api/webhooks', webhookRoutes);
+app.use('/api/webhooks', webhookLimiter, webhookRoutes);
 app.use('/api/oauth', require('./routes/oauth'));
 
 // Serve frontend static files in production
@@ -147,6 +170,10 @@ app.use('/api', (req, res) => {
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  // Fix 2.3: Initialize MinIO bucket once at boot (not per-upload)
+  const { initBucket } = require('./services/storageService');
+  initBucket().catch(err => console.error('[Boot] MinIO bucket init failed:', err.message));
 
   // Start campaign scheduler
   const { startScheduler } = require('./services/schedulerService');

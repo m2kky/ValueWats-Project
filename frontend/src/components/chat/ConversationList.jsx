@@ -172,11 +172,26 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
       {/* List */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-zinc-600 p-8 text-center">
-            <div className="w-12 h-12 mb-3 rounded-full bg-white/5 flex items-center justify-center">
-              <MagnifyingGlassIcon className="w-6 h-6" />
+          <div className="flex flex-col items-center justify-center h-full px-6 text-center animate-in fade-in duration-700">
+            <div className="w-20 h-20 mb-6 rounded-3xl bg-white/5 flex items-center justify-center border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+              <ChatBubbleBottomCenterTextIcon className="w-10 h-10 text-zinc-600" />
             </div>
-            <p className="text-sm font-bold uppercase tracking-widest">{searchTerm ? 'No matches' : 'Empty'}</p>
+            <h3 className="text-white font-black text-sm mb-1 uppercase tracking-wider">
+              {searchTerm ? 'No matches found' : 'No conversations yet'}
+            </h3>
+            <p className="text-zinc-500 text-xs font-medium leading-relaxed max-w-[200px] mx-auto">
+              {searchTerm 
+                ? `We couldn't find any chats matching "${searchTerm}". Try a different name or number.` 
+                : 'Your inbox is clear. Start a campaign or sync to pull existing chats.'}
+            </p>
+            {!searchTerm && (
+              <button 
+                onClick={onSync}
+                className="mt-6 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black text-white uppercase tracking-widest transition-all"
+              >
+                Sync Now
+              </button>
+            )}
           </div>
         ) : (
           filtered.map(conv => {

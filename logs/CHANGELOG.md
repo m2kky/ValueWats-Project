@@ -1,3 +1,79 @@
+## 2026-04-23
+
+### Security & Stability Sprint (Audit Fix Plan — Sprint 1 + Sprint 2)
+
+#### Fixed
+- **Fix 1.1 — Webhook Signature Verification**: Re-enabled `verifyWebhookContext` middleware on all Evolution API webhook routes (`/whatsapp`, `/evolution`, `/receive`, `/receive/:event`). Prevents spoofing of incoming WhatsApp events. Flagged by SecOps (#06), QA Lead (#16), Compliance (#29), Integrations (#07).
+- **Fix 1.3 — Rate Limiting**: Added `express-rate-limit` to auth routes (20 req/15min) and webhook routes (500 req/min) to prevent brute-force and DoS attacks. Flagged by SecOps (#06), API Tester (#17).
+- **Fix 1.5 — Zero-Byte File Upload Crash**: Added `fs.statSync` validation in `storageService.js` to reject 0-byte files before upload. Prevents unhandled stream crashes. Flagged by Chaos Monkey (#20), Storage (#10).
+- **Fix 1.6 — MIME Type Whitelist**: Re-enabled MIME type validation in `upload.js` with a strict allow-list for images, videos, audio, PDF, CSV, and Excel. Blocks `.exe`, `.sh`, and other dangerous file types. Smart xlsx fallback for inconsistent browser MIME types. Flagged by Storage (#10), API Tester (#17), SecOps (#06).
+- **Fix 1.7 — Multer Size Limit Alignment**: Changed Multer `fileSize` limit from 10MB to 50MB to match Nginx `client_max_body_size`. Eliminates confusing error messages for 15-50MB video uploads. Flagged by Storage (#10), CSM (#25).
+- **Fix 2.4 — Streaming Uploads**: Replaced `fs.readFileSync` with `fs.createReadStream` in `storageService.js` to prevent 50MB RAM spikes per upload. Flagged by Storage (#10), Performance (#19).
+- **Fix 2.5 — BullMQ Job Cleanup**: Changed `removeOnComplete: true` to `{ count: 100 }` and added `removeOnFail: { count: 500 }` to prevent Redis memory bloat from completed campaign jobs. Flagged by Queue (#09), Performance (#19).
+- **Fix 7.6 — Health Check Endpoint**: Added `/api/health` alias returning `{ status, uptime, timestamp }`. Flagged by DevOps (#05).
+- **Fix 2.3 — MinIO Boot Optimization**: Moved `ensureBucketExists` from per-upload to one-time server boot via `initBucket()`. Saves 50-100ms per file operation. Flagged by Storage (#10).
+- **Fix 3.1 — Message Table Index**: Added composite `@@index([tenantId, status])` on Message model for faster campaign message status queries. Flagged by DBA (#04), Performance (#19).
+- **Fix 3.3 — Campaign Table Index**: Added composite `@@index([tenantId, status])` on Campaign model for faster campaign list filtering. Flagged by DBA (#04).
+- **Fix 4.5 — Dynamic Page Titles**: Created `usePageTitle` hook and applied to Dashboard, Campaigns, Inbox, Contacts, and Agents pages. Each tab now shows the page name. Flagged by SEO (#24).
+- **Fix 4.6 — Sidebar Aria Labels**: Added `aria-label={item.name}` to all sidebar navigation links for screen reader accessibility. Flagged by SEO (#24).
+- **Fix 4.7 — Workflow Icon Distinction**: Changed Workflows sidebar icon from `BoltIcon` to `ArrowPathIcon` to differentiate from Automations. Flagged by CSM (#25).
+- **Fix 1.4 — Campaign Double-Submit**: Added frontend `loading` guard and backend duplicate check (same name within 30s) to prevent race conditions during campaign creation. Flagged by QA Lead (#16).
+- **Fix 2.6 — Message Cooldown per Instance**: Implemented global per-instance staggering using Redis. Allows parallel campaigns to share instances safely while ensuring each instance respects its own cooldown timeline. Flagged by Performance (#19), SecOps (#06).
+- **Fix 6.1 — RAG Alignment**: Updated Agent Test Chat route to use `agentService.buildContext` (Vector Search). Preview behavior now matches real customer conversations.
+- **Fix 6.2 — Recursive Chunking**: Upgraded `knowledgeService` to use a hierarchical character splitter (Paragraphs > Sentences > Words). Improves semantic retrieval quality.
+- **Sprint 5 — Dashboard UX Polish**: Added shimmer skeleton loaders and `loading` states to Dashboard Stat Cards to eliminate "flash of zeros" and improve perceived performance.
+- **Sprint 5 — Campaigns Table Skeleton**: Replaced full-page spinner with a shimmering table skeleton in `Campaigns.jsx` to preserve layout structure during data fetching.
+- **Sprint 5 — Inbox Empty States**: Re-designed empty states in `Inbox.jsx` and `ConversationList.jsx` with premium aesthetics, better iconography, and clearer call-to-actions.
+- **Fix 2.1 — Refactor Campaign Controller**: Extracted all business logic out of the massive `campaignController.js` into two new dedicated services (`contactResolver.service.js` and `campaign.service.js`), reducing the controller from 1,000+ lines to ~80 lines, and strictly adhering to the "Thin Controllers, Fat Services" architectural pattern.
+- **Fix 2.2 — Refactor Agents UI**: Dismantled the monolithic 1,500+ line `Agents.jsx` frontend component into 5 highly-focused subcomponents (`AgentList`, `AgentTemplates`, `AgentEditor`, `AgentTestChat`, `AgentKnowledgeBase`). `Agents.jsx` now acts solely as the data coordinator, dramatically improving maintainability.
+- **Fix 5.4 — Contact List Virtualization**: Implemented `react-virtuoso` in `Contacts.jsx` to render large data sets (1,000+ rows) cleanly without causing DOM lag or browser crashes.
+- **Fix 4.1, 4.2, 4.3 — Frontend Theme Modernization**: Standardized border radii, migrated hardcoded hex colors to Tailwind Theme configuration (`tailwind.config.js`), and removed legacy "Variables Coming Soon" placeholders as variables are now fully supported.
+- **Fix 3.4 — pgvector HNSW Index**: Created a manual Prisma migration (`20260803000000_add_hnsw_index`) to apply a Hierarchical Navigable Small World (HNSW) index on `AgentKnowledge` embeddings, reducing vector search latency from O(N) to O(log N).
+- **Fix 3.5 — Prisma Tenant Extension**: Implemented Prisma Client extension combined with `AsyncLocalStorage` in `database.js` and `tenantContext.js` to automatically apply `tenantId` isolation across all database queries for multi-tenant security.
+
+### AI Workforce Architecture
+- **Agent Personas**: 
+    - Enriched the **Backend Node.js Expert** (`agent_02_backend_expert.md`) with specific audit missions for multi-tenancy, Evolution API v2 routing, BullMQ job reliability, and Prisma query scoping.
+    - Refined the **Database Administrator (DBA)** (`agent_04_dba.md`) persona with specialized missions for multi-tenant data isolation, `pgvector` performance optimization, and Prisma migration safety.
+    - Standardized the **DevOps & SRE Engineer** (`agent_05_devops.md`) persona with infrastructure-specific missions for Coolify, Nginx, and system resilience.
+    - Enriched the **API Integrations Specialist** (`agent_07_integrations.md`) persona with granular missions for Evolution API v2, multi-channel OAuth (Google, Notion, TikTok), and MinIO/DeepSeek service reliability.
+    - Finalized the **AI & Machine Learning Engineer** (`agent_08_aiml.md`) persona with specialized missions for RAG/pgvector optimization, context window management, and multi-tenant AI isolation.
+    - Audited the **Chief Design Officer (CDO)** (`agent_11_cdo.md`) persona to align with "Visual Excellence" standards, including missions for curated HSL palettes, typography, and micro-animations.
+    - Finalized the **SEO & Content Strategist** (`agent_24_seo_content.md`) persona with detailed missions for technical SEO, semantic HTML structure, and conversion-optimized copywriting.
+    - Finalized the **UI & Visual Designer** (`agent_12_ui_designer.md`) persona with specific missions for visual excellence, glassmorphism, HSL color harmony, and micro-animations.
+    - Finalized the **Agile Scrum Master** (`agent_30_scrum_master.md`) persona with missions for backlog auditing, cross-report synthesis, and velocity tracking.
+    - Standardized the **UX Copywriter & Localization Lead** (`agent_15_ux_copywriter.md`) persona with missions for UI microcopy, error message empathy, RTL localization, and transactional copy.
+    - Performed a microcopy and localization audit as **UX Copywriter** and generated the full report in `logs/audit/reports/agent_15_ux_copywriter_report.md`.
+    - Standardized the **Storage & Media Specialist** (`agent_10_storage.md`) persona with specific missions for MinIO infrastructure, Multer security, and efficient media processing.
+    - Generated the **Storage & Media Integrity Report** (`agent_10_storage_report.md`) identifying MIME bypass risks and disk-buffer cleanup vulnerabilities.
+    - Standardized the **Customer Success Manager (CSM)** (`agent_25_csm.md`) persona with specific missions for onboarding friction audits, feature discoverability, and ROI clarity.
+    - Standardized the **Lead QA Engineer** (`agent_16_qa_lead.md`) persona with specific missions for multi-tenant isolation audits, Evolution API v2 webhook integrity, and BullMQ campaign queue stability. Generated audit report in `logs/audit/reports/agent_16_qa_lead_report.md`.
+    - Finalized the **API & Endpoint Tester** (`agent_17_api_tester.md`) persona with surgical missions for multi-tenant isolation, Evolution API v2 contract validation, and payload security.
+- **CSM Audit**:
+    - Performed a comprehensive Customer Success & UX audit as **Customer Success Manager** (`agent_25_csm.md`).
+    - Evaluated onboarding flow, dashboard value reinforcement, and campaign ROI clarity.
+    - Identified "Instance Disconnection" and "AI Escalation Clarity" as primary churn risks.
+    - Recommended proactive health notifications and "Fix & Resume" wizards for failed campaigns.
+    - Generated full report in `logs/audit/reports/agent_25_csm_report.md`.
+- **CTO Audit**:
+    - Performed a comprehensive architectural audit as **Chief Technology Officer** (`agent_01_cto.md`).
+    - Identified monolithic controllers, single-process bottlenecks, and insecure protocol (HTTP) as primary technical debts.
+    - Recommended worker/API process separation and service-layer extraction for scalability.
+    - Generated full report in `logs/audit/reports/agent_01_cto_report.md`.
+- **Storage & Media Audit**:
+    - Performed audit as **Storage & Media Specialist** (`agent_10_storage.md`).
+    - Identified redundant S3 bucket checks and memory-intensive `readFileSync` as performance risks.
+    - Recommended refactoring initialization logic and implementing streaming uploads.
+    - Generated full report in `logs/audit/reports/agent_10_storage_report.md`.
+- **Customer Success & UX Audit**:
+    - Performed audit as **Customer Success Manager** (`agent_25_csm.md`).
+    - Identified onboarding friction (naming redundancy) and discoverability issues (identical icons for Workflows/Automations).
+    - Recommended ROI metrics improvements (Read/Reply rates) and icon differentiation.
+    - Generated full report in `logs/audit/reports/agent_25_csm_report.md`.
+    - Performed a sprint health audit as **Agile Scrum Master** (`agent_30_scrum_master.md`), identifying SSL and monolithic process decoupling as critical P1 blockers. Generated full report in `logs/audit/reports/agent_30_scrum_master_report.md`.
+
+---
+
 ## 2026-04-21
 
 ### Integration updates & Fixes

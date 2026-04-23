@@ -205,6 +205,7 @@ model Campaign {
   messageTemplates  MessageTemplate[]
   links             Link[]
 
+  @@index([tenantId, status])  // Fix 3.3: Speed up campaign list filtering
   @@map("campaigns")
 }
 
@@ -267,6 +268,7 @@ model Message {
   links    Link[]
 
   @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, status])  // Fix 3.1: Speed up campaign message status queries
   @@map("messages")
 }
 

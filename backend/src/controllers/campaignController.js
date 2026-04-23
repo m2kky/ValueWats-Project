@@ -7,6 +7,8 @@ const { resolveTenantPlanByTenant } = require('../services/planLimit.service');
 const fs = require('fs');
 const xlsx = require('xlsx');
 const storageService = require('../services/storageService');
+const contactResolverService = require('../services/contactResolver.service');
+const campaignService = require('../services/campaign.service');
 
 // Helper to extract URLs from text
 const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -17,476 +19,86 @@ const CONNECT_NUMBER_FIRST_ERROR = 'Please connect a WhatsApp number first befor
 const createCampaign = async (req, res) => {
   try {
     const { name, instanceIds, message, messages, numbers, googleSheetUrl, phoneColumn, segmentId, delayMin = 15, delayMax = 25, instanceSwitchCount = 50, messageRotationCount = 1, scheduledAt, endAt, type = 'marketing', targetConfig } = req.body;
-
     const tenantId = req.user.tenantId;
 
-    // Load tenant + plan for limit enforcement
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      include: { plan: true }
+    // 1. Double-Submit Check
+    const duplicateCheck = await prisma.campaign.findFirst({
+      where: {
+        tenantId,
+        name,
+        status: { in: ['PENDING', 'PROCESSING', 'SCHEDULED'] },
+        createdAt: { gte: new Date(Date.now() - 30 * 1000) }
+      }
     });
 
-    // Handle messages (support both single 'message' and array 'messages')
-    // Sanitize: strip zero-width/invisible unicode chars from URLs inside messages
-    const sanitizeMsg = (text) => text.replace(/(https?:\/\/\S+)/g, (url) =>
-      url.replace(/[\u200B-\u200D\uFEFF\u00AD\u200C\u200E\u200F]/g, '')
-    );
-    let messageList = [];
-    if (messages && Array.isArray(messages)) {
-      messageList = messages.filter(m => m.trim().length > 0).map(sanitizeMsg);
-    } else if (message) {
-      messageList = [sanitizeMsg(message)];
+    if (duplicateCheck) {
+      console.warn(`[Campaign] Duplicate creation attempt blocked for tenant ${tenantId}, name: ${name}`);
+      return res.status(400).json({ error: 'A campaign with this name was recently created. Please wait a moment.' });
     }
 
-    // Validate required fields
+    // 2. Validate basic inputs & Sanitize Messages
+    const sanitizeMsg = (text) => text.replace(/(https?:\/\/\S+)/g, (url) => url.replace(/[\u200B-\u200D\uFEFF\u00AD\u200C\u200E\u200F]/g, ''));
+    let messageList = (messages && Array.isArray(messages)) ? messages : (message ? [message] : []);
+    messageList = messageList.filter(m => m.trim().length > 0).map(sanitizeMsg);
+
     if (!name || messageList.length === 0) {
       return res.status(400).json({ error: 'Missing required fields: name, message' });
     }
 
-    const connectedInstancesCount = await prisma.instance.count({
-      where: {
-        tenantId,
-        status: 'connected'
-      }
-    });
-
-    if (connectedInstancesCount === 0) {
-      return res.status(400).json({ error: CONNECT_NUMBER_FIRST_ERROR });
-    }
-
+    // 3. Resolve Instances
     let instances = [];
     if (type === 'retargeting') {
-      // Fetch ALL connected instances for retargeting since we auto-route by channel
-      instances = await prisma.instance.findMany({
-        where: { tenantId, status: 'connected' }
-      });
-      if (instances.length === 0) {
-        return res.status(400).json({ error: 'No connected instances available for retargeting.' });
-      }
+      instances = await prisma.instance.findMany({ where: { tenantId, status: 'connected' } });
+      if (instances.length === 0) return res.status(400).json({ error: 'No connected instances available for retargeting.' });
     } else {
-      // Handle instanceIds for Marketing
-      let instanceIdList = [];
-      if (instanceIds) {
-        instanceIdList = Array.isArray(instanceIds) ? instanceIds : [instanceIds];
-      } else if (req.body.instanceId) {
-        instanceIdList = [req.body.instanceId];
-      } else {
-        return res.status(400).json({ error: CONNECT_NUMBER_FIRST_ERROR });
-      }
-
+      let instanceIdList = instanceIds ? (Array.isArray(instanceIds) ? instanceIds : [instanceIds]) : (req.body.instanceId ? [req.body.instanceId] : []);
       instanceIdList = [...new Set(instanceIdList.filter(Boolean))];
-      if (instanceIdList.length === 0) {
-        return res.status(400).json({ error: CONNECT_NUMBER_FIRST_ERROR });
-      }
+      if (instanceIdList.length === 0) return res.status(400).json({ error: CONNECT_NUMBER_FIRST_ERROR });
 
-      // Verify instances exist and are connected
-      instances = await prisma.instance.findMany({
-        where: {
-          id: { in: instanceIdList },
-          tenantId,
-          status: 'connected'
-        }
-      });
-
-      if (instances.length !== instanceIdList.length) {
-        return res.status(400).json({ error: 'One or more selected instances are not connected. Please reconnect your number(s) and try again.' });
-      }
+      instances = await prisma.instance.findMany({ where: { id: { in: instanceIdList }, tenantId, status: 'connected' } });
+      if (instances.length !== instanceIdList.length) return res.status(400).json({ error: 'One or more selected instances are not connected. Please reconnect your number(s) and try again.' });
     }
 
-    // Handle Contacts
-    let contacts = [];
+    // 4. Resolve Contacts (Delegated to ContactResolverService)
+    const file = req.files && req.files['file'] ? req.files['file'][0] : null;
+    let contacts = await contactResolverService.resolveContacts(req.body, file, tenantId);
 
-    // ====== Retargeting Logic ======
-    if (type === 'retargeting') {
-      try {
-        const config = typeof targetConfig === 'string' ? JSON.parse(targetConfig) : targetConfig;
-        
-        let crmReq = { limit: 9999999 };
-        if (config.segmentId) {
-          const segment = await prisma.savedSegment.findUnique({ where: { id: config.segmentId, tenantId } });
-          if (segment) {
-            crmReq.search = segment.rules.search;
-            crmReq.lifecycleStageId = segment.rules.filters?.lifecycleStageId;
-            crmReq.labelIds = segment.rules.filters?.labelIds?.length > 0 ? segment.rules.filters.labelIds : undefined;
-            crmReq.governorate = segment.rules.filters?.governorate;
-            crmReq.source = segment.rules.filters?.source;
-          }
-        }
-        
-        // Override segment rules with specific selections from advanced filters
-        if (config.lifecycleStageId) crmReq.lifecycleStageId = config.lifecycleStageId;
-        if (config.labelIds && config.labelIds.length > 0) crmReq.labelIds = config.labelIds;
-        if (config.source) crmReq.source = config.source;
-
-        const result = await crmService.listContacts(tenantId, crmReq);
-        if (!result.contacts || result.contacts.length === 0) {
-          return res.status(400).json({ error: 'No CRM contacts match your retargeting filters.' });
-        }
-
-        // Try to match contacts with channels and instances right now
-        // For multi-channel, we must resolve their channel based on their last source/channelType
-        for (const c of result.contacts) {
-          contacts.push({
-            number: c.phoneNumber.trim(),
-            variables: { name: c.name, email: c.email }
-          });
-        }
-      } catch (e) {
-        console.error('Retargeting config parse error', e);
-        return res.status(400).json({ error: 'Invalid retargeting configuration.' });
-      }
-    } else {
-      // ====== Marketing Logic (File/Segment/Manual) ======
-
-    // 1. File Upload (CSV or Excel)
-    if (req.files && req.files['file']) {
-      const filePath = req.files['file'][0].path;
-
-      try {
-        // Read file using xlsx (supports CSV, XLS, XLSX)
-        const workbook = xlsx.readFile(filePath);
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-
-        // Convert to JSON array
-        const jsonData = xlsx.utils.sheet_to_json(worksheet, { defval: "" }); // defval ensures empty cells are empty strings
-
-        if (jsonData.length === 0) {
-          try { fs.unlinkSync(filePath); } catch (e) { }
-          return res.status(400).json({ error: 'File is empty.' });
-        }
-
-        // Detect phone column
-        const headers = Object.keys(jsonData[0]).map(h => h.trim().toLowerCase());
-        const originalHeaders = Object.keys(jsonData[0]); // Keep original case for data extraction
-
-        const numberIndex = headers.indexOf('number');
-        const phoneIndex = headers.indexOf('phone');
-        const mobileIndex = headers.indexOf('mobile');
-
-        // Find the matching key in original headers
-        let targetKey = null;
-        if (numberIndex !== -1) targetKey = originalHeaders[numberIndex];
-        else if (phoneIndex !== -1) targetKey = originalHeaders[phoneIndex];
-        else if (mobileIndex !== -1) targetKey = originalHeaders[mobileIndex];
-
-        if (!targetKey) {
-          try { fs.unlinkSync(filePath); } catch (e) { }
-          return res.status(400).json({ error: "File must contain a 'number', 'phone', or 'mobile' column header." });
-        }
-
-        contacts = jsonData.map(row => {
-          const number = String(row[targetKey]).trim();
-          if (number && number.length >= 7) {
-            return { number, variables: row };
-          }
-          return null;
-        }).filter(Boolean);
-
-      } catch (err) {
-        console.error('File Parse Error:', err);
-        return res.status(400).json({ error: 'Failed to parse file. Ensure it is a valid CSV or Excel file.' });
-      } finally {
-        try { fs.unlinkSync(filePath); } catch (e) { } // Clean up
-      }
-    }
-    // 2. Google Sheet Import
-    else if (googleSheetUrl) {
-      const sheetData = await googleSheetService.fetchSheetData(googleSheetUrl);
-
-      if (sheetData.length === 0) {
-        return res.status(400).json({ error: "Google Sheet is empty or could not be read." });
-      }
-
-      // Identify Phone Column
-      if (!phoneColumn) {
-        return res.status(400).json({ error: "Please specify which column contains the Phone Number for Google Sheet." });
-      }
-
-      // Map rows to contacts with all data (for variable interpolation)
-      contacts = sheetData.map(row => {
-        const number = row[phoneColumn];
-        if (!number) return null;
-
-        return {
-          number: number.trim(),
-          variables: row // Store all row data for interpolation
-        };
-      }).filter(Boolean);
-
-    }
-    // 3. Saved Segment Input
-    else if (segmentId) {
-      const segment = await prisma.savedSegment.findUnique({
-        where: { id: segmentId, tenantId }
-      });
-      if (!segment) {
-        return res.status(404).json({ error: 'Saved segment not found.' });
-      }
-
-      // Convert stored filters JSON into the format crmService.listContacts expects
-      const rules = segment.rules.filters || {};
-      const search = segment.rules.search;
-      
-      const crmReq = {
-        search,
-        lifecycleStageId: rules.lifecycleStageId,
-        labelIds: rules.labelIds?.length > 0 ? rules.labelIds : undefined,
-        governorate: rules.governorate,
-        source: rules.source,
-        limit: 9999999 // Pull everyone matching
-      };
-
-      const result = await crmService.listContacts(tenantId, crmReq);
-      
-      if (!result.contacts || result.contacts.length === 0) {
-        return res.status(400).json({ error: 'Selected segment contains no contacts.' });
-      }
-
-      contacts = result.contacts.map(c => ({
-        number: c.phoneNumber.trim(),
-        variables: { name: c.name, email: c.email }
-      })).filter(c => c.number);
-    }
-    // 4. Manual Input
-    else if (numbers) {
-      const lines = numbers.split('\n');
-      contacts = lines.map(line => ({ number: line.trim() })).filter(c => c.number && c.number.length >= 7);
-    } else {
-      return res.status(400).json({ error: 'No contacts provided (CSV, Sheet, Segment, or Manual)' });
-    }
-
-
-    }
-
-    if (contacts.length === 0) {
-      return res.status(400).json({ error: 'No valid contacts found or matched.' });
-    }
-
-    // Sanitize phone numbers: strip non-digits, validate length
-    contacts = contacts.map(c => ({
-      ...c,
-      number: c.number.replace(/[^0-9]/g, '')
-    })).filter(c => c.number.length >= 7 && c.number.length <= 15);
-
-    if (contacts.length === 0) {
-      return res.status(400).json({ error: 'No valid phone numbers found. Numbers must be 7-15 digits.' });
-    }
-
-    // ====== PHASE 2: Plan-Based Contact Limit ======
-    const plan = await resolveTenantPlanByTenant(tenant);
-    if (plan && contacts.length > plan.maxContactsPerCampaign) {
-      return res.status(402).json({
-        error: `Contact list exceeds your plan limit of ${plan.maxContactsPerCampaign} contacts per campaign. Please upgrade your plan or reduce the contact list.`,
-        limit: plan.maxContactsPerCampaign,
-        requested: contacts.length
-      });
-    }
-
-    // ====== PHASE 3: Filter Out Blacklisted Contacts (Opt-out) ======
-    const phoneNumbers = contacts.map(c => c.number);
-    const blacklistedContacts = await prisma.contact.findMany({
-      where: { tenantId, phoneNumber: { in: phoneNumbers }, blacklisted: true },
-      select: { phoneNumber: true }
-    });
-    const blacklistedSet = new Set(blacklistedContacts.map(c => c.phoneNumber));
-    const filteredContacts = contacts.filter(c => !blacklistedSet.has(c.number));
-    if (blacklistedSet.size > 0) {
-      console.log(`[Campaign] Filtered out ${blacklistedSet.size} blacklisted contact(s) from campaign.`);
-    }
+    // 5. Enforce Limits and Filter Blacklist (Delegated to CampaignService)
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, include: { plan: true } });
+    const { filteredContacts, plan } = await campaignService.enforceLimitsAndFilter(contacts, tenant);
     contacts = filteredContacts;
 
-    if (contacts.length === 0) {
-      return res.status(400).json({ error: 'All provided contacts have opted out of marketing messages.' });
-    }
+    // 6. Process Media (Delegated to CampaignService)
+    const mediaFile = req.files && req.files['media'] ? req.files['media'][0] : null;
+    const { mediaUrl, mediaType } = await campaignService.processMedia(mediaFile);
 
-    // Handle Media Attachment
-    let mediaUrl = null;
-    let mediaType = null;
-    if (req.files && req.files['media']) {
-      const mediaFile = req.files['media'][0];
-
-      // Upload to S3/MinIO
-      mediaUrl = await storageService.uploadFile(mediaFile);
-
-      // Determine media type
-      if (mediaFile.mimetype.startsWith('image/')) mediaType = 'image';
-      else if (mediaFile.mimetype.startsWith('video/')) mediaType = 'video';
-      else mediaType = 'document'; // default fallback
-    }
-
-    // Determine if this is a scheduled campaign
-    const isScheduled = scheduledAt && new Date(scheduledAt) > new Date();
-    const campaignStatus = isScheduled ? 'SCHEDULED' : 'PENDING'; // Initial status for new flow
-
-    // Create Campaign in DB
-    const campaign = await prisma.campaign.create({
-      data: {
-        name,
-        type,
-        targetConfig: type === 'retargeting' ? (targetConfig || null) : null,
-        messageTemplate: messageList[0], // Store primary message for display/reference
-        status: campaignStatus,
-        totalContacts: contacts.length,
-        delayMin: parseInt(delayMin),
-        delayMax: parseInt(delayMax),
-        instanceSwitchCount: parseInt(instanceSwitchCount),
-        messageRotationCount: parseInt(messageRotationCount),
-        scheduledAt: isScheduled ? new Date(scheduledAt) : null,
-        endAt: endAt ? new Date(endAt) : null,
-        mediaUrl,
-        mediaType,
-        tenantId
-      }
+    // 7. Create Database Records (Delegated to CampaignService)
+    const { campaign, isScheduled } = await campaignService.createCampaignRecord({
+      name, type, targetConfig, messageList, contactsCount: contacts.length,
+      delayMin, delayMax, instanceSwitchCount, messageRotationCount,
+      scheduledAt, endAt, mediaUrl, mediaType, tenantId, instances, segmentId
     });
 
-    // Create CampaignInstance records
-    if (instances.length > 0) {
-      await prisma.campaignInstance.createMany({
-        data: instances.map((instance, index) => ({
-          campaignId: campaign.id,
-          instanceId: instance.id,
-          orderIndex: index
-        }))
-      });
-    }
+    console.log(`[Campaign] Created campaign ${campaign.id} with ${contacts.length} contacts, instances: ${instances.length}`);
 
-    // Link Saved Segment if applicable
-    if (segmentId) {
-      await prisma.campaign.update({
-        where: { id: campaign.id },
-        data: { savedSegmentId: segmentId }
-      });
-    }
-
-    // Create MessageTemplate records
-    if (messageList.length > 0) {
-      await prisma.messageTemplate.createMany({
-        data: messageList.map((content, index) => ({
-          campaignId: campaign.id,
-          content,
-          orderIndex: index
-        }))
-      });
-    }
-
-    console.log(`[Campaign] Created campaign ${campaign.id} with ${contacts.length} contacts, instances: ${instances.length}, templates: ${messageList.length}, status: ${campaignStatus}`);
-
+    // 8. Queue or Schedule
     if (isScheduled) {
-      // For scheduled campaigns: create message records but don't queue yet
-      // Store contacts as pending messages so the scheduler can re-queue them
-      const instanceList = Array.isArray(instances) ? instances : [instances];
-      const templates = Array.isArray(messageList) ? messageList : [messageList];
-
-      for (let i = 0; i < contacts.length; i++) {
-        const contact = contacts[i];
-        const instanceIndex = Math.floor(i / parseInt(instanceSwitchCount)) % instanceList.length;
-        let currentInstance = instanceList[instanceIndex];
-        if (type === 'retargeting' && contact.source) {
-          const mappedChannel = String(contact.source).toLowerCase() === 'system' ? 'whatsapp' : String(contact.source).toLowerCase();
-          const matchedInstance = instanceList.find(inst => String(inst.channelType).toLowerCase() === mappedChannel);
-          if (matchedInstance) {
-            currentInstance = matchedInstance;
-          } else {
-             // Retargeting skip logic: no instance for channel = skip
-             console.log(`[Retargeting] Skipping contact ${contact.number} due to missing connected instance for channel ${mappedChannel}`);
-             await prisma.message.create({
-              data: {
-                campaignId: campaign.id,
-                status: 'FAILED',
-                failReason: `No connected instance for channel ${mappedChannel}`,
-                recipientNumber: contact.number,
-                tenantId,
-                mediaUrl,
-                mediaType,
-                variables: contact.variables || null
-              }
-            });
-            // Also increment failedCount
-            await prisma.campaign.update({
-              where: { id: campaign.id },
-              data: { failedCount: { increment: 1 } }
-            });
-            continue; // Skip the rest of the loop for this contact
-          }
-        }
-        const templateIndex = Math.floor(i / parseInt(messageRotationCount)) % templates.length;
-        let currentMessage = templates[templateIndex];
-
-        // Anti-Ban Spintax & Dynamic Global Variables
-        const generateInvisibleString = () => {
-          const chars = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
-          let str = '';
-          const len = Math.floor(Math.random() * 5) + 3;
-          for (let j = 0; j < len; j++) str += chars[Math.floor(Math.random() * chars.length)];
-          return str;
-        };
-
-        currentMessage += generateInvisibleString();
-        currentMessage = currentMessage.replace(/{{rand}}/gi, Math.floor(Math.random() * 10000).toString());
-        currentMessage = currentMessage.replace(/{{date}}/gi, new Date().toLocaleString('ar-EG'));
-
-        const finalMessage = currentMessage;
-
-        const messageRecord = await prisma.message.create({
-          data: {
-            campaignId: campaign.id,
-            instanceId: currentInstance.id,
-            messageText: finalMessage,
-            status: 'pending',
-            recipientNumber: contact.number,
-            tenantId,
-            mediaUrl,
-            mediaType,
-            variables: contact.variables || null
-          }
-        });
-      }
-
+      await campaignService.scheduleMessages(campaign, instances, contacts, messageList, mediaUrl, mediaType, type, tenantId);
       res.status(201).json({
         message: `Campaign scheduled for ${new Date(scheduledAt).toLocaleString()}`,
         campaignId: campaign.id,
         totalContacts: contacts.length,
         status: 'SCHEDULED',
-        scheduledAt: scheduledAt
+        scheduledAt
       });
     } else {
-      // Add to Queue immediately
-      // Process Contacts & Queue
-      // We need to do the link shortening loop here too if we want immediate processing to have tracking.
-      // QueueService.addToQueue usually just pushes to BullMQ.
-      // If we want tracking, we should probably create the Message records HERE (like scheduled) 
-      // and then push to queue with the messageID.
-      // But `addToQueue` might be designed to create records. Let's check `addToQueue` implementation.
-      // If `addToQueue` creates records, we should move that logic here or update `addToQueue`.
-      // Given `addToQueue` handles rotation/delay logic, updating it to handle Link Shortening is better.
-
-      // Update: Passing full contact objects with variables to addToQueue. 
-      // Link shortening should ideally happen INSIDE the worker or just before queuing.
-      // If we do it before queuing, we can track who clicked.
-
       await queueService.addToQueue(
-        instances,
-        contacts,
-        messageList,
-        campaign.id,
-        tenantId,
-        parseInt(delayMin),
-        parseInt(delayMax),
-        parseInt(instanceSwitchCount),
-        parseInt(messageRotationCount),
-        mediaUrl,
-        mediaType,
-        plan, // Phase 4 Working Hours config
-        type // PASSING CAMPAIGN TYPE
+        instances, contacts, messageList, campaign.id, tenantId,
+        parseInt(delayMin), parseInt(delayMax), parseInt(instanceSwitchCount),
+        parseInt(messageRotationCount), mediaUrl, mediaType, plan, type
       );
 
-
-      // Update status to PROCESSING now that messages are queued
-      await prisma.campaign.update({
-        where: { id: campaign.id },
-        data: { status: 'PROCESSING' }
-      });
+      await prisma.campaign.update({ where: { id: campaign.id }, data: { status: 'PROCESSING' } });
 
       res.status(201).json({
         message: 'Campaign created and processing started',
@@ -499,7 +111,7 @@ const createCampaign = async (req, res) => {
 
   } catch (error) {
     console.error('Create Campaign Error:', error);
-    res.status(500).json({ error: 'Failed to create campaign' });
+    res.status(error.status || 400).json({ error: error.message || 'Failed to create campaign', ...error.data });
   }
 };
 const getCampaigns = async (req, res) => {

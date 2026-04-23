@@ -7,6 +7,7 @@ import {
   DocumentTextIcon,
   Squares2X2Icon,
   BoltIcon,
+  ArrowPathIcon,
   Cog6ToothIcon,
   QuestionMarkCircleIcon,
   ArrowRightOnRectangleIcon as LogoutIcon,
@@ -133,7 +134,7 @@ export default function Layout({ children }) {
     { name: 'AI Agents', path: '/agents', icon: SparklesIcon },
     { name: 'Channels', path: '/channels', icon: Squares2X2Icon },
     { name: 'Automations', path: '/automations', icon: BoltIcon },
-    { name: 'Workflows', path: '/workflows', icon: BoltIcon },
+    { name: 'Workflows', path: '/workflows', icon: ArrowPathIcon },  // Fix 4.7: Distinct icon from Automations
     { name: 'Settings', path: '/settings', icon: Cog6ToothIcon },
     { name: 'Help Center', path: '/help', icon: QuestionMarkCircleIcon },
   ];
@@ -166,6 +167,7 @@ export default function Layout({ children }) {
               <Link
                 key={item.name}
                 to={item.path}
+                aria-label={item.name}
                 title={isInboxRoute ? item.name : undefined}
                 className={`flex items-center rounded-xl transition-all group relative ${isInboxRoute
                   ? `w-10 h-10 justify-center ${active ? 'bg-[#e2f300]/15 text-[#e2f300]' : 'text-[#fffed9]/45 hover:bg-[#fffed9]/5 hover:text-[#fffed9]'}`

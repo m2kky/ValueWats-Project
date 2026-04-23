@@ -20,6 +20,9 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = process.env.S3_BUCKET || 'valuewats-media';
 
+// Fix 2.3: Track if bucket has been verified (one-time at boot)
+let bucketReady = false;
+
 const ensureBucketExists = async () => {
   try {
     await s3Client.send(new HeadBucketCommand({ Bucket: BUCKET_NAME }));
@@ -60,35 +63,56 @@ const ensureBucketExists = async () => {
 };
 
 /**
+ * Fix 2.3: Initialize bucket once at server boot.
+ * Call this from server.js instead of checking on every upload.
+ */
+const initBucket = async () => {
+  await ensureBucketExists();
+  bucketReady = true;
+  console.log(`[StorageService] Bucket '${BUCKET_NAME}' ready.`);
+};
+
+/**
  * Upload a file to S3/MinIO
  * @param {Object} file - Multer file object { filename, originalname, mimetype, path, buffer }
  * @returns {string} Public URL of the uploaded file
  */
 const uploadFile = async (file) => {
-  await ensureBucketExists();
+  // Fix 2.3: Only check bucket if boot init was skipped (safety fallback)
+  if (!bucketReady) await ensureBucketExists();
 
   const fileKey = `media/${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
-  // Read file from disk (multer diskStorage)
-  const fileContent = fs.readFileSync(file.path);
+  try {
+    // Fix 1.5: Validate file is not empty/corrupt before uploading
+    const stat = fs.statSync(file.path);
+    if (stat.size === 0) {
+      throw new Error('Uploaded file is empty (0 bytes).');
+    }
 
-  const command = new PutObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: fileKey,
-    Body: fileContent,
-    ContentType: file.mimetype,
-    ACL: 'public-read', // Ensure public access if policy allows
-  });
+    // Fix 2.4: Use streaming instead of readFileSync for memory safety on large files
+    const fileStream = fs.createReadStream(file.path);
 
-  await s3Client.send(command);
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileKey,
+      Body: fileStream,
+      ContentType: file.mimetype,
+      ContentLength: stat.size,
+      ACL: 'public-read',
+    });
 
-  // Clean up local temp file
-  try { fs.unlinkSync(file.path); } catch (e) { /* ignore */ }
+    await s3Client.send(command);
+  } catch (err) {
+    console.error('[StorageService] Upload failed:', err.message);
+    throw err; // Let the calling controller return 400/500
+  } finally {
+    // Always clean up local temp file
+    try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); } catch (e) { /* ignore */ }
+  }
 
   // Return public URL
-  // If S3_PUBLIC_URL is set, use it. Otherwise fall back to endpoint/bucket
   const endpoint = process.env.S3_PUBLIC_URL || process.env.S3_ENDPOINT || 'http://localhost:9000';
-  // Ensure no double slash
   const baseUrl = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint;
   return `${baseUrl}/${BUCKET_NAME}/${fileKey}`;
 };
@@ -101,7 +125,8 @@ const uploadFile = async (file) => {
  * @returns {string} Public URL
  */
 const uploadBase64 = async (base64, mimetype, prefix = 'chat-media') => {
-  await ensureBucketExists();
+  // Fix 2.3: Only check bucket if boot init was skipped (safety fallback)
+  if (!bucketReady) await ensureBucketExists();
 
   const ext = mimetype.split('/')[1]?.split(';')[0] || 'bin';
   const fileKey = `${prefix}/${Date.now()}.${ext}`;
@@ -119,4 +144,4 @@ const uploadBase64 = async (base64, mimetype, prefix = 'chat-media') => {
   return `${baseUrl}/${BUCKET_NAME}/${fileKey}`;
 };
 
-module.exports = { uploadFile, uploadBase64, s3Client, BUCKET_NAME };
+module.exports = { uploadFile, uploadBase64, initBucket, s3Client, BUCKET_NAME };

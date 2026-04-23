@@ -1,104 +1,60 @@
 import { useState, useEffect, useCallback } from 'react';
-import io from 'socket.io-client';
-import { getSocketUrl } from '../utils/socketUtils';
 import api from '../api/client';
+import usePageTitle from '../hooks/usePageTitle';
 import ConversationList from '../components/chat/ConversationList';
 import ChatWindow from '../components/chat/ChatWindow';
 import ContactSidebar from '../components/chat/ContactSidebar';
 import InboxFiltersSidebar from '../components/chat/InboxFiltersSidebar';
-import { UserCircleIcon } from '@heroicons/react/24/outline';
-import { getStoredUser } from '../utils/authUser';
-import '../styles/inbox.css';
+import { useSocket } from '../hooks/useSocket';
+import { 
+  UserCircleIcon, 
+  ChatBubbleLeftRightIcon, 
+  BoltIcon, 
+  UserCircleIcon as UserIcon, 
+  InboxIcon 
+} from '@heroicons/react/24/outline';
 
 export default function Inbox() {
+  usePageTitle('Inbox');
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [initialSynced, setInitialSynced] = useState(false);
+  const [showContactSidebar, setShowContactSidebar] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
   const [instances, setInstances] = useState([]);
   const [agents, setAgents] = useState([]);
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [socket, setSocket] = useState(null);
-  const [initialSynced, setInitialSynced] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [showFilters, setShowFilters] = useState(true);
-  const [showContactSidebar, setShowContactSidebar] = useState(true);
+  const socket = useSocket();
 
   const fetchConversations = useCallback(async () => {
-    const { data } = await api.get('/chat/conversations');
-    setConversations(data.conversations || []);
+    try {
+      const { data } = await api.get('/chat/conversations');
+      const list = Array.isArray(data) ? data : (data.conversations || []);
+      setConversations(list);
+      return list;
+    } catch (error) {
+      console.error('Failed to fetch conversations:', error);
+      return [];
+    }
   }, []);
 
-  // Setup socket connection
-  useEffect(() => {
-    const user = getStoredUser();
-    if (!user.tenantId) {
-      console.warn('[Inbox] No tenantId found — skipping socket setup');
-      return;
-    }
-
-    const socketUrl = getSocketUrl();
-    console.log('[Inbox] Connecting socket to:', socketUrl);
-    const newSocket = io(socketUrl, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
-      timeout: 10000
-    });
-
-    const handleConnect = () => {
-      newSocket.emit('join_tenant', user.tenantId);
-      console.log(`[Inbox] Socket connected (${newSocket.id}), joined tenant_${user.tenantId}`);
-      fetchConversations().catch((error) => {
-        console.warn('[Inbox] Failed to refresh conversations after socket connect:', error.message);
-      });
-    };
-
-    const handleReconnect = (attempt) => {
-      console.log(`[Inbox] Socket reconnected after ${attempt} attempts`);
-      newSocket.emit('join_tenant', user.tenantId);
-      fetchConversations().catch((error) => {
-        console.warn('[Inbox] Failed to refresh conversations after reconnect:', error.message);
-      });
-    };
-
-    newSocket.on('connect', handleConnect);
-    newSocket.io.on('reconnect', handleReconnect);
-
-    newSocket.on('connect_error', (err) => {
-      console.error('[Inbox] Socket connection error:', err.message);
-    });
-
-    newSocket.on('disconnect', (reason) => {
-      console.warn('[Inbox] Socket disconnected:', reason);
-    });
-
-    setSocket(newSocket);
-    return () => {
-      newSocket.off('connect', handleConnect);
-      newSocket.io.off('reconnect', handleReconnect);
-      newSocket.disconnect();
-    };
-  }, [fetchConversations]);
-
-  // Listen for real-time messages
+  // Socket listeners for real-time updates
   useEffect(() => {
     if (!socket) return;
 
     socket.on('chat:message_received', ({ conversation, message }) => {
-      console.log('[Inbox] Received message:', message);
-
-      // Update conversations list
+      // Update conversation list
       setConversations(prev => {
-        const exists = prev.find(c => c.id === conversation.id);
-        if (exists) {
-          return prev
-            .map(c => c.id === conversation.id ? { ...c, ...conversation } : c)
-            .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
+        const index = prev.findIndex(c => c.id === conversation.id);
+        if (index !== -1) {
+          const updated = [...prev];
+          updated[index] = { ...updated[index], ...conversation };
+          return updated.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
         }
-        return [conversation, ...prev]
-          .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
+        return [conversation, ...prev].sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
       });
 
       // If this conversation is selected, add message to it
@@ -119,7 +75,6 @@ export default function Inbox() {
     socket.on('chat:message_sent', ({ conversationId, message }) => {
       setSelectedConversation(prev => {
         if (prev && prev.id === conversationId) {
-          // Avoid duplicates
           const exists = prev.messages?.some(m => m.id === message.id);
           if (exists) return prev;
           return {
@@ -144,14 +99,11 @@ export default function Inbox() {
         setLoading(true);
         setSyncing(true);
 
-        // 1. Auto-sync chats from Evolution API (pulls old chats with names)
         await api.post('/chat/sync').catch(err => {
           console.warn('[Inbox] Auto-sync failed (non-fatal):', err.message);
         });
 
         setSyncing(false);
-
-        // 2. Then fetch conversations
         await fetchConversations();
         setInitialSynced(true);
       } catch (error) {
@@ -211,7 +163,6 @@ export default function Inbox() {
       const { data } = await api.get(`/chat/conversations/${conversation.id}`);
       setSelectedConversation(data.conversation || data);
 
-      // Update unread count locally
       setConversations(prev =>
         prev.map(c => c.id === conversation.id ? { ...c, unreadCount: 0 } : c)
       );
@@ -225,7 +176,6 @@ export default function Inbox() {
       const { data } = await api.post('/chat/messages/send', messageData);
       const sentMessage = data.message;
 
-      // Optimistically add to UI
       if (sentMessage) {
         setSelectedConversation(prev => {
           if (!prev) return prev;
@@ -237,7 +187,6 @@ export default function Inbox() {
           };
         });
 
-        // Update conversation list
         setConversations(prev =>
           prev.map(c => c.id === messageData.conversationId
             ? { ...c, lastMessage: messageData.content?.substring(0, 100), lastMessageAt: new Date().toISOString() }
@@ -252,11 +201,9 @@ export default function Inbox() {
   }, []);
 
   const handleConversationUpdate = useCallback((updatedConversation) => {
-    // Update list
     setConversations(prev =>
       prev.map(c => c.id === updatedConversation.id ? { ...c, ...updatedConversation } : c)
     );
-    // Update selected
     setSelectedConversation(prev =>
       prev && prev.id === updatedConversation.id ? { ...prev, ...updatedConversation } : prev
     );
@@ -273,7 +220,6 @@ export default function Inbox() {
         />
       )}
 
-      {/* Conversation List Sidebar */}
       <aside className="inbox-sidebar">
         <ConversationList
           conversations={conversations}
@@ -288,7 +234,6 @@ export default function Inbox() {
         />
       </aside>
 
-      {/* Chat Window */}
       <main className="inbox-main flex-1 flex min-w-0">
         {selectedConversation ? (
           <>
@@ -312,7 +257,6 @@ export default function Inbox() {
               />
             )}
 
-            {/* Right Mini Toolbar (Like Image 2) */}
             <div className="w-12 h-full bg-[#0f0f11] border-l border-white/5 flex flex-col items-center py-4 gap-4 z-10">
               <button
                 onClick={() => setShowContactSidebar(!showContactSidebar)}
@@ -325,27 +269,56 @@ export default function Inbox() {
             </div>
           </>
         ) : (
-          <div className="inbox-empty-state">
-            <div className="inbox-empty-icon">
-              <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center relative overflow-hidden">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
+            
+            <div className="relative z-10">
+              <div className="w-32 h-32 mx-auto mb-8 relative">
+                <div className="absolute inset-0 bg-indigo-500/10 rounded-[40px] blur-2xl animate-pulse"></div>
+                <div className="relative w-full h-full bg-[#18181b] rounded-[40px] border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <ChatBubbleLeftRightIcon className="w-14 h-14 text-indigo-400 group-hover:scale-110 transition-transform duration-500" />
+                </div>
+              </div>
+
+              {syncing ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                  <h2 className="text-3xl font-black text-white mb-3 tracking-tight">Syncing Your World</h2>
+                  <p className="text-zinc-400 text-base font-medium max-w-md mx-auto leading-relaxed">
+                    We're currently pulling conversations from all your connected channels. Sit tight while we organize your workspace.
+                  </p>
+                  <div className="mt-8 flex items-center justify-center gap-3">
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></div>
+                  </div>
+                </div>
+              ) : (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                  <h2 className="text-3xl font-black text-white mb-3 tracking-tight">Select a Conversation</h2>
+                  <p className="text-zinc-400 text-base font-medium max-w-md mx-auto leading-relaxed">
+                    Pick a discussion from the sidebar to view messages, manage contact details, or handover to an AI agent.
+                  </p>
+                  <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-xl mx-auto">
+                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center gap-2">
+                      <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400"><BoltIcon className="w-5 h-5" /></div>
+                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">AI Handover</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center gap-2">
+                      <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400"><UserIcon className="w-5 h-5" /></div>
+                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">CRM Sync</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center gap-2">
+                      <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400"><InboxIcon className="w-5 h-5" /></div>
+                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Multi-Channel</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            {syncing ? (
-              <>
-                <h2>Syncing chats...</h2>
-                <p>Pulling conversations from all channels. This may take a moment.</p>
-              </>
-            ) : (
-              <>
-                <h2>Select a conversation</h2>
-                <p>Choose a conversation from the sidebar to start chatting</p>
-              </>
-            )}
           </div>
         )}
       </main>
     </div>
   );
 }
-

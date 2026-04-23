@@ -243,7 +243,7 @@ router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async 
         tenantId: req.user.tenantId
       },
       include: {
-        knowledgeSources: true
+        knowledgeSources: { where: { isActive: true } }
       }
     });
 
@@ -251,9 +251,8 @@ router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async 
       return res.status(404).json({ error: 'Agent not found' });
     }
 
-    const contextLines = (agent.knowledgeSources || [])
-      .filter(k => k && k.content)
-      .map(k => `${k.title || 'Knowledge'}: ${k.content}`);
+    // Fix 6.1: Use RAG (Vector Search) in test chat so preview matches production behavior
+    const contextLines = await agentService.buildContext(message, agent.knowledgeSources, agent.id);
 
     // Reuse production prompt builder so preview behavior matches real conversations.
     const systemPrompt = agentService.buildSystemPrompt(agent, contextLines);

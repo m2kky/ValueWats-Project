@@ -38,7 +38,11 @@ const tenantContext = async (req, res, next) => {
       return res.status(403).json({ error: 'Tenant account is not active' });
     }
 
-    next();
+    // Run the rest of the request within the tenant's AsyncLocalStorage context
+    // This allows Prisma Extension to automatically scope all queries to this tenant
+    prisma.tenantStorage.run(req.tenantId, () => {
+      next();
+    });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ error: 'Invalid token' });

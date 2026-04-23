@@ -5,36 +5,67 @@ const fs = require('fs');
 
 class KnowledgeService {
   /**
-   * Split text into chunks (~500 tokens each with overlap)
+   * Split text into chunks recursively based on separators (paragraphs, sentences, words)
+   * to maintain semantic integrity within chunk size limits.
+   * Fix 6.2: Standard Recursive Character Splitter
    */
-  chunkText(text, maxChunkSize = 1500, overlap = 200) {
-    // Split by double newlines (paragraphs) first
-    const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim());
+  chunkText(text, maxChunkSize = 1000, overlap = 200) {
+    if (!text || typeof text !== 'string') return [];
+    
+    const separators = ['\n\n', '\n', '. ', '! ', '? ', ' ', ''];
     const chunks = [];
-    let currentChunk = '';
+    
+    const splitRecursive = (input, separatorIdx) => {
+      if (input.length <= maxChunkSize) {
+        return [input];
+      }
+      
+      if (separatorIdx >= separators.length) {
+        // Force split if no more separators
+        const result = [];
+        for (let i = 0; i < input.length; i += maxChunkSize - overlap) {
+           result.push(input.substring(i, i + maxChunkSize));
+        }
+        return result;
+      }
+      
+      const separator = separators[separatorIdx];
+      const parts = input.split(separator);
+      const result = [];
+      let current = '';
+      
+      for (const part of parts) {
+        const next = current ? current + separator + part : part;
+        if (next.length <= maxChunkSize) {
+          current = next;
+        } else {
+          if (current) result.push(current);
+          // If a single part is still too long, split it further with next separator
+          if (part.length > maxChunkSize) {
+            result.push(...splitRecursive(part, separatorIdx + 1));
+            current = ''; // Reset after recursive split
+          } else {
+            current = part;
+          }
+        }
+      }
+      
+      if (current) result.push(current);
+      return result;
+    };
 
-    for (const para of paragraphs) {
-      if ((currentChunk + '\n\n' + para).length > maxChunkSize && currentChunk.length > 0) {
-        chunks.push(currentChunk.trim());
-        // Overlap: keep last part of previous chunk
-        const words = currentChunk.split(' ');
-        const overlapWords = words.slice(-Math.floor(overlap / 5));
-        currentChunk = overlapWords.join(' ') + '\n\n' + para;
-      } else {
-        currentChunk = currentChunk ? currentChunk + '\n\n' + para : para;
+    const rawChunks = splitRecursive(text, 0);
+    
+    // Apply overlap to chunks
+    if (overlap > 0 && rawChunks.length > 1) {
+      for (let i = 1; i < rawChunks.length; i++) {
+        const prevChunk = rawChunks[i - 1];
+        const overlapText = prevChunk.substring(prevChunk.length - overlap);
+        rawChunks[i] = overlapText + rawChunks[i];
       }
     }
 
-    if (currentChunk.trim()) {
-      chunks.push(currentChunk.trim());
-    }
-
-    // If no natural breaks, split by sentences
-    if (chunks.length === 0 && text.trim()) {
-      chunks.push(text.trim());
-    }
-
-    return chunks;
+    return rawChunks.filter(c => c.trim().length > 0);
   }
 
   /**

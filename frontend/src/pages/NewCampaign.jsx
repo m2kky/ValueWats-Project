@@ -213,6 +213,8 @@ export default function NewCampaign() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (loading) return;
+
     if (formData.type === 'marketing' && instances.length === 0) {
       alert('Please connect a WhatsApp number first before launching a campaign.');
       navigate('/instances');
@@ -602,7 +604,7 @@ export default function NewCampaign() {
                   <p className="mt-2 text-xs text-zinc-500 font-medium">Supports Images (JPG, PNG), Videos (MP4), and Documents (PDF).</p>
                 </div>
 
-                <p className="mt-4 text-xs text-gray-500">Variables like {`{name}`} coming soon. Add multiple variants to avoid spam detection.</p>
+                <p className="mt-4 text-xs text-zinc-500 font-medium">Use variables like <code className="px-1.5 py-0.5 rounded bg-white/10 text-white text-[10px]">{'{{contact.firstName}}'}</code> to personalize your messages. Add multiple variants to avoid spam detection.</p>
               </div>
 
               {/* Message Rotation Settings (Only show if multiple templates) */}

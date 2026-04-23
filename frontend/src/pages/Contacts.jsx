@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import usePageTitle from '../hooks/usePageTitle';
 import {
   PlusIcon, MagnifyingGlassIcon, ArrowUpTrayIcon, TrashIcon,
   FunnelIcon, TagIcon, UserCircleIcon, BookmarkIcon
 } from '@heroicons/react/24/outline';
+import { TableVirtuoso } from 'react-virtuoso';
 
 const SOURCES = ['manual', 'whatsapp', 'import', 'website'];
 
 export default function Contacts() {
+  usePageTitle('Contacts');
   const navigate = useNavigate();
   const [contacts, setContacts] = useState([]);
   const [total, setTotal] = useState(0);
@@ -27,7 +30,7 @@ export default function Contacts() {
   const [segmentName, setSegmentName] = useState('');
   const [newContact, setNewContact] = useState({ phoneNumber: '', name: '', email: '', governorate: '' });
   const [newLabel, setNewLabel] = useState({ name: '', color: '#6366f1' });
-  const LIMIT = 50;
+  const LIMIT = 500;
 
   const fetchContacts = useCallback(async () => {
     setLoading(true);
@@ -251,31 +254,72 @@ export default function Contacts() {
       </div>
 
       {/* Table */}
-      <div className="glass-card border border-white/5 bg-zinc-900/40 rounded-2xl overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-white/5">
-              <th className="p-4 text-left w-10">
-                <input type="checkbox" checked={selected.size === contacts.length && contacts.length > 0} onChange={toggleAll} className="rounded" />
-              </th>
-              <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Contact</th>
-              <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Phone</th>
-              <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Stage</th>
-              <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Labels</th>
-              <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Source</th>
-              <th className="p-4 w-10"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} className="p-8 text-center text-zinc-500">Loading...</td></tr>
-            ) : contacts.length === 0 ? (
-              <tr><td colSpan={7} className="p-12 text-center text-zinc-500">
-                <UserCircleIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>No contacts yet</p>
-              </td></tr>
-            ) : contacts.map(c => (
-              <tr key={c.id} className="border-b border-white/5 hover:bg-white/2 transition-colors cursor-pointer" onClick={() => navigate(`/contacts/${c.id}`)}>
+      <div className="glass-card border border-white/5 bg-zinc-900/40 rounded-2xl overflow-hidden h-[65vh]">
+        {loading && contacts.length === 0 ? (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/5">
+                <th className="p-4 text-left w-10"><input type="checkbox" disabled className="rounded" /></th>
+                <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Contact</th>
+                <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Phone</th>
+                <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Stage</th>
+                <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Labels</th>
+                <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Source</th>
+                <th className="p-4 w-10"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...Array(8)].map((_, i) => (
+                <tr key={i} className="border-b border-white/5">
+                  <td className="p-4"><div className="w-4 h-4 bg-white/5 rounded animate-pulse"></div></td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse"></div>
+                      <div className="space-y-2">
+                        <div className="h-3 w-24 bg-white/5 rounded animate-pulse"></div>
+                        <div className="h-2 w-32 bg-white/5 rounded animate-pulse"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4"><div className="h-3 w-20 bg-white/5 rounded animate-pulse"></div></td>
+                  <td className="p-4"><div className="h-5 w-16 bg-white/5 rounded-lg animate-pulse"></div></td>
+                  <td className="p-4"><div className="h-4 w-24 bg-white/5 rounded-full animate-pulse"></div></td>
+                  <td className="p-4"><div className="h-3 w-12 bg-white/5 rounded animate-pulse"></div></td>
+                  <td className="p-4"></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : contacts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-zinc-500">
+            <UserCircleIcon className="w-12 h-12 mb-3 opacity-30" />
+            <p>No contacts yet</p>
+          </div>
+        ) : (
+          <TableVirtuoso
+            data={contacts}
+            className="w-full h-full custom-scrollbar"
+            components={{
+              Table: ({ style, ...props }) => <table {...props} className="w-full" style={{ ...style, width: '100%', borderCollapse: 'collapse' }} />,
+              TableRow: ({ item: c, ...props }) => (
+                <tr {...props} className="border-b border-white/5 hover:bg-white/2 transition-colors cursor-pointer" onClick={() => navigate(`/contacts/${c?.id}`)} />
+              )
+            }}
+            fixedHeaderContent={() => (
+              <tr className="border-b border-white/5 bg-zinc-900/90 backdrop-blur-md relative z-10">
+                <th className="p-4 text-left w-10">
+                  <input type="checkbox" checked={selected.size === contacts.length && contacts.length > 0} onChange={toggleAll} className="rounded" />
+                </th>
+                <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Contact</th>
+                <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Phone</th>
+                <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Stage</th>
+                <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Labels</th>
+                <th className="p-4 text-left text-[10px] font-black text-zinc-500 uppercase tracking-widest">Source</th>
+                <th className="p-4 w-10"></th>
+              </tr>
+            )}
+            itemContent={(index, c) => (
+              <>
                 <td className="p-4" onClick={e => e.stopPropagation()}>
                   <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)} className="rounded" />
                 </td>
@@ -316,10 +360,11 @@ export default function Contacts() {
                     <TrashIcon className="w-4 h-4" />
                   </button>
                 </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </>
+            )}
+          />
+        )}
+      </div>
 
         {/* Pagination */}
         {totalPages > 1 && (

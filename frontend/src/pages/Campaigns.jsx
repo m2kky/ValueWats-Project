@@ -1,7 +1,8 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import ValueWatsLoader from '../components/ValueWatsLoader';
+import usePageTitle from '../hooks/usePageTitle';
 import {
   PlusIcon,
   MegaphoneIcon,
@@ -34,6 +35,7 @@ const CampaignStatus = ({ status }) => {
 };
 
 export default function Campaigns() {
+  usePageTitle('Campaigns');
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -147,8 +149,45 @@ export default function Campaigns() {
           <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-32">
-              <ValueWatsLoader size={72} text="Loading Campaigns..." />
+            <div className="overflow-x-auto">
+              <table className="w-full text-left whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-white/5 bg-white/[0.02]">
+                    <th className="px-6 py-4 text-xs font-black text-zinc-500 uppercase tracking-widest w-2/5">Campaign Details</th>
+                    <th className="px-6 py-4 text-xs font-black text-zinc-500 uppercase tracking-widest w-1/5">Status</th>
+                    <th className="px-6 py-4 text-xs font-black text-zinc-500 uppercase tracking-widest w-1/5">Metrics</th>
+                    <th className="px-6 py-4 text-xs font-black text-zinc-500 uppercase tracking-widest">Timing</th>
+                    <th className="px-6 py-4 text-xs font-black text-zinc-500 uppercase tracking-widest text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {[...Array(5)].map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-white/5 animate-pulse shrink-0"></div>
+                          <div className="flex-1">
+                            <div className="h-4 w-32 bg-white/5 rounded animate-pulse mb-2"></div>
+                            <div className="h-3 w-48 bg-white/5 rounded animate-pulse"></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="h-6 w-20 bg-white/5 rounded-full animate-pulse"></div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="h-4 w-16 bg-white/5 rounded animate-pulse"></div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="h-4 w-24 bg-white/5 rounded animate-pulse"></div>
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <div className="h-8 w-8 bg-white/5 rounded-lg animate-pulse ml-auto"></div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : campaigns.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 px-6 text-center z-10 relative">

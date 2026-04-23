@@ -18,7 +18,8 @@ const messageQueue = new Queue('campaign-messages', {
     password: process.env.REDIS_PASSWORD || undefined,
   },
   defaultJobOptions: {
-    removeOnComplete: true,
+    removeOnComplete: { count: 100 },  // Fix 2.5: Keep last 100 completed jobs (prevents Redis memory bloat)
+    removeOnFail: { count: 500 },      // Keep last 500 failed for debugging
     attempts: 3,
     backoff: {
       type: 'exponential',
@@ -214,6 +215,8 @@ function getWorkingHoursOffset(plan) {
   return minutesToStart * 60 * 1000; // Convert to ms
 }
 
+const redis = require('../config/redis');
+
 /**
  * Add messages to the queue for a campaign with staggered delays, multi-instance support, and message rotation
  * @param {Array} instances - List of instances to use [{ id, instanceName }]
@@ -229,13 +232,16 @@ function getWorkingHoursOffset(plan) {
  */
 const addToQueue = async (instances, contacts, messageTemplates, campaignId, tenantId, delayMin = 15, delayMax = 25, instanceSwitchCount = 50, messageRotationCount = 1, mediaUrl = null, mediaType = null, plan = null, type = 'marketing') => {
   // Phase 4: Working Hours — offset the entire campaign start time
-  let cumulativeDelay = getWorkingHoursOffset(plan);
+  const workingHoursOffset = getWorkingHoursOffset(plan);
   const jobs = [];
 
   // Ensure inputs are arrays
   const instanceList = Array.isArray(instances) ? instances : [instances];
-  // Backwards compatibility: if messageTemplates is a string, wrap in array
   const templates = Array.isArray(messageTemplates) ? messageTemplates : [messageTemplates];
+
+  // Fix 2.6: Track next available time per instance in Redis to allow parallel instances
+  // while maintaining per-instance cooldown across campaigns.
+  const instanceNextAvailable = new Map();
 
   for (let i = 0; i < contacts.length; i++) {
     const contact = contacts[i];
@@ -272,42 +278,33 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
        }
     }
 
+    if (!currentInstance) {
+      console.error(`[Queue] No instance available for message ${i}`);
+      continue;
+    }
+
     // Determine which message template to use
     const templateIndex = Math.floor(i / intVal(messageRotationCount)) % templates.length;
     let currentMessage = templates[templateIndex];
 
     // Anti-Ban Spintax & Dynamic Global Variables
-    // Usage: {{rand}} = Random invisible characters to make each message slightly unique
-    // Usage: {{date}} = Current date/time to make each message timestamped
     const generateInvisibleString = () => {
-      const chars = ['\u200B', '\u200C', '\u200D', '\uFEFF']; // Zero-width characters
+      const chars = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
       let str = '';
-      const len = Math.floor(Math.random() * 5) + 3; // 3 to 7 chars
+      const len = Math.floor(Math.random() * 5) + 3;
       for (let j = 0; j < len; j++) str += chars[Math.floor(Math.random() * chars.length)];
       return str;
     };
 
-    // Inject invisible random chars to bypass hash-matching spam filters
-    // Appended on a new line so they never touch URLs or message content
     currentMessage += '\n' + generateInvisibleString();
-
-    // Replace basic dynamic variables
     currentMessage = currentMessage.replace(/{{rand}}/gi, Math.floor(Math.random() * 10000).toString());
     currentMessage = currentMessage.replace(/{{date}}/gi, new Date().toLocaleString('ar-EG'));
 
-    // Interpolate Contact Variables (from CSV mapping)
     if (contact.variables) {
       Object.keys(contact.variables).forEach(key => {
         const regex = new RegExp(`{{${key}}}`, 'gi');
         currentMessage = currentMessage.replace(regex, contact.variables[key] || '');
       });
-    }
-
-    // Links are preserved entirely in modern configurations (CTR disabled)
-
-    if (!currentInstance) {
-      console.error(`[Queue] No instance available for message ${i}`);
-      continue;
     }
 
     // Create DB record first
@@ -325,16 +322,29 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
       }
     });
 
-    // Determine target delay for this message based on instance (which holds channelType)
-    // Wait... jobs list receives data. Let's make sure channelType and instanceName are passed down to bullmq data.
+    // Calculate delay using Redis-backed per-instance cooldown
+    const redisKey = `instance_next_time:${currentInstance.id}`;
+    
+    // Get last scheduled time for this instance from local cache OR Redis
+    let lastTime = instanceNextAvailable.get(currentInstance.id);
+    if (!lastTime) {
+      const redisVal = await redis.get(redisKey);
+      lastTime = redisVal ? parseInt(redisVal) : Date.now();
+    }
 
-    // Random delay between delayMin and delayMax
-    const dMin = intVal(delayMin);
-    const dMax = intVal(delayMax);
-    const randomDelay = Math.floor(Math.random() * (dMax - dMin + 1)) + dMin;
-    cumulativeDelay += randomDelay * 1000;
+    // Ensure we start after working hours if applicable
+    lastTime = Math.max(lastTime, Date.now() + workingHoursOffset);
 
-    console.log(`[Queue] Scheduling message ${i + 1}/${contacts.length} to ${contact.number} via ${currentInstance.instanceName} (Template ${templateIndex + 1}) with ${cumulativeDelay}ms delay`);
+    const randomDelay = Math.floor(Math.random() * (intVal(delayMax) - intVal(delayMin) + 1)) + intVal(delayMin);
+    const nextTime = lastTime + (randomDelay * 1000);
+    
+    // Update local cache and Redis
+    instanceNextAvailable.set(currentInstance.id, nextTime);
+    await redis.set(redisKey, nextTime, 'PX', 2 * 3600000); // 2 hours TTL
+
+    const jobDelay = nextTime - Date.now();
+
+    console.log(`[Queue] Scheduling message ${i + 1}/${contacts.length} to ${contact.number} via ${currentInstance.instanceName} with ${Math.round(jobDelay/1000)}s delay`);
 
     const job = messageQueue.add({
       instanceName: currentInstance.instanceName,
@@ -349,7 +359,7 @@ const addToQueue = async (instances, contacts, messageTemplates, campaignId, ten
       accessToken: currentInstance.accessToken || null,
       phoneNumberId: currentInstance.phoneNumberId || null
     }, {
-      delay: i === 0 ? 0 : cumulativeDelay, // First message immediate
+      delay: Math.max(0, jobDelay),
       attempts: 3,
       backoff: {
         type: 'exponential',

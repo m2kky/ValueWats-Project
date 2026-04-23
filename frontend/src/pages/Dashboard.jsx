@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import usePageTitle from '../hooks/usePageTitle';
 import {
   SignalIcon,
   ChatBubbleLeftRightIcon,
@@ -25,14 +26,18 @@ import {
 } from 'recharts';
 import ActivityFeed from '../components/ActivityFeed';
 
-const StatCard = ({ title, value, icon: Icon, color, trend, trendValue }) => (
+const StatCard = ({ title, value, icon: Icon, color, trend, trendValue, isLoading }) => (
   <div className="glass-card p-6 relative overflow-hidden group">
     <div className={`absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full opacity-[0.03] group-hover:opacity-[0.05] transition-opacity duration-500 ${color}`}></div>
     <div className="flex items-center justify-between relative z-10">
-      <div>
+      <div className="flex-1">
         <p className="text-sm font-semibold text-zinc-500 mb-1 uppercase tracking-wider">{title}</p>
-        <h3 className="text-3xl font-black text-white tracking-tight">{value}</h3>
-        {trend && (
+        {isLoading ? (
+          <div className="h-9 w-24 bg-white/5 rounded-lg animate-pulse mt-1"></div>
+        ) : (
+          <h3 className="text-3xl font-black text-white tracking-tight">{value}</h3>
+        )}
+        {trend && !isLoading && (
           <div className="mt-2 flex items-center gap-1.5 text-xs font-bold">
             <div className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full ${trend === 'up' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
               {trend === 'up' ? <ArrowTrendingUpIcon className="w-3 h-3" /> : <ArrowTrendingDownIcon className="w-3 h-3" />}
@@ -40,6 +45,9 @@ const StatCard = ({ title, value, icon: Icon, color, trend, trendValue }) => (
             </div>
             <span className="text-zinc-500">vs last month</span>
           </div>
+        )}
+        {isLoading && trend && (
+          <div className="h-4 w-32 bg-white/5 rounded mt-3 animate-pulse"></div>
         )}
       </div>
       <div className={`p-4 rounded-2xl bg-gradient-to-tr shadow-lg group-hover:scale-110 transition-transform duration-300 ${color}`}>
@@ -50,6 +58,7 @@ const StatCard = ({ title, value, icon: Icon, color, trend, trendValue }) => (
 );
 
 export default function Dashboard() {
+  usePageTitle('Dashboard');
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     instances: 0,
@@ -72,8 +81,10 @@ export default function Dashboard() {
     timeline: []
   });
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchStats = async () => {
+    setLoading(true);
     try {
       const response = await api.get('/dashboard/stats');
       const data = response.data || {};
@@ -110,7 +121,9 @@ export default function Dashboard() {
         timeline: data.timeline || []
       });
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
+      console.error('[Dashboard] Fetch error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -143,38 +156,42 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Active Channels"
           value={stats.instances}
           icon={SignalIcon}
-          color="from-emerald-500 to-teal-500"
+          color="from-emerald-500 to-teal-600"
           trend="up"
-          trendValue="+12%"
+          trendValue="+2"
+          isLoading={loading}
         />
         <StatCard
-          title="Messages Sent"
-          value={stats.messages.sent.toLocaleString()}
+          title="Sent Messages"
+          value={stats.messages.total.toLocaleString()}
           icon={ChatBubbleLeftRightIcon}
-          color="from-indigo-500 to-blue-500"
+          color="from-indigo-500 to-blue-600"
           trend="up"
-          trendValue="+24%"
+          trendValue="+12.5%"
+          isLoading={loading}
         />
         <StatCard
           title="Campaigns"
           value={stats.campaigns}
           icon={MegaphoneIcon}
-          color="from-purple-500 to-pink-500"
+          color="from-purple-500 to-pink-600"
           trend="up"
-          trendValue={`${stats.ai.messagesHandled} AI msgs`}
+          trendValue="+5"
+          isLoading={loading}
         />
         <StatCard
-          title="Reach"
-          value={stats.contacts.toLocaleString()}
-          icon={UserGroupIcon}
-          color="from-orange-500 to-amber-500"
-          trend="up"
-          trendValue={`${stats.conversations} convos`}
+          title="Avg Response Time"
+          value={`${stats.avgResponseTime}m`}
+          icon={ClockIcon}
+          color="from-orange-500 to-amber-600"
+          trend="down"
+          trendValue="-2.4m"
+          isLoading={loading}
         />
       </div>
 
