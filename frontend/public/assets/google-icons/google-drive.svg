@@ -1,1 +1,5 @@
-Please set a user-agent and respect our robot policy https://w.wiki/4wJS. See also https://phabricator.wikimedia.org/T400119.
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path fill="#FFC107" d="M16 4L9 16h6l7-12z"/>
+  <path fill="#1976D2" d="M2 16h6l7-12H9z"/>
+  <path fill="#4CAF50" d="M2 16l3.5 6h13l-3.5-6z"/>
+</svg>

@@ -85,7 +85,14 @@ class IntegrationService {
     const url = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       prompt: 'consent',
-      scope: ['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/spreadsheets']
+      scope: [
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/calendar.events', 
+        'https://www.googleapis.com/auth/calendar.readonly', 
+        'https://www.googleapis.com/auth/drive.file', 
+        'https://www.googleapis.com/auth/drive.readonly', 
+        'https://www.googleapis.com/auth/spreadsheets'
+      ]
     });
 
     const integration = await prisma.integration.create({
@@ -130,11 +137,32 @@ class IntegrationService {
     
     const oauth2Client = new google.auth.OAuth2(creds.clientId, creds.clientSecret, creds.redirectUri);
     const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    let connectedEmail = '';
+    try {
+      const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+      const userInfo = await oauth2.userinfo.get();
+      if (userInfo.data && userInfo.data.email) {
+        connectedEmail = userInfo.data.email;
+      }
+    } catch (err) {
+      console.error('Failed to fetch Google user info:', err.message);
+    }
     
-    const updatedCreds = { ...creds, ...tokens };
+    const updatedCreds = { ...creds, ...tokens, connectedEmail };
+    let newName = integration.name;
+    if (connectedEmail) {
+      newName = `${integration.name} (${connectedEmail})`;
+    }
+
     await prisma.integration.update({
       where: { id: integrationId },
-      data: { credentials: encrypt(JSON.stringify(updatedCreds)), status: 'active' }
+      data: { 
+        name: newName,
+        credentials: encrypt(JSON.stringify(updatedCreds)), 
+        status: 'active' 
+      }
     });
     return true;
   }
