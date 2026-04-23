@@ -5,6 +5,7 @@ import ConversationList from '../components/chat/ConversationList';
 import ChatWindow from '../components/chat/ChatWindow';
 import ContactSidebar from '../components/chat/ContactSidebar';
 import InboxFiltersSidebar from '../components/chat/InboxFiltersSidebar';
+import '../styles/inbox.css';
 import { 
   UserCircleIcon, 
   ChatBubbleLeftRightIcon, 
