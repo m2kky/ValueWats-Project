@@ -1,10 +1,17 @@
 ## 2026-04-28
 
 ### Fixed
+- **AI Agent Replies (Evolution API v2)**: Fixed webhook authorization block and corrected `/chat/findChats` endpoint (404 error) to restore AI agent responsiveness.
 - **Agent Publish Bug**: Added `isPublished` to backend create/update whitelisted fields — agents were silently staying as draft because the field was stripped before saving.
 - **Notion Integration Dropdown**: Fixed type filter in Agent Editor to match both `notion` and `notion_oauth` integration types — Notion connections were invisible in the dropdown.
 - **RichTextarea Colored Chips**: Added highlight overlay to render `{{variables}}`, `%tags`, and `@mentions` as colored inline chips (blue/green/purple) instead of raw text. Uses transparent textarea + mirrored overlay approach.
 - **Lifecycle Stage Variables**: Stage buttons in the "Update lifecycle" action now insert `{{stage.Name}}` into the instruction text. Stages also appear in the variable picker dropdown.
+
+### Added
+- **Visual Workflow Builder (Phase 1)**: Replaced the simple workflow modal with a full drag-and-drop Visual Builder utilizing `@xyflow/react` and `dagre` for an automatic Vertical Tree layout.
+- **Workflow Node Palette**: Added a comprehensive node registry and sidebar palette categorized into Messaging, Logic & Flow, CRM Actions, and Integrations.
+- **Workflow Configuration Inspector**: Added a dynamic right-side panel that changes fields based on the selected node type (e.g., Send Message, Ask a Question, Wait, Branch).
+- **Backend Graph Storage**: Updated backend `workflows.js` routes to support JSON objects in the `steps` field, allowing full persistence of the React Flow canvas state.
 
 ## 2026-04-23
 

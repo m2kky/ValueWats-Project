@@ -2,6 +2,37 @@
 
 Document all critical errors, their root causes, fixes, and lessons learned. When fixing an issue, **FIRST check this file** to see if it's already documented. After fixing an issue, **ADD it here**.
 
+## ERR-039: AI Agents Not Replying (Webhook blocked & 404 on Evolution API)
+
+| Field        | Value                                                                 |
+| ------------ | --------------------------------------------------------------------- |
+| **Date**     | 2026-04-28                                                            |
+| **Severity** | High                                                                  |
+| **Source**   | `backend/src/routes/webhooks.js`, `backend/src/services/evolutionApi.js` |
+| **Trigger**  | Incoming WhatsApp messages fail to trigger AI agents                  |
+
+### Description
+
+Incoming messages from Evolution API were not reaching the agents. Two issues were found:
+1. `verifyWebhookContext` was blocking webhook requests because Evolution API doesn't send the `apikey` header in webhook callbacks. 
+2. `fetchConversations` in `evolutionApi.js` was throwing a 404 error because it was using `/chat/findChat/` instead of `/chat/findChats/` (Evolution API v2 endpoint).
+
+### Root Cause
+
+- Webhook routes had authentication middleware (`verifyWebhookContext`) applied, contrary to project rules which state webhooks are public.
+- Evolution API v2 changed the endpoint for fetching conversations from `findChat` to `findChats`.
+
+### Fix
+
+- Removed `verifyWebhookContext` middleware from all webhook routes in `backend/src/routes/webhooks.js`.
+- Corrected the endpoint in `fetchConversations` from `/chat/findChat/${instanceName}` to `/chat/findChats/${instanceName}` in `backend/src/services/evolutionApi.js`.
+
+### Lesson Learned
+
+Webhook routes must remain public as third-party services often don't support custom authentication headers. Always verify API endpoints against the correct version of the third-party service documentation (Evolution API v2).
+
+---
+
 ## ERR-038: Campaign Creation Allowed Without Connected Instance
 
 | Field        | Value                                                                 |

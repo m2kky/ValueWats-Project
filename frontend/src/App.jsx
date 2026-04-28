@@ -1,4 +1,4 @@
-﻿import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import ValueWatsLoader from './components/ValueWatsLoader';
 import Layout from './components/Layout';
@@ -21,6 +21,7 @@ const Inbox = React.lazy(() => import('./pages/Inbox'));
 const Agents = React.lazy(() => import('./pages/Agents'));
 const Templates = React.lazy(() => import('./pages/Templates'));
 const Workflows = React.lazy(() => import('./pages/Workflows'));
+const WorkflowBuilder = React.lazy(() => import('./pages/workflows/WorkflowBuilder'));
 const Contacts = React.lazy(() => import('./pages/Contacts'));
 const ContactProfile = React.lazy(() => import('./pages/ContactProfile'));
 const Team = React.lazy(() => import('./pages/Team'));
@@ -298,6 +299,12 @@ function App() {
           <Route path="/workflows" element={
             <PrivateRoute>
               <Workflows />
+            </PrivateRoute>
+          } />
+
+          <Route path="/workflows/:id" element={
+            <PrivateRoute>
+              <WorkflowBuilder />
             </PrivateRoute>
           } />
 

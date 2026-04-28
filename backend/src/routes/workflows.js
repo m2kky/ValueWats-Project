@@ -24,12 +24,12 @@ const serializeWorkflow = (workflow) => ({
 const normalizeCreatePayload = (body) => {
   const name = String(body?.name || '').trim();
   const triggerType = String(body?.triggerType || '').trim().toLowerCase();
-  const steps = parseBodyJson(body?.steps, []);
+  const steps = parseBodyJson(body?.steps, null);
   const triggerConfig = parseBodyJson(body?.triggerConfig, {});
 
   if (!name) throw new Error('Workflow name is required');
   if (!triggerType) throw new Error('Trigger type is required');
-  if (!Array.isArray(steps) || steps.length === 0) throw new Error('At least one workflow step is required');
+  if (!steps) throw new Error('Workflow steps (graph) are required');
 
   return {
     name,
@@ -58,8 +58,8 @@ const normalizeUpdatePayload = (body) => {
     data.triggerConfig = JSON.stringify(parseBodyJson(body.triggerConfig, {}));
   }
   if (body?.steps !== undefined) {
-    const steps = parseBodyJson(body.steps, []);
-    if (!Array.isArray(steps) || steps.length === 0) throw new Error('Workflow steps cannot be empty');
+    const steps = parseBodyJson(body.steps, null);
+    if (!steps) throw new Error('Workflow steps (graph) cannot be empty');
     data.steps = JSON.stringify(steps);
   }
   if (body?.isActive !== undefined) {

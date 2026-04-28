@@ -9,11 +9,10 @@ router.get('/meta', verifyWebhook);
 router.post('/meta', handleMetaWebhook);
 
 // Evolution API webhooks
-// Security: verifyWebhookContext checks x-api-key / apikey header against EVOLUTION_WEBHOOK_SECRET.
-// IMPORTANT: Configure Evolution API instances to send `apikey` header matching the env var.
-router.post('/whatsapp', verifyWebhookContext, webhookController.handleIncomingMessage);
-router.post('/evolution', verifyWebhookContext, webhookController.handleIncomingMessage);
-router.post('/receive', verifyWebhookContext, webhookController.handleIncomingMessage);
-router.post('/receive/:event', verifyWebhookContext, webhookController.handleIncomingMessage);
+// Webhook routes are PUBLIC per rules.md
+router.post('/whatsapp', webhookController.handleIncomingMessage);
+router.post('/evolution', webhookController.handleIncomingMessage);
+router.post('/receive', webhookController.handleIncomingMessage);
+router.post('/receive/:event', webhookController.handleIncomingMessage);
 
 module.exports = router;
