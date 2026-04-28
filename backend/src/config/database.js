@@ -18,7 +18,7 @@ const prisma = new PrismaClient().$extends({
         // List of models that are tenant-isolated
         const tenantModels = [
           'Instance', 'Contact', 'Message', 'Campaign', 'Conversation',
-          'Agent', 'Template', 'Integration', 'Tag', 'AgentKnowledge', 'Segment'
+          'Agent', 'Template', 'Integration', 'Tag', 'Segment'
         ];
 
         // Skip if model is not tenant-isolated (e.g., Tenant model itself, Admin logs)
