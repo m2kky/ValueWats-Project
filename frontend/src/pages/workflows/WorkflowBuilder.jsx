@@ -282,6 +282,7 @@ export default function WorkflowBuilder() {
       {selectedNode && (
         <ConfigPanel
           node={selectedNode}
+          nodes={nodes}
           onUpdate={handleUpdateNode}
           onDelete={handleDeleteNode}
           onClose={() => setSelectedNode(null)}

@@ -325,9 +325,113 @@ class WorkflowService {
     }
 
     if (actionType === 'update_tag') {
-      // Use existing applyLabel logic
       const value = config.tag || config.label;
       return { result: await this.applyLabel(workflow, scope, value, true) };
+    }
+
+    if (actionType === 'update_lifecycle') {
+      if (config.stageId) {
+        const context = await this.ensureConversationContext(workflow, scope);
+        await prisma.conversation.update({
+          where: { id: context.conversationId },
+          data: { lifecycleStageId: config.stageId }
+        });
+        if (context.conversation.contactId) {
+          await prisma.contact.update({
+            where: { id: context.conversation.contactId },
+            data: { lifecycleStageId: config.stageId }
+          }).catch(() => {});
+        }
+        return { result: { stageId: config.stageId } };
+      }
+    }
+
+    if (actionType === 'update_field') {
+      const field = config.field;
+      const value = this.resolveTemplateString(config.value || '', scope);
+      const context = await this.ensureConversationContext(workflow, scope);
+      if (field && context.conversation.contactId) {
+        if (field === 'name' || field === 'email' || field === 'phone') {
+          await prisma.contact.update({ where: { id: context.conversation.contactId }, data: { [field]: value } });
+        } else if (field.startsWith('custom.')) {
+          const customKey = field.split('.')[1];
+          const contact = await prisma.contact.findUnique({ where: { id: context.conversation.contactId } });
+          const customFields = contact.customFields || {};
+          customFields[customKey] = value;
+          await prisma.contact.update({ where: { id: context.conversation.contactId }, data: { customFields } });
+        }
+        return { result: { field, value } };
+      }
+    }
+
+    if (actionType === 'assign_to' || actionType === 'ai_agent') {
+      const type = actionType === 'ai_agent' ? 'ai_agent' : (config.assignType || 'user');
+      const userId = config.userId || null;
+      const agentId = config.agentId || null;
+      const context = await this.ensureConversationContext(workflow, scope);
+      
+      const updateData = {
+        assignedUserId: type === 'user' ? userId : null,
+        assignedAgentId: type === 'ai_agent' ? agentId : null
+      };
+
+      await prisma.conversation.update({
+        where: { id: context.conversationId },
+        data: updateData
+      });
+      return { result: updateData };
+    }
+
+    if (actionType === 'jump_to') {
+      if (config.targetNodeId) {
+        return { jumpToNodeId: config.targetNodeId, result: { jumpedTo: config.targetNodeId } };
+      }
+    }
+
+    if (actionType === 'trigger_workflow') {
+      if (config.workflowId) {
+        await this.executeWorkflow(config.workflowId, scope);
+        return { result: { triggered: config.workflowId } };
+      }
+    }
+
+    if (actionType === 'http_request') {
+      let parsedHeaders = {};
+      let parsedBody = {};
+      try { if (config.headers) parsedHeaders = JSON.parse(config.headers); } catch(e){}
+      try { if (config.body) parsedBody = JSON.parse(this.resolveTemplateString(config.body, scope)); } catch(e){}
+      
+      const url = this.resolveTemplateString(config.url || '', scope);
+      if (url) {
+        const response = await axios({ method: config.method || 'GET', url, headers: parsedHeaders, data: parsedBody }).catch(e => e.response);
+        return { result: { status: response?.status, data: response?.data } };
+      }
+    }
+
+    if (actionType === 'add_comment' || actionType === 'close_conversation') {
+      const comment = this.resolveTemplateString(config.comment || '', scope);
+      const context = await this.ensureConversationContext(workflow, scope);
+      
+      if (comment) {
+        await prisma.message.create({
+          data: {
+            tenantId: workflow.tenantId,
+            conversationId: context.conversationId,
+            messageType: 'note',
+            senderType: 'system',
+            content: comment,
+            status: 'sent'
+          }
+        });
+      }
+
+      if (actionType === 'close_conversation') {
+        await prisma.conversation.update({
+          where: { id: context.conversationId },
+          data: { status: 'closed', resolvedAt: new Date() }
+        });
+      }
+      return { result: { commentAdded: !!comment, closed: actionType === 'close_conversation' } };
     }
 
     // Fallback to legacy step handler for other operations temporarily
@@ -631,6 +735,11 @@ class WorkflowService {
         }
 
         // Determine next node
+        if (stepOutcome?.jumpToNodeId) {
+          currentNodeId = stepOutcome.jumpToNodeId;
+          continue;
+        }
+
         const nextEdges = edges.filter(e => e.source === step.id);
         if (nextEdges.length === 0) {
            currentNodeId = null; // End of workflow
@@ -638,7 +747,7 @@ class WorkflowService {
         }
 
         let nextEdge = null;
-        if (step.type === 'branch' && stepOutcome?.handleId) {
+        if (step.data?.actionType === 'branch' && stepOutcome?.handleId) {
            nextEdge = nextEdges.find(e => e.sourceHandle === stepOutcome.handleId);
         } else {
            // Default to first edge if not a branch

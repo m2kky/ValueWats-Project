@@ -1,15 +1,44 @@
 import { useState, useEffect } from 'react';
 import { XMarkIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { getActionMeta, getTriggerMeta, TRIGGER_TYPES } from '../nodeTypes';
+import api from '../../../api/client'; // Adjust path if needed
 
-export default function ConfigPanel({ node, onUpdate, onDelete, onClose }) {
+export default function ConfigPanel({ node, nodes = [], onUpdate, onDelete, onClose }) {
   const [config, setConfig] = useState({});
+  const [users, setUsers] = useState([]);
+  const [agents, setAgents] = useState([]);
+  const [stages, setStages] = useState([]);
+  const [workflows, setWorkflows] = useState([]);
+  const [fields, setFields] = useState([]);
+
+  // Fetch contextual data when panel opens
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [usersRes, agentsRes, stagesRes, workflowsRes, fieldsRes] = await Promise.all([
+          api.get('/team').catch(() => ({ data: { members: [] } })),
+          api.get('/agents').catch(() => ({ data: { agents: [] } })),
+          api.get('/chat/lifecycle-stages').catch(() => ({ data: { stages: [] } })),
+          api.get('/workflows').catch(() => ({ data: { workflows: [] } })),
+          api.get('/contact-fields/definitions').catch(() => ({ data: { fields: [] } }))
+        ]);
+        if (usersRes.data?.members) setUsers(usersRes.data.members);
+        if (agentsRes.data?.agents) setAgents(agentsRes.data.agents);
+        if (stagesRes.data?.stages) setStages(stagesRes.data.stages);
+        if (workflowsRes.data?.workflows) setWorkflows(workflowsRes.data.workflows);
+        if (fieldsRes.data?.fields) setFields(fieldsRes.data.fields);
+      } catch (err) {
+        console.error('Failed to fetch config panel data', err);
+      }
+    };
+    fetchData();
+  }, []);
 
   useEffect(() => {
     if (node) {
       setConfig(node.data?.config || {});
     }
-  }, [node?.id]);
+  }, [node?.id, node?.data?.config]);
 
   if (!node) return null;
 
@@ -217,6 +246,16 @@ export default function ConfigPanel({ node, onUpdate, onDelete, onClose }) {
                 className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-zinc-200 outline-none focus:border-indigo-500/30 placeholder:text-zinc-700 resize-y font-mono"
               />
             </div>
+            <div className="mt-4">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Headers (JSON)</label>
+              <textarea
+                value={config.headers || ''}
+                onChange={(e) => handleSave('headers', e.target.value)}
+                placeholder='{"Authorization": "Bearer token..."}'
+                rows={3}
+                className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-zinc-200 outline-none focus:border-indigo-500/30 placeholder:text-zinc-700 resize-y font-mono"
+              />
+            </div>
           </>
         )}
 
@@ -346,18 +385,185 @@ export default function ConfigPanel({ node, onUpdate, onDelete, onClose }) {
         {node.data?.actionType === 'assign_to' && (
           <>
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Assign To</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Assign Strategy</label>
               <select
                 value={config.assignType || 'user'}
                 onChange={(e) => handleSave('assignType', e.target.value)}
                 className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
               >
                 <option value="user">Specific User</option>
-                <option value="team">Team (Round Robin)</option>
                 <option value="ai_agent">AI Agent</option>
               </select>
             </div>
+            
+            {/* Dynamic Dropdown based on Assign Strategy */}
+            {config.assignType === 'user' && (
+              <div className="mt-4">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Select User</label>
+                <select
+                  value={config.userId || ''}
+                  onChange={(e) => handleSave('userId', e.target.value)}
+                  className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
+                >
+                  <option value="" disabled>Choose a user...</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            {config.assignType === 'ai_agent' && (
+              <div className="mt-4">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Select AI Agent</label>
+                <select
+                  value={config.agentId || ''}
+                  onChange={(e) => handleSave('agentId', e.target.value)}
+                  className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
+                >
+                  <option value="" disabled>Choose an AI agent...</option>
+                  {agents.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </>
+        )}
+
+        {/* ─── AI Agent Handoff Config ─── */}
+        {node.data?.actionType === 'ai_agent' && (
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Select AI Agent</label>
+            <select
+              value={config.agentId || ''}
+              onChange={(e) => handleSave('agentId', e.target.value)}
+              className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
+            >
+              <option value="" disabled>Choose an AI agent...</option>
+              {agents.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* ─── Update Lifecycle Config ─── */}
+        {node.data?.actionType === 'update_lifecycle' && (
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">New Lifecycle Stage</label>
+            <select
+              value={config.stageId || ''}
+              onChange={(e) => handleSave('stageId', e.target.value)}
+              className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
+            >
+              <option value="" disabled>Select stage...</option>
+              {stages.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* ─── Update Contact Field Config ─── */}
+        {node.data?.actionType === 'update_field' && (
+          <>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Field</label>
+              <select
+                value={config.field || ''}
+                onChange={(e) => handleSave('field', e.target.value)}
+                className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
+              >
+                <option value="" disabled>Select a field...</option>
+                <optgroup label="Standard Fields">
+                  <option value="name">Name</option>
+                  <option value="email">Email</option>
+                </optgroup>
+                <optgroup label="Custom Fields">
+                  {fields.map((f) => (
+                    <option key={f.key} value={`custom.${f.key}`}>{f.name}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+            <div className="mt-4">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Value</label>
+              <input
+                type="text"
+                value={config.value || ''}
+                onChange={(e) => handleSave('value', e.target.value)}
+                placeholder="New value (supports variables like {{contact.name}})"
+                className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
+              />
+            </div>
+          </>
+        )}
+
+        {/* ─── Update Tag Config ─── */}
+        {node.data?.actionType === 'update_tag' && (
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Tag Name</label>
+            <input
+              type="text"
+              value={config.tag || ''}
+              onChange={(e) => handleSave('tag', e.target.value)}
+              placeholder="e.g. vip, support, sales"
+              className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
+            />
+          </div>
+        )}
+
+        {/* ─── Add Comment / Close Conversation Config ─── */}
+        {(node.data?.actionType === 'add_comment' || node.data?.actionType === 'close_conversation') && (
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+              {node.data.actionType === 'add_comment' ? 'Internal Note' : 'Closing Summary (Optional)'}
+            </label>
+            <textarea
+              value={config.comment || ''}
+              onChange={(e) => handleSave('comment', e.target.value)}
+              placeholder="Add your note here..."
+              rows={4}
+              className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30 resize-y"
+            />
+          </div>
+        )}
+
+        {/* ─── Trigger Workflow Config ─── */}
+        {node.data?.actionType === 'trigger_workflow' && (
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Select Workflow</label>
+            <select
+              value={config.workflowId || ''}
+              onChange={(e) => handleSave('workflowId', e.target.value)}
+              className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
+            >
+              <option value="" disabled>Choose a workflow...</option>
+              {workflows.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* ─── Jump To Config ─── */}
+        {node.data?.actionType === 'jump_to' && (
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Select Target Step</label>
+            <select
+              value={config.targetNodeId || ''}
+              onChange={(e) => handleSave('targetNodeId', e.target.value)}
+              className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
+            >
+              <option value="" disabled>Choose a step to jump to...</option>
+              {nodes
+                .filter(n => n.id !== node.id) // Can't jump to self
+                .map((n) => (
+                <option key={n.id} value={n.id}>{n.data?.label || n.data?.actionType || n.type} ({n.id})</option>
+              ))}
+            </select>
+          </div>
         )}
 
         {/* ─── Generic Label for all node types ─── */}
