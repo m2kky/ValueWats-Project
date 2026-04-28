@@ -494,3 +494,8 @@ class ChatService {
     } catch (error) {
       console.error('[ChatService] Sync error:', error);
       throw error;
+    }
+  }
+}
+
+module.exports = new ChatService();
