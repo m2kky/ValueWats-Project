@@ -8,7 +8,7 @@ const prisma = require('@prisma/client').PrismaClient;
 
 // --- INTEGRATIONS ---
 
-router.get('/integrations', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const integrations = await integrationService.listIntegrations(req.user.tenantId);
     res.json({ integrations });
@@ -17,7 +17,7 @@ router.get('/integrations', async (req, res) => {
   }
 });
 
-router.post('/integrations', async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { type, name, credentials } = req.body;
     const integration = await integrationService.upsertIntegration(
@@ -32,7 +32,7 @@ router.post('/integrations', async (req, res) => {
   }
 });
 
-router.delete('/integrations/:id', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const db = new prisma();
     await db.integration.delete({

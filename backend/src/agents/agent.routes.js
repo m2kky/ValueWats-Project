@@ -273,8 +273,10 @@ router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async 
     const aiReply = typeof response === 'string' ? response : (response?.content || response?.message || 'No response');
     res.json({ response: aiReply });
   } catch (error) {
-    console.error('[Agents] Test chat error:', error);
-    res.status(500).json({ error: 'Failed to get test response', response: 'Error processing your message.' });
+    console.error('[Agents] Test chat error:', error?.response?.data || error.message);
+    const apiError = error?.response?.data?.error?.message || error.message || 'Error processing your message.';
+    const statusCode = error?.response?.status || 500;
+    res.status(statusCode).json({ error: 'Failed to get test response', response: `AI Error: ${apiError}` });
   }
 });
 
