@@ -97,12 +97,17 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
       let loopCount = 0;
       const MAX_LOOPS = 5;
 
+      // Normalize model name: old DB default 'deepseek-chat' is invalid on OpenRouter
+      const resolvedModel = (!agent.aiModel || agent.aiModel === 'deepseek-chat')
+        ? 'qwen/qwen3.5-flash-02-23'
+        : agent.aiModel;
+
       while (loopCount < MAX_LOOPS) {
         const responseMessage = await deepseekService.chat({
           messages: chatMessages,
           temperature: agent.temperature,
           max_tokens: agent.maxTokens,
-          model: agent.aiModel || 'deepseek/deepseek-chat',
+          model: resolvedModel,
           tools: toolService.getToolDefinitions(agent.actionConfig)
         });
 

@@ -215,11 +215,41 @@ router.put('/:id', tenantContext, checkPermission('agents.manage'), async (req, 
 // Delete agent
 router.delete('/:id', tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
-    await prisma.aIAgent.deleteMany({
-      where: {
-        id: req.params.id,
-        tenantId: req.user.tenantId
-      }
+    const agentId = req.params.id;
+    const tenantId = req.user.tenantId;
+
+    // Verify agent belongs to tenant
+    const agent = await prisma.aIAgent.findFirst({
+      where: { id: agentId, tenantId }
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    // Use transaction to prevent race conditions (webhooks may create
+    // new ConversationAgent records between cleanup and deletion)
+    await prisma.$transaction(async (tx) => {
+      // 1. Remove ConversationAgent history records
+      await tx.conversationAgent.deleteMany({ where: { agentId } });
+
+      // 2. Unlink conversations currently assigned to this agent
+      await tx.conversation.updateMany({
+        where: { currentAgentId: agentId },
+        data: { currentAgentId: null }
+      });
+
+      // 3. Remove routing rules (from and to)
+      await tx.agentRoutingRule.deleteMany({
+        where: { OR: [{ fromAgentId: agentId }, { toAgentId: agentId }] }
+      });
+
+      // 4. Remove actions and knowledge (deleteMany doesn't cascade)
+      await tx.agentAction.deleteMany({ where: { agentId } });
+      await tx.agentKnowledge.deleteMany({ where: { agentId } });
+
+      // 5. Now delete the agent
+      await tx.aIAgent.delete({ where: { id: agentId } });
     });
 
     res.json({ success: true });

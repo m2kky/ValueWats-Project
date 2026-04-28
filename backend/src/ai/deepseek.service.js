@@ -29,8 +29,8 @@ class DeepseekService {
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.APP_URL || 'https://valuewats.com',
-            'X-Title': 'ValueWats'
+            'HTTP-Referer': process.env.APP_URL || 'https://valuechat.app',
+            'X-Title': 'ValueChat'
           }
         }
       );
@@ -42,20 +42,5 @@ class DeepseekService {
     }
   }
 }
-
-// Re-applying user's exact structure for class but with corrections
-// User said:
-/*
-  constructor() {
-    this.apiKey = process.env.DEEPSEEK_API_KEY;
-    this.baseURL = 'https://api.deepseek.com/v1';
-  }
-  ...
-  await axios.post(`${this.baseURL}/chat/completions`, ...)
-*/
-
-const service = new DeepseekService();
-service.baseURL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
-// Actually I'll just rewrite the class correctly.
 
 module.exports = new DeepseekService();
