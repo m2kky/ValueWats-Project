@@ -145,6 +145,40 @@ export default function RichTextarea({
     });
   }, [typeItems]);
 
+  const renderHighlightedText = () => {
+    if (!value) return null;
+    const regex = /(\{\{[^}]+\}\}|\$[a-zA-Z_][a-zA-Z0-9_.-]*|%[a-zA-Z0-9_.-]+|@[a-zA-Z0-9_.\- ]+)/g;
+    const parts = value.split(regex);
+    
+    return parts.map((part, i) => {
+      if (part.match(regex)) {
+        let label = part;
+        let colorClass = 'bg-zinc-500/20 text-zinc-300';
+        
+        if (part.startsWith('{{') || part.startsWith('$')) {
+          colorClass = 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
+          const item = typeItems.variable?.find(v => v.value === part);
+          if (item) label = item.label;
+        } else if (part.startsWith('%')) {
+          colorClass = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+          const item = typeItems.tag?.find(t => t.value === part);
+          if (item) label = item.label;
+        } else if (part.startsWith('@')) {
+          colorClass = 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
+          const item = typeItems.mention?.find(m => m.value === part);
+          if (item) label = item.label;
+        }
+
+        return (
+          <span key={i} className={`inline-block px-1.5 py-0.5 rounded-md text-xs font-bold mx-0.5 shadow-sm ${colorClass}`}>
+            {label}
+          </span>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   const handleInput = (e) => {
     const text = e.target.value;
     const cursor = e.target.selectionStart;
@@ -262,16 +296,35 @@ export default function RichTextarea({
   return (
     <div className="relative w-full">
       <div className="relative group">
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onInput={handleInput}
-          onKeyDown={handleKeyDown}
-          onBlur={() => setTimeout(() => setSuggestion(null), 150)}
-          rows={rows}
-          className="w-full bg-[#0c0c0e]/80 border border-white/5 rounded-xl p-4 text-sm text-zinc-200 outline-none focus:border-indigo-500/30 focus:bg-zinc-950/90 transition-all font-mono leading-relaxed custom-scrollbar placeholder:text-zinc-700 resize-y"
-          placeholder={placeholder}
-        />
+        <div className="relative w-full rounded-xl overflow-hidden border border-white/5 bg-[#0c0c0e]/80 focus-within:border-indigo-500/30 focus-within:bg-zinc-950/90 transition-all">
+          {/* Highlight Overlay */}
+          <div 
+            className="absolute inset-0 p-4 text-sm font-mono leading-relaxed pointer-events-none whitespace-pre-wrap break-words overflow-hidden text-zinc-200"
+            aria-hidden="true"
+            style={{ 
+              top: textareaRef.current ? -textareaRef.current.scrollTop : 0 
+            }}
+          >
+            {!value ? <span className="text-zinc-700">{placeholder}</span> : renderHighlightedText()}
+          </div>
+          
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onInput={handleInput}
+            onKeyDown={handleKeyDown}
+            onScroll={(e) => {
+              // Force re-render on scroll to sync overlay position
+              if (textareaRef.current) {
+                e.target.previousSibling.style.top = `-${e.target.scrollTop}px`;
+              }
+            }}
+            onBlur={() => setTimeout(() => setSuggestion(null), 150)}
+            rows={rows}
+            className="relative w-full p-4 text-sm font-mono leading-relaxed text-transparent bg-transparent caret-white outline-none resize-y custom-scrollbar"
+            spellCheck={false}
+          />
+        </div>
 
         {suggestion && suggestionOptions.length > 0 && (
           <div className="absolute z-[9999] bottom-full left-0 mb-3 w-[360px] max-w-full bg-[#18181b] border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">

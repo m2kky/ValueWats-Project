@@ -145,11 +145,21 @@ export default function Agents() {
         if (stagesRes.status === 'fulfilled') setAvailableLifecycleStages(stagesRes.value.data || []);
         if (intRes.status === 'fulfilled') setAvailableIntegrations(intRes.value.data.integrations || []);
         if (fieldDefsRes.status === 'fulfilled') {
-          const fieldVariables = (fieldDefsRes.value.data || []).map((field) => ({
+          let fieldVariables = (fieldDefsRes.value.data || []).map((field) => ({
             label: field.name || field.key,
             value: `{{contact.${field.key}}}`,
             subtitle: field.fieldType ? `contact.${field.key} (${field.fieldType})` : `contact.${field.key}`,
           }));
+          
+          if (stagesRes.status === 'fulfilled') {
+            const stagesVariables = (stagesRes.value.data || []).map(stage => ({
+              label: `Stage: ${stage.name}`,
+              value: `{{stage.${stage.name}}}`,
+              subtitle: 'Lifecycle Stage',
+            }));
+            fieldVariables = [...fieldVariables, ...stagesVariables];
+          }
+
           setAvailableVariables(fieldVariables);
         }
       } catch (e) { console.warn('Could not load lookups', e); }

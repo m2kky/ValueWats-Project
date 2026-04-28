@@ -1,3 +1,11 @@
+## 2026-04-28
+
+### Fixed
+- **Agent Publish Bug**: Added `isPublished` to backend create/update whitelisted fields — agents were silently staying as draft because the field was stripped before saving.
+- **Notion Integration Dropdown**: Fixed type filter in Agent Editor to match both `notion` and `notion_oauth` integration types — Notion connections were invisible in the dropdown.
+- **RichTextarea Colored Chips**: Added highlight overlay to render `{{variables}}`, `%tags`, and `@mentions` as colored inline chips (blue/green/purple) instead of raw text. Uses transparent textarea + mirrored overlay approach.
+- **Lifecycle Stage Variables**: Stage buttons in the "Update lifecycle" action now insert `{{stage.Name}}` into the instruction text. Stages also appear in the variable picker dropdown.
+
 ## 2026-04-23
 
 ### Security & Stability Sprint (Audit Fix Plan — Sprint 1 + Sprint 2)

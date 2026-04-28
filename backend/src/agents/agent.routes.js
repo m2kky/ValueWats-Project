@@ -93,6 +93,7 @@ router.post('/', tenantContext, checkPermission('agents.manage'), async (req, re
       allowedGroups,
       actionConfig,
       isActive,
+      isPublished,
       priority
     } = req.body;
 
@@ -132,6 +133,7 @@ router.post('/', tenantContext, checkPermission('agents.manage'), async (req, re
         allowedGroups: Array.isArray(allowedGroups) ? allowedGroups : [],
         actionConfig: actionConfig || undefined,
         isActive: isActive ?? true,
+        isPublished: isPublished ?? false,
         priority: priority ?? 0
       }
     });
@@ -177,7 +179,7 @@ router.put('/:id', tenantContext, checkPermission('agents.manage'), async (req, 
       'tone', 'responseStyle', 'useHistory', 'historyLength',
       'followUpEnabled', 'followUpDelay', 'followUpMessage',
       'workingHoursEnabled', 'workingHours', 'outOfHoursMessage',
-      'isActive', 'priority', 'allowGroupResponse', 'allowedGroups', 'actionConfig'
+      'isActive', 'isPublished', 'priority', 'allowGroupResponse', 'allowedGroups', 'actionConfig'
     ];
 
     const finalData = {};

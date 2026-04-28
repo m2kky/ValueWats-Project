@@ -322,7 +322,11 @@ export default function AgentEditor({
                   <button
                     key={stage.id}
                     type="button"
-                    onClick={() => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, stageId: stage.id } } }))}
+                    onClick={() => {
+                      const current = form.actionConfig?.updateLifecycle?.instructions || '';
+                      const next = current + (current && !current.endsWith(' ') ? ' ' : '') + `{{stage.${stage.name}}}`;
+                      setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, updateLifecycle: { ...f.actionConfig.updateLifecycle, instructions: next } } }));
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${form.actionConfig?.updateLifecycle?.stageId === stage.id
                       ? 'bg-indigo-600 border-indigo-500 text-white shadow-[0_0_10px_rgba(71,37,244,0.3)]'
                       : 'bg-white/5 border-white/5 text-zinc-500 hover:border-white/10'
@@ -388,7 +392,7 @@ export default function AgentEditor({
                   onChange={(e) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, notion: { ...f.actionConfig.notion, integrationId: e.target.value } } }))}
                 >
                   <option value="">-- Select Notion Workspace Connection --</option>
-                  {availableIntegrations.filter(i => i.type === 'notion_oauth').map(i => (
+                  {availableIntegrations.filter(i => i.type === 'notion_oauth' || i.type === 'notion').map(i => (
                     <option key={i.id} value={i.id}>{i.name}</option>
                   ))}
                 </select>
