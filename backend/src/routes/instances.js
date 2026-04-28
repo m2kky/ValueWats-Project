@@ -182,6 +182,13 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
         }
       });
 
+      // Re-subscribe the page to webhooks just in case it was dropped due to expiration
+      await subscribeMetaPage({
+        pageId: chosenPage.pageId,
+        pageAccessToken: chosenPage.pageAccessToken,
+        channelType
+      });
+
       return res.json({
         message: 'Channel re-authenticated successfully. Token updated.',
         alreadyConnected: true,
