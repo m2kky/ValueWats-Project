@@ -2,6 +2,33 @@
 
 Document all critical errors, their root causes, fixes, and lessons learned. When fixing an issue, **FIRST check this file** to see if it's already documented. After fixing an issue, **ADD it here**.
 
+## ERR-041: express-rate-limit X-Forwarded-For Trust Proxy Error
+
+| Field        | Value                                                                 |
+| ------------ | --------------------------------------------------------------------- |
+| **Date**     | 2026-04-28                                                            |
+| **Severity** | High                                                                  |
+| **Source**   | `backend/src/server.js`                                               |
+| **Trigger**  | Incoming API requests pass through Nginx to Express                   |
+
+### Description
+
+The backend logs repeatedly showed `ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default)`. This indicates a misconfiguration where `express-rate-limit` cannot accurately identify the IP address of users because it does not trust the reverse proxy (Nginx).
+
+### Root Cause
+
+The Express app was running behind an Nginx reverse proxy (on Coolify), which forwards the user's IP in the `X-Forwarded-For` header. Because `app.set('trust proxy', 1)` was not configured in `server.js`, Express ignored this header and treated all requests as coming from the proxy's IP, breaking rate-limiting logic.
+
+### Fix
+
+Added `app.set('trust proxy', 1);` immediately after initializing the Express app (`const app = express();`) in `backend/src/server.js`.
+
+### Lesson Learned
+
+When deploying an Express application behind a reverse proxy like Nginx or a load balancer, always configure `trust proxy` so that middlewares relying on the client's IP address (like `express-rate-limit`) function correctly.
+
+---
+
 ## ERR-040: AI Agent 401 Unauthorized (OpenRouter API Key & Model Format)
 
 | Field        | Value                                                                 |

@@ -24,6 +24,7 @@ const socketService = require('./services/socketService');
 const { workflowQueue } = require('./services/workflowQueue'); // Initialize BullMQ wait queue
 
 const app = express();
+app.set('trust proxy', 1); // Trust the first proxy (Nginx) for express-rate-limit to work correctly
 const server = http.createServer(app);
 const io = socketService.init(server);
 
