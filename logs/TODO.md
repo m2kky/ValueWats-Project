@@ -53,6 +53,7 @@
 
 ## ✅ Done
 
+- [x] **Visual Workflow Builder (Phase 4)**: Complete graph traversal engine, state machine, pausing/resuming logic, and Respond.io-level CRM node configurations. — 2026-04-28
 - [x] **Master Fix Plan Complete**: Executed 25 critical technical debt tasks across Security, Architecture, Performance, Database (HNSW & Tenant Isolation), and Frontend Refactoring (Agents UI & Virtualization). — 2026-04-23
 - [x] Polish Retargeting Campaign UI and simplify Agent Setup interface — 2026-04-21
 - [x] Integrate OpenRouter Qwen3 Embeddings for RAG File Uploads — 2026-04-19
