@@ -173,10 +173,19 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
     });
 
     if (alreadyConnected) {
+      // If the token is expired or they are just re-authenticating, update the token!
+      const updatedInstance = await prisma.instance.update({
+        where: { id: alreadyConnected.id },
+        data: {
+          accessToken: chosenPage.pageAccessToken,
+          status: 'connected'
+        }
+      });
+
       return res.json({
-        message: 'This channel is already connected.',
+        message: 'Channel re-authenticated successfully. Token updated.',
         alreadyConnected: true,
-        instance: alreadyConnected
+        instance: updatedInstance
       });
     }
 
