@@ -273,8 +273,9 @@ Stack: ${error.stack}
    */
   async fetchConversations(instanceName) {
     try {
-      const response = await axios.get(
+      const response = await axios.post(
         `${this.baseURL}/chat/findChats/${instanceName}`,
+        {},
         {
           headers: { apikey: this.apiKey },
           timeout: 20000

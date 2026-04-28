@@ -1,6 +1,7 @@
 ## 2026-04-28
 
 ### Fixed
+- **Evolution API findChats 404**: Fixed a crash in `fetchConversations` by changing the HTTP method to `POST`, as required by Evolution API v2.
 - **Rate Limit Proxy Error**: Configured `app.set('trust proxy', 1)` in Express to correctly parse `X-Forwarded-For` headers from the Nginx proxy, fixing rate limiter validation errors.
 - **Google Sheets & HTTP Nodes**: Added missing `google_sheets` configuration to the Workflow Builder (Action Type, Spreadsheet ID, Worksheet Name, Row Data) and connected it to the execution engine. Also added `Headers (JSON)` to the `http_request` node.
 - **OpenRouter AI Agent 401 Error**: Fixed incorrect OpenRouter model formatting (`deepseek/deepseek-chat` instead of `deepseek-chat`) causing failed AI completions.

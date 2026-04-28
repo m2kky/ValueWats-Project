@@ -2,6 +2,33 @@
 
 Document all critical errors, their root causes, fixes, and lessons learned. When fixing an issue, **FIRST check this file** to see if it's already documented. After fixing an issue, **ADD it here**.
 
+## ERR-042: Evolution API fetchConversations 404 Not Found (Method)
+
+| Field        | Value                                                                 |
+| ------------ | --------------------------------------------------------------------- |
+| **Date**     | 2026-04-28                                                            |
+| **Severity** | High                                                                  |
+| **Source**   | `backend/src/services/evolutionApi.js`                                |
+| **Trigger**  | `fetchConversations` attempts to load chats from Evolution API v2       |
+
+### Description
+
+Logs showed `[fetchConversations] Error for 0: { status: 404, error: 'Not Found', response: { message: [ 'Cannot GET /chat/findChats/0' ] } }`.
+
+### Root Cause
+
+Evolution API v2 changed the `/chat/findChats/:instanceName` endpoint to only accept `POST` requests, whereas the backend was using `axios.get()`.
+
+### Fix
+
+Changed the HTTP method from `axios.get()` to `axios.post()` and passed an empty body `{}` for the `fetchConversations` method in `backend/src/services/evolutionApi.js`.
+
+### Lesson Learned
+
+When migrating to Evolution API v2, endpoints that retrieve bulk data (like `findChats` and `findMessages`) have been migrated from `GET` to `POST` to support complex filtering payloads in the request body.
+
+---
+
 ## ERR-041: express-rate-limit X-Forwarded-For Trust Proxy Error
 
 | Field        | Value                                                                 |
