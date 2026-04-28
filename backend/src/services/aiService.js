@@ -3,21 +3,25 @@ const OpenAI = require('openai');
 class AIService {
   constructor() {
     this.client = new OpenAI({
-      baseURL: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
-      apiKey: process.env.DEEPSEEK_API_KEY,
+      baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+      apiKey: process.env.OPENROUTER_API_KEY,
+      defaultHeaders: {
+        "HTTP-Referer": process.env.APP_URL || "https://valuewats.com", // Optional
+        "X-Title": "ValueWats", // Optional
+      }
     });
   }
 
   /**
-   * Generates a response using DeepSeek Chat
+   * Generates a response using OpenRouter (Qwen)
    * @param {string} prompt - The user's message
    * @param {string} systemContent - System instruction
    * @returns {Promise<string>}
    */
   async generateResponse(prompt, systemContent = 'You are a helpful assistant.') {
     try {
-      if (!process.env.DEEPSEEK_API_KEY) {
-        console.warn('DEEPSEEK_API_KEY is not configured. Using fallback response.');
+      if (!process.env.OPENROUTER_API_KEY) {
+        console.warn('OPENROUTER_API_KEY is not configured. Using fallback response.');
         return "شكراً لرسالتك! سنقوم بالرد عليك في أقرب وقت ممكن.";
       }
 
@@ -26,7 +30,7 @@ class AIService {
           { role: "system", content: systemContent },
           { role: "user", content: prompt }
         ],
-        model: "deepseek-chat",
+        model: "qwen/qwen3.5-flash-02-23",
       });
 
       return completion.choices[0].message.content;

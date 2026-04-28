@@ -83,7 +83,7 @@ app.get('/health', (req, res) => {
       evolutionApi: process.env.EVOLUTION_API_URL ? 'configured' : 'missing',
       database: process.env.DATABASE_URL ? 'configured' : 'missing',
       redis: process.env.REDIS_HOST ? 'configured' : 'missing',
-      ai: process.env.DEEPSEEK_API_KEY ? 'configured' : 'missing',
+      ai: process.env.OPENROUTER_API_KEY ? 'configured' : 'missing',
       backendUrl: process.env.BACKEND_URL || 'missing',
       socket: 'active'
     }

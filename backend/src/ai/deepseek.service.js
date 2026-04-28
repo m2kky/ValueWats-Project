@@ -2,14 +2,14 @@ const axios = require('axios');
 
 class DeepseekService {
   constructor() {
-    this.apiKey = process.env.DEEPSEEK_API_KEY;
-    this.baseURL = 'https://api.deepseek.com/v1';
+    this.apiKey = process.env.OPENROUTER_API_KEY;
+    this.baseURL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
   }
 
-  async chat({ messages, temperature = 0.7, max_tokens = 500, model = 'deepseek-chat', tools = null, tool_choice = null }) {
+  async chat({ messages, temperature = 0.7, max_tokens = 500, model = 'qwen/qwen3.5-flash-02-23', tools = null, tool_choice = null }) {
     try {
       if (!this.apiKey) {
-        throw new Error('DEEPSEEK_API_KEY is not set in environment variables');
+        throw new Error('OPENROUTER_API_KEY is not set in environment variables');
       }
 
       const body = {
@@ -28,7 +28,9 @@ class DeepseekService {
         {
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'HTTP-Referer': process.env.APP_URL || 'https://valuewats.com',
+            'X-Title': 'ValueWats'
           }
         }
       );
@@ -53,7 +55,7 @@ class DeepseekService {
 */
 
 const service = new DeepseekService();
-service.baseURL = 'https://api.deepseek.com/v1'; // Explicitly setting it as requested
+service.baseURL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
 // Actually I'll just rewrite the class correctly.
 
 module.exports = new DeepseekService();

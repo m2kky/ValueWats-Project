@@ -248,7 +248,7 @@ module.exports = {
       }
 
       const axios = require('axios');
-      const apiKey = process.env.DEEPSEEK_API_KEY;
+      const apiKey = process.env.OPENROUTER_API_KEY;
 
       if (!apiKey) {
         return res.status(400).json({ error: 'AI service not configured' });
@@ -267,9 +267,9 @@ Reply with ONLY the suggested message text, no quotes, no explanations.`;
       }));
 
       const response = await axios.post(
-        'https://api.deepseek.com/v1/chat/completions',
+        process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: 'deepseek-chat',
+          model: 'qwen/qwen3.5-flash-02-23',
           messages: [
             { role: 'system', content: systemPrompt },
             ...conversationContext,
@@ -281,7 +281,9 @@ Reply with ONLY the suggested message text, no quotes, no explanations.`;
         {
           headers: {
             Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'HTTP-Referer': process.env.APP_URL || 'https://valuewats.com',
+            'X-Title': 'ValueWats'
           },
           timeout: 15000
         }
