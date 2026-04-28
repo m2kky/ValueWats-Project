@@ -259,6 +259,53 @@ export default function ConfigPanel({ node, nodes = [], onUpdate, onDelete, onCl
           </>
         )}
 
+        {/* ─── Google Sheets Config ─── */}
+        {node.data?.actionType === 'google_sheets' && (
+          <>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Action Type</label>
+              <select
+                value={config.sheetAction || 'add_row'}
+                onChange={(e) => handleSave('sheetAction', e.target.value)}
+                className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
+              >
+                <option value="add_row">Add Row</option>
+                <option value="update_row">Update Row</option>
+              </select>
+            </div>
+            <div className="mt-4">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Spreadsheet ID</label>
+              <input
+                type="text"
+                value={config.spreadsheetId || ''}
+                onChange={(e) => handleSave('spreadsheetId', e.target.value)}
+                placeholder="1BxiMVs0XRY..."
+                className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30 font-mono text-xs"
+              />
+            </div>
+            <div className="mt-4">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Worksheet Name</label>
+              <input
+                type="text"
+                value={config.worksheetName || ''}
+                onChange={(e) => handleSave('worksheetName', e.target.value)}
+                placeholder="Sheet1"
+                className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/30"
+              />
+            </div>
+            <div className="mt-4">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Row Data (JSON)</label>
+              <textarea
+                value={config.rowData || ''}
+                onChange={(e) => handleSave('rowData', e.target.value)}
+                placeholder='{"Name": "{{contact.name}}", "Email": "{{contact.email}}"}'
+                rows={3}
+                className="w-full bg-zinc-900/80 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-zinc-200 outline-none focus:border-indigo-500/30 font-mono resize-y"
+              />
+            </div>
+          </>
+        )}
+
         {/* ─── Branch Config ─── */}
         {node.data?.actionType === 'branch' && (
           <div className="space-y-4">

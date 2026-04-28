@@ -434,6 +434,13 @@ class WorkflowService {
       return { result: { commentAdded: !!comment, closed: actionType === 'close_conversation' } };
     }
 
+    if (actionType === 'google_sheets') {
+      // In a full implementation, you would use googleapis and the integration tokens.
+      // For now, we return a mock success or pass to an integration service.
+      const sheetAction = config.sheetAction || 'add_row';
+      return { result: { sheetAction, status: 'pending_integration_setup', spreadsheetId: config.spreadsheetId } };
+    }
+
     // Fallback to legacy step handler for other operations temporarily
     return await this.__old_executeStep(step, scope, workflow);
   }
