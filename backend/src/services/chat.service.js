@@ -4,20 +4,30 @@ const metaApi = require('./metaApi');
 
 class ChatService {
   /**
+   * Sanitize strings to strip ALL null byte variants that crash Prisma.
+   * Covers literal \0, unicode \u0000, and stray control chars.
+   */
+  static sanitize(str) {
+    if (typeof str !== 'string') return str;
+    // eslint-disable-next-line no-control-regex
+    return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+  }
+
+  /**
    * Create or update a conversation
    */
   async upsertConversation(tenantId, contactNumber, messageData = {}) {
     try {
       const channelType = messageData.channelType || 'whatsapp';
       
-      // Sanitize inputs to prevent Prisma hex escape errors (\u0000)
-      const sanitize = (str) => typeof str === 'string' ? str.replace(/\0/g, '') : str;
-      const cleanContent = sanitize(messageData.content)?.substring(0, 100) || '[Media]';
-      const cleanContactName = sanitize(messageData.contactName);
+      // Sanitize ALL string inputs to prevent Prisma hex escape errors
+      const cleanContent = ChatService.sanitize(messageData.content)?.substring(0, 100) || '[Media]';
+      const cleanContactName = ChatService.sanitize(messageData.contactName);
+      const cleanContactNumber = ChatService.sanitize(contactNumber);
 
       const conversation = await prisma.conversation.upsert({
         where: {
-          tenantId_contactNumber_channelType: { tenantId, contactNumber, channelType }
+          tenantId_contactNumber_channelType: { tenantId, contactNumber: cleanContactNumber, channelType }
         },
         update: {
           lastMessage: cleanContent,
@@ -30,8 +40,8 @@ class ChatService {
         create: {
           tenantId,
           channelType,
-          contactNumber,
-          contactName: cleanContactName || contactNumber,
+          contactNumber: cleanContactNumber,
+          contactName: cleanContactName || cleanContactNumber,
           lastMessage: cleanContent,
           lastMessageAt: new Date(),
           unreadCount: messageData.fromMe ? 0 : 1,
@@ -60,7 +70,7 @@ class ChatService {
           senderNumber: messageData.senderNumber,
           recipientNumber: messageData.recipientNumber,
           messageType: messageData.messageType || 'text',
-          content: typeof messageData.content === 'string' ? messageData.content.replace(/\0/g, '') : messageData.content,
+          content: ChatService.sanitize(messageData.content),
           mediaUrl: messageData.mediaUrl || null,
           wamid: messageData.wamid || null,
           status: messageData.status || 'sent',
@@ -444,48 +454,54 @@ class ChatService {
         if (!Array.isArray(remoteChats)) continue;
 
         for (const chat of remoteChats) {
-          const chatId = chat.id || chat.remoteJid;
-          if (!chatId) continue;
-          
-          const isGroup = chatId.endsWith('@g.us');
-          const contactNumber = isGroup ? chatId : chatId.replace('@s.whatsapp.net', '');
+          try {
+            const chatId = chat.id || chat.remoteJid;
+            if (!chatId) continue;
+            
+            const isGroup = chatId.endsWith('@g.us');
+            const contactNumber = isGroup ? chatId : chatId.replace('@s.whatsapp.net', '');
 
-          // Determine display name: group subject, pushName, or phone number
-          const displayName = isGroup
-            ? (chat.subject || chat.name || contactNumber)
-            : (chat.pushName || chat.name || contactNumber);
+            // Determine display name: group subject, pushName, or phone number
+            const displayName = isGroup
+              ? (chat.subject || chat.name || contactNumber)
+              : (chat.pushName || chat.name || contactNumber);
 
-          // 3. Upsert conversation
-          const conversation = await this.upsertConversation(tenantId, contactNumber, {
-            content: chat.message || chat.lastMessage?.message?.conversation || '',
-            contactName: displayName,
-            fromMe: false // Default to false for sync
-          });
+            // 3. Upsert conversation
+            const conversation = await this.upsertConversation(tenantId, contactNumber, {
+              content: chat.message || chat.lastMessage?.message?.conversation || '',
+              contactName: displayName,
+              fromMe: false // Default to false for sync
+            });
 
-          syncCount++;
+            syncCount++;
 
-          // 4. (Optional) Fetch last few messages
-          // NOTE: We do this sparingly to avoid rate limits
-          const messages = await evolutionApi.fetchMessages(instance.instanceName, contactNumber, 10);
+            // 4. (Optional) Fetch last few messages
+            // NOTE: We do this sparingly to avoid rate limits
+            const messages = await evolutionApi.fetchMessages(instance.instanceName, contactNumber, 10);
 
-          if (Array.isArray(messages)) {
-            for (const msg of messages) {
-              const msgData = {
-                instanceId: instance.id,
-                fromMe: msg.key?.fromMe || false,
-                senderNumber: msg.key?.fromMe ? instance.instanceName : contactNumber,
-                recipientNumber: msg.key?.fromMe ? contactNumber : instance.instanceName,
-                messageType: msg.messageType || 'text',
-                content: msg.message?.conversation || msg.message?.extendedTextMessage?.text || null,
-                wamid: msg.key?.id,
-                status: 'delivered',
-                createdAt: new Date(msg.messageTimestamp * 1000)
-              };
+            if (Array.isArray(messages)) {
+              for (const msg of messages) {
+                const msgData = {
+                  instanceId: instance.id,
+                  fromMe: msg.key?.fromMe || false,
+                  senderNumber: msg.key?.fromMe ? instance.instanceName : contactNumber,
+                  recipientNumber: msg.key?.fromMe ? contactNumber : instance.instanceName,
+                  messageType: msg.messageType || 'text',
+                  content: msg.message?.conversation || msg.message?.extendedTextMessage?.text || null,
+                  wamid: msg.key?.id,
+                  status: 'delivered',
+                  createdAt: new Date(msg.messageTimestamp * 1000)
+                };
 
-              if (msgData.content) {
-                await this.saveMessage(conversation.id, msgData).catch(() => { });
+                if (msgData.content) {
+                  await this.saveMessage(conversation.id, msgData).catch(() => { });
+                }
               }
             }
+          } catch (chatErr) {
+            // Skip this single chat and continue syncing the rest
+            console.warn(`[ChatSync] Skipping chat (${chat.id || chat.remoteJid}):`, chatErr.message);
+            continue;
           }
         }
       }
