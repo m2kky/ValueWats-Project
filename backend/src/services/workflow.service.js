@@ -261,6 +261,80 @@ class WorkflowService {
   }
 
   async executeStep(step, scope, workflow) {
+    const actionType = step.data?.actionType || step.type;
+    const config = step.data?.config || {};
+
+    if (!actionType) throw new Error(`Step ${step.id} missing actionType`);
+
+    if (actionType === 'send_message') {
+      const messageText = this.resolveTemplateString(config.message || '', scope);
+      if (!messageText.trim()) throw new Error(`Step ${step.id} requires message text`);
+
+      const context = await this.ensureConversationContext(workflow, scope);
+      const sent = await chatService.sendMessage(workflow.tenantId, {
+        conversationId: context.conversationId,
+        instanceId: context.instanceId,
+        content: messageText,
+        messageType: 'text'
+      });
+      return { result: { messageId: sent?.id } };
+    }
+
+    if (actionType === 'ask_question') {
+      const messageText = this.resolveTemplateString(config.question || '', scope);
+      if (!messageText.trim()) throw new Error(`Step ${step.id} requires question text`);
+
+      const context = await this.ensureConversationContext(workflow, scope);
+      await chatService.sendMessage(workflow.tenantId, {
+        conversationId: context.conversationId,
+        instanceId: context.instanceId,
+        content: messageText,
+        messageType: 'text'
+      });
+
+      // State Machine Pause
+      return {
+        pause: true,
+        waitForReply: true,
+        saveToVariable: config.saveToVariable,
+        result: { asked: messageText }
+      };
+    }
+
+    if (actionType === 'wait') {
+      const duration = this.toNumber(config.duration, 1);
+      const unit = config.unit || 'minutes';
+      
+      let delayMs = duration * 1000;
+      if (unit === 'minutes') delayMs *= 60;
+      if (unit === 'hours') delayMs *= 3600;
+      if (unit === 'days') delayMs *= 86400;
+
+      // State Machine Pause
+      return { pause: true, delayMs, result: { delayed: `${duration} ${unit}` } };
+    }
+
+    if (actionType === 'branch') {
+      const branches = step.data?.branches || [];
+      for (const branch of branches) {
+         if (!branch.conditions || branch.conditions.length === 0) continue;
+         const passed = this.evaluateConditions(branch.conditions, 'and', scope);
+         if (passed) return { result: { branch: branch.label }, handleId: branch.id };
+      }
+      return { result: { branch: 'else' }, handleId: 'else' };
+    }
+
+    if (actionType === 'update_tag') {
+      // Use existing applyLabel logic
+      const value = config.tag || config.label;
+      return { result: await this.applyLabel(workflow, scope, value, true) };
+    }
+
+    // Fallback to legacy step handler for other operations temporarily
+    return await this.__old_executeStep(step, scope, workflow);
+  }
+
+  async __old_executeStep(step, scope, workflow) {
     const stepType = String(
       step?.type || (step?.integrationId && step?.action ? 'legacy_integration_action' : '')
     ).toLowerCase();
@@ -438,7 +512,202 @@ class WorkflowService {
     };
   }
 
+  async resumeWorkflow(executionId, injectedContext = {}) {
+    const execution = await prisma.workflowExecution.findUnique({
+      where: { id: executionId },
+      include: { workflow: true }
+    });
+
+    if (!execution || execution.status !== 'paused') {
+      throw new Error(`Execution ${executionId} is not paused`);
+    }
+
+    // Restore scope context
+    let context = {};
+    if (execution.contextData) {
+      context = this.safeJsonParse(execution.contextData, {});
+    }
+
+    // Merge injected answers (like from ask_question)
+    context = { ...context, ...injectedContext };
+
+    // Resume Graph traversal
+    const stepsData = this.safeJsonParse(execution.workflow.steps, { nodes: [], edges: [] });
+    const isGraph = Array.isArray(stepsData.nodes) && Array.isArray(stepsData.edges);
+
+    if (!isGraph) {
+      throw new Error('Resuming old array-based workflows is not supported');
+    }
+
+    await prisma.workflowExecution.update({
+      where: { id: execution.id },
+      data: { status: 'running' }
+    });
+
+    // Run graph logic starting from resumeStepId
+    await this.traverseGraph(execution, execution.workflow, stepsData, context, execution.resumeStepId);
+  }
+
+  async traverseGraph(execution, workflow, graph, context, startNodeId) {
+    const { nodes, edges } = graph;
+    let currentNodeId = startNodeId;
+    let executedCount = 0;
+    const stepResults = context.steps || {};
+
+    try {
+      while (currentNodeId && executedCount < MAX_STEPS_PER_RUN) {
+        const step = nodes.find(n => n.id === currentNodeId);
+        if (!step) throw new Error(`Node ${currentNodeId} not found in graph`);
+
+        const scope = this.buildScope(context, execution.id, workflow, stepResults);
+        
+        let stepOutcome;
+        if (step.type === 'trigger') {
+           // Skip execution logic for trigger, just move forward
+           stepOutcome = { result: { triggered: true } };
+        } else {
+           stepOutcome = await this.executeStep(step, scope, workflow);
+        }
+
+        stepResults[step.id] = stepOutcome?.result ?? null;
+        context.steps = stepResults;
+
+        await this.logExecution(execution.id, 'info', `Step ${step.id} (${step.data?.actionType || step.type}) completed`);
+
+        executedCount += 1;
+
+        // Check for State Machine Pause
+        if (stepOutcome?.pause) {
+          // Find next step to resume from
+          const nextEdges = edges.filter(e => e.source === step.id);
+          const edge = stepOutcome.handleId 
+             ? nextEdges.find(e => e.sourceHandle === stepOutcome.handleId)
+             : nextEdges[0];
+          
+          const nextNodeId = edge ? edge.target : null;
+
+          if (nextNodeId) {
+            await prisma.workflowExecution.update({
+              where: { id: execution.id },
+              data: {
+                status: 'paused',
+                resumeStepId: nextNodeId,
+                contextData: JSON.stringify(context)
+              }
+            });
+
+            // Enqueue BullMQ if Wait
+            if (stepOutcome.delayMs) {
+               const { workflowQueue } = require('./workflowQueue');
+               await workflowQueue.add({
+                 executionId: execution.id,
+                 stepId: nextNodeId
+               }, { delay: stepOutcome.delayMs });
+               await this.logExecution(execution.id, 'info', `Workflow paused for ${stepOutcome.delayMs}ms`);
+            }
+
+            // Ask Question Wait handled by webhookController
+            if (stepOutcome.waitForReply) {
+               const conversationId = context?.conversation?.id || context?.conversationId;
+               if (conversationId) {
+                  await prisma.conversation.update({
+                    where: { id: conversationId },
+                    data: {
+                      waitingForWorkflowId: execution.id,
+                      waitingForVariable: stepOutcome.saveToVariable || '{{contact.lastReply}}'
+                    }
+                  });
+               }
+               await this.logExecution(execution.id, 'info', `Workflow paused waiting for user reply`);
+            }
+          } else {
+             // Reached end of workflow before pausing? Just complete it.
+             await prisma.workflowExecution.update({
+               where: { id: execution.id },
+               data: { status: 'success', completedAt: new Date(), output: JSON.stringify(stepResults) }
+             });
+          }
+          return; // Exit execution loop
+        }
+
+        // Determine next node
+        const nextEdges = edges.filter(e => e.source === step.id);
+        if (nextEdges.length === 0) {
+           currentNodeId = null; // End of workflow
+           continue;
+        }
+
+        let nextEdge = null;
+        if (step.type === 'branch' && stepOutcome?.handleId) {
+           nextEdge = nextEdges.find(e => e.sourceHandle === stepOutcome.handleId);
+        } else {
+           // Default to first edge if not a branch
+           nextEdge = nextEdges[0];
+        }
+
+        currentNodeId = nextEdge ? nextEdge.target : null;
+      }
+
+      // Success
+      await prisma.workflowExecution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'success',
+          completedAt: new Date(),
+          output: JSON.stringify(stepResults)
+        }
+      });
+
+      return { executionId: execution.id, status: 'success', output: stepResults };
+
+    } catch (error) {
+      await this.logExecution(execution.id, 'error', error.message, { stack: error.stack });
+      await prisma.workflowExecution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'failed',
+          completedAt: new Date(),
+          error: error.message,
+          output: JSON.stringify(stepResults)
+        }
+      });
+      return { executionId: execution.id, status: 'failed', error: error.message };
+    }
+  }
+
   async executeWorkflowRecord(workflow, context = {}, options = {}) {
+    if (!workflow) throw new Error('Workflow is required');
+    if (!workflow.isActive && !options.force) return { skipped: true, reason: 'inactive' };
+
+    const stepsData = this.safeJsonParse(workflow.steps, { nodes: [], edges: [] });
+    const isGraph = Array.isArray(stepsData.nodes) && Array.isArray(stepsData.edges);
+
+    if (!isGraph) {
+       // Fallback to legacy sequential engine
+       return await this.__old_executeWorkflowRecord(workflow, context, options);
+    }
+
+    const { nodes } = stepsData;
+    const triggerNode = nodes.find(n => n.type === 'trigger');
+    if (!triggerNode) throw new Error(`Workflow "${workflow.name}" has no trigger node`);
+
+    const execution = await prisma.workflowExecution.create({
+      data: {
+        workflowId: workflow.id,
+        conversationId: context?.conversation?.id || context?.conversationId || null,
+        status: 'running',
+        input: JSON.stringify({
+          eventType: context?.eventType || null,
+          triggerType: workflow.triggerType,
+          contactNumber: context?.contact?.number || context?.conversation?.contactNumber || null,
+        })
+      }
+    });
+
+    return await this.traverseGraph(execution, workflow, stepsData, context, triggerNode.id);
+  }
+
+  async __old_executeWorkflowRecord(workflow, context = {}, options = {}) {
     if (!workflow) throw new Error('Workflow is required');
     if (!workflow.isActive && !options.force) {
       return { skipped: true, reason: 'inactive' };

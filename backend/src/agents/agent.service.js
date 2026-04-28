@@ -102,7 +102,7 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
           messages: chatMessages,
           temperature: agent.temperature,
           max_tokens: agent.maxTokens,
-          model: agent.aiModel || 'deepseek-chat',
+          model: agent.aiModel || 'deepseek/deepseek-chat',
           tools: toolService.getToolDefinitions(agent.actionConfig)
         });
 

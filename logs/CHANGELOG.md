@@ -1,17 +1,27 @@
 ## 2026-04-28
 
 ### Fixed
+- **OpenRouter AI Agent 401 Error**: Fixed incorrect OpenRouter model formatting (`deepseek/deepseek-chat` instead of `deepseek-chat`) causing failed AI completions.
 - **AI Agent Replies (Evolution API v2)**: Fixed webhook authorization block and corrected `/chat/findChats` endpoint (404 error) to restore AI agent responsiveness.
 - **Agent Publish Bug**: Added `isPublished` to backend create/update whitelisted fields — agents were silently staying as draft because the field was stripped before saving.
 - **Notion Integration Dropdown**: Fixed type filter in Agent Editor to match both `notion` and `notion_oauth` integration types — Notion connections were invisible in the dropdown.
 - **RichTextarea Colored Chips**: Added highlight overlay to render `{{variables}}`, `%tags`, and `@mentions` as colored inline chips (blue/green/purple) instead of raw text. Uses transparent textarea + mirrored overlay approach.
 - **Lifecycle Stage Variables**: Stage buttons in the "Update lifecycle" action now insert `{{stage.Name}}` into the instruction text. Stages also appear in the variable picker dropdown.
 
+## [2026-04-28] - Visual Workflow Builder & State Machine
+
 ### Added
-- **Visual Workflow Builder (Phase 1)**: Replaced the simple workflow modal with a full drag-and-drop Visual Builder utilizing `@xyflow/react` and `dagre` for an automatic Vertical Tree layout.
+- **Visual Workflow Builder (Phase 1)**: Integrated `@xyflow/react` and `dagre` for a drag-and-drop workflow canvas with auto-layout.
+- **Workflow State Machine (Phase 2)**: Rebuilt backend execution engine to natively parse graph structures (`nodes`/`edges`).
+- **Workflow Pausing & Resuming**: Workflows can now pause on `Wait` or `Ask a Question` nodes using BullMQ and DB state persistence.
+- **Webhook State Intercept**: `webhookController.js` intercepts incoming messages for paused workflows to capture user replies directly into variables.
+- **Database**: Added `resumeStepId` and `contextData` to `WorkflowExecution`. Added `waitingForWorkflowId` and `waitingForVariable` to `Conversation`.
 - **Workflow Node Palette**: Added a comprehensive node registry and sidebar palette categorized into Messaging, Logic & Flow, CRM Actions, and Integrations.
 - **Workflow Configuration Inspector**: Added a dynamic right-side panel that changes fields based on the selected node type (e.g., Send Message, Ask a Question, Wait, Branch).
 - **Backend Graph Storage**: Updated backend `workflows.js` routes to support JSON objects in the `steps` field, allowing full persistence of the React Flow canvas state.
+
+### Changed
+- **Workflow Engine**: Updated `workflow.service.js` to replace the linear array-based engine with a full graph traversal engine.
 
 ## 2026-04-23
 

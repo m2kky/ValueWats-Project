@@ -1,26 +1,38 @@
-const aiService = require('../services/aiService');
-const evolutionApi = require('../services/evolutionApi');
-const chatService = require('../services/chat.service');
-const agentService = require('../agents/agent.service');
-const socketService = require('../services/socketService');
-const prisma = require('../config/database');
-const { uploadBase64 } = require('../services/storageService');
-const workflowService = require('../services/workflow.service');
+const aiService = require("../services/aiService");
+const evolutionApi = require("../services/evolutionApi");
+const chatService = require("../services/chat.service");
+const agentService = require("../agents/agent.service");
+const socketService = require("../services/socketService");
+const prisma = require("../config/database");
+const { uploadBase64 } = require("../services/storageService");
+const workflowService = require("../services/workflow.service");
 
 // Download media from Evolution API and upload to MinIO, returns permanent URL or null
-async function resolveMediaUrl(instanceName, msgKey, messageContent, messageType) {
-  if (!['image', 'video', 'audio', 'document', 'sticker'].includes(messageType)) return null;
+async function resolveMediaUrl(
+  instanceName,
+  msgKey,
+  messageContent,
+  messageType,
+) {
+  if (!["image", "video", "audio", "document", "sticker"].includes(messageType))
+    return null;
   try {
     const result = await evolutionApi.downloadMedia(instanceName, msgKey);
     if (!result?.base64) return null;
-    const mimetype = result.mimetype ||
-      (messageType === 'image' ? 'image/jpeg' :
-       messageType === 'video' ? 'video/mp4' :
-       messageType === 'audio' ? 'audio/ogg' :
-       messageType === 'sticker' ? 'image/webp' : 'application/octet-stream');
-    return await uploadBase64(result.base64, mimetype, 'chat-media');
+    const mimetype =
+      result.mimetype ||
+      (messageType === "image"
+        ? "image/jpeg"
+        : messageType === "video"
+          ? "video/mp4"
+          : messageType === "audio"
+            ? "audio/ogg"
+            : messageType === "sticker"
+              ? "image/webp"
+              : "application/octet-stream");
+    return await uploadBase64(result.base64, mimetype, "chat-media");
   } catch (e) {
-    console.warn('[Webhook] resolveMediaUrl failed:', e.message);
+    console.warn("[Webhook] resolveMediaUrl failed:", e.message);
     return null;
   }
 }
@@ -32,126 +44,151 @@ const handleIncomingMessage = async (req, res) => {
 
     // Extract instance name - Evolution API may send as string or object
     let instanceName;
-    if (typeof body.instance === 'string') {
+    if (typeof body.instance === "string") {
       instanceName = body.instance;
     } else if (body.instance && body.instance.instanceName) {
       instanceName = body.instance.instanceName;
     } else {
-      instanceName = body.instanceName || 'unknown';
+      instanceName = body.instanceName || "unknown";
     }
 
     const data = body.data || body;
 
-    console.log(`[Webhook] 🔵 Received event: ${event} for instance: ${instanceName}`);
+    console.log(
+      `[Webhook] 🔵 Received event: ${event} for instance: ${instanceName}`,
+    );
 
     // Handle connection status updates
-    if (event === 'CONNECTION_UPDATE' || event === 'connection.update') {
+    if (event === "CONNECTION_UPDATE" || event === "connection.update") {
       const state = data?.state || data?.status;
-      const reason = data?.reason || 'none';
-      console.log(`[Webhook] 🔌 Connection update for ${instanceName}: State=${state}, Reason=${reason}`);
+      const reason = data?.reason || "none";
+      console.log(
+        `[Webhook] 🔌 Connection update for ${instanceName}: State=${state}, Reason=${reason}`,
+      );
 
-      if (state === 'open') {
+      if (state === "open") {
         try {
           await prisma.instance.update({
             where: { instanceName },
             data: {
-              status: 'connected',
-              phoneNumber: data.phoneNumber || null
-            }
+              status: "connected",
+              phoneNumber: data.phoneNumber || null,
+            },
           });
-          console.log(`[Webhook] ✅ Instance ${instanceName} marked as connected manually`);
+          console.log(
+            `[Webhook] ✅ Instance ${instanceName} marked as connected manually`,
+          );
         } catch (e) {
-          console.error(`[Webhook] ❌ Failed to update instance ${instanceName}:`, e.message);
+          console.error(
+            `[Webhook] ❌ Failed to update instance ${instanceName}:`,
+            e.message,
+          );
         }
-      } else if (state === 'close' || state === 'refused') {
-        console.warn(`[Webhook] ⚠️ Instance ${instanceName} connection ${state}. Reason: ${reason}`);
+      } else if (state === "close" || state === "refused") {
+        console.warn(
+          `[Webhook] ⚠️ Instance ${instanceName} connection ${state}. Reason: ${reason}`,
+        );
       }
 
-      return res.status(200).send('OK');
+      return res.status(200).send("OK");
     }
 
     // Handle message status updates (DELIVERED, READ)
-    if (event === 'messages.update' || event === 'MESSAGES_UPDATE') {
+    if (event === "messages.update" || event === "MESSAGES_UPDATE") {
       const updates = Array.isArray(data) ? data : [data];
       const messageUpdate = updates[0];
-      if (!messageUpdate) return res.status(200).send('OK');
+      if (!messageUpdate) return res.status(200).send("OK");
 
       const { key, update } = messageUpdate;
-      if (!key || !update) return res.status(200).send('OK');
+      if (!key || !update) return res.status(200).send("OK");
 
       const remoteJid = key.remoteJid;
       const status = update.status;
       const wamid = key.id;
 
       let statusString = null;
-      if (status === 3 || status === 'DELIVERY_ACK') statusString = 'DELIVERED';
-      if (status === 4 || status === 'READ') statusString = 'READ';
-      if (status === 5 || status === 'PLAYED') statusString = 'READ';
+      if (status === 3 || status === "DELIVERY_ACK") statusString = "DELIVERED";
+      if (status === 4 || status === "READ") statusString = "READ";
+      if (status === 5 || status === "PLAYED") statusString = "READ";
 
       if (statusString && wamid) {
-        console.log(`[Webhook] Message update for ${remoteJid}: status ${status} (${statusString})`);
+        console.log(
+          `[Webhook] Message update for ${remoteJid}: status ${status} (${statusString})`,
+        );
 
         try {
           // Update campaign messages
           const message = await prisma.message.findUnique({
             where: { wamid },
-            include: { campaign: true }
+            include: { campaign: true },
           });
 
           if (message) {
             const updateData = { status: statusString };
-            if (statusString === 'DELIVERED') updateData.deliveredAt = new Date();
+            if (statusString === "DELIVERED")
+              updateData.deliveredAt = new Date();
 
             await prisma.message.update({
               where: { id: message.id },
-              data: updateData
+              data: updateData,
             });
 
             if (message.campaignId) {
-              socketService.emitCampaignProgress(message.campaignId, message.campaign.tenantId, {
-                type: 'MESSAGE_UPDATE',
-                messageId: message.id,
-                status: statusString,
-                campaignName: message.campaign.name,
-                totalContacts: message.campaign.totalContacts,
-              });
+              socketService.emitCampaignProgress(
+                message.campaignId,
+                message.campaign.tenantId,
+                {
+                  type: "MESSAGE_UPDATE",
+                  messageId: message.id,
+                  status: statusString,
+                  campaignName: message.campaign.name,
+                  totalContacts: message.campaign.totalContacts,
+                },
+              );
             }
           }
 
           // Also update ChatMessage status
-          await prisma.chatMessage.updateMany({
-            where: { wamid },
-            data: { status: statusString.toLowerCase() }
-          }).catch(() => { }); // Ignore if not found
-
+          await prisma.chatMessage
+            .updateMany({
+              where: { wamid },
+              data: { status: statusString.toLowerCase() },
+            })
+            .catch(() => {}); // Ignore if not found
         } catch (err) {
-          console.error('[Webhook] Error updating message status:', err.message);
+          console.error(
+            "[Webhook] Error updating message status:",
+            err.message,
+          );
         }
       }
-      return res.status(200).send('OK');
+      return res.status(200).send("OK");
     }
 
     // Handle send message confirmations
-    if (event === 'send.message' || event === 'SEND_MESSAGE') {
+    if (event === "send.message" || event === "SEND_MESSAGE") {
       try {
         const wamid = data?.key?.id;
         if (wamid) {
           await prisma.message.updateMany({
             where: { wamid },
-            data: { status: 'SENT', sentAt: new Date() }
+            data: { status: "SENT", sentAt: new Date() },
           });
           console.log(`[Webhook] Send confirmed for wamid: ${wamid}`);
         }
       } catch (err) {
-        console.error('[Webhook] Error processing send confirmation:', err.message);
+        console.error(
+          "[Webhook] Error processing send confirmation:",
+          err.message,
+        );
       }
-      return res.status(200).send('OK');
+      return res.status(200).send("OK");
     }
 
     // Only process text messages (Upsert)
-    if (event !== 'messages.upsert' && event !== 'MESSAGES_UPSERT') {
+    if (event !== "messages.upsert" && event !== "MESSAGES_UPSERT") {
       console.log(`[Webhook] Ignoring event: ${event}`);
-      return res.status(200).send('OK');
+      return res.status(200).send("OK");
     }
 
     // ====== EXTRACT MESSAGE DATA ======
@@ -159,7 +196,11 @@ const handleIncomingMessage = async (req, res) => {
     // Format A: data.key, data.message (flat)
     // Format B: data.messages[0].key, data.messages[0].message (array)
     let msgObj;
-    if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+    if (
+      data.messages &&
+      Array.isArray(data.messages) &&
+      data.messages.length > 0
+    ) {
       msgObj = data.messages[0]; // Format B
     } else if (data.key && (data.message || data.messageType)) {
       msgObj = data; // Format A
@@ -169,55 +210,69 @@ const handleIncomingMessage = async (req, res) => {
     }
 
     if (!msgObj || !msgObj.key) {
-      console.log('[Webhook] ⚠️ No valid message object found in data');
-      return res.status(200).send('OK');
+      console.log("[Webhook] ⚠️ No valid message object found in data");
+      return res.status(200).send("OK");
     }
 
     const messageContent = msgObj.message;
-    const text = messageContent?.conversation ||
+    const text =
+      messageContent?.conversation ||
       messageContent?.extendedTextMessage?.text ||
       messageContent?.imageMessage?.caption ||
-      '';
+      "";
     const remoteJid = msgObj.key.remoteJid;
     const fromMe = msgObj.key.fromMe;
-    const contactNumber = remoteJid.replace('@s.whatsapp.net', '');
+    const contactNumber = remoteJid.replace("@s.whatsapp.net", "");
     const wamid = msgObj.key.id;
-    const messageType = messageContent?.imageMessage ? 'image' :
-      messageContent?.videoMessage ? 'video' :
-        messageContent?.audioMessage ? 'audio' :
-          messageContent?.documentMessage ? 'document' :
-            messageContent?.stickerMessage ? 'sticker' : 'text';
+    const messageType = messageContent?.imageMessage
+      ? "image"
+      : messageContent?.videoMessage
+        ? "video"
+        : messageContent?.audioMessage
+          ? "audio"
+          : messageContent?.documentMessage
+            ? "document"
+            : messageContent?.stickerMessage
+              ? "sticker"
+              : "text";
 
-    console.log(`[Webhook] 📩 Message from ${contactNumber}, fromMe: ${fromMe}, type: ${messageType}`);
-    console.log(`[Webhook] 💬 Text: ${text?.substring(0, 100) || '[no text]'}`);
+    console.log(
+      `[Webhook] 📩 Message from ${contactNumber}, fromMe: ${fromMe}, type: ${messageType}`,
+    );
+    console.log(`[Webhook] 💬 Text: ${text?.substring(0, 100) || "[no text]"}`);
 
     // Find instance
     const instance = await prisma.instance.findFirst({
-      where: { instanceName }
+      where: { instanceName },
     });
 
     if (!instance) {
       console.error(`[Webhook] ⚠️ Instance ${instanceName} not found in DB`);
-      return res.status(200).send('OK');
+      return res.status(200).send("OK");
     }
 
-    console.log(`[Webhook] ✅ Instance found: ${instance.id} (tenant: ${instance.tenantId})`);
+    console.log(
+      `[Webhook] ✅ Instance found: ${instance.id} (tenant: ${instance.tenantId})`,
+    );
 
     // ====== CHAT INBOX PERSISTENCE ======
     let conversation;
     try {
-      console.log('[Webhook] 💾 Saving to chat inbox...');
+      console.log("[Webhook] 💾 Saving to chat inbox...");
 
       // Extract pushName for contact name display
       const pushName = data.pushName || msgObj.pushName || null;
-      const isGroup = remoteJid.endsWith('@g.us');
+      const isGroup = remoteJid.endsWith("@g.us");
 
       // For group chats: fetch the real group name from Evolution API
       // For 1-on-1 chats: use pushName (WhatsApp display name)
       let resolvedContactName = null;
       if (isGroup) {
         // Try to get real group name — fallback to existing conversation name or null
-        resolvedContactName = await evolutionApi.getGroupInfo(instanceName, remoteJid);
+        resolvedContactName = await evolutionApi.getGroupInfo(
+          instanceName,
+          remoteJid,
+        );
       } else {
         resolvedContactName = fromMe ? undefined : pushName;
       }
@@ -229,8 +284,8 @@ const handleIncomingMessage = async (req, res) => {
           content: text || `[${messageType}]`,
           fromMe,
           // Only update contactName if we have a real name (preserve existing group name if API fails)
-          contactName: resolvedContactName || undefined
-        }
+          contactName: resolvedContactName || undefined,
+        },
       );
 
       console.log(`[Webhook] ✅ Conversation upserted: ${conversation.id}`);
@@ -243,31 +298,36 @@ const handleIncomingMessage = async (req, res) => {
             where: {
               tenantId_phoneNumber: {
                 tenantId: instance.tenantId,
-                phoneNumber: contactNumber
-              }
+                phoneNumber: contactNumber,
+              },
             },
             update: {
               // Only update name if we have a pushName and existing name is null
-              ...(pushName ? { name: pushName } : {})
+              ...(pushName ? { name: pushName } : {}),
             },
             create: {
               tenantId: instance.tenantId,
               phoneNumber: contactNumber,
               name: pushName || null,
-              source: 'whatsapp'
-            }
+              source: "whatsapp",
+            },
           });
 
           // Link contact to conversation if not already linked
           if (!conversation.contactId) {
             await prisma.conversation.update({
               where: { id: conversation.id },
-              data: { contactId: contact.id }
+              data: { contactId: contact.id },
             });
-            console.log(`[Webhook] 🔗 Linked Contact ${contact.id} to Conversation ${conversation.id}`);
+            console.log(
+              `[Webhook] 🔗 Linked Contact ${contact.id} to Conversation ${conversation.id}`,
+            );
           }
         } catch (contactErr) {
-          console.error('[Webhook] Contact auto-create error:', contactErr.message);
+          console.error(
+            "[Webhook] Contact auto-create error:",
+            contactErr.message,
+          );
         }
       }
 
@@ -278,59 +338,149 @@ const handleIncomingMessage = async (req, res) => {
         recipientNumber: fromMe ? contactNumber : instanceName,
         messageType,
         content: text || null,
-        mediaUrl: await resolveMediaUrl(instanceName, msgObj.key, messageContent, messageType),
+        mediaUrl: await resolveMediaUrl(
+          instanceName,
+          msgObj.key,
+          messageContent,
+          messageType,
+        ),
         wamid,
-        status: fromMe ? 'sent' : 'delivered'
+        status: fromMe ? "sent" : "delivered",
       });
 
       if (chatMsg) {
         console.log(`[Webhook] ✅ ChatMessage saved: ${chatMsg.id}`);
 
         // Emit real-time event
-        socketService.emitChatMessage(instance.tenantId, 'chat:message_received', {
-          conversation,
-          message: chatMsg
-        });
-        console.log('[Webhook] ✅ Socket event emitted');
+        socketService.emitChatMessage(
+          instance.tenantId,
+          "chat:message_received",
+          {
+            conversation,
+            message: chatMsg,
+          },
+        );
+        console.log("[Webhook] ✅ Socket event emitted");
       }
     } catch (chatErr) {
-      console.error('[Webhook] ❌ Chat persistence error:', chatErr.message);
+      console.error("[Webhook] ❌ Chat persistence error:", chatErr.message);
     }
 
     // Ignore outgoing or empty messages for automation processing
     if (fromMe || !text) {
-      return res.status(200).send('OK');
+      return res.status(200).send("OK");
+    }
+    // ====== WORKFLOW STATE MACHINE INTERCEPT ======
+    if (conversation && conversation.waitingForWorkflowId) {
+      console.log(
+        `[Webhook] Intercepting message for paused workflow: ${conversation.waitingForWorkflowId}`,
+      );
+
+      const varName = conversation.waitingForVariable || "contact.lastReply";
+      const cleanVarName = varName.replace(/[{}]/g, "").replace("contact.", ""); // e.g. "{{contact.email}}" -> "email"
+
+      // Clear the waiting state immediately to prevent race conditions
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: {
+          waitingForWorkflowId: null,
+          waitingForVariable: null,
+        },
+      });
+
+      // Update Contact with this variable if it matches a contact field
+      if (conversation.contactId) {
+        try {
+          await prisma.contact.update({
+            where: { id: conversation.contactId },
+            data: {
+              [cleanVarName === "name" || cleanVarName === "email"
+                ? cleanVarName
+                : "customFields"]:
+                cleanVarName === "name" || cleanVarName === "email"
+                  ? text
+                  : { [cleanVarName]: text },
+            },
+          });
+        } catch (e) {
+          /* ignore schema mismatches */
+        }
+      }
+
+      // Resume workflow with injected context
+      try {
+        await workflowService.resumeWorkflow(
+          conversation.waitingForWorkflowId,
+          {
+            contact: { [cleanVarName]: text },
+            message: { text },
+          },
+        );
+      } catch (err) {
+        console.error(`[Webhook] Error resuming workflow:`, err.message);
+      }
+
+      // Stop here! Don't process AI or standard workflows
+      return res.status(200).send("OK");
     }
 
-    console.log(`[Webhook] 🤖 Processing automations for: ${text.substring(0, 50)}`);
+    console.log(
+      `[Webhook] 🤖 Processing automations for: ${text.substring(0, 50)}`,
+    );
 
     // ====== OPT-OUT / BLACKLIST CHECK ======
     const tenant = await prisma.tenant.findUnique({
       where: { id: instance.tenantId },
-      select: { optoutEnabled: true, optoutMessage: true, optoutKeywords: true }
+      select: {
+        optoutEnabled: true,
+        optoutMessage: true,
+        optoutKeywords: true,
+      },
     });
     const normalizedText = text.trim().toLowerCase();
-    const optoutKeywords = tenant?.optoutKeywords?.length ? tenant.optoutKeywords : ['stop', 'وقف', 'انهاء', 'إلغاء', 'الغاء', 'لا رسائل', 'unsubscribe', 'إلغاء الاشتراك'];
-    if (tenant?.optoutEnabled !== false && optoutKeywords.some(kw => normalizedText === kw.toLowerCase() || normalizedText.includes(kw.toLowerCase()))) {
-      console.log(`[Webhook] 🚫 Opt-out keyword detected from ${contactNumber}. Blacklisting...`);
+    const optoutKeywords = tenant?.optoutKeywords?.length
+      ? tenant.optoutKeywords
+      : [
+          "stop",
+          "وقف",
+          "انهاء",
+          "إلغاء",
+          "الغاء",
+          "لا رسائل",
+          "unsubscribe",
+          "إلغاء الاشتراك",
+        ];
+    if (
+      tenant?.optoutEnabled !== false &&
+      optoutKeywords.some(
+        (kw) =>
+          normalizedText === kw.toLowerCase() ||
+          normalizedText.includes(kw.toLowerCase()),
+      )
+    ) {
+      console.log(
+        `[Webhook] 🚫 Opt-out keyword detected from ${contactNumber}. Blacklisting...`,
+      );
       try {
         await prisma.contact.updateMany({
           where: { tenantId: instance.tenantId, phoneNumber: contactNumber },
-          data: { blacklisted: true, blacklistedAt: new Date() }
+          data: { blacklisted: true, blacklistedAt: new Date() },
         });
         if (tenant?.optoutMessage) {
           await evolutionApi.sendMessage(
             instance.tenantId,
             instanceName,
             contactNumber,
-            tenant.optoutMessage
+            tenant.optoutMessage,
           );
         }
-        console.log(`[Webhook] ✅ Contact ${contactNumber} blacklisted and opt-out confirmation sent.`);
+        console.log(
+          `[Webhook] ✅ Contact ${contactNumber} blacklisted and opt-out confirmation sent.`,
+        );
       } catch (optoutErr) {
-        console.error('[Webhook] ❌ Opt-out error:', optoutErr.message);
+        console.error("[Webhook] ❌ Opt-out error:", optoutErr.message);
       }
-      return res.status(200).send('OK');
+      return res.status(200).send("OK");
     }
 
     // ====== AUTOMATION RULES CHECK ======
@@ -338,9 +488,9 @@ const handleIncomingMessage = async (req, res) => {
       where: {
         instanceId: instance.id,
         tenantId: instance.tenantId,
-        isActive: true
+        isActive: true,
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: "asc" },
     });
 
     let matched = false;
@@ -349,23 +499,26 @@ const handleIncomingMessage = async (req, res) => {
       let shouldTrigger = false;
 
       switch (rule.triggerType) {
-        case 'keyword':
-          if (rule.triggerValue && text.toLowerCase().includes(rule.triggerValue.toLowerCase())) {
+        case "keyword":
+          if (
+            rule.triggerValue &&
+            text.toLowerCase().includes(rule.triggerValue.toLowerCase())
+          ) {
             shouldTrigger = true;
           }
           break;
 
-        case 'any_message':
+        case "any_message":
           shouldTrigger = true;
           break;
 
-        case 'welcome':
+        case "welcome":
           const existingMessages = await prisma.message.count({
             where: {
               instanceId: instance.id,
               recipientNumber: contactNumber,
-              tenantId: instance.tenantId
-            }
+              tenantId: instance.tenantId,
+            },
           });
           if (existingMessages === 0) {
             shouldTrigger = true;
@@ -374,13 +527,15 @@ const handleIncomingMessage = async (req, res) => {
       }
 
       if (shouldTrigger) {
-        console.log(`[Webhook] ✅ Automation matched: "${rule.name}" (${rule.triggerType})`);
+        console.log(
+          `[Webhook] ✅ Automation matched: "${rule.name}" (${rule.triggerType})`,
+        );
 
         await evolutionApi.sendMessage(
           instance.tenantId,
           instanceName,
           contactNumber,
-          rule.responseText
+          rule.responseText,
         );
 
         matched = true;
@@ -389,25 +544,32 @@ const handleIncomingMessage = async (req, res) => {
     }
 
     // ====== FALLBACK: AI Agent ======
-    if (!matched && conversation && conversation.aiEnabled && !conversation.escalated) {
+    if (
+      !matched &&
+      conversation &&
+      conversation.aiEnabled &&
+      !conversation.escalated
+    ) {
       try {
         console.log(`[Webhook] 🤖 Sending to Agent Service...`);
         const aiResult = await agentService.processMessage({
           conversationId: conversation.id,
           message: text,
           contactNumber,
-          tenantId: conversation.tenantId
+          tenantId: conversation.tenantId,
         });
 
         if (aiResult && aiResult.response) {
-          console.log(`[Webhook] 🤖 AI Response: ${aiResult.response.substring(0, 50)}...`);
+          console.log(
+            `[Webhook] 🤖 AI Response: ${aiResult.response.substring(0, 50)}...`,
+          );
 
           // Send AI response via Evolution API
           await evolutionApi.sendMessage(
             instance.tenantId,
             instanceName,
             contactNumber,
-            aiResult.response
+            aiResult.response,
           );
 
           // Save AI response to database
@@ -415,24 +577,28 @@ const handleIncomingMessage = async (req, res) => {
             data: {
               conversationId: conversation.id,
               content: aiResult.response,
-              direction: 'outgoing',
+              direction: "outgoing",
               senderNumber: instanceName,
               recipientNumber: contactNumber,
-              messageType: 'text',
+              messageType: "text",
               wamid: `ai-${Date.now()}`,
-              status: 'sent'
-            }
+              status: "sent",
+            },
           });
 
           // Emit real-time socket event for the AI response
-          socketService.emitChatMessage(instance.tenantId, 'chat:message_received', {
-            conversation,
-            message: aiChatMsg
-          });
+          socketService.emitChatMessage(
+            instance.tenantId,
+            "chat:message_received",
+            {
+              conversation,
+              message: aiChatMsg,
+            },
+          );
           console.log(`[Webhook] 📡 AI response emitted via Socket.io`);
         }
       } catch (error) {
-        console.error('[Webhook] AI processing error:', error);
+        console.error("[Webhook] AI processing error:", error);
       }
     }
 
@@ -440,26 +606,25 @@ const handleIncomingMessage = async (req, res) => {
     if (conversation) {
       try {
         const contact = await prisma.contact.findFirst({
-          where: { tenantId: instance.tenantId, phoneNumber: contactNumber }
+          where: { tenantId: instance.tenantId, phoneNumber: contactNumber },
         });
-        await workflowService.executeTriggeredWorkflows('inbound_message', {
+        await workflowService.executeTriggeredWorkflows("inbound_message", {
           tenantId: instance.tenantId,
           conversation,
           contact,
           instance,
-          message: { content: text, text, type: messageType }
+          message: { content: text, text, type: messageType },
         });
       } catch (wfErr) {
-        console.error('[Webhook] Workflow trigger error:', wfErr.message);
+        console.error("[Webhook] Workflow trigger error:", wfErr.message);
       }
     }
 
-    res.status(200).send('OK');
-
+    res.status(200).send("OK");
   } catch (error) {
-    console.error('[Webhook] ❌ Error:', error.message);
-    console.error('[Webhook] Stack:', error.stack);
-    res.status(500).send('Internal Server Error');
+    console.error("[Webhook] ❌ Error:", error.message);
+    console.error("[Webhook] Stack:", error.stack);
+    res.status(500).send("Internal Server Error");
   }
 };
 

@@ -21,6 +21,7 @@ const tenantContext = require('./middleware/tenantContext');
 
 const http = require('http');
 const socketService = require('./services/socketService');
+const { workflowQueue } = require('./services/workflowQueue'); // Initialize BullMQ wait queue
 
 const app = express();
 const server = http.createServer(app);

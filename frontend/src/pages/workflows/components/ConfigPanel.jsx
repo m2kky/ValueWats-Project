@@ -222,15 +222,123 @@ export default function ConfigPanel({ node, onUpdate, onDelete, onClose }) {
 
         {/* ─── Branch Config ─── */}
         {node.data?.actionType === 'branch' && (
-          <div className="space-y-3">
-            <p className="text-xs text-zinc-500">
-              Configure branches in the node inspector. Each branch can have multiple conditions based on contact fields, tags, or variables.
-            </p>
-            <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
-              <p className="text-[11px] text-amber-400/80">
-                <strong>Tip:</strong> An "Else" branch is automatically added as a fallback for unmatched conditions.
-              </p>
-            </div>
+          <div className="space-y-4">
+            {(node.data.branches || []).map((branch, index) => (
+              <div key={branch.id} className="p-3 bg-zinc-900/50 border border-white/5 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <input
+                    type="text"
+                    value={branch.label}
+                    onChange={(e) => {
+                      const newBranches = [...node.data.branches];
+                      newBranches[index].label = e.target.value;
+                      onUpdate(node.id, { branches: newBranches });
+                    }}
+                    className="bg-transparent text-sm font-bold text-amber-400 outline-none w-32 border-b border-dashed border-amber-500/30 focus:border-amber-500"
+                    placeholder="Branch Name"
+                  />
+                  <button
+                    onClick={() => {
+                      const newBranches = node.data.branches.filter((_, i) => i !== index);
+                      onUpdate(node.id, { branches: newBranches });
+                    }}
+                    className="p-1 text-zinc-500 hover:text-red-400"
+                    title="Remove branch"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                {/* Condition Builder */}
+                <div className="space-y-2 mt-2">
+                  {(branch.conditions || []).map((cond, cIdx) => (
+                    <div key={cIdx} className="space-y-1 p-2 bg-black/40 rounded-lg border border-white/5">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Condition {cIdx + 1}</span>
+                        <button
+                          onClick={() => {
+                            const newBranches = [...node.data.branches];
+                            newBranches[index].conditions = newBranches[index].conditions.filter((_, i) => i !== cIdx);
+                            onUpdate(node.id, { branches: newBranches });
+                          }}
+                          className="text-zinc-600 hover:text-red-400"
+                        >
+                          <XMarkIcon className="w-3 h-3" />
+                        </button>
+                      </div>
+                      
+                      <input
+                        type="text"
+                        value={cond.left || ''}
+                        onChange={(e) => {
+                          const newBranches = [...node.data.branches];
+                          newBranches[index].conditions[cIdx].left = e.target.value;
+                          onUpdate(node.id, { branches: newBranches });
+                        }}
+                        placeholder="{{contact.name}} or Text"
+                        className="w-full bg-zinc-800/50 border border-white/5 rounded px-2 py-1 text-xs text-zinc-300 outline-none focus:border-amber-500/50 font-mono"
+                      />
+                      
+                      <select
+                        value={cond.operator || 'equals'}
+                        onChange={(e) => {
+                          const newBranches = [...node.data.branches];
+                          newBranches[index].conditions[cIdx].operator = e.target.value;
+                          onUpdate(node.id, { branches: newBranches });
+                        }}
+                        className="w-full bg-zinc-800/50 border border-white/5 rounded px-2 py-1 text-xs text-amber-300/80 outline-none focus:border-amber-500/50"
+                      >
+                        <option value="equals">Equals</option>
+                        <option value="not_equals">Does not equal</option>
+                        <option value="contains">Contains</option>
+                        <option value="not_contains">Does not contain</option>
+                        <option value="exists">Is set (Exists)</option>
+                        <option value="not_exists">Is empty</option>
+                        <option value="gt">Greater than</option>
+                        <option value="lt">Less than</option>
+                      </select>
+
+                      {!['exists', 'not_exists'].includes(cond.operator) && (
+                        <input
+                          type="text"
+                          value={cond.right || ''}
+                          onChange={(e) => {
+                            const newBranches = [...node.data.branches];
+                            newBranches[index].conditions[cIdx].right = e.target.value;
+                            onUpdate(node.id, { branches: newBranches });
+                          }}
+                          placeholder="Value to compare..."
+                          className="w-full bg-zinc-800/50 border border-white/5 rounded px-2 py-1 text-xs text-zinc-300 outline-none focus:border-amber-500/50 font-mono"
+                        />
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      const newBranches = [...node.data.branches];
+                      if (!newBranches[index].conditions) newBranches[index].conditions = [];
+                      newBranches[index].conditions.push({ left: '', operator: 'equals', right: '' });
+                      onUpdate(node.id, { branches: newBranches });
+                    }}
+                    className="text-[10px] uppercase font-bold tracking-widest text-amber-500/70 hover:text-amber-400 mt-2 block"
+                  >
+                    + Add Condition
+                  </button>
+                </div>
+              </div>
+            ))}
+            
+            <button
+              onClick={() => {
+                const newBranches = [...(node.data.branches || [])];
+                const nextNum = newBranches.length + 1;
+                newBranches.push({ id: `${node.id}_b${Date.now()}`, label: `Branch ${nextNum}`, conditions: [] });
+                onUpdate(node.id, { branches: newBranches });
+              }}
+              className="w-full py-2 border border-dashed border-white/10 rounded-xl text-xs font-bold text-zinc-400 hover:bg-white/5 hover:text-white transition-colors"
+            >
+              + Add Branch
+            </button>
           </div>
         )}
 

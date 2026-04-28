@@ -124,12 +124,16 @@ export default function WorkflowBuilder() {
       },
     };
 
-    // Auto-connect to the last node
-    const lastNode = nodes[nodes.length - 1];
-    const newEdge = lastNode
+    // Auto-connect to the selected node (if any) or the last node.
+    // Do NOT auto-connect if the parent is a branch (because we don't know which branch handle to use).
+    // Do NOT auto-connect to another Trigger node.
+    const parentNode = selectedNode || nodes[nodes.length - 1];
+    const canAutoConnect = parentNode && parentNode.type !== 'branch' && actionType !== 'trigger';
+
+    const newEdge = canAutoConnect
       ? {
-          id: `e_${lastNode.id}_${newId}`,
-          source: lastNode.id,
+          id: `e_${parentNode.id}_${newId}`,
+          source: parentNode.id,
           target: newId,
           ...defaultEdgeOptions,
         }

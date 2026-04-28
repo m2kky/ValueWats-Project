@@ -60,7 +60,7 @@ model Tenant {
   // Opt-out / Blacklist settings
   optoutEnabled  Boolean  @default(true) @map("optout_enabled")
   optoutMessage  String   @default("✅ تم إلغاء اشتراكك بنجاح. لن تصلك رسائل تسويقية منا بعد الآن. يمكنك التواصل معنا في أي وقت.") @map("optout_message") @db.Text
-  optoutKeywords String[] @default(["stop","وقف","انهاء","إلغاء","الغاء","لا رسائل","unsubscribe","إلغاء الاشتراك"]) @map("optout_keywords")
+  optoutKeywords String[] @default(["stop", "وقف", "انهاء", "إلغاء", "الغاء", "لا رسائل", "unsubscribe", "إلغاء الاشتراك"]) @map("optout_keywords")
 
   users           User[]
   instances       Instance[]
@@ -205,7 +205,7 @@ model Campaign {
   messageTemplates  MessageTemplate[]
   links             Link[]
 
-  @@index([tenantId, status])  // Fix 3.3: Speed up campaign list filtering
+  @@index([tenantId, status]) // Fix 3.3: Speed up campaign list filtering
   @@map("campaigns")
 }
 
@@ -268,7 +268,7 @@ model Message {
   links    Link[]
 
   @@index([tenantId, createdAt(sort: Desc)])
-  @@index([tenantId, status])  // Fix 3.1: Speed up campaign message status queries
+  @@index([tenantId, status]) // Fix 3.1: Speed up campaign message status queries
   @@map("messages")
 }
 
@@ -340,6 +340,10 @@ model Conversation {
 
   failedAttempts    Int       @default(0)
   lastBotResponseAt DateTime?
+
+  // Workflow State Machine (Ask a Question)
+  waitingForWorkflowId String? @map("waiting_workflow_id")
+  waitingForVariable   String? @map("waiting_variable")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -772,10 +776,14 @@ model WorkflowExecution {
 
   conversationId String? // Optional context
 
-  status String // pending, success, failed
+  status String // pending, running, paused, success, failed
   input  String? @db.Text // JSON input
   output String? @db.Text // JSON output result
   error  String? @db.Text
+
+  // State Machine Persistence
+  resumeStepId String? @map("resume_step_id")
+  contextData  String? @map("context_data") @db.Text
 
   startedAt   DateTime  @default(now())
   completedAt DateTime?

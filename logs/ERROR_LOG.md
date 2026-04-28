@@ -2,6 +2,37 @@
 
 Document all critical errors, their root causes, fixes, and lessons learned. When fixing an issue, **FIRST check this file** to see if it's already documented. After fixing an issue, **ADD it here**.
 
+## ERR-040: AI Agent 401 Unauthorized (OpenRouter API Key & Model Format)
+
+| Field        | Value                                                                 |
+| ------------ | --------------------------------------------------------------------- |
+| **Date**     | 2026-04-28                                                            |
+| **Severity** | High                                                                  |
+| **Source**   | `backend/src/agents/agent.service.js`, `backend/src/ai/deepseek.service.js` |
+| **Trigger**  | AI Agent attempts to generate a reply but fails with 401 Unauthorized |
+
+### Description
+
+After fixing the webhook issue, the AI Agents still failed to reply. The `logs/coolify/a` showed an `AxiosError: Request failed with status code 401` from `https://openrouter.ai/api/v1/chat/completions`. OpenRouter returned the error `{"error":{"message":"User not found.","code":401}}`. 
+
+Additionally, the payload was sending `"model": "deepseek-chat"`, which is the direct DeepSeek API model format, but OpenRouter expects `"model": "deepseek/deepseek-chat"`.
+
+### Root Cause
+
+1. **Invalid API Key**: The `OPENROUTER_API_KEY` in the Coolify environment variables is invalid, deleted, or missing.
+2. **Incorrect Model Formatting**: `agent.service.js` used a fallback of `deepseek-chat` instead of `deepseek/deepseek-chat` for OpenRouter.
+
+### Fix
+
+- Corrected the fallback model in `backend/src/agents/agent.service.js` from `deepseek-chat` to `deepseek/deepseek-chat`.
+- **Pending Action**: The user MUST generate a new, valid OpenRouter API key and update it in the Coolify Dashboard under the `OPENROUTER_API_KEY` environment variable.
+
+### Lesson Learned
+
+When switching AI providers (e.g., from DeepSeek to OpenRouter), ensure that both the API key and the provider's specific model naming conventions (`provider/model`) are updated throughout the codebase.
+
+---
+
 ## ERR-039: AI Agents Not Replying (Webhook blocked & 404 on Evolution API)
 
 | Field        | Value                                                                 |
