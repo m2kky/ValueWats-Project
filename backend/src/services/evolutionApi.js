@@ -293,8 +293,9 @@ Stack: ${error.stack}
    */
   async fetchMessages(instanceName, number, count = 50) {
     try {
-      const response = await axios.get(
+      const response = await axios.post(
         `${this.baseURL}/chat/findMessages/${instanceName}`,
+        {},
         {
           params: { number, count },
           headers: { apikey: this.apiKey },

@@ -2,6 +2,10 @@
 
 ### Fixed
 - **Evolution API findChats 404**: Fixed a crash in `fetchConversations` by changing the HTTP method to `POST`, as required by Evolution API v2.
+- **Evolution API findMessages 404**: Fixed a crash in `fetchMessages` by changing the HTTP method to `POST`, as required by Evolution API v2.
+- **ChatSync Error (ERR-043)**: Fixed `TypeError: Cannot read properties of null (reading 'endsWith')` in `ChatService.syncConversations` by correctly checking `chat.id` or `chat.remoteJid` from the Evolution API payload.
+- **Agent Service Crash (ERR-044)**: Fixed `TypeError: Cannot read properties of null` in `ToolService.getToolDefinitions` by providing a fallback empty object for `actionConfig`.
+- **Webhook Instance Update (ERR-045)**: Fixed `Invalid prisma.instance.update() invocation` in `webhookController.js` by using `updateMany` instead of `update` since `instanceName` is not a unique field.
 - **Rate Limit Proxy Error**: Configured `app.set('trust proxy', 1)` in Express to correctly parse `X-Forwarded-For` headers from the Nginx proxy, fixing rate limiter validation errors.
 - **Google Sheets & HTTP Nodes**: Added missing `google_sheets` configuration to the Workflow Builder (Action Type, Spreadsheet ID, Worksheet Name, Row Data) and connected it to the execution engine. Also added `Headers (JSON)` to the `http_request` node.
 - **OpenRouter AI Agent 401 Error**: Fixed incorrect OpenRouter model formatting (`deepseek/deepseek-chat` instead of `deepseek-chat`) causing failed AI completions.

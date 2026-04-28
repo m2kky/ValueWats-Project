@@ -29,6 +29,7 @@ class ToolService {
      * Get tool definitions for the AI model dynamically based on Agent Config
      */
     getToolDefinitions(actionConfig = {}) {
+        actionConfig = actionConfig || {};
         const tools = [];
 
         // Calendar

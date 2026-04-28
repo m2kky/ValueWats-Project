@@ -1265,3 +1265,35 @@ Wrapped the `evolutionApi.getInstanceStatus()` call inside a `try / catch` insid
 
 **Lesson:**
 When dealing with `Promise.all` over external microservices or APIs to hydrate list models, always encapsulate the individual HTTP fetches in their own `catch` blocks with fallbacks. If an external API crashes for just ONE list item, it shouldn't nuke the entire endpoint.
+
+ 
+ # #   [ E R R - 0 4 3 ]   C h a t S y n c   C r a s h   o n   E v o l u t i o n   A P I   v 2   p a y l o a d 
+ * * D a t e : * *   2 0 2 6 - 0 4 - 2 8 
+ * * C o m p o n e n t : * *   C h a t S e r v i c e   ( B a c k e n d ) 
+ * * E r r o r : * *   \ T y p e E r r o r :   C a n n o t   r e a d   p r o p e r t i e s   o f   n u l l   ( r e a d i n g   ' e n d s W i t h ' ) \   i n   \ C h a t S e r v i c e . s y n c C o n v e r s a t i o n s \ 
+ * * R o o t   C a u s e : * *   T h e   \ s y n c C o n v e r s a t i o n s \   f u n c t i o n   w a s   t r y i n g   t o   c h e c k   \ c h a t . i d . e n d s W i t h ( ' @ g . u s ' ) \   b u t   i n   E v o l u t i o n   A P I   v 2 ,   s o m e   p a y l o a d s   m i g h t   h a v e   \ c h a t . i d \   m i s s i n g   o r   u s e   \ c h a t . r e m o t e J i d \   i n s t e a d . 
+ * * F i x : * *   A d d e d   a   c h e c k   t o   p u l l   \ c h a t I d   =   c h a t . i d   | |   c h a t . r e m o t e J i d \   a n d   g r a c e f u l l y   \ c o n t i n u e \   i f   \ c h a t I d \   i s   m i s s i n g . 
+ 
+ # #   [ E R R - 0 4 4 ]   A g e n t   S e r v i c e   C r a s h   o n   T o o l   D e f i n i t i o n s 
+ * * D a t e : * *   2 0 2 6 - 0 4 - 2 8 
+ * * C o m p o n e n t : * *   T o o l S e r v i c e   ( B a c k e n d ) 
+ * * E r r o r : * *   \ T y p e E r r o r :   C a n n o t   r e a d   p r o p e r t i e s   o f   n u l l   ( r e a d i n g   ' g o o g l e _ c a l e n d a r _ c r e a t e ' ) \   i n   \ T o o l S e r v i c e . g e t T o o l D e f i n i t i o n s \ 
+ * * R o o t   C a u s e : * *   I f   t h e   \  c t i o n C o n f i g \   p a r a m e t e r   i s   p a s s e d   e x p l i c i t l y   a s   \ 
+ u l l \   o r   i s   m i s s i n g   f r o m   a n   a g e n t ' s   c o n f i g ,   t r y i n g   t o   a c c e s s   \  c t i o n C o n f i g . g o o g l e _ c a l e n d a r _ c r e a t e \   t h r o w s   a n   e x c e p t i o n . 
+ * * F i x : * *   A d d e d   a   f a l l b a c k   \  c t i o n C o n f i g   =   a c t i o n C o n f i g   | |   { } \   a t   t h e   s t a r t   o f   t h e   f u n c t i o n . 
+ 
+ # #   [ E R R - 0 4 5 ]   W e b h o o k   I n s t a n c e   U p d a t e   F a i l i n g 
+ * * D a t e : * *   2 0 2 6 - 0 4 - 2 8 
+ * * C o m p o n e n t : * *   W e b h o o k C o n t r o l l e r   ( B a c k e n d ) 
+ * * E r r o r : * *   \ I n v a l i d   p r i s m a . i n s t a n c e . u p d a t e ( )   i n v o c a t i o n \   i n s i d e   \ h a n d l e I n c o m i n g M e s s a g e \ 
+ * * R o o t   C a u s e : * *   \ i n s t a n c e N a m e \   i s   n o t   d e f i n e d   a s   \ @ u n i q u e \   i n   t h e   P r i s m a   s c h e m a ,   s o   i t   c a n n o t   b e   u s e d   i n   a   \ p r i s m a . i n s t a n c e . u p d a t e ( {   w h e r e :   {   i n s t a n c e N a m e   }   } ) \   o p e r a t i o n . 
+ * * F i x : * *   C h a n g e d   \ p r i s m a . i n s t a n c e . u p d a t e \   t o   \ p r i s m a . i n s t a n c e . u p d a t e M a n y \ . 
+ 
+ # #   [ E R R - 0 4 6 ]   E v o l u t i o n   A P I   f e t c h M e s s a g e s   4 0 4 
+ * * D a t e : * *   2 0 2 6 - 0 4 - 2 8 
+ * * C o m p o n e n t : * *   E v o l u t i o n A p i S e r v i c e   ( B a c k e n d ) 
+ * * E r r o r : * *   \ 4 0 4   C a n n o t   G E T   / c h a t / f i n d M e s s a g e s / 0 0 \ 
+ * * R o o t   C a u s e : * *   S i m i l a r   t o   t h e   \  i n d C h a t s \   e n d p o i n t ,   E v o l u t i o n   A P I   v 2   m i g r a t e d   t h e   \  i n d M e s s a g e s \   e n d p o i n t   f r o m   \ G E T \   t o   \ P O S T \ . 
+ * * F i x : * *   S w i t c h e d   \  x i o s . g e t \   t o   \  x i o s . p o s t \   w i t h   a n   e m p t y   b o d y   a n d   k e p t   p a r a m e t e r s   i n   t h e   q u e r y   s t r i n g . 
+  
+ 

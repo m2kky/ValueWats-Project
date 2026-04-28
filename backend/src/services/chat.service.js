@@ -439,8 +439,11 @@ class ChatService {
         if (!Array.isArray(remoteChats)) continue;
 
         for (const chat of remoteChats) {
-          const isGroup = chat.id.endsWith('@g.us');
-          const contactNumber = isGroup ? chat.id : chat.id.replace('@s.whatsapp.net', '');
+          const chatId = chat.id || chat.remoteJid;
+          if (!chatId) continue;
+          
+          const isGroup = chatId.endsWith('@g.us');
+          const contactNumber = isGroup ? chatId : chatId.replace('@s.whatsapp.net', '');
 
           // Determine display name: group subject, pushName, or phone number
           const displayName = isGroup

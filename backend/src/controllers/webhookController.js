@@ -68,7 +68,7 @@ const handleIncomingMessage = async (req, res) => {
 
       if (state === "open") {
         try {
-          await prisma.instance.update({
+          await prisma.instance.updateMany({
             where: { instanceName },
             data: {
               status: "connected",
