@@ -9,25 +9,30 @@ class ChatService {
   async upsertConversation(tenantId, contactNumber, messageData = {}) {
     try {
       const channelType = messageData.channelType || 'whatsapp';
+      
+      // Sanitize inputs to prevent Prisma hex escape errors (\u0000)
+      const sanitize = (str) => typeof str === 'string' ? str.replace(/\0/g, '') : str;
+      const cleanContent = sanitize(messageData.content)?.substring(0, 100) || '[Media]';
+      const cleanContactName = sanitize(messageData.contactName);
 
       const conversation = await prisma.conversation.upsert({
         where: {
           tenantId_contactNumber_channelType: { tenantId, contactNumber, channelType }
         },
         update: {
-          lastMessage: messageData.content?.substring(0, 100) || '[Media]',
+          lastMessage: cleanContent,
           lastMessageAt: new Date(),
           unreadCount: messageData.fromMe ? { set: 0 } : { increment: 1 },
           status: 'open',
           // Update contact name if provided and not just a phone number
-          ...(messageData.contactName && { contactName: messageData.contactName })
+          ...(cleanContactName && { contactName: cleanContactName })
         },
         create: {
           tenantId,
           channelType,
           contactNumber,
-          contactName: messageData.contactName || contactNumber,
-          lastMessage: messageData.content?.substring(0, 100) || '[Media]',
+          contactName: cleanContactName || contactNumber,
+          lastMessage: cleanContent,
           lastMessageAt: new Date(),
           unreadCount: messageData.fromMe ? 0 : 1,
           status: 'open'
@@ -55,7 +60,7 @@ class ChatService {
           senderNumber: messageData.senderNumber,
           recipientNumber: messageData.recipientNumber,
           messageType: messageData.messageType || 'text',
-          content: messageData.content,
+          content: typeof messageData.content === 'string' ? messageData.content.replace(/\0/g, '') : messageData.content,
           mediaUrl: messageData.mediaUrl || null,
           wamid: messageData.wamid || null,
           status: messageData.status || 'sent',
@@ -489,8 +494,3 @@ class ChatService {
     } catch (error) {
       console.error('[ChatService] Sync error:', error);
       throw error;
-    }
-  }
-}
-
-module.exports = new ChatService();

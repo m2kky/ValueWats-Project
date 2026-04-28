@@ -1,6 +1,7 @@
 ## 2026-04-28
 
 ### Fixed
+- **Prisma Hex Escape Error (ERR-047)**: Fixed `unexpected end of hex escape` crash in `ChatService.upsertConversation` by stripping null bytes (`\u0000`) from incoming WhatsApp messages and contact names.
 - **Evolution API findChats 404**: Fixed a crash in `fetchConversations` by changing the HTTP method to `POST`, as required by Evolution API v2.
 - **Evolution API findMessages 404**: Fixed a crash in `fetchMessages` by changing the HTTP method to `POST`, as required by Evolution API v2.
 - **ChatSync Error (ERR-043)**: Fixed `TypeError: Cannot read properties of null (reading 'endsWith')` in `ChatService.syncConversations` by correctly checking `chat.id` or `chat.remoteJid` from the Evolution API payload.

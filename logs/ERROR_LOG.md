@@ -1297,3 +1297,12 @@ When dealing with `Promise.all` over external microservices or APIs to hydrate l
  * * F i x : * *   S w i t c h e d   \  x i o s . g e t \   t o   \  x i o s . p o s t \   w i t h   a n   e m p t y   b o d y   a n d   k e p t   p a r a m e t e r s   i n   t h e   q u e r y   s t r i n g . 
   
  
+ 
+ # #   [ E R R - 0 4 7 ]   P r i s m a   h e x   e s c a p e   e r r o r   d u r i n g   c h a t   s y n c 
+ * * D a t e : * *   2 0 2 6 - 0 4 - 2 8 
+ * * C o m p o n e n t : * *   C h a t S e r v i c e   ( B a c k e n d ) 
+ * * E r r o r : * *   \ I n v a l i d   p r i s m a . c o n v e r s a t i o n . u p s e r t ( )   i n v o c a t i o n :   u n e x p e c t e d   e n d   o f   h e x   e s c a p e \ 
+ * * R o o t   C a u s e : * *   W h a t s A p p   m e s s a g e s   o r   c o n t a c t   n a m e s   r e c e i v e d   f r o m   E v o l u t i o n   A P I   o c c a s i o n a l l y   c o n t a i n   n u l l   b y t e s   ( \ \ u 0 0 0 0 \ ) .   P o s t g r e S Q L / P r i s m a   r e j e c t s   s t r i n g s   w i t h   n u l l   b y t e s . 
+ * * F i x : * *   A d d e d   a   \ s a n i t i z e \   f u n c t i o n   i n   \ u p s e r t C o n v e r s a t i o n \   a n d   \ s a v e M e s s a g e \   t o   s t r i p   o u t   \ \ 0 \   b e f o r e   s a v i n g   t o   t h e   d a t a b a s e . 
+  
+ 
