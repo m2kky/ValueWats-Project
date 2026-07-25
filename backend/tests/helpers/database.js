@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 
 const TEST_DATABASE = 'valuewats_agent_test';
+const testClients = new WeakMap();
 
 function assertTestDatabase(url = process.env.DATABASE_URL) {
   if (!url || new URL(url).pathname.replace(/^\//, '') !== TEST_DATABASE) {
@@ -8,14 +9,22 @@ function assertTestDatabase(url = process.env.DATABASE_URL) {
   }
 }
 
-function createTestDatabase(url = process.env.DATABASE_URL) {
+function createTestDatabase(url = process.env.DATABASE_URL, PrismaClientClass = PrismaClient) {
   assertTestDatabase(url);
-  return new PrismaClient({ datasources: { db: { url } } });
+  const prisma = new PrismaClientClass({ datasources: { db: { url } } });
+  testClients.set(prisma, url);
+  return prisma;
 }
 
 async function resetDatabase(prisma) {
-  assertTestDatabase();
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE "Tenant" CASCADE');
+  const url = testClients.get(prisma);
+  if (!url) throw new Error('Refusing to reset an unregistered database client');
+  assertTestDatabase(url);
+  await prisma.$executeRawUnsafe('TRUNCATE TABLE "tenants" CASCADE');
+}
+
+function createMockPrisma(overrides = {}) {
+  return overrides;
 }
 
 async function closeTestResources({ prisma, redis, queues = [], server, providers = [] } = {}) {
@@ -25,4 +34,4 @@ async function closeTestResources({ prisma, redis, queues = [], server, provider
   ].filter(Boolean));
 }
 
-module.exports = { TEST_DATABASE, assertTestDatabase, createTestDatabase, resetDatabase, closeTestResources };
+module.exports = { TEST_DATABASE, assertTestDatabase, createTestDatabase, createMockPrisma, resetDatabase, closeTestResources };

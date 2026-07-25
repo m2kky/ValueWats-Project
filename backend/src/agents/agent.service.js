@@ -1,15 +1,37 @@
-const prisma = require('../config/database');
-const deepseekService = require('../ai/deepseek.service');
-const toolService = require('../services/toolService');
+const lazyDependency = (load) => {
+  let value;
+  return new Proxy({}, {
+    get(target, property) {
+      if (!value) value = load();
+      const resolved = value[property];
+      return typeof resolved === 'function' ? resolved.bind(value) : resolved;
+    }
+  });
+};
 
 class AgentService {
+  constructor({
+    prisma = lazyDependency(() => require('../config/database')),
+    modelGateway = lazyDependency(() => require('../ai/deepseek.service')),
+    toolService = lazyDependency(() => require('../services/toolService')),
+    knowledgeService = lazyDependency(() => require('../services/knowledgeService')),
+    workflowService = lazyDependency(() => require('../services/workflow.service')),
+    clock = () => new Date()
+  } = {}) {
+    this.prisma = prisma;
+    this.modelGateway = modelGateway;
+    this.toolService = toolService;
+    this.knowledgeService = knowledgeService;
+    this.workflowService = workflowService;
+    this.clock = clock;
+  }
   /**
    * Process incoming message with AI Agent
    */
   async processMessage({ conversationId, message, contactNumber, tenantId }) {
     try {
       // 1. Get conversation with current agent
-      const conversation = await prisma.conversation.findUnique({
+      const conversation = await this.prisma.conversation.findUnique({
         where: { id: conversationId },
         include: {
           currentAgent: {
@@ -103,12 +125,12 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
         : agent.aiModel;
 
       while (loopCount < MAX_LOOPS) {
-        const responseMessage = await deepseekService.chat({
+        const responseMessage = await this.modelGateway.chat({
           messages: chatMessages,
           temperature: agent.temperature,
           max_tokens: agent.maxTokens,
           model: resolvedModel,
-          tools: toolService.getToolDefinitions(agent.actionConfig)
+          tools: this.toolService.getToolDefinitions(agent.actionConfig)
         });
 
         chatMessages.push(responseMessage);
@@ -117,7 +139,7 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
           console.log(`[AgentService] AI requested ${responseMessage.tool_calls.length} tool calls`);
 
           for (const toolCall of responseMessage.tool_calls) {
-            const result = await toolService.execute(
+            const result = await this.toolService.execute(
               toolCall.function.name,
               JSON.parse(toolCall.function.arguments),
               { tenantId, conversationId, actionConfig: agent.actionConfig }
@@ -160,7 +182,7 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
       console.error('[AgentService] Error processing message:', error);
 
       // Increment failed attempts
-      await prisma.conversation.update({
+      await this.prisma.conversation.update({
         where: { id: conversationId },
         data: {
           failedAttempts: { increment: 1 },
@@ -177,7 +199,7 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
    * Assign default agent to conversation
    */
   async assignDefaultAgent(conversationId, tenantId) {
-    const defaultAgent = await prisma.aIAgent.findFirst({
+    const defaultAgent = await this.prisma.aIAgent.findFirst({
       where: {
         tenantId: tenantId,
         isActive: true
@@ -198,17 +220,17 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
     }
 
     // Assign agent to conversation
-    await prisma.conversation.update({
+    await this.prisma.conversation.update({
       where: { id: conversationId },
       data: { currentAgentId: defaultAgent.id }
     });
 
     // Track agent assignment
-    await prisma.conversationAgent.create({
+    await this.prisma.conversationAgent.create({
       data: {
         conversationId: conversationId,
         agentId: defaultAgent.id,
-        startedAt: new Date()
+        startedAt: this.clock()
       }
     });
 
@@ -302,7 +324,7 @@ ${actionPrompts.join('\n')}`;
    * Get conversation history
    */
   async getConversationHistory(conversationId, limit = 10) {
-    const messages = await prisma.chatMessage.findMany({
+    const messages = await this.prisma.chatMessage.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'desc' },
       take: limit
@@ -323,7 +345,7 @@ ${actionPrompts.join('\n')}`;
     // Try vector search first (RAG)
     if (agentId) {
       try {
-        const knowledgeService = require('../services/knowledgeService');
+        const knowledgeService = this.knowledgeService;
         const results = await knowledgeService.searchKnowledge(message, agentId, 5);
         if (results.length > 0) {
           console.log(`[AgentService] RAG: Found ${results.length} relevant knowledge chunks`);
@@ -353,7 +375,7 @@ ${actionPrompts.join('\n')}`;
   isWithinWorkingHours(agent) {
     if (!agent.workingHoursEnabled || !agent.workingHours) return true;
 
-    const now = new Date();
+    const now = this.clock();
     const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase(); // e.g., "monday"
     const currentTime = now.getHours() * 60 + now.getMinutes();
 
@@ -373,7 +395,7 @@ ${actionPrompts.join('\n')}`;
    * Check routing rules
    */
   async checkRoutingRules(conversation, agent, message, aiResponse) {
-    const rules = await prisma.agentRoutingRule.findMany({
+    const rules = await this.prisma.agentRoutingRule.findMany({
       where: {
         fromAgentId: agent.id,
         isActive: true
@@ -406,40 +428,40 @@ ${actionPrompts.join('\n')}`;
    */
   async routeConversation(conversationId, fromAgentId, rule) {
     // End current agent session
-    await prisma.conversationAgent.updateMany({
+    await this.prisma.conversationAgent.updateMany({
       where: {
         conversationId: conversationId,
         agentId: fromAgentId,
         endedAt: null
       },
       data: {
-        endedAt: new Date(),
+        endedAt: this.clock(),
         handoffReason: rule.triggerType
       }
     });
 
     // Assign new agent
     if (rule.toAgentId) {
-      await prisma.conversation.update({
+      await this.prisma.conversation.update({
         where: { id: conversationId },
         data: { currentAgentId: rule.toAgentId }
       });
 
-      await prisma.conversationAgent.create({
+      await this.prisma.conversationAgent.create({
         data: {
           conversationId: conversationId,
           agentId: rule.toAgentId,
-          startedAt: new Date()
+          startedAt: this.clock()
         }
       });
     } else {
       // Escalate to human
-      await prisma.conversation.update({
+      await this.prisma.conversation.update({
         where: { id: conversationId },
         data: {
           currentAgentId: null,
           escalated: true,
-          escalatedAt: new Date(),
+          escalatedAt: this.clock(),
           escalationReason: rule.triggerType
         }
       });
@@ -464,7 +486,7 @@ ${actionPrompts.join('\n')}`;
       try {
         // CLOSE CONVERSATION
         if (actionString === 'CLOSE_CONVERSATION') {
-          await prisma.conversation.update({
+          await this.prisma.conversation.update({
             where: { id: conversation.id },
             data: { status: 'closed', currentAgentId: null }
           });
@@ -495,7 +517,7 @@ ${actionPrompts.join('\n')}`;
           const updates = JSON.parse(jsonStr);
 
           if (updates.name) {
-            await prisma.conversation.update({
+            await this.prisma.conversation.update({
               where: { id: conversation.id },
               data: { contactName: updates.name }
             });
@@ -504,7 +526,7 @@ ${actionPrompts.join('\n')}`;
           // Update custom fields
           for (const [key, value] of Object.entries(updates)) {
             if (key === 'name') continue;
-            await prisma.contactField.upsert({
+            await this.prisma.contactField.upsert({
               where: {
                 tenantId_contactNumber_fieldName: {
                   tenantId: agent.tenantId,
@@ -527,12 +549,12 @@ ${actionPrompts.join('\n')}`;
         // UPDATE LIFECYCLE
         else if (actionString.startsWith('UPDATE_LIFECYCLE:')) {
           const stageName = actionString.replace('UPDATE_LIFECYCLE:', '').trim();
-          const stage = await prisma.lifecycleStage.findFirst({
+          const stage = await this.prisma.lifecycleStage.findFirst({
             where: { tenantId: agent.tenantId, name: { contains: stageName, mode: 'insensitive' } }
           });
 
           if (stage) {
-            await prisma.conversation.update({
+            await this.prisma.conversation.update({
               where: { id: conversation.id },
               data: { lifecycleStageId: stage.id }
             });
@@ -544,8 +566,8 @@ ${actionPrompts.join('\n')}`;
         else if (actionString.startsWith('TRIGGER_WORKFLOW:')) {
           const workflowIdOrName = actionString.replace('TRIGGER_WORKFLOW:', '').trim();
           console.log('[AgentService] Action: Trigger workflow ' + workflowIdOrName);
-          const workflowService = require('../services/workflow.service');
-          const workflow = await prisma.workflow.findFirst({
+          const workflowService = this.workflowService;
+          const workflow = await this.prisma.workflow.findFirst({
             where: {
               tenantId: agent.tenantId,
               OR: [
@@ -580,17 +602,17 @@ ${actionPrompts.join('\n')}`;
           if (!tagName) continue;
 
           // 1. Get or create the tag (ContactLabel)
-          const label = await prisma.contactLabel.upsert({
+          const label = await this.prisma.contactLabel.upsert({
             where: { tenantId_name: { tenantId: agent.tenantId, name: tagName } },
             update: {},
             create: { tenantId: agent.tenantId, name: tagName, color: '#6366f1' }
           });
 
           // 2. Ensure Contact exists
-          let contact = conversation.contactId ? await prisma.contact.findUnique({ where: { id: conversation.contactId } }) : null;
+          let contact = conversation.contactId ? await this.prisma.contact.findUnique({ where: { id: conversation.contactId } }) : null;
 
           if (!contact) {
-            contact = await prisma.contact.upsert({
+            contact = await this.prisma.contact.upsert({
               where: { tenantId_phoneNumber: { tenantId: agent.tenantId, phoneNumber: conversation.contactNumber } },
               update: {},
               create: {
@@ -599,14 +621,14 @@ ${actionPrompts.join('\n')}`;
                 name: conversation.contactName || 'Unknown'
               }
             });
-            await prisma.conversation.update({
+            await this.prisma.conversation.update({
               where: { id: conversation.id },
               data: { contactId: contact.id }
             });
           }
 
           // 3. Assign tag
-          await prisma.contactLabelAssignment.upsert({
+          await this.prisma.contactLabelAssignment.upsert({
             where: {
               contactId_labelId: {
                 contactId: contact.id,
@@ -621,7 +643,7 @@ ${actionPrompts.join('\n')}`;
           });
 
           // Log Activity
-          await prisma.activityLog.create({
+          await this.prisma.activityLog.create({
             data: {
               tenantId: agent.tenantId,
               contactId: contact.id,
@@ -640,12 +662,12 @@ ${actionPrompts.join('\n')}`;
           if (!tagName) continue;
 
           if (conversation.contactId) {
-            const label = await prisma.contactLabel.findUnique({
+            const label = await this.prisma.contactLabel.findUnique({
               where: { tenantId_name: { tenantId: agent.tenantId, name: tagName } }
             });
 
             if (label) {
-              await prisma.contactLabelAssignment.deleteMany({
+              await this.prisma.contactLabelAssignment.deleteMany({
                 where: {
                   contactId: conversation.contactId,
                   labelId: label.id
@@ -653,7 +675,7 @@ ${actionPrompts.join('\n')}`;
               });
 
               // Log Activity
-              await prisma.activityLog.create({
+              await this.prisma.activityLog.create({
                 data: {
                   tenantId: agent.tenantId,
                   contactId: conversation.contactId,
@@ -675,7 +697,7 @@ ${actionPrompts.join('\n')}`;
             // Find or create the contact to attach the note
             let contactId = conversation.contactId;
             if (!contactId) {
-              const contact = await prisma.contact.upsert({
+              const contact = await this.prisma.contact.upsert({
                 where: { tenantId_phoneNumber: { tenantId: agent.tenantId, phoneNumber: conversation.contactNumber } },
                 update: {},
                 create: {
@@ -685,20 +707,20 @@ ${actionPrompts.join('\n')}`;
                 }
               });
               contactId = contact.id;
-              await prisma.conversation.update({
+              await this.prisma.conversation.update({
                 where: { id: conversation.id },
                 data: { contactId: contact.id }
               });
             }
 
             // ContactNote requires userId — find the first admin user for this tenant
-            const adminUser = await prisma.user.findFirst({
+            const adminUser = await this.prisma.user.findFirst({
               where: { tenantId: agent.tenantId, role: 'admin' },
               select: { id: true }
             });
 
             if (adminUser) {
-              await prisma.contactNote.create({
+              await this.prisma.contactNote.create({
                 data: {
                   contactId,
                   userId: adminUser.id,
@@ -755,7 +777,7 @@ ${actionPrompts.join('\n')}`;
 
     if (/^(USER:|@user:)/i.test(target)) {
       const userId = target.replace(/^@?user:/i, '').trim();
-      const user = await prisma.user.findFirst({
+      const user = await this.prisma.user.findFirst({
         where: { id: userId, tenantId },
         select: { id: true, name: true, email: true, role: true }
       });
@@ -775,7 +797,7 @@ ${actionPrompts.join('\n')}`;
 
     if (/^(AGENT:|@agent:)/i.test(target)) {
       const targetAgentId = target.replace(/^@?agent:/i, '').trim();
-      const targetAgent = await prisma.aIAgent.findFirst({
+      const targetAgent = await this.prisma.aIAgent.findFirst({
         where: { id: targetAgentId, tenantId, isActive: true },
         select: { id: true, name: true }
       });
@@ -817,7 +839,7 @@ ${actionPrompts.join('\n')}`;
       return { assigned: false, targetType: 'team' };
     }
 
-    const userByName = await prisma.user.findFirst({
+    const userByName = await this.prisma.user.findFirst({
       where: {
         tenantId,
         OR: [
@@ -841,7 +863,7 @@ ${actionPrompts.join('\n')}`;
       return { assigned: true, targetType: 'user' };
     }
 
-    const agentByName = await prisma.aIAgent.findFirst({
+    const agentByName = await this.prisma.aIAgent.findFirst({
       where: {
         tenantId,
         isActive: true,
@@ -910,7 +932,7 @@ ${actionPrompts.join('\n')}`;
   }
 
   async selectUserForTeam({ tenantId, roleFilter, strategy = 'round_robin' }) {
-    const users = await prisma.user.findMany({
+    const users = await this.prisma.user.findMany({
       where: {
         tenantId,
         role: { in: roleFilter && roleFilter.length ? roleFilter : ['agent', 'admin', 'viewer'] }
@@ -923,7 +945,7 @@ ${actionPrompts.join('\n')}`;
     if (users.length === 1) return users[0];
 
     if (strategy === 'least_open' || strategy === 'least_loaded') {
-      const counts = await prisma.conversation.groupBy({
+      const counts = await this.prisma.conversation.groupBy({
         by: ['assignedUserId'],
         where: {
           tenantId,
@@ -942,7 +964,7 @@ ${actionPrompts.join('\n')}`;
       })[0];
     }
 
-    const latestAssignments = await prisma.conversation.groupBy({
+    const latestAssignments = await this.prisma.conversation.groupBy({
       by: ['assignedUserId'],
       where: {
         tenantId,
@@ -961,12 +983,12 @@ ${actionPrompts.join('\n')}`;
   }
 
   async assignToHumanUser({ tenantId, conversationId, contactId, requesterAgentId, userId, description }) {
-    await prisma.conversationAgent.updateMany({
+    await this.prisma.conversationAgent.updateMany({
       where: { conversationId, endedAt: null },
-      data: { endedAt: new Date(), handoffReason: 'human_takeover' }
+      data: { endedAt: this.clock(), handoffReason: 'human_takeover' }
     });
 
-    await prisma.conversation.update({
+    await this.prisma.conversation.update({
       where: { id: conversationId },
       data: {
         currentAgentId: null,
@@ -987,12 +1009,12 @@ ${actionPrompts.join('\n')}`;
   }
 
   async assignToAiAgent({ tenantId, conversationId, contactId, requesterAgentId, targetAgentId, description }) {
-    await prisma.conversationAgent.updateMany({
+    await this.prisma.conversationAgent.updateMany({
       where: { conversationId, endedAt: null },
-      data: { endedAt: new Date(), handoffReason: 'user_reassigned' }
+      data: { endedAt: this.clock(), handoffReason: 'user_reassigned' }
     });
 
-    await prisma.conversation.update({
+    await this.prisma.conversation.update({
       where: { id: conversationId },
       data: {
         currentAgentId: targetAgentId,
@@ -1004,11 +1026,11 @@ ${actionPrompts.join('\n')}`;
       }
     });
 
-    await prisma.conversationAgent.create({
+    await this.prisma.conversationAgent.create({
       data: {
         conversationId,
         agentId: targetAgentId,
-        startedAt: new Date()
+        startedAt: this.clock()
       }
     });
 
@@ -1023,7 +1045,7 @@ ${actionPrompts.join('\n')}`;
 
   async logAssignmentActivity({ tenantId, conversationId, contactId, requesterAgentId, description }) {
     try {
-      await prisma.activityLog.create({
+      await this.prisma.activityLog.create({
         data: {
           tenantId,
           contactId: contactId || null,
@@ -1040,11 +1062,11 @@ ${actionPrompts.join('\n')}`;
 
   async createTemplateContext({ conversation, agent, message }) {
     const messageText = typeof message === 'string' ? message : (message?.text || message?.message?.conversation || '');
-    const now = new Date();
+    const now = this.clock();
 
     let contact = null;
     if (conversation.contactId) {
-      contact = await prisma.contact.findUnique({
+      contact = await this.prisma.contact.findUnique({
         where: { id: conversation.contactId },
         include: {
           lifecycleStage: true,
@@ -1054,7 +1076,7 @@ ${actionPrompts.join('\n')}`;
     }
 
     if (!contact) {
-      contact = await prisma.contact.findUnique({
+      contact = await this.prisma.contact.findUnique({
         where: {
           tenantId_phoneNumber: {
             tenantId: agent.tenantId,
@@ -1068,7 +1090,7 @@ ${actionPrompts.join('\n')}`;
       });
     }
 
-    const contactFieldRows = await prisma.contactField.findMany({
+    const contactFieldRows = await this.prisma.contactField.findMany({
       where: {
         tenantId: agent.tenantId,
         contactNumber: conversation.contactNumber
@@ -1236,15 +1258,15 @@ ${actionPrompts.join('\n')}`;
    * Update conversation tracking
    */
   async updateConversationTracking(conversationId, agentId) {
-    await prisma.conversation.update({
+    await this.prisma.conversation.update({
       where: { id: conversationId },
       data: {
-        lastBotResponseAt: new Date()
+        lastBotResponseAt: this.clock()
       }
     });
 
     // Increment message count for current agent session
-    const activeSession = await prisma.conversationAgent.findFirst({
+    const activeSession = await this.prisma.conversationAgent.findFirst({
       where: {
         conversationId: conversationId,
         agentId: agentId,
@@ -1253,7 +1275,7 @@ ${actionPrompts.join('\n')}`;
     });
 
     if (activeSession) {
-      await prisma.conversationAgent.update({
+      await this.prisma.conversationAgent.update({
         where: { id: activeSession.id },
         data: { messagesCount: { increment: 1 } }
       });
@@ -1261,4 +1283,8 @@ ${actionPrompts.join('\n')}`;
   }
 }
 
-module.exports = new AgentService();
+const createAgentService = (dependencies) => new AgentService(dependencies);
+
+module.exports = createAgentService();
+module.exports.AgentService = AgentService;
+module.exports.createAgentService = createAgentService;
