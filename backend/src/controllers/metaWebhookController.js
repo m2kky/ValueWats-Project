@@ -4,6 +4,7 @@ const agentService = require('../agents/agent.service');
 const socketService = require('../services/socketService');
 const prisma = require('../config/database');
 const { getChannelConfig } = require('../services/channelConfig.service');
+const { sanitizeError } = require('../logging/redaction');
 
 const privateReplyCache = new Map();
 
@@ -111,8 +112,7 @@ const processPageFeedPrivateReplies = async (entry) => {
       privateReplyCache.set(dedupeKey, Date.now());
       setTimeout(() => privateReplyCache.delete(dedupeKey), 30 * 60 * 1000);
     } catch (error) {
-      const message = error.response?.data?.error?.message || error.message;
-      console.warn('[MetaWebhook] Private reply failed:', message);
+      console.warn('[MetaWebhook] Private reply failed:', sanitizeError(error));
     }
   }
 };
@@ -260,8 +260,6 @@ const handleMetaWebhook = async (req, res) => {
     const entries = Array.isArray(req.body?.entry) ? req.body.entry : [];
     if (!entries.length) return;
     
-    console.log('[MetaWebhook] Received payload:', JSON.stringify(req.body, null, 2));
-
     for (const entry of entries) {
       if (entry.messaging?.length) {
         const payload = entry.messaging[0];
@@ -388,7 +386,7 @@ const handleMetaWebhook = async (req, res) => {
       }
     }
   } catch (error) {
-    console.error('[MetaWebhook] Error:', error.response?.data || error.message);
+    console.error('[MetaWebhook] Error:', sanitizeError(error));
   }
 };
 

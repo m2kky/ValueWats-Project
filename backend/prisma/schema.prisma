@@ -18,6 +18,34 @@ enum AgentRuntimeMode {
   v2
 }
 
+enum AgentRunStatus {
+  pending
+  running
+  completed
+  failed
+  skipped
+}
+
+enum AgentCommandStatus {
+  proposed
+  authorized
+  running
+  succeeded
+  failed
+  denied
+  conflict
+  shadowed
+  outcome_unknown
+}
+
+enum OutboxStatus {
+  pending
+  dispatching
+  succeeded
+  failed
+  outcome_unknown
+}
+
 // Subscription Plans — defines limits per tier
 model Plan {
   id                     String   @id @default(uuid())
@@ -92,6 +120,9 @@ model Tenant {
   snippets                Snippet[]
   lifecycleRules          LifecycleRule[]
   savedSegments           SavedSegment[]
+  agentRuns               AgentRun[]
+  agentCommands           AgentCommand[]
+  outboxEvents            OutboxEvent[]
 
   @@map("tenants")
 }
@@ -336,7 +367,9 @@ model Conversation {
   assignedUserId String?
   assignedUser   User?   @relation("AssignedUser", fields: [assignedUserId], references: [id])
 
-  agentHistory ConversationAgent[]
+  agentHistory  ConversationAgent[]
+  agentRuns     AgentRun[]
+  agentCommands AgentCommand[]
 
   lifecycleStageId String?
   lifecycleStage   LifecycleStage? @relation(fields: [lifecycleStageId], references: [id])
@@ -469,6 +502,8 @@ model AIAgent {
   routingRulesTo       AgentRoutingRule[]  @relation("ToAgent")
   conversations        ConversationAgent[]
   currentConversations Conversation[]      @relation("CurrentAgent")
+  agentRuns            AgentRun[]          @relation("AgentRunSourceAgent")
+  agentCommands        AgentCommand[]      @relation("AgentCommandSourceAgent")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -569,6 +604,99 @@ model ConversationAgent {
 
   @@index([conversationId])
   @@index([agentId])
+}
+
+model AgentRun {
+  id                 String         @id @default(uuid())
+  tenantId           String         @map("tenant_id")
+  conversationId     String         @map("conversation_id")
+  inboundMessageId   String         @unique @map("inbound_message_id")
+  sourceAgentId      String?        @map("source_agent_id")
+  agentConfigVersion Int?           @map("agent_config_version")
+  status             AgentRunStatus @default(pending)
+  errorCode          String?        @map("error_code")
+  errorMessage       String?        @map("error_message") @db.Text
+  attempts           Int            @default(0)
+  leaseExpiresAt     DateTime?      @map("lease_expires_at")
+  startedAt          DateTime?      @map("started_at")
+  completedAt        DateTime?      @map("completed_at")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sourceAgent  AIAgent?       @relation("AgentRunSourceAgent", fields: [sourceAgentId], references: [id], onDelete: SetNull)
+  commands     AgentCommand[]
+  outboxEvents OutboxEvent[]
+
+  @@index([tenantId, status])
+  @@index([status, leaseExpiresAt])
+  @@map("agent_runs")
+}
+
+model AgentCommand {
+  id             String             @id @default(uuid())
+  tenantId       String             @map("tenant_id")
+  runId          String             @map("run_id")
+  conversationId String             @map("conversation_id")
+  sourceAgentId  String?            @map("source_agent_id")
+  type           String
+  arguments      Json
+  result         Json?
+  status         AgentCommandStatus @default(proposed)
+  idempotencyKey String             @map("idempotency_key")
+  terminalSlot   Boolean?           @map("terminal_slot")
+  errorCode      String?            @map("error_code")
+  errorMessage   String?            @map("error_message") @db.Text
+  attempts       Int                @default(0)
+  leaseExpiresAt DateTime?          @map("lease_expires_at")
+  startedAt      DateTime?          @map("started_at")
+  completedAt    DateTime?          @map("completed_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  run          AgentRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sourceAgent  AIAgent?      @relation("AgentCommandSourceAgent", fields: [sourceAgentId], references: [id], onDelete: SetNull)
+  outboxEvents OutboxEvent[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@unique([runId, terminalSlot])
+  @@index([tenantId, status])
+  @@index([status, leaseExpiresAt])
+  @@map("agent_commands")
+}
+
+model OutboxEvent {
+  id             String       @id @default(uuid())
+  tenantId       String       @map("tenant_id")
+  commandId      String?      @map("command_id")
+  runId          String?      @map("run_id")
+  aggregateType  String       @map("aggregate_type")
+  aggregateId    String       @map("aggregate_id")
+  eventType      String       @map("event_type")
+  idempotencyKey String       @map("idempotency_key")
+  payload        Json
+  status         OutboxStatus @default(pending)
+  attempts       Int          @default(0)
+  leaseExpiresAt DateTime?    @map("lease_expires_at")
+  availableAt    DateTime     @default(now()) @map("available_at")
+  dispatchedAt   DateTime?    @map("dispatched_at")
+  completedAt    DateTime?    @map("completed_at")
+  errorCode      String?      @map("error_code")
+  errorMessage   String?      @map("error_message") @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  command AgentCommand? @relation(fields: [commandId], references: [id], onDelete: SetNull)
+  run     AgentRun?     @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([status, availableAt])
+  @@index([status, leaseExpiresAt])
+  @@map("outbox_events")
 }
 
 // CRM: Contact

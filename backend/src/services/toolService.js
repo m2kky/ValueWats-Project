@@ -5,6 +5,12 @@ const sheetsService = require('./sheetsService');
 const prisma = require('../config/database');
 const { decrypt } = require('../utils/encryption');
 const NotionService = require('./notionService');
+const { sanitizeError } = require('../logging/redaction');
+
+const toolFailure = (error, prefix = '') => ({
+    success: false,
+    error: `${prefix}${sanitizeError(error).message}`
+});
 
 class ToolService {
     constructor() {
@@ -244,7 +250,7 @@ class ToolService {
      */
     async execute(name, args, context) {
         if (this.handlers[name]) {
-            console.log(`[ToolService] Executing tool: ${name}`, args);
+            console.log(`[ToolService] Executing tool: ${name}`);
             return await this.handlers[name](args, context);
         }
         throw new Error(`Tool handler for "${name}" not found`);
@@ -290,8 +296,8 @@ class ToolService {
             const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_calendar_create');
             return await calendarService.createEvent(credentials, args);
         } catch (error) {
-            console.error('[ToolService] Create Calendar Event Error:', error);
-            return { success: false, error: error.message };
+            console.error('[ToolService] Create Calendar Event Error:', sanitizeError(error));
+            return toolFailure(error);
         }
     }
 
@@ -303,8 +309,8 @@ class ToolService {
             const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_calendar_read');
             return await calendarService.listEvents(credentials, args.maxResults || 10);
         } catch (error) {
-            console.error('[ToolService] Get Calendar Events Error:', error);
-            return { success: false, error: error.message };
+            console.error('[ToolService] Get Calendar Events Error:', sanitizeError(error));
+            return toolFailure(error);
         }
     }
 
@@ -316,8 +322,8 @@ class ToolService {
             const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_drive_upload');
             return await driveService.uploadFile(credentials, { name: args.name, content: args.content });
         } catch (error) {
-            console.error('[ToolService] Drive Upload Error:', error);
-            return { success: false, error: error.message };
+            console.error('[ToolService] Drive Upload Error:', sanitizeError(error));
+            return toolFailure(error);
         }
     }
 
@@ -329,8 +335,8 @@ class ToolService {
             const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_drive_search');
             return await driveService.searchFiles(credentials, args.query);
         } catch (error) {
-            console.error('[ToolService] Drive Search Error:', error);
-            return { success: false, error: error.message };
+            console.error('[ToolService] Drive Search Error:', sanitizeError(error));
+            return toolFailure(error);
         }
     }
 
@@ -342,8 +348,8 @@ class ToolService {
             const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_sheets');
             return await sheetsService.createSpreadsheet(credentials, args.title);
         } catch (error) {
-            console.error('[ToolService] Create Spreadsheet Error:', error);
-            return { success: false, error: error.message };
+            console.error('[ToolService] Create Spreadsheet Error:', sanitizeError(error));
+            return toolFailure(error);
         }
     }
 
@@ -355,8 +361,8 @@ class ToolService {
             const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_sheets');
             return await sheetsService.appendRow(credentials, args.spreadsheetId, args.range, args.values);
         } catch (error) {
-            console.error('[ToolService] Append Sheet Row Error:', error);
-            return { success: false, error: error.message };
+            console.error('[ToolService] Append Sheet Row Error:', sanitizeError(error));
+            return toolFailure(error);
         }
     }
 
@@ -368,8 +374,8 @@ class ToolService {
             const credentials = await this.getGoogleCredentials(tenantId, actionConfig, 'google_sheets');
             return await sheetsService.readRows(credentials, args.spreadsheetId, args.range);
         } catch (error) {
-            console.error('[ToolService] Read Sheet Data Error:', error);
-            return { success: false, error: error.message };
+            console.error('[ToolService] Read Sheet Data Error:', sanitizeError(error));
+            return toolFailure(error);
         }
     }
 
@@ -382,35 +388,35 @@ class ToolService {
         try {
             const client = await this.getNotionClient(tenantId, actionConfig);
             return await client.searchWorkspace(args.query);
-        } catch (error) { return { success: false, error: `Notion API Error: ${error.response?.data?.message || error.message}` }; }
+        } catch (error) { return toolFailure(error, 'Notion API Error: '); }
     }
 
     async handleCreateNotionPage(args, { tenantId, actionConfig }) {
         try {
             const client = await this.getNotionClient(tenantId, actionConfig);
             return await client.createPage(args.parent, args.properties, args.children);
-        } catch (error) { return { success: false, error: `Notion API Error: ${error.response?.data?.message || error.message}` }; }
+        } catch (error) { return toolFailure(error, 'Notion API Error: '); }
     }
 
     async handleUpdateNotionPage(args, { tenantId, actionConfig }) {
         try {
             const client = await this.getNotionClient(tenantId, actionConfig);
             return await client.updatePage(args.pageId, args.properties);
-        } catch (error) { return { success: false, error: `Notion API Error: ${error.response?.data?.message || error.message}` }; }
+        } catch (error) { return toolFailure(error, 'Notion API Error: '); }
     }
 
     async handleAppendNotionBlock(args, { tenantId, actionConfig }) {
         try {
             const client = await this.getNotionClient(tenantId, actionConfig);
             return await client.appendBlock(args.blockId, args.children);
-        } catch (error) { return { success: false, error: `Notion API Error: ${error.response?.data?.message || error.message}` }; }
+        } catch (error) { return toolFailure(error, 'Notion API Error: '); }
     }
 
     async handleArchiveNotionPage(args, { tenantId, actionConfig }) {
         try {
             const client = await this.getNotionClient(tenantId, actionConfig);
             return await client.archivePage(args.pageId);
-        } catch (error) { return { success: false, error: `Notion API Error: ${error.response?.data?.message || error.message}` }; }
+        } catch (error) { return toolFailure(error, 'Notion API Error: '); }
     }
 }
 

@@ -62,6 +62,20 @@ services:
       - redis
       - minio
 
+  agent-worker:
+    build:
+      context: ./backend
+    command: npm run worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://valuewats:valuewats_local@postgres:5432/valuewats?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - postgres
+      - redis
+
 volumes:
   vw_postgres_data:
   vw_redis_data:

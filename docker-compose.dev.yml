@@ -23,6 +23,20 @@ services:
     volumes:
       - valuewats_redis_data:/data
 
+  agent-worker:
+    build:
+      context: ./backend
+    command: npm run worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://valuewats:valuewats_dev_2026@postgres:5432/valuewats?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - postgres
+      - redis
+
 volumes:
   valuewats_postgres_data:
   valuewats_redis_data:
