@@ -54,7 +54,7 @@ class AgentService {
         agent = await this.assignDefaultAgent(conversationId, tenantId);
       }
 
-      if (!agent || !agent.isActive) {
+      if (!agent || !agent.isActive || !agent.isPublished || agent.deletedAt) {
         return null; // No AI agent available
       }
 
@@ -202,7 +202,9 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
     const defaultAgent = await this.prisma.aIAgent.findFirst({
       where: {
         tenantId: tenantId,
-        isActive: true
+        isActive: true,
+        isPublished: true,
+        deletedAt: null
       },
       orderBy: [
         { priority: 'desc' },
@@ -778,7 +780,7 @@ ${actionPrompts.join('\n')}`;
     if (/^(USER:|@user:)/i.test(target)) {
       const userId = target.replace(/^@?user:/i, '').trim();
       const user = await this.prisma.user.findFirst({
-        where: { id: userId, tenantId },
+        where: { id: userId, tenantId, isActive: true },
         select: { id: true, name: true, email: true, role: true }
       });
       if (user) {
@@ -798,7 +800,7 @@ ${actionPrompts.join('\n')}`;
     if (/^(AGENT:|@agent:)/i.test(target)) {
       const targetAgentId = target.replace(/^@?agent:/i, '').trim();
       const targetAgent = await this.prisma.aIAgent.findFirst({
-        where: { id: targetAgentId, tenantId, isActive: true },
+        where: { id: targetAgentId, tenantId, isActive: true, isPublished: true, deletedAt: null },
         select: { id: true, name: true }
       });
       if (targetAgent) {
@@ -842,6 +844,7 @@ ${actionPrompts.join('\n')}`;
     const userByName = await this.prisma.user.findFirst({
       where: {
         tenantId,
+        isActive: true,
         OR: [
           { id: normalized },
           { email: { contains: normalized, mode: 'insensitive' } },
@@ -867,6 +870,8 @@ ${actionPrompts.join('\n')}`;
       where: {
         tenantId,
         isActive: true,
+        isPublished: true,
+        deletedAt: null,
         OR: [
           { id: normalized },
           { name: { contains: normalized, mode: 'insensitive' } }
@@ -923,19 +928,20 @@ ${actionPrompts.join('\n')}`;
 
   resolveTeamRoles(teamName = '') {
     const team = String(teamName || '').trim().toLowerCase();
-    if (!team || team === 'default') return ['agent', 'admin', 'viewer'];
+    if (!team || team === 'default') return ['agent', 'admin'];
     if (team.includes('agent')) return ['agent'];
     if (team.includes('admin')) return ['admin'];
-    if (team.includes('viewer')) return ['viewer'];
-    if (team.includes('human') || team.includes('all')) return ['agent', 'admin', 'viewer'];
-    return ['agent', 'admin', 'viewer'];
+    if (team.includes('viewer')) return [];
+    if (team.includes('human') || team.includes('all')) return ['agent', 'admin'];
+    return ['agent', 'admin'];
   }
 
   async selectUserForTeam({ tenantId, roleFilter, strategy = 'round_robin' }) {
     const users = await this.prisma.user.findMany({
       where: {
         tenantId,
-        role: { in: roleFilter && roleFilter.length ? roleFilter : ['agent', 'admin', 'viewer'] }
+        isActive: true,
+        role: { in: roleFilter && roleFilter.length ? roleFilter : ['agent', 'admin'] }
       },
       select: { id: true, email: true, name: true, role: true, createdAt: true },
       orderBy: { createdAt: 'asc' }

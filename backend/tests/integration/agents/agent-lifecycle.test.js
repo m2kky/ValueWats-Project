@@ -2,11 +2,11 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const request = require('supertest');
-const { PrismaClient } = require('@prisma/client');
+const { createTestDatabase, resetDatabase: resetRegisteredDatabase } = require('../../helpers/database');
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 
-const prisma = new PrismaClient();
+const prisma = createTestDatabase(process.env.DATABASE_URL);
 
 function clearModule(request) {
   delete require.cache[require.resolve(request)];
@@ -34,10 +34,6 @@ function tokenFor(user) {
     isSuperAdmin: false,
     tenantId: user.tenantId
   }, process.env.JWT_SECRET, { expiresIn: '1h' });
-}
-
-async function resetDatabase() {
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE "tenants" CASCADE');
 }
 
 async function seedOwner() {
@@ -94,7 +90,7 @@ describe('agent lifecycle setup boundaries', () => {
   });
 
   beforeEach(async () => {
-    await resetDatabase();
+    await resetRegisteredDatabase(prisma);
     const seeded = await seedOwner();
     tenant = seeded.tenant;
     auth = tokenFor(seeded.user);

@@ -146,7 +146,10 @@ router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async 
     const agent = await prisma.aIAgent.findFirst({
       where: {
         id: req.params.id,
-        tenantId: req.user.tenantId
+        tenantId: req.user.tenantId,
+        deletedAt: null,
+        isActive: true,
+        isPublished: true
       },
       include: {
         knowledgeSources: { where: { isActive: true } }

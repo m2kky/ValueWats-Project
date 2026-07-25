@@ -246,7 +246,7 @@ export default function Agents() {
   };
 
   const handleToggle = async (agent) => {
-    await toggleAgent(agent.id, agent.isActive);
+    await toggleAgent(agent);
   };
 
   const handleSendTest = async () => {

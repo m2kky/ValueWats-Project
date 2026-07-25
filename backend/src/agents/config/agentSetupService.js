@@ -201,9 +201,8 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
     },
 
     async createAgentFromTemplate({ tenantId, templateName, template, body }) {
-      const filteredBody = normalizePayload(body || {});
-      validatePayload(validateTemplateCreateAgent, filteredBody);
-      const payload = normalizePayload(templatePayload(template, filteredBody));
+      validatePayload(validateTemplateCreateAgent, body || {});
+      const payload = normalizePayload(templatePayload(template, body || {}));
       validatePayload(validateCreateAgent, payload);
       return prisma.$transaction((tx) => tx.aIAgent.create({
         data: buildCreateData({ tenantId, payload, templateType: templateName })
@@ -222,9 +221,6 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
         if (!existing) {
           throw new AgentSetupError(404, 'AGENT_NOT_FOUND', 'Agent not found');
         }
-        if (existing.configVersion !== body.expectedConfigVersion) {
-          throw new AgentSetupError(409, 'CONFIG_VERSION_CONFLICT', 'Agent config version is stale');
-        }
         if ((updateData.isActive === false && existing.isActive) || (updateData.isPublished === false && existing.isPublished)) {
           await assertNoOpenConversations(tx, tenantId, agentId);
         }
@@ -234,10 +230,20 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
         }
         prismaData.configVersion = { increment: 1 };
 
-        return tx.aIAgent.update({
-          where: { id: agentId },
+        const updateResult = await tx.aIAgent.updateMany({
+          where: {
+            id: agentId,
+            tenantId,
+            deletedAt: null,
+            configVersion: body.expectedConfigVersion
+          },
           data: prismaData
         });
+        if (updateResult.count !== 1) {
+          throw new AgentSetupError(409, 'CONFIG_VERSION_CONFLICT', 'Agent config version is stale');
+        }
+
+        return tx.aIAgent.findUnique({ where: { id: agentId } });
       });
     },
 

@@ -119,12 +119,104 @@ async function rowCounts(connectionString) {
   try {
     const counts = {};
     for (const table of REPRESENTATIVE_TABLES) {
-      if (await tableExists(client, table)) {
-        const result = await client.query(`SELECT COUNT(*)::int AS count FROM "${table}"`);
-        counts[table] = result.rows[0].count;
+      if (!(await tableExists(client, table))) {
+        throw new Error(`representative table missing: ${table}`);
       }
+      const result = await client.query(`SELECT COUNT(*)::int AS count FROM "${table}"`);
+      counts[table] = result.rows[0].count;
     }
     return counts;
+  } finally {
+    await client.end();
+  }
+}
+
+async function columnMetadata(client, table, column) {
+  const result = await client.query(`
+    SELECT column_default, is_nullable, data_type, udt_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+  `, [table, column]);
+  if (result.rowCount !== 1) {
+    throw new Error(`Task 2 schema check failed: missing ${table}.${column}`);
+  }
+  return result.rows[0];
+}
+
+async function assertColumn(client, table, column, options = {}) {
+  const metadata = await columnMetadata(client, table, column);
+  if (options.nullable !== undefined) {
+    const expected = options.nullable ? 'YES' : 'NO';
+    if (metadata.is_nullable !== expected) {
+      throw new Error(`Task 2 schema check failed: ${table}.${column} nullable=${metadata.is_nullable}, expected ${expected}`);
+    }
+  }
+  if (options.defaultIncludes) {
+    const actual = metadata.column_default || '';
+    if (!actual.includes(options.defaultIncludes)) {
+      throw new Error(`Task 2 schema check failed: ${table}.${column} default=${actual}, expected to include ${options.defaultIncludes}`);
+    }
+  }
+  return metadata;
+}
+
+async function assertVectorWidth(client) {
+  const result = await client.query(`
+    SELECT format_type(a.atttypid, a.atttypmod) AS type
+    FROM pg_attribute a
+    JOIN pg_class c ON c.oid = a.attrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'AgentKnowledge'
+      AND a.attname = 'embedding'
+      AND NOT a.attisdropped
+  `);
+  if (result.rowCount !== 1) {
+    throw new Error('Task 2 schema check failed: missing AgentKnowledge.embedding');
+  }
+  if (result.rows[0].type !== 'vector(1536)') {
+    throw new Error(`Task 2 schema check failed: AgentKnowledge.embedding type=${result.rows[0].type}, expected vector(1536)`);
+  }
+}
+
+async function assertAgentRuntimeModeEnum(client) {
+  const result = await client.query(`
+    SELECT e.enumlabel
+    FROM pg_type t
+    JOIN pg_enum e ON e.enumtypid = t.oid
+    WHERE t.typname = 'AgentRuntimeMode'
+    ORDER BY e.enumsortorder
+  `);
+  const labels = result.rows.map((row) => row.enumlabel);
+  for (const label of ['legacy', 'shadow', 'v2']) {
+    if (!labels.includes(label)) {
+      throw new Error(`Task 2 schema check failed: AgentRuntimeMode missing ${label}`);
+    }
+  }
+}
+
+async function verifyTask2Schema(connectionString) {
+  const client = new Client({ connectionString });
+  await client.connect();
+  try {
+    await assertAgentRuntimeModeEnum(client);
+    await assertColumn(client, 'tenants', 'agent_runtime_mode', { nullable: false, defaultIncludes: 'legacy' });
+    await assertColumn(client, 'users', 'is_active', { nullable: false, defaultIncludes: 'true' });
+    await assertColumn(client, 'conversations', 'assignment_version', { nullable: false, defaultIncludes: '0' });
+
+    await assertColumn(client, 'AIAgent', 'actionConfig', { nullable: true });
+    await assertColumn(client, 'AIAgent', 'allowGroupResponse', { nullable: false, defaultIncludes: 'false' });
+    await assertColumn(client, 'AIAgent', 'allowedGroups', { nullable: false, defaultIncludes: 'ARRAY[]' });
+    await assertColumn(client, 'AIAgent', 'isPublished', { nullable: false, defaultIncludes: 'false' });
+    await assertColumn(client, 'AIAgent', 'configVersion', { nullable: false, defaultIncludes: '1' });
+    await assertColumn(client, 'AIAgent', 'deletedAt', { nullable: true });
+    await assertColumn(client, 'AIAgent', 'workingHoursTimezone', { nullable: false, defaultIncludes: 'Africa/Cairo' });
+
+    await assertColumn(client, 'AgentAction', 'key', { nullable: true });
+    await assertColumn(client, 'AgentAction', 'integration_id', { nullable: true });
+    await assertColumn(client, 'AgentKnowledge', 'fileKey', { nullable: true });
+    await assertColumn(client, 'AgentKnowledge', 'chunkIndex', { nullable: false, defaultIncludes: '0' });
+    await assertVectorWidth(client);
   } finally {
     await client.end();
   }
@@ -158,6 +250,7 @@ async function main() {
     assertCountsEqual('initial restore', sourceCounts, restoredCounts);
 
     runPrismaMigrateDeploy(targetUrl);
+    await verifyTask2Schema(targetUrl);
     const migratedCounts = await rowCounts(targetUrl);
     assertCountsEqual('post-migration', sourceCounts, migratedCounts);
 
@@ -188,5 +281,6 @@ module.exports = {
   SOURCE_DB,
   TARGET_DB,
   assertSafeDatabases,
-  rowCounts
+  rowCounts,
+  verifyTask2Schema
 };

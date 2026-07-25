@@ -16,13 +16,6 @@ const tenantContext = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Attach user and tenant info to request
-    req.user = {
-      id: decoded.userId,
-      email: decoded.email,
-      role: decoded.role,
-      tenantId: decoded.tenantId,
-    };
     req.tenantId = decoded.tenantId;
 
     // Verify tenant exists and is active
@@ -44,11 +37,28 @@ const tenantContext = async (req, res, next) => {
         tenantId: req.tenantId,
         isActive: true,
       },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        tenantId: true,
+        isSuperAdmin: true,
+      },
     });
 
     if (!user) {
       return res.status(403).json({ error: 'User is inactive', code: 'USER_INACTIVE' });
     }
+
+    req.user = {
+      id: user.id,
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      tenantId: user.tenantId,
+      isSuperAdmin: user.isSuperAdmin,
+    };
+    req.tenantId = user.tenantId;
 
     // Run the rest of the request within the tenant's AsyncLocalStorage context
     // This allows Prisma Extension to automatically scope all queries to this tenant

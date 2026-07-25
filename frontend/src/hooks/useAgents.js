@@ -1,6 +1,58 @@
 import { useState, useCallback } from 'react';
 import api from '../api/client';
 
+const SETUP_PAYLOAD_FIELDS = [
+  'name',
+  'description',
+  'avatar',
+  'templateType',
+  'instructions',
+  'aiProvider',
+  'aiModel',
+  'temperature',
+  'maxTokens',
+  'greeting',
+  'tone',
+  'responseStyle',
+  'useHistory',
+  'historyLength',
+  'followUpEnabled',
+  'followUpDelay',
+  'followUpMessage',
+  'workingHoursEnabled',
+  'workingHours',
+  'workingHoursTimezone',
+  'outOfHoursMessage',
+  'allowGroupResponse',
+  'allowedGroups',
+  'actionConfig',
+  'isActive',
+  'isPublished',
+  'priority',
+];
+
+const numericFields = new Set(['temperature', 'maxTokens', 'historyLength', 'followUpDelay', 'priority']);
+
+function normalizeSetupValue(field, value) {
+  if (numericFields.has(field) && value !== '' && value !== null && value !== undefined) {
+    return Number(value);
+  }
+  return value;
+}
+
+export function buildAgentSetupPayload(data = {}, { includeExpectedConfigVersion = false } = {}) {
+  const payload = {};
+  for (const field of SETUP_PAYLOAD_FIELDS) {
+    if (data[field] !== undefined) {
+      payload[field] = normalizeSetupValue(field, data[field]);
+    }
+  }
+  if (includeExpectedConfigVersion) {
+    payload.expectedConfigVersion = Number(data.configVersion);
+  }
+  return payload;
+}
+
 export default function useAgents() {
   const [agents, setAgents] = useState([]);
   const [templates, setTemplates] = useState({});
@@ -47,7 +99,7 @@ export default function useAgents() {
     setSaving(true);
     setError(null);
     try {
-      const res = await api.post('/agents', data);
+      const res = await api.post('/agents', buildAgentSetupPayload(data));
       setAgents(prev => [res.data, ...prev]);
       return res.data;
     } catch (err) {
@@ -63,7 +115,7 @@ export default function useAgents() {
     setSaving(true);
     setError(null);
     try {
-      const res = await api.put(`/agents/${id}`, data);
+      const res = await api.put(`/agents/${id}`, buildAgentSetupPayload(data, { includeExpectedConfigVersion: true }));
       setAgents(prev => prev.map(a => a.id === id ? res.data : a));
       setSelectedAgent(res.data);
       return res.data;
@@ -103,7 +155,7 @@ export default function useAgents() {
     setSaving(true);
     setError(null);
     try {
-      const res = await api.post(`/agents/templates/${templateName}`, overrides);
+      const res = await api.post(`/agents/templates/${templateName}`, buildAgentSetupPayload(overrides));
       setAgents(prev => [res.data, ...prev]);
       return res.data;
     } catch (err) {
@@ -125,10 +177,14 @@ export default function useAgents() {
     }
   }, []);
 
-  const toggleAgent = useCallback(async (id, isActive) => {
+  const toggleAgent = useCallback(async (agentOrId, isActiveArg) => {
     try {
-      const res = await api.put(`/agents/${id}`, { isActive: !isActive });
-      setAgents(prev => prev.map(a => a.id === id ? res.data : a));
+      const agent = typeof agentOrId === 'object' ? agentOrId : { id: agentOrId, isActive: isActiveArg };
+      const res = await api.put(`/agents/${agent.id}`, {
+        isActive: !agent.isActive,
+        expectedConfigVersion: Number(agent.configVersion),
+      });
+      setAgents(prev => prev.map(a => a.id === agent.id ? res.data : a));
       return true;
     } catch (err) {
       console.error('[useAgents] toggleAgent error:', err);

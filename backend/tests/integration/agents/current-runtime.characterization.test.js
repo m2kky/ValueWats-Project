@@ -16,7 +16,7 @@ const clearCommonJsModule = (request) => {
   delete require.cache[require.resolve(request)];
 };
 const database = () => createMockPrisma({
-  aIAgent: { findFirst: fn(), findMany: fn(), delete: fn() }, conversation: { findUnique: fn(), findFirst: fn(), update: fn(), updateMany: fn(), groupBy: fn() },
+  aIAgent: { findFirst: fn(), findMany: fn(), update: fn(), delete: fn() }, conversation: { findUnique: fn(), findFirst: fn(), update: fn(), updateMany: fn(), groupBy: fn(), count: fn() },
   conversationAgent: { create: fn(), update: fn(), updateMany: fn(), findFirst: fn(), deleteMany: fn() }, chatMessage: { create: fn(), findMany: fn() },
   agentRoutingRule: { findMany: fn(), deleteMany: fn() }, agentAction: { deleteMany: fn() }, agentKnowledge: { deleteMany: fn() }, workflow: { findFirst: fn() }, activityLog: { create: fn() },
   user: { findFirst: fn(), findMany: fn() }, contact: { findUnique: fn(), upsert: fn() }, contactField: { findMany: fn(), upsert: fn() },
@@ -80,7 +80,10 @@ describe('agent behavior with injected dependencies', () => {
     const prisma = database(); const selected = agent({ id: 'agent-high' }); prisma.aIAgent.findFirst.mockResolvedValue(selected);
     const service = createAgentService({ prisma, clock });
     await expect(service.assignDefaultAgent('conversation-1', 'tenant-1')).resolves.toBe(selected);
-    expect(prisma.aIAgent.findFirst).toHaveBeenCalledWith(expect.objectContaining({ orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }] }));
+    expect(prisma.aIAgent.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ tenantId: 'tenant-1', isActive: true, isPublished: true, deletedAt: null }),
+      orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }]
+    }));
     expect(prisma.conversation.update).toHaveBeenCalledWith({ where: { id: 'conversation-1' }, data: { currentAgentId: 'agent-high' } });
     expect(prisma.conversationAgent.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ agentId: 'agent-high' }) }));
   });
@@ -98,6 +101,9 @@ describe('agent behavior with injected dependencies', () => {
       targetRaw: '@agent:agent-target'
     })).resolves.toEqual({ assigned: true, targetType: 'agent' });
 
+    expect(prisma.aIAgent.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'agent-target', tenantId: 'tenant-1', isActive: true, isPublished: true, deletedAt: null }
+    }));
     expect(prisma.conversationAgent.updateMany).toHaveBeenCalledWith({
       where: { conversationId: 'conversation-1', endedAt: null },
       data: { endedAt: clock(), handoffReason: 'user_reassigned' }
@@ -122,6 +128,9 @@ describe('agent behavior with injected dependencies', () => {
       targetRaw: '@user:user-1'
     })).resolves.toEqual({ assigned: true, targetType: 'user' });
 
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'user-1', tenantId: 'tenant-1', isActive: true }
+    }));
     expect(prisma.conversationAgent.updateMany).toHaveBeenCalledWith({
       where: { conversationId: 'conversation-1', endedAt: null },
       data: { endedAt: clock(), handoffReason: 'human_takeover' }
@@ -129,6 +138,58 @@ describe('agent behavior with injected dependencies', () => {
     expect(prisma.conversation.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ currentAgentId: null, assignedUserId: 'user-1', escalated: true, aiEnabled: false })
     }));
+  });
+
+  it('legacy name lookup only considers active human users', async () => {
+    const prisma = database();
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.aIAgent.findFirst.mockResolvedValue(null);
+    const service = createAgentService({ prisma, clock });
+
+    await expect(service.assignConversationTarget({
+      tenantId: 'tenant-1',
+      conversationId: 'conversation-1',
+      contactId: 'contact-1',
+      requesterAgentId: 'agent-source',
+      targetRaw: 'Ava'
+    })).resolves.toEqual({ assigned: false, targetType: 'unknown' });
+
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ tenantId: 'tenant-1', isActive: true })
+    }));
+  });
+
+  it('legacy team lookup excludes inactive users from assignment targets', async () => {
+    const prisma = database();
+    prisma.user.findMany.mockResolvedValue([]);
+    const service = createAgentService({ prisma, clock });
+
+    await expect(service.assignConversationTarget({
+      tenantId: 'tenant-1',
+      conversationId: 'conversation-1',
+      contactId: 'contact-1',
+      requesterAgentId: 'agent-source',
+      targetRaw: '@team:humans'
+    })).resolves.toEqual({ assigned: false, targetType: 'team' });
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        tenantId: 'tenant-1',
+        isActive: true,
+        role: { in: ['agent', 'admin'] }
+      })
+    }));
+  });
+
+  it('does not run inactive, unpublished, or soft-deleted assigned agents', async () => {
+    const prisma = database();
+    prisma.conversation.findUnique.mockResolvedValue({
+      ...conversation(),
+      currentAgent: agent({ isActive: true, isPublished: false, deletedAt: null })
+    });
+    const service = createAgentService(testDeps(prisma));
+
+    await expect(service.processMessage({ conversationId: 'conversation-1', message: 'hello', tenantId: 'tenant-1' })).resolves.toBeNull();
   });
 
   it('routes keyword matches before applying legacy close and assignment actions', async () => {
@@ -155,6 +216,7 @@ describe('agent behavior with injected dependencies', () => {
     const prisma = database();
     const modelGateway = new FakeModelGateway({ content: 'should not be used' });
     const configured = agent({
+      isPublished: true,
       workingHoursEnabled: true,
       workingHours: { sunday: { enabled: true, start: '13:00', end: '17:00' } },
       outOfHoursMessage: 'Closed now.',
@@ -170,7 +232,7 @@ describe('agent behavior with injected dependencies', () => {
 
   it('honors working hours, loads history, and normalizes the legacy default model', async () => {
     const prisma = database(); const modelGateway = new FakeModelGateway({ content: 'reply' }); const item = conversation({ id: 'c1' });
-    const configured = agent({ aiModel: 'deepseek-chat', workingHoursEnabled: true, workingHours: { monday: { enabled: true, start: '00:00', end: '23:59' } }, knowledgeSources: [], actions: [] });
+    const configured = agent({ isPublished: true, aiModel: 'deepseek-chat', workingHoursEnabled: true, workingHours: { monday: { enabled: true, start: '00:00', end: '23:59' } }, knowledgeSources: [], actions: [] });
     prisma.conversation.findUnique.mockResolvedValue({ ...item, currentAgent: configured }); prisma.chatMessage.findMany.mockResolvedValue([{ direction: 'incoming', content: 'earlier' }]); prisma.agentRoutingRule.findMany.mockResolvedValue([]); prisma.conversationAgent.findFirst.mockResolvedValue(null);
     const service = createAgentService(testDeps(prisma, modelGateway));
     await expect(service.processMessage({ conversationId: item.id, message: 'hello', tenantId: 'tenant-1' })).resolves.toMatchObject({ response: 'reply' });
@@ -180,7 +242,7 @@ describe('agent behavior with injected dependencies', () => {
 
   it('passes a configured provider model through the injected model gateway', async () => {
     const prisma = database(); const modelGateway = new FakeModelGateway({ content: 'reply' });
-    const configured = agent({ aiProvider: 'openrouter', aiModel: 'anthropic/claude-sonnet-4', knowledgeSources: [], actions: [] });
+    const configured = agent({ isPublished: true, aiProvider: 'openrouter', aiModel: 'anthropic/claude-sonnet-4', knowledgeSources: [], actions: [] });
     prisma.conversation.findUnique.mockResolvedValue({ ...conversation(), currentAgent: configured });
     prisma.chatMessage.findMany.mockResolvedValue([]);
     prisma.agentRoutingRule.findMany.mockResolvedValue([]);
@@ -193,7 +255,7 @@ describe('agent behavior with injected dependencies', () => {
   });
 
   it.fails('does not load history when useHistory is disabled', async () => {
-    const prisma = database(); const configured = agent({ useHistory: false, knowledgeSources: [], actions: [] }); prisma.conversation.findUnique.mockResolvedValue({ ...conversation(), currentAgent: configured }); prisma.chatMessage.findMany.mockResolvedValue([]); prisma.agentRoutingRule.findMany.mockResolvedValue([]); prisma.conversationAgent.findFirst.mockResolvedValue(null);
+    const prisma = database(); const configured = agent({ isPublished: true, useHistory: false, knowledgeSources: [], actions: [] }); prisma.conversation.findUnique.mockResolvedValue({ ...conversation(), currentAgent: configured }); prisma.chatMessage.findMany.mockResolvedValue([]); prisma.agentRoutingRule.findMany.mockResolvedValue([]); prisma.conversationAgent.findFirst.mockResolvedValue(null);
     const service = createAgentService(testDeps(prisma));
     await service.processMessage({ conversationId: 'c1', message: 'hello', tenantId: 'tenant-1' });
     expect(prisma.chatMessage.findMany).not.toHaveBeenCalled();
@@ -226,11 +288,13 @@ describe('adjacent runtime behavior', () => {
     await expect(chatService.saveMessage('conversation-1', { wamid: 'wamid-1', senderNumber: 'a', recipientNumber: 'b' })).resolves.toBeNull();
   });
 
-  it('deletes an agent by unlinking sessions, conversations, routing, actions, and knowledge before deleting the agent', async () => {
+  it('soft deletes an eligible agent and preserves conversation history', async () => {
     const express = require('express');
     const request = require('supertest');
     const prisma = database();
     prisma.aIAgent.findFirst.mockResolvedValue(agent({ id: 'agent-delete', tenantId: 'tenant-1' }));
+    prisma.conversation.count.mockResolvedValue(0);
+    prisma.aIAgent.update.mockResolvedValue(agent({ id: 'agent-delete', tenantId: 'tenant-1', isActive: false, isPublished: false, deletedAt: new Date() }));
     prisma.$transaction = vi.fn(async (callback) => callback(prisma));
     setCommonJsMock('../../../src/config/database', prisma);
     setCommonJsMock('../../../src/middleware/tenantContext', (req, res, next) => { req.user = { tenantId: 'tenant-1', role: 'admin' }; next(); });
@@ -243,12 +307,14 @@ describe('adjacent runtime behavior', () => {
 
     await request(app).delete('/agents/agent-delete').expect(200, { success: true });
 
-    expect(prisma.conversationAgent.deleteMany).toHaveBeenCalledWith({ where: { agentId: 'agent-delete' } });
-    expect(prisma.conversation.updateMany).toHaveBeenCalledWith({ where: { currentAgentId: 'agent-delete' }, data: { currentAgentId: null } });
-    expect(prisma.agentRoutingRule.deleteMany).toHaveBeenCalledWith({ where: { OR: [{ fromAgentId: 'agent-delete' }, { toAgentId: 'agent-delete' }] } });
-    expect(prisma.agentAction.deleteMany).toHaveBeenCalledWith({ where: { agentId: 'agent-delete' } });
-    expect(prisma.agentKnowledge.deleteMany).toHaveBeenCalledWith({ where: { agentId: 'agent-delete' } });
-    expect(prisma.aIAgent.delete).toHaveBeenCalledWith({ where: { id: 'agent-delete' } });
+    expect(prisma.conversationAgent.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.agentAction.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.agentKnowledge.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.aIAgent.delete).not.toHaveBeenCalled();
+    expect(prisma.aIAgent.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'agent-delete' },
+      data: expect.objectContaining({ isActive: false, isPublished: false, deletedAt: expect.any(Date) })
+    }));
   });
 });
 
@@ -279,16 +345,16 @@ describe('test database safety and vector drift', () => {
     }
   });
 
-  it('records the historical 1536 migration and current 768 schema/runtime expectation', () => {
+  it('records the historical 1536 migration and schema while runtime still expects 768-dimensional embeddings', () => {
     const migration = fs.readFileSync(path.join(__dirname, '../../../prisma/migrations/20260215175500_add_multi_agent_system/migration.sql'), 'utf8');
     const schema = fs.readFileSync(path.join(__dirname, '../../../prisma/schema.prisma'), 'utf8');
     const runtime = fs.readFileSync(path.join(__dirname, '../../../src/services/embeddingService.js'), 'utf8');
     expect(migration).toContain('"embedding" vector(1536)');
-    expect(schema).toContain('vector(768)');
+    expect(schema).toContain('vector(1536)');
     expect(runtime).toContain('produces exactly 768 dimensions');
   });
 
-  it.fails('keeps the historical migration vector width compatible with the 768-dimensional runtime model', () => {
+  it.fails('keeps the legacy 1536-dimensional storage width compatible with the 768-dimensional runtime model', () => {
     const migration = fs.readFileSync(path.join(__dirname, '../../../prisma/migrations/20260215175500_add_multi_agent_system/migration.sql'), 'utf8');
     const migrationDimension = Number(migration.match(/"embedding" vector\((\d+)\)/)?.[1]);
     const runtimeDimension = 768;

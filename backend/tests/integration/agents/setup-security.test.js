@@ -2,11 +2,11 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const request = require('supertest');
-const { PrismaClient } = require('@prisma/client');
+const { createTestDatabase, resetDatabase: resetRegisteredDatabase } = require('../../helpers/database');
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 
-const prisma = new PrismaClient();
+const prisma = createTestDatabase(process.env.DATABASE_URL);
 
 function clearModule(request) {
   delete require.cache[require.resolve(request)];
@@ -38,10 +38,6 @@ function tokenFor(user) {
     isSuperAdmin: false,
     tenantId: user.tenantId
   }, process.env.JWT_SECRET, { expiresIn: '1h' });
-}
-
-async function resetDatabase() {
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE "tenants" CASCADE');
 }
 
 async function seedTenantWithUser({ tenantId, tenantEmail, userId, userEmail, role = 'owner', password = 'password123' }) {
@@ -81,7 +77,7 @@ describe('agent setup security boundaries', () => {
   });
 
   beforeEach(async () => {
-    await resetDatabase();
+    await resetRegisteredDatabase(prisma);
     ({ user: owner } = await seedTenantWithUser({
       tenantId: 'tenant-a',
       tenantEmail: 'owner-a@example.test',
@@ -101,16 +97,23 @@ describe('agent setup security boundaries', () => {
     await prisma.$disconnect();
   });
 
-  it('prevents template payloads from overriding tenant identity', async () => {
-    const response = await request(app)
+  it('rejects template payload tenant overrides before normalization and creates no cross-tenant row', async () => {
+    await request(app)
       .post('/api/agents/templates/receptionist')
       .set('Authorization', `Bearer ${auth}`)
       .send({ tenantId: 'tenant-b', name: 'Tenant escape attempt' })
-      .expect(201);
+      .expect(400)
+      .expect(({ body }) => expect(body.code).toBe('SETUP_FIELD_NOT_ALLOWED'));
 
-    expect(response.body.tenantId).toBe('tenant-a');
-    const agent = await prisma.aIAgent.findUnique({ where: { id: response.body.id } });
-    expect(agent.tenantId).toBe('tenant-a');
+    await request(app)
+      .post('/api/agents/templates/receptionist')
+      .set('Authorization', `Bearer ${auth}`)
+      .send({ unknownTemplateField: true })
+      .expect(400)
+      .expect(({ body }) => expect(body.code).toBe('SETUP_FIELD_NOT_ALLOWED'));
+
+    expect(await prisma.aIAgent.count({ where: { tenantId: 'tenant-b' } })).toBe(0);
+    expect(await prisma.aIAgent.count({ where: { name: 'Tenant escape attempt' } })).toBe(0);
   });
 
   it('denies unknown setup fields and direct tenant overrides', async () => {
@@ -189,6 +192,48 @@ describe('agent setup security boundaries', () => {
     expect(rows[0].configVersion).toBe(2);
   });
 
+  it('allows permission checks to use the fresh active database role instead of the JWT role', async () => {
+    const staleRoleToken = jwt.sign({
+      userId: owner.id,
+      email: 'stale@example.test',
+      role: 'agent',
+      isSuperAdmin: false,
+      tenantId: owner.tenantId
+    }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    await request(app)
+      .post('/api/agents')
+      .set('Authorization', `Bearer ${staleRoleToken}`)
+      .send(validAgentPayload({ name: 'Fresh role agent' }))
+      .expect(201);
+  });
+
+  it('commits exactly one concurrent update for the same expected config version', async () => {
+    const created = await request(app)
+      .post('/api/agents')
+      .set('Authorization', `Bearer ${auth}`)
+      .send(validAgentPayload())
+      .expect(201);
+
+    const updates = await Promise.all([
+      request(app)
+        .put(`/api/agents/${created.body.id}`)
+        .set('Authorization', `Bearer ${auth}`)
+        .send({ expectedConfigVersion: 1, temperature: 0.5 }),
+      request(app)
+        .put(`/api/agents/${created.body.id}`)
+        .set('Authorization', `Bearer ${auth}`)
+        .send({ expectedConfigVersion: 1, temperature: 1.5 })
+    ]);
+
+    const statuses = updates.map((response) => response.status).sort();
+    expect(statuses).toEqual([200, 409]);
+    const conflict = updates.find((response) => response.status === 409);
+    expect(conflict.body.code).toBe('CONFIG_VERSION_CONFLICT');
+    const stored = await prisma.aIAgent.findUnique({ where: { id: created.body.id } });
+    expect(stored.configVersion).toBe(2);
+  });
+
   it('rejects inactive users in password login, tenant middleware, and active team listings', async () => {
     await prisma.$executeRawUnsafe('UPDATE "users" SET "is_active" = false WHERE id = $1', owner.id);
 
@@ -249,6 +294,25 @@ describe('agent setup security boundaries', () => {
     }
   });
 
+  it('excludes soft-deleted agents from test chat lookup', async () => {
+    const agent = await prisma.aIAgent.create({
+      data: {
+        tenantId: 'tenant-a',
+        name: 'Deleted test agent',
+        instructions: 'Do not test deleted agents.',
+        deletedAt: new Date(),
+        isActive: false,
+        isPublished: false
+      }
+    });
+
+    await request(app)
+      .post(`/api/agents/${agent.id}/test`)
+      .set('Authorization', `Bearer ${auth}`)
+      .send({ message: 'hello' })
+      .expect(404);
+  });
+
   it('documents migration-copy safeguards and legacy vector declaration', () => {
     const fs = require('node:fs');
     const path = require('node:path');
@@ -258,6 +322,8 @@ describe('agent setup security boundaries', () => {
 
     expect(script).toContain('valuewats_agent_migration_test');
     expect(script).toContain('valuewats_agent_pre_migration_test');
+    expect(script).toContain('verifyTask2Schema');
+    expect(script).toContain('vector(1536)');
     expect(script).toContain('pg_dump');
     expect(script).toContain('pg_restore');
     expect(schema).toContain('Unsupported("vector(1536)")');
