@@ -40,3 +40,4 @@ evolution-api-*
 # Local Brain/Artifacts
 .gemini/
 .agent/
+.superpowers/
