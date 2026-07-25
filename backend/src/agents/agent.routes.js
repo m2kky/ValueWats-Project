@@ -5,12 +5,24 @@ const prisma = require('../config/database');
 const tenantContext = require('../middleware/tenantContext');
 const checkPermission = require('../middleware/checkPermission');
 const agentService = require('./agent.service');
+const { AgentSetupError, agentSetupService } = require('./config/agentSetupService');
+
+function sendSetupError(res, error) {
+  if (error instanceof AgentSetupError) {
+    return res.status(error.status).json({
+      error: error.message,
+      code: error.code,
+      details: error.details
+    });
+  }
+  throw error;
+}
 
 // Get all agents for tenant
 router.get('/', tenantContext, async (req, res) => {
   try {
     const agents = await prisma.aIAgent.findMany({
-      where: { tenantId: req.user.tenantId },
+      where: { tenantId: req.user.tenantId, deletedAt: null },
       include: {
         _count: {
           select: {
@@ -39,7 +51,8 @@ router.get('/:id', tenantContext, async (req, res) => {
     const agent = await prisma.aIAgent.findFirst({
       where: {
         id: req.params.id,
-        tenantId: req.user.tenantId
+        tenantId: req.user.tenantId,
+        deletedAt: null
       },
       include: {
         knowledgeSources: true,
@@ -68,78 +81,16 @@ router.get('/:id', tenantContext, async (req, res) => {
 // Create agent
 router.post('/', tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
-    const {
-      name,
-      description,
-      avatar,
-      templateType,
-      instructions,
-      aiProvider,
-      aiModel,
-      temperature,
-      maxTokens,
-      greeting,
-      tone,
-      responseStyle,
-      useHistory,
-      historyLength,
-      followUpEnabled,
-      followUpDelay,
-      followUpMessage,
-      workingHoursEnabled,
-      workingHours,
-      outOfHoursMessage,
-      allowGroupResponse,
-      allowedGroups,
-      actionConfig,
-      isActive,
-      isPublished,
-      priority
-    } = req.body;
-
-    const normalizedInstructions = typeof instructions === 'string' ? instructions.trim() : '';
-    if (!name || !normalizedInstructions) {
-      return res.status(400).json({ error: 'Name and instructions are required' });
-    }
-
-    if (normalizedInstructions.length > 10000) {
-      return res.status(400).json({ error: 'Instructions cannot exceed 10000 characters' });
-    }
-
-    const agent = await prisma.aIAgent.create({
-      data: {
-        tenantId: req.user.tenantId,
-        name,
-        description,
-        avatar,
-        templateType,
-        instructions: normalizedInstructions,
-        aiProvider: aiProvider || 'deepseek',
-        aiModel: aiModel || 'deepseek-chat',
-        temperature: temperature ?? 0.7,
-        maxTokens: maxTokens ?? 500,
-        greeting,
-        tone: tone || 'professional',
-        responseStyle: responseStyle || 'concise',
-        useHistory: useHistory ?? true,
-        historyLength: historyLength ?? 10,
-        followUpEnabled: followUpEnabled ?? false,
-        followUpDelay: followUpDelay ?? 300,
-        followUpMessage,
-        workingHoursEnabled: workingHoursEnabled ?? false,
-        workingHours,
-        outOfHoursMessage,
-        allowGroupResponse: allowGroupResponse ?? false,
-        allowedGroups: Array.isArray(allowedGroups) ? allowedGroups : [],
-        actionConfig: actionConfig || undefined,
-        isActive: isActive ?? true,
-        isPublished: isPublished ?? false,
-        priority: priority ?? 0
-      }
+    const agent = await agentSetupService.createAgent({
+      tenantId: req.user.tenantId,
+      body: req.body
     });
 
     res.status(201).json(agent);
   } catch (error) {
+    try {
+      return sendSetupError(res, error);
+    } catch {}
     console.error('[Agents] Create error:', error);
     res.status(500).json({ error: 'Failed to create agent' });
   }
@@ -148,65 +99,17 @@ router.post('/', tenantContext, checkPermission('agents.manage'), async (req, re
 // Update agent
 router.put('/:id', tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
-    const updateData = { ...req.body };
-
-    // Map 'model' to 'aiModel' if present to satisfy Prisma schema
-    if (updateData.model) {
-      updateData.aiModel = updateData.model;
-      delete updateData.model;
-    }
-
-    if (updateData.instructions !== undefined) {
-      const normalizedInstructions = typeof updateData.instructions === 'string'
-        ? updateData.instructions.trim()
-        : '';
-
-      if (!normalizedInstructions) {
-        return res.status(400).json({ error: 'Instructions cannot be empty' });
-      }
-
-      if (normalizedInstructions.length > 10000) {
-        return res.status(400).json({ error: 'Instructions cannot exceed 10000 characters' });
-      }
-
-      updateData.instructions = normalizedInstructions;
-    }
-
-    // Filter only valid Prisma fields to prevent validation errors
-    const validFields = [
-      'name', 'description', 'avatar', 'templateType', 'instructions',
-      'aiProvider', 'aiModel', 'temperature', 'maxTokens', 'greeting',
-      'tone', 'responseStyle', 'useHistory', 'historyLength',
-      'followUpEnabled', 'followUpDelay', 'followUpMessage',
-      'workingHoursEnabled', 'workingHours', 'outOfHoursMessage',
-      'isActive', 'isPublished', 'priority', 'allowGroupResponse', 'allowedGroups', 'actionConfig'
-    ];
-
-    const finalData = {};
-    validFields.forEach(field => {
-      if (updateData[field] !== undefined) {
-        finalData[field] = updateData[field];
-      }
-    });
-
-    const agent = await prisma.aIAgent.updateMany({
-      where: {
-        id: req.params.id,
-        tenantId: req.user.tenantId
-      },
-      data: finalData
-    });
-
-    if (agent.count === 0) {
-      return res.status(404).json({ error: 'Agent not found' });
-    }
-
-    const updated = await prisma.aIAgent.findUnique({
-      where: { id: req.params.id }
+    const updated = await agentSetupService.updateAgent({
+      tenantId: req.user.tenantId,
+      agentId: req.params.id,
+      body: req.body
     });
 
     res.json(updated);
   } catch (error) {
+    try {
+      return sendSetupError(res, error);
+    } catch {}
     console.error('[Agents] Update error:', error);
     res.status(500).json({ error: 'Failed to update agent' });
   }
@@ -215,45 +118,16 @@ router.put('/:id', tenantContext, checkPermission('agents.manage'), async (req, 
 // Delete agent
 router.delete('/:id', tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
-    const agentId = req.params.id;
-    const tenantId = req.user.tenantId;
-
-    // Verify agent belongs to tenant
-    const agent = await prisma.aIAgent.findFirst({
-      where: { id: agentId, tenantId }
-    });
-
-    if (!agent) {
-      return res.status(404).json({ error: 'Agent not found' });
-    }
-
-    // Use transaction to prevent race conditions (webhooks may create
-    // new ConversationAgent records between cleanup and deletion)
-    await prisma.$transaction(async (tx) => {
-      // 1. Remove ConversationAgent history records
-      await tx.conversationAgent.deleteMany({ where: { agentId } });
-
-      // 2. Unlink conversations currently assigned to this agent
-      await tx.conversation.updateMany({
-        where: { currentAgentId: agentId },
-        data: { currentAgentId: null }
-      });
-
-      // 3. Remove routing rules (from and to)
-      await tx.agentRoutingRule.deleteMany({
-        where: { OR: [{ fromAgentId: agentId }, { toAgentId: agentId }] }
-      });
-
-      // 4. Remove actions and knowledge (deleteMany doesn't cascade)
-      await tx.agentAction.deleteMany({ where: { agentId } });
-      await tx.agentKnowledge.deleteMany({ where: { agentId } });
-
-      // 5. Now delete the agent
-      await tx.aIAgent.delete({ where: { id: agentId } });
+    await agentSetupService.deleteAgent({
+      tenantId: req.user.tenantId,
+      agentId: req.params.id
     });
 
     res.json({ success: true });
   } catch (error) {
+    try {
+      return sendSetupError(res, error);
+    } catch {}
     console.error('[Agents] Delete error:', error);
     res.status(500).json({ error: 'Failed to delete agent' });
   }
@@ -328,17 +202,18 @@ router.post('/templates/:templateName', tenantContext, checkPermission('agents.m
       return res.status(404).json({ error: 'Template not found' });
     }
 
-    const agent = await prisma.aIAgent.create({
-      data: {
-        tenantId: req.user.tenantId,
-        templateType: templateName,
-        ...template,
-        ...req.body // Allow overriding template defaults
-      }
+    const agent = await agentSetupService.createAgentFromTemplate({
+      tenantId: req.user.tenantId,
+      templateName,
+      template,
+      body: req.body
     });
 
     res.status(201).json(agent);
   } catch (error) {
+    try {
+      return sendSetupError(res, error);
+    } catch {}
     console.error('[Agents] Create from template error:', error);
     res.status(500).json({ error: 'Failed to create agent from template' });
   }

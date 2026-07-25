@@ -304,6 +304,10 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    if (!user.isActive) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
@@ -435,6 +439,10 @@ const googleAuth = async (req, res) => {
     });
 
     if (user) {
+      if (!user.isActive) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
       // User exists → check tenant status
       if (user.tenant.status !== 'active' && user.tenant.status !== 'trial') {
         return res.status(403).json({ error: 'Account is suspended' });

@@ -12,6 +12,12 @@ datasource db {
   extensions = [vector]
 }
 
+enum AgentRuntimeMode {
+  legacy
+  shadow
+  v2
+}
+
 // Subscription Plans — defines limits per tier
 model Plan {
   id                     String   @id @default(uuid())
@@ -37,12 +43,13 @@ model Plan {
 }
 
 model Tenant {
-  id               String   @id @default(uuid())
+  id               String           @id @default(uuid())
   name             String
-  email            String   @unique
-  subscriptionPlan String?  @map("subscription_plan") // 'starter', 'growth', 'scale', 'enterprise'
-  status           String   @default("active") // 'active', 'suspended', 'trial'
-  createdAt        DateTime @default(now()) @map("created_at")
+  email            String           @unique
+  subscriptionPlan String?          @map("subscription_plan") // 'starter', 'growth', 'scale', 'enterprise'
+  status           String           @default("active") // 'active', 'suspended', 'trial'
+  agentRuntimeMode AgentRuntimeMode @default(legacy) @map("agent_runtime_mode")
+  createdAt        DateTime         @default(now()) @map("created_at")
 
   // Subscription Plan (links to Plan model for limit enforcement)
   planId String? @map("plan_id")
@@ -97,6 +104,7 @@ model User {
   role          String // 'admin', 'agent', 'viewer'
   isSuperAdmin  Boolean  @default(false) @map("is_super_admin")
   emailVerified Boolean  @default(false) @map("email_verified")
+  isActive      Boolean  @default(true) @map("is_active")
   createdAt     DateTime @default(now()) @map("created_at")
 
   // Onboarding profile data
@@ -344,6 +352,7 @@ model Conversation {
   // Workflow State Machine (Ask a Question)
   waitingForWorkflowId String? @map("waiting_workflow_id")
   waitingForVariable   String? @map("waiting_variable")
+  assignmentVersion    Int     @default(0) @map("assignment_version")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -438,13 +447,16 @@ model AIAgent {
   followUpDelay   Int     @default(300)
   followUpMessage String? @db.Text
 
-  workingHoursEnabled Boolean @default(false)
-  workingHours        Json?
-  outOfHoursMessage   String? @db.Text
+  workingHoursEnabled  Boolean @default(false)
+  workingHours         Json?
+  workingHoursTimezone String  @default("Africa/Cairo")
+  outOfHoursMessage    String? @db.Text
 
-  isActive    Boolean @default(true)
-  isPublished Boolean @default(false)
-  priority    Int     @default(0)
+  isActive      Boolean   @default(true)
+  isPublished   Boolean   @default(false)
+  configVersion Int       @default(1)
+  deletedAt     DateTime?
+  priority      Int       @default(0)
 
   // Phase 4: Action & Group Extensions
   actionConfig       Json?
@@ -475,6 +487,7 @@ model AgentAction {
   integrationId String?      @map("integration_id")
   integration   Integration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
 
+  key          String?
   type         String // "close_conversation", "assign_to_agent", "assign_to_team", "update_lifecycle", "add_tag", "remove_tag", "update_field", "google_calendar_create", etc.
   isEnabled    Boolean @default(true)
   config       Json // Action-specific configuration (e.g., Calendar ID)
@@ -503,7 +516,7 @@ model AgentKnowledge {
   tags       String[]
   chunkIndex Int      @default(0) // For multi-chunk documents
 
-  embedding Unsupported("vector(768)")? // nomic-embed-text embeddings
+  embedding Unsupported("vector(1536)")? // legacy pgvector column; do not rewrite existing vectors
 
   isActive Boolean @default(true)
 

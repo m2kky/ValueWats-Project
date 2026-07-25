@@ -38,6 +38,18 @@ const tenantContext = async (req, res, next) => {
       return res.status(403).json({ error: 'Tenant account is not active' });
     }
 
+    const user = await prisma.user.findFirst({
+      where: {
+        id: decoded.userId,
+        tenantId: req.tenantId,
+        isActive: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(403).json({ error: 'User is inactive', code: 'USER_INACTIVE' });
+    }
+
     // Run the rest of the request within the tenant's AsyncLocalStorage context
     // This allows Prisma Extension to automatically scope all queries to this tenant
     prisma.tenantStorage.run(req.tenantId, () => {

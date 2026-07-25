@@ -19,11 +19,12 @@ router.use(tenantContext);
 router.get('/', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      where: { tenantId: req.tenantId },
+      where: { tenantId: req.tenantId, isActive: true },
       select: {
         id: true,
         email: true,
         role: true,
+        isActive: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -143,8 +144,9 @@ router.delete('/:userId', checkPermission('team.manage'), async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    await prisma.user.delete({
+    await prisma.user.update({
       where: { id: userId },
+      data: { isActive: false },
     });
 
     res.json({ message: 'Member removed' });
