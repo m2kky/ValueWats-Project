@@ -91,7 +91,7 @@ export default function AgentList({ agents, loading, handleCreateNew, handleEdit
                       <PencilIcon className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(agent.id); }}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(agent); }}
                       className="p-2 text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
                       title="PURGE"
                     >

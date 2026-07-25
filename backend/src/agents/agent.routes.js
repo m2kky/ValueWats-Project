@@ -120,7 +120,8 @@ router.delete('/:id', tenantContext, checkPermission('agents.manage'), async (re
   try {
     await agentSetupService.deleteAgent({
       tenantId: req.user.tenantId,
-      agentId: req.params.id
+      agentId: req.params.id,
+      body: req.body
     });
 
     res.json({ success: true });

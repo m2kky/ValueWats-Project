@@ -39,7 +39,7 @@ router.get('/knowledge', tenantContext, async (req, res) => {
         BOOL_AND(AK."isActive") as "isActive"
       FROM "AgentKnowledge" AK
       JOIN "AIAgent" A ON AK."agentId" = A.id
-      WHERE A."tenantId" = $1
+      WHERE A."tenantId" = $1 AND A."deletedAt" IS NULL
       GROUP BY AK.title, AK."sourceType", AK."sourceUrl", AK."fileKey", AK.category, A.name, A.id
       ORDER BY MIN(AK."createdAt") DESC
     `, req.user.tenantId);
@@ -61,7 +61,7 @@ router.get('/:agentId/knowledge', tenantContext, async (req, res) => {
   try {
     // Verify agent belongs to tenant
     const agent = await prisma.aIAgent.findFirst({
-      where: { id: req.params.agentId, tenantId: req.user.tenantId }
+      where: { id: req.params.agentId, tenantId: req.user.tenantId, deletedAt: null }
     });
     if (!agent) return res.status(404).json({ error: 'Agent not found' });
 
@@ -77,7 +77,7 @@ router.get('/:agentId/knowledge', tenantContext, async (req, res) => {
 router.post('/:agentId/knowledge/text', tenantContext, async (req, res) => {
   try {
     const agent = await prisma.aIAgent.findFirst({
-      where: { id: req.params.agentId, tenantId: req.user.tenantId }
+      where: { id: req.params.agentId, tenantId: req.user.tenantId, deletedAt: null }
     });
     if (!agent) return res.status(404).json({ error: 'Agent not found' });
 
@@ -102,7 +102,7 @@ router.post('/:agentId/knowledge/text', tenantContext, async (req, res) => {
 router.post('/:agentId/knowledge/file', tenantContext, upload.single('file'), async (req, res) => {
   try {
     const agent = await prisma.aIAgent.findFirst({
-      where: { id: req.params.agentId, tenantId: req.user.tenantId }
+      where: { id: req.params.agentId, tenantId: req.user.tenantId, deletedAt: null }
     });
     if (!agent) return res.status(404).json({ error: 'Agent not found' });
 
@@ -128,7 +128,7 @@ router.post('/:agentId/knowledge/file', tenantContext, upload.single('file'), as
 router.post('/:agentId/knowledge/table', tenantContext, async (req, res) => {
   try {
     const agent = await prisma.aIAgent.findFirst({
-      where: { id: req.params.agentId, tenantId: req.user.tenantId }
+      where: { id: req.params.agentId, tenantId: req.user.tenantId, deletedAt: null }
     });
     if (!agent) return res.status(404).json({ error: 'Agent not found' });
 
@@ -153,7 +153,7 @@ router.post('/:agentId/knowledge/table', tenantContext, async (req, res) => {
 router.delete('/:agentId/knowledge/:id', tenantContext, async (req, res) => {
   try {
     const agent = await prisma.aIAgent.findFirst({
-      where: { id: req.params.agentId, tenantId: req.user.tenantId }
+      where: { id: req.params.agentId, tenantId: req.user.tenantId, deletedAt: null }
     });
     if (!agent) return res.status(404).json({ error: 'Agent not found' });
 

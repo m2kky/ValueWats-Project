@@ -25,7 +25,6 @@ const SETUP_PAYLOAD_FIELDS = [
   'outOfHoursMessage',
   'allowGroupResponse',
   'allowedGroups',
-  'actionConfig',
   'isActive',
   'isPublished',
   'priority',
@@ -128,10 +127,13 @@ export default function useAgents() {
     }
   }, []);
 
-  const deleteAgent = useCallback(async (id) => {
+  const deleteAgent = useCallback(async (agentOrId) => {
     try {
-      await api.delete(`/agents/${id}`);
-      setAgents(prev => prev.filter(a => a.id !== id));
+      const agent = typeof agentOrId === 'object' ? agentOrId : { id: agentOrId };
+      await api.delete(`/agents/${agent.id}`, {
+        data: { expectedConfigVersion: Number(agent.configVersion) },
+      });
+      setAgents(prev => prev.filter(a => a.id !== agent.id));
       return true;
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to delete agent');

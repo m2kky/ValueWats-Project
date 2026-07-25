@@ -121,8 +121,49 @@ describe('agent lifecycle setup boundaries', () => {
     await request(app)
       .delete(`/api/agents/${agent.id}`)
       .set('Authorization', `Bearer ${auth}`)
+      .send({ expectedConfigVersion: 1 })
       .expect(409)
       .expect(({ body }) => expect(body.code).toBe('AGENT_HAS_OPEN_CONVERSATIONS'));
+  });
+
+  it('requires expectedConfigVersion for delete and returns stable stale-delete conflicts', async () => {
+    const agent = await createAgent(tenant.id);
+
+    await request(app)
+      .delete(`/api/agents/${agent.id}`)
+      .set('Authorization', `Bearer ${auth}`)
+      .expect(400)
+      .expect(({ body }) => expect(body.code).toBe('SETUP_VALIDATION_FAILED'));
+
+    await request(app)
+      .delete(`/api/agents/${agent.id}`)
+      .set('Authorization', `Bearer ${auth}`)
+      .send({ expectedConfigVersion: 0 })
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('CONFIG_VERSION_CONFLICT'));
+  });
+
+  it('allows exactly one winner across concurrent update and delete with the same expected config version', async () => {
+    const agent = await createAgent(tenant.id);
+
+    const results = await Promise.all([
+      request(app)
+        .put(`/api/agents/${agent.id}`)
+        .set('Authorization', `Bearer ${auth}`)
+        .send({ expectedConfigVersion: 1, temperature: 0.5 }),
+      request(app)
+        .delete(`/api/agents/${agent.id}`)
+        .set('Authorization', `Bearer ${auth}`)
+        .send({ expectedConfigVersion: 1 })
+    ]);
+
+    const statuses = results.map((response) => response.status).sort();
+    expect(statuses).toEqual([200, 409]);
+    const conflict = results.find((response) => response.status === 409);
+    expect(conflict.body.code).toBe('CONFIG_VERSION_CONFLICT');
+
+    const storedAgent = await prisma.aIAgent.findUnique({ where: { id: agent.id } });
+    expect(storedAgent.configVersion).toBe(2);
   });
 
   it('soft deletes eligible agents and preserves audited history', async () => {
@@ -146,6 +187,7 @@ describe('agent lifecycle setup boundaries', () => {
     await request(app)
       .delete(`/api/agents/${agent.id}`)
       .set('Authorization', `Bearer ${auth}`)
+      .send({ expectedConfigVersion: 1 })
       .expect(200)
       .expect(({ body }) => expect(body.success).toBe(true));
 

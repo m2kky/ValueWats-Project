@@ -240,9 +240,9 @@ export default function Agents() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (agent) => {
     if (!window.confirm('Are you sure you want to delete this agent?')) return;
-    await deleteAgent(id);
+    await deleteAgent(agent);
   };
 
   const handleToggle = async (agent) => {

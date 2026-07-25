@@ -16,7 +16,7 @@ const clearCommonJsModule = (request) => {
   delete require.cache[require.resolve(request)];
 };
 const database = () => createMockPrisma({
-  aIAgent: { findFirst: fn(), findMany: fn(), update: fn(), delete: fn() }, conversation: { findUnique: fn(), findFirst: fn(), update: fn(), updateMany: fn(), groupBy: fn(), count: fn() },
+  aIAgent: { findFirst: fn(), findMany: fn(), findUnique: fn(), update: fn(), updateMany: fn(), delete: fn() }, conversation: { findUnique: fn(), findFirst: fn(), update: fn(), updateMany: fn(), groupBy: fn(), count: fn() },
   conversationAgent: { create: fn(), update: fn(), updateMany: fn(), findFirst: fn(), deleteMany: fn() }, chatMessage: { create: fn(), findMany: fn() },
   agentRoutingRule: { findMany: fn(), deleteMany: fn() }, agentAction: { deleteMany: fn() }, agentKnowledge: { deleteMany: fn() }, workflow: { findFirst: fn() }, activityLog: { create: fn() },
   user: { findFirst: fn(), findMany: fn() }, contact: { findUnique: fn(), upsert: fn() }, contactField: { findMany: fn(), upsert: fn() },
@@ -292,9 +292,11 @@ describe('adjacent runtime behavior', () => {
     const express = require('express');
     const request = require('supertest');
     const prisma = database();
-    prisma.aIAgent.findFirst.mockResolvedValue(agent({ id: 'agent-delete', tenantId: 'tenant-1' }));
+    const deletedAgent = agent({ id: 'agent-delete', tenantId: 'tenant-1', isActive: false, isPublished: false, deletedAt: new Date(), configVersion: 2 });
+    prisma.aIAgent.findFirst.mockResolvedValue(agent({ id: 'agent-delete', tenantId: 'tenant-1', configVersion: 1 }));
     prisma.conversation.count.mockResolvedValue(0);
-    prisma.aIAgent.update.mockResolvedValue(agent({ id: 'agent-delete', tenantId: 'tenant-1', isActive: false, isPublished: false, deletedAt: new Date() }));
+    prisma.aIAgent.updateMany.mockResolvedValue({ count: 1 });
+    prisma.aIAgent.findUnique.mockResolvedValue(deletedAgent);
     prisma.$transaction = vi.fn(async (callback) => callback(prisma));
     setCommonJsMock('../../../src/config/database', prisma);
     setCommonJsMock('../../../src/middleware/tenantContext', (req, res, next) => { req.user = { tenantId: 'tenant-1', role: 'admin' }; next(); });
@@ -303,16 +305,17 @@ describe('adjacent runtime behavior', () => {
     clearCommonJsModule('../../../src/agents/agent.routes');
     const router = require('../../../src/agents/agent.routes');
     const app = express();
+    app.use(express.json());
     app.use('/agents', router);
 
-    await request(app).delete('/agents/agent-delete').expect(200, { success: true });
+    await request(app).delete('/agents/agent-delete').send({ expectedConfigVersion: 1 }).expect(200, { success: true });
 
     expect(prisma.conversationAgent.deleteMany).not.toHaveBeenCalled();
     expect(prisma.agentAction.deleteMany).not.toHaveBeenCalled();
     expect(prisma.agentKnowledge.deleteMany).not.toHaveBeenCalled();
     expect(prisma.aIAgent.delete).not.toHaveBeenCalled();
-    expect(prisma.aIAgent.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'agent-delete' },
+    expect(prisma.aIAgent.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'agent-delete', tenantId: 'tenant-1', deletedAt: null, configVersion: 1 },
       data: expect.objectContaining({ isActive: false, isPublished: false, deletedAt: expect.any(Date) })
     }));
   });

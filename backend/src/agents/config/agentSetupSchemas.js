@@ -35,7 +35,6 @@ const setupProperties = {
   outOfHoursMessage: { anyOf: [{ type: 'string' }, { type: 'null' }] },
   allowGroupResponse: { type: 'boolean' },
   allowedGroups: { type: 'array', items: { type: 'string' } },
-  actionConfig: { anyOf: [{ type: 'object' }, { type: 'null' }] },
   isActive: { type: 'boolean' },
   isPublished: { type: 'boolean' },
   priority: { type: 'integer' }
@@ -64,9 +63,19 @@ const updateAgentSchema = {
   }
 };
 
+const deleteAgentSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['expectedConfigVersion'],
+  properties: {
+    expectedConfigVersion: { type: 'integer', minimum: 0 }
+  }
+};
+
 const validateCreateAgent = ajv.compile(createAgentSchema);
 const validateTemplateCreateAgent = ajv.compile(templateCreateAgentSchema);
 const validateUpdateAgent = ajv.compile(updateAgentSchema);
+const validateDeleteAgent = ajv.compile(deleteAgentSchema);
 
 function providerModelSupported(provider = 'deepseek', model = 'deepseek-chat') {
   return Boolean(SUPPORTED_PROVIDER_MODELS[provider]?.includes(model));
@@ -77,8 +86,10 @@ module.exports = {
   createAgentSchema,
   templateCreateAgentSchema,
   updateAgentSchema,
+  deleteAgentSchema,
   validateCreateAgent,
   validateTemplateCreateAgent,
   validateUpdateAgent,
+  validateDeleteAgent,
   providerModelSupported
 };

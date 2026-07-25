@@ -78,10 +78,12 @@ describe('agent setup payload compatibility', () => {
     expect(payload).not.toHaveProperty('knowledgeSources');
     expect(payload).not.toHaveProperty('routingRules');
     expect(payload).not.toHaveProperty('_count');
+    expect(payload).not.toHaveProperty('actionConfig');
   });
 
-  it('sends expectedConfigVersion on update and toggle requests', async () => {
+  it('sends expectedConfigVersion on update, toggle, and delete requests without raw actionConfig', async () => {
     api.put.mockResolvedValue({ data: { ...loadedAgent, configVersion: 8 } });
+    api.delete.mockResolvedValue({ data: { success: true } });
     const { result } = renderHook(() => useAgents());
 
     await act(async () => {
@@ -94,6 +96,7 @@ describe('agent setup payload compatibility', () => {
     }));
     expect(api.put.mock.calls[0][1]).not.toHaveProperty('tenantId');
     expect(api.put.mock.calls[0][1]).not.toHaveProperty('createdAt');
+    expect(api.put.mock.calls[0][1]).not.toHaveProperty('actionConfig');
 
     await act(async () => {
       await result.current.toggleAgent({ id: 'agent-1', isActive: true, configVersion: 8 });
@@ -102,6 +105,14 @@ describe('agent setup payload compatibility', () => {
     expect(api.put).toHaveBeenLastCalledWith('/agents/agent-1', {
       isActive: false,
       expectedConfigVersion: 8,
+    });
+
+    await act(async () => {
+      await result.current.deleteAgent({ id: 'agent-1', configVersion: 8 });
+    });
+
+    expect(api.delete).toHaveBeenCalledWith('/agents/agent-1', {
+      data: { expectedConfigVersion: 8 },
     });
   });
 });

@@ -3,6 +3,7 @@ const {
   validateCreateAgent,
   validateTemplateCreateAgent,
   validateUpdateAgent,
+  validateDeleteAgent,
   providerModelSupported
 } = require('./agentSetupSchemas');
 const { buildLegacyActionConfigProjection } = require('./legacyActionConfigProjection');
@@ -40,7 +41,6 @@ const SETUP_FIELDS = [
   'outOfHoursMessage',
   'allowGroupResponse',
   'allowedGroups',
-  'actionConfig',
   'isActive',
   'isPublished',
   'priority'
@@ -111,7 +111,7 @@ function validateUpdateInput(input) {
 }
 
 function buildCreateData({ tenantId, payload, templateType }) {
-  const data = {
+  return {
     tenantId,
     name: payload.name,
     instructions: payload.instructions,
@@ -140,25 +140,13 @@ function buildCreateData({ tenantId, payload, templateType }) {
     isPublished: payload.isPublished ?? FIELD_DEFAULTS.isPublished,
     priority: payload.priority ?? FIELD_DEFAULTS.priority
   };
-  data.actionConfig = buildLegacyActionConfigProjection({
-    existingActionConfig: payload.actionConfig,
-    canonicalActions: []
-  });
-  return data;
 }
 
 function buildUpdateData(payload) {
   const data = {};
   for (const field of SETUP_FIELDS) {
     if (payload[field] === undefined) continue;
-    if (field === 'actionConfig') {
-      data.actionConfig = buildLegacyActionConfigProjection({
-        existingActionConfig: payload.actionConfig,
-        canonicalActions: []
-      });
-    } else {
-      data[field] = payload[field];
-    }
+    data[field] = payload[field];
   }
   return data;
 }
@@ -221,6 +209,9 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
         if (!existing) {
           throw new AgentSetupError(404, 'AGENT_NOT_FOUND', 'Agent not found');
         }
+        if (existing.configVersion !== body.expectedConfigVersion) {
+          throw new AgentSetupError(409, 'CONFIG_VERSION_CONFLICT', 'Agent config version is stale');
+        }
         if ((updateData.isActive === false && existing.isActive) || (updateData.isPublished === false && existing.isPublished)) {
           await assertNoOpenConversations(tx, tenantId, agentId);
         }
@@ -228,6 +219,14 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
         for (const field of Object.keys(updateData)) {
           prismaData[field] = updateData[field];
         }
+        const canonicalActions = await tx.agentAction.findMany({
+          where: { agentId },
+          orderBy: { createdAt: 'asc' }
+        });
+        prismaData.actionConfig = buildLegacyActionConfigProjection({
+          existingActionConfig: existing.actionConfig,
+          canonicalActions
+        });
         prismaData.configVersion = { increment: 1 };
 
         const updateResult = await tx.aIAgent.updateMany({
@@ -247,7 +246,8 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
       });
     },
 
-    async deleteAgent({ tenantId, agentId }) {
+    async deleteAgent({ tenantId, agentId, body }) {
+      validatePayload(validateDeleteAgent, body || {});
       return prisma.$transaction(async (tx) => {
         const existing = await tx.aIAgent.findFirst({
           where: { id: agentId, tenantId, deletedAt: null }
@@ -255,9 +255,17 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
         if (!existing) {
           throw new AgentSetupError(404, 'AGENT_NOT_FOUND', 'Agent not found');
         }
+        if (existing.configVersion !== body.expectedConfigVersion) {
+          throw new AgentSetupError(409, 'CONFIG_VERSION_CONFLICT', 'Agent config version is stale');
+        }
         await assertNoOpenConversations(tx, tenantId, agentId);
-        return tx.aIAgent.update({
-          where: { id: agentId },
+        const updateResult = await tx.aIAgent.updateMany({
+          where: {
+            id: agentId,
+            tenantId,
+            deletedAt: null,
+            configVersion: body.expectedConfigVersion
+          },
           data: {
             isActive: false,
             isPublished: false,
@@ -265,6 +273,10 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
             configVersion: { increment: 1 }
           }
         });
+        if (updateResult.count !== 1) {
+          throw new AgentSetupError(409, 'CONFIG_VERSION_CONFLICT', 'Agent config version is stale');
+        }
+        return tx.aIAgent.findUnique({ where: { id: agentId } });
       });
     }
   };

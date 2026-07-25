@@ -132,6 +132,73 @@ describe('agent setup security boundaries', () => {
       .expect(({ body }) => expect(body.code).toBe('SETUP_FIELD_NOT_ALLOWED'));
   });
 
+  it('rejects raw actionConfig on create, update, and template creation', async () => {
+    await request(app)
+      .post('/api/agents')
+      .set('Authorization', `Bearer ${auth}`)
+      .send(validAgentPayload({ actionConfig: { closeConversation: { enabled: true } } }))
+      .expect(400)
+      .expect(({ body }) => expect(body.code).toBe('SETUP_FIELD_NOT_ALLOWED'));
+
+    const created = await request(app)
+      .post('/api/agents')
+      .set('Authorization', `Bearer ${auth}`)
+      .send(validAgentPayload({ name: 'No raw action config' }))
+      .expect(201);
+
+    expect(created.body.actionConfig).toBeNull();
+
+    await request(app)
+      .put(`/api/agents/${created.body.id}`)
+      .set('Authorization', `Bearer ${auth}`)
+      .send({ expectedConfigVersion: 1, actionConfig: { closeConversation: { enabled: true } } })
+      .expect(400)
+      .expect(({ body }) => expect(body.code).toBe('SETUP_FIELD_NOT_ALLOWED'));
+
+    await request(app)
+      .post('/api/agents/templates/receptionist')
+      .set('Authorization', `Bearer ${auth}`)
+      .send({ actionConfig: { closeConversation: { enabled: true } } })
+      .expect(400)
+      .expect(({ body }) => expect(body.code).toBe('SETUP_FIELD_NOT_ALLOWED'));
+  });
+
+  it('preserves unmigrated legacy actionConfig while canonical actions override projected keys on update', async () => {
+    const agent = await prisma.aIAgent.create({
+      data: {
+        tenantId: 'tenant-a',
+        name: 'Legacy config agent',
+        instructions: 'Keep legacy action config safe.',
+        actionConfig: {
+          closeConversation: { enabled: false, instructions: 'legacy stale', config: { stale: true } },
+          unmigratedCustomAction: { enabled: true, instructions: 'keep me', config: { custom: 1 } }
+        }
+      }
+    });
+    await prisma.agentAction.create({
+      data: {
+        agentId: agent.id,
+        key: 'closeConversation',
+        type: 'close_conversation',
+        isEnabled: true,
+        instructions: 'canonical close',
+        config: { reason: 'done' }
+      }
+    });
+
+    await request(app)
+      .put(`/api/agents/${agent.id}`)
+      .set('Authorization', `Bearer ${auth}`)
+      .send({ expectedConfigVersion: 1, temperature: 0.9 })
+      .expect(200);
+
+    const stored = await prisma.aIAgent.findUnique({ where: { id: agent.id } });
+    expect(stored.actionConfig).toMatchObject({
+      closeConversation: { enabled: true, instructions: 'canonical close', config: { reason: 'done' } },
+      unmigratedCustomAction: { enabled: true, instructions: 'keep me', config: { custom: 1 } }
+    });
+  });
+
   it('denies unsupported provider model pairs and invalid setup ranges', async () => {
     await request(app)
       .post('/api/agents')
@@ -168,6 +235,35 @@ describe('agent setup security boundaries', () => {
       .put(`/api/agents/${created.body.id}`)
       .set('Authorization', `Bearer ${auth}`)
       .send({ expectedConfigVersion: 0, temperature: 0.9 })
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('CONFIG_VERSION_CONFLICT'));
+  });
+
+  it('returns stale-version conflicts before lifecycle open-conversation checks on update', async () => {
+    const agent = await prisma.aIAgent.create({
+      data: {
+        tenantId: 'tenant-a',
+        name: 'Precedence agent',
+        instructions: 'Check stale precedence.',
+        isActive: true,
+        isPublished: true,
+        configVersion: 2
+      }
+    });
+    await prisma.$executeRawUnsafe(
+      'INSERT INTO "conversations" (id, tenant_id, channel_type, contact_number, unread_count, status, "currentAgentId", "created_at", "updated_at", assignment_version) VALUES ($1, $2, $3, $4, 0, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)',
+      'open-precedence-conversation',
+      'tenant-a',
+      'whatsapp',
+      '+15550123000',
+      'open',
+      agent.id
+    );
+
+    await request(app)
+      .put(`/api/agents/${agent.id}`)
+      .set('Authorization', `Bearer ${auth}`)
+      .send({ expectedConfigVersion: 1, isActive: false })
       .expect(409)
       .expect(({ body }) => expect(body.code).toBe('CONFIG_VERSION_CONFLICT'));
   });
