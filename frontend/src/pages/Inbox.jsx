@@ -123,7 +123,7 @@ export default function Inbox() {
       ]);
 
       const fetchedAgents = Array.isArray(agentsRes.data) ? agentsRes.data : (agentsRes.data?.agents || []);
-      setAgents(fetchedAgents.filter(a => a.isActive));
+      setAgents(fetchedAgents.filter(a => a.isActive && a.isPublished && !a.deletedAt));
 
       if (teamRes.data?.users) setUsers(teamRes.data.users);
     } catch (error) {

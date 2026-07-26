@@ -146,19 +146,44 @@ function createConversationOwnershipGateway({
 
   return Object.freeze({
     assignAi(input) {
-      return mutate({ ...input, operation: 'assignAi' });
+      return mutate({
+        tenantId: input.tenantId,
+        conversationId: input.conversationId,
+        operation: 'assignAi',
+        input
+      });
     },
     assignHuman(input) {
-      return mutate({ ...input, operation: 'assignHuman' });
+      return mutate({
+        tenantId: input.tenantId,
+        conversationId: input.conversationId,
+        operation: 'assignHuman',
+        input
+      });
     },
     ensureDefaultOwner(input) {
-      return mutate({ ...input, operation: 'ensureDefaultOwner' });
+      return mutate({
+        tenantId: input.tenantId,
+        conversationId: input.conversationId,
+        operation: 'ensureDefaultOwner',
+        input
+      });
     },
     unassign(input) {
-      return mutate({ ...input, operation: 'unassign' });
+      return mutate({
+        tenantId: input.tenantId,
+        conversationId: input.conversationId,
+        operation: 'unassign',
+        input
+      });
     },
     close(input) {
-      return mutate({ ...input, operation: 'close' });
+      return mutate({
+        tenantId: input.tenantId,
+        conversationId: input.conversationId,
+        operation: 'close',
+        input
+      });
     },
     assignConfiguredTarget,
     drainAgent(transaction, input) {
