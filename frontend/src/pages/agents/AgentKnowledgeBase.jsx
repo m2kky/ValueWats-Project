@@ -10,6 +10,24 @@ export default function AgentKnowledgeBase({
   fetchKnowledge, addTextKnowledge, uploadFileKnowledge, deleteKnowledge,
   editingId
 }) {
+  if (!editingId) {
+    return (
+      <div className="glass-card p-6 border border-white/5 bg-zinc-900/40">
+        <div className="flex items-center gap-2 mb-6 border-b border-white/5 pb-4">
+          <div className="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+          <h3 className="text-xs font-black text-white uppercase tracking-widest italic">NEURAL INDEXING</h3>
+        </div>
+        <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-2xl">
+          <BookOpenIcon className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
+          <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">SAVE AGENT FIRST</p>
+          <p className="text-[8px] font-bold text-zinc-700 mt-1 uppercase tracking-tighter">
+            CREATE OR SAVE THE AGENT TO ENABLE KNOWLEDGE UPLOADS
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Add Knowledge Buttons */}
