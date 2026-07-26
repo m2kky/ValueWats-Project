@@ -381,6 +381,7 @@ model Conversation {
 
   failedAttempts    Int       @default(0)
   lastBotResponseAt DateTime?
+  lastFollowUpAt     DateTime?
 
   // Workflow State Machine (Ask a Question)
   waitingForWorkflowId String? @map("waiting_workflow_id")
@@ -505,6 +506,7 @@ model AIAgent {
   currentConversations Conversation[]      @relation("CurrentAgent")
   agentRuns            AgentRun[]          @relation("AgentRunSourceAgent")
   agentCommands        AgentCommand[]      @relation("AgentCommandSourceAgent")
+  contactNotes         ContactNote[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -552,7 +554,7 @@ model AgentKnowledge {
   tags       String[]
   chunkIndex Int      @default(0) // For multi-chunk documents
 
-  embedding Unsupported("vector(1536)")? // legacy pgvector column; do not rewrite existing vectors
+  embedding Unsupported("vector(768)")?
 
   isActive Boolean @default(true)
 
@@ -774,8 +776,10 @@ model ContactNote {
   contactId String  @map("contact_id")
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  userId String @map("user_id")
-  user   User   @relation(fields: [userId], references: [id])
+  userId String? @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id])
+  agentId String? @map("agent_id")
+  agent   AIAgent? @relation(fields: [agentId], references: [id])
 
   content String @db.Text
 

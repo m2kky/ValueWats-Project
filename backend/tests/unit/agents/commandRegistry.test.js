@@ -69,6 +69,11 @@ describe('command registry', () => {
     expect(new Set(terminalCommands.map(({ capabilityType }) => capabilityType)).size).toBe(2);
   });
 
+  it('registers every static capability as an executable command', () => {
+    expect(staticCommandRegistry.list().map(({ capabilityType }) => capabilityType).sort())
+      .toEqual(staticCapabilityCatalog.list().map(({ type }) => type).sort());
+  });
+
   it('resolves only exact, statically registered command names', () => {
     const registry = createTestRegistry();
 

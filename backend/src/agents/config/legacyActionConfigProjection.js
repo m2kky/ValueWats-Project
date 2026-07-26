@@ -7,7 +7,11 @@ function buildLegacyActionConfigProjection({ existingActionConfig, canonicalActi
   const projection = cloneJson(existingActionConfig) || {};
   const legacyKeys = {
     assign_conversation: 'assignAgent',
-    close_conversation: 'closeConversation'
+    close_conversation: 'closeConversation',
+    update_contact: 'updateFields',
+    update_lifecycle: 'updateLifecycle',
+    modify_tags: 'updateTags',
+    add_internal_comment: 'addComment'
   };
 
   for (const action of canonicalActions) {

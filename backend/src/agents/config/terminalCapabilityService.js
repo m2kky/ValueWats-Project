@@ -3,7 +3,14 @@ const { capabilityCatalog } = require('./capabilityCatalog');
 const { buildLegacyActionConfigProjection } = require('./legacyActionConfigProjection');
 const { AgentSetupError } = require('./agentSetupService');
 
-const TERMINAL_KEYS = ['assign_conversation', 'close_conversation'];
+const CAPABILITY_KEYS = [
+  'assign_conversation',
+  'close_conversation',
+  'update_contact',
+  'update_lifecycle',
+  'modify_tags',
+  'add_internal_comment'
+];
 
 function normalizeTarget(value) {
   return String(value || '').trim().replace(/^@/, '').toLowerCase();
@@ -12,6 +19,12 @@ function normalizeTarget(value) {
 function normalizeCapabilities(input = {}) {
   const assignment = input.assignConversation || {};
   const close = input.closeConversation || {};
+  const internal = {
+    update_contact: input.updateContact || {},
+    update_lifecycle: input.updateLifecycle || {},
+    modify_tags: input.modifyTags || {},
+    add_internal_comment: input.addInternalComment || {}
+  };
   const allowedTargets = [...new Set(
     (Array.isArray(assignment.allowedTargets) ? assignment.allowedTargets : [])
       .map(normalizeTarget)
@@ -48,7 +61,12 @@ function normalizeCapabilities(input = {}) {
       isEnabled: close.enabled === true,
       instructions: String(close.instructions || '').trim(),
       config: {}
-    }
+    },
+    ...Object.fromEntries(Object.entries(internal).map(([key, value]) => [key, {
+      isEnabled: value.enabled === true,
+      instructions: String(value.instructions || '').trim(),
+      config: {}
+    }]))
   };
 }
 
@@ -69,10 +87,10 @@ function createTerminalCapabilityService({ prisma = prismaDefault } = {}) {
           }
 
           const existingRows = await transaction.agentAction.findMany({
-            where: { agentId, key: { in: TERMINAL_KEYS } },
+            where: { agentId, key: { in: CAPABILITY_KEYS } },
             orderBy: { id: 'asc' }
           });
-          for (const key of TERMINAL_KEYS) {
+          for (const key of CAPABILITY_KEYS) {
             const rows = existingRows.filter((row) => row.key === key);
             if (rows.length > 1) {
               throw new AgentSetupError(409, 'CAPABILITY_DUPLICATE', `Duplicate capability: ${key}`);

@@ -71,6 +71,7 @@ const closeCapabilityConfigSchema = Object.freeze({
   additionalProperties: false,
   properties: {}
 });
+const emptyCapabilityConfigSchema = closeCapabilityConfigSchema;
 function assertStrictObjectNode(schema) {
   if (
     !schema
@@ -144,6 +145,7 @@ module.exports = {
   ASSIGNMENT_REASON_CODES,
   assignmentCapabilityConfigSchema,
   closeCapabilityConfigSchema,
+  emptyCapabilityConfigSchema,
   assertStrictObjectSchema,
   compileStrictObjectSchema
 };

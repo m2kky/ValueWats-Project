@@ -7,6 +7,7 @@ class EmbeddingService {
     this.baseURL = process.env.OLLAMA_URL || 'http://72.62.50.238:11434';
     // nomic-embed-text produces exactly 768 dimensions — matches our pgvector(768) schema.
     this.model = 'nomic-embed-text';
+    this.dimensions = 768;
   }
 
   /**
@@ -27,6 +28,9 @@ class EmbeddingService {
       const embedding = response.data.embedding;
       if (!embedding || !Array.isArray(embedding)) {
         throw new Error('Invalid embedding response from Ollama');
+      }
+      if (embedding.length !== this.dimensions || embedding.some((value) => !Number.isFinite(value))) {
+        throw new Error(`Invalid embedding dimensions: expected ${this.dimensions}, received ${embedding.length}`);
       }
 
       return embedding;

@@ -14,6 +14,7 @@ const {
 const { createAgentRunRepository } = require('./persistence/agentRunRepository');
 const { createAgentCommandExecutor } = require('./runtime/agentCommandRuntime');
 const { resolveAgentRuntimeMode } = require('./runtime/runtimeFlags');
+const { isWithinWorkingHours } = require('./runtime/workingHoursPolicy');
 
 class AgentService {
   constructor({
@@ -449,22 +450,7 @@ ${actionPrompts.join('\n')}`;
    * Check if within working hours
    */
   isWithinWorkingHours(agent) {
-    if (!agent.workingHoursEnabled || !agent.workingHours) return true;
-
-    const now = this.clock();
-    const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase(); // e.g., "monday"
-    const currentTime = now.getHours() * 60 + now.getMinutes();
-
-    const schedule = agent.workingHours[currentDay];
-    if (!schedule || !schedule.enabled) return false;
-
-    const [startHour, startMin] = schedule.start.split(':').map(Number);
-    const [endHour, endMin] = schedule.end.split(':').map(Number);
-
-    const startTime = startHour * 60 + startMin;
-    const endTime = endHour * 60 + endMin;
-
-    return currentTime >= startTime && currentTime <= endTime;
+    return isWithinWorkingHours(agent, this.clock());
   }
 
   /**
@@ -619,6 +605,21 @@ ${actionPrompts.join('\n')}`;
         else if (actionString.startsWith('UPDATE_CONTACT:')) {
           const jsonStr = actionString.replace('UPDATE_CONTACT:', '').trim();
           const updates = JSON.parse(jsonStr);
+          if (commandContext) {
+            await this.commandExecutor.execute({
+              tenantId: agent.tenantId,
+              runId: commandContext.runId,
+              expectedAssignmentVersion: commandContext.expectedAssignmentVersion,
+              type: 'update_contact',
+              arguments: {
+                updates: Object.entries(updates).map(([field, value]) => ({
+                  field,
+                  value: String(value ?? '')
+                }))
+              }
+            });
+            continue;
+          }
 
           if (updates.name) {
             await this.prisma.conversation.update({
@@ -653,6 +654,16 @@ ${actionPrompts.join('\n')}`;
         // UPDATE LIFECYCLE
         else if (actionString.startsWith('UPDATE_LIFECYCLE:')) {
           const stageName = actionString.replace('UPDATE_LIFECYCLE:', '').trim();
+          if (commandContext) {
+            await this.commandExecutor.execute({
+              tenantId: agent.tenantId,
+              runId: commandContext.runId,
+              expectedAssignmentVersion: commandContext.expectedAssignmentVersion,
+              type: 'update_lifecycle',
+              arguments: { stage: stageName }
+            });
+            continue;
+          }
           const stage = await this.prisma.lifecycleStage.findFirst({
             where: { tenantId: agent.tenantId, name: { contains: stageName, mode: 'insensitive' } }
           });
@@ -704,6 +715,16 @@ ${actionPrompts.join('\n')}`;
         else if (actionString.startsWith('ADD_TAG:')) {
           const tagName = actionString.replace('ADD_TAG:', '').trim().replace(/^%+/, '');
           if (!tagName) continue;
+          if (commandContext) {
+            await this.commandExecutor.execute({
+              tenantId: agent.tenantId,
+              runId: commandContext.runId,
+              expectedAssignmentVersion: commandContext.expectedAssignmentVersion,
+              type: 'modify_tags',
+              arguments: { operation: 'add', tag: tagName }
+            });
+            continue;
+          }
 
           // 1. Get or create the tag (ContactLabel)
           const label = await this.prisma.contactLabel.upsert({
@@ -764,6 +785,16 @@ ${actionPrompts.join('\n')}`;
         else if (actionString.startsWith('REMOVE_TAG:')) {
           const tagName = actionString.replace('REMOVE_TAG:', '').trim().replace(/^%+/, '');
           if (!tagName) continue;
+          if (commandContext) {
+            await this.commandExecutor.execute({
+              tenantId: agent.tenantId,
+              runId: commandContext.runId,
+              expectedAssignmentVersion: commandContext.expectedAssignmentVersion,
+              type: 'modify_tags',
+              arguments: { operation: 'remove', tag: tagName }
+            });
+            continue;
+          }
 
           if (conversation.contactId) {
             const label = await this.prisma.contactLabel.findUnique({
@@ -797,6 +828,16 @@ ${actionPrompts.join('\n')}`;
         // ADD_COMMENT (Internal Context)
         else if (actionString.startsWith('ADD_COMMENT:')) {
           const comment = actionString.replace('ADD_COMMENT:', '').trim();
+          if (commandContext) {
+            await this.commandExecutor.execute({
+              tenantId: agent.tenantId,
+              runId: commandContext.runId,
+              expectedAssignmentVersion: commandContext.expectedAssignmentVersion,
+              type: 'add_internal_comment',
+              arguments: { content: comment }
+            });
+            continue;
+          }
           try {
             // Find or create the contact to attach the note
             let contactId = conversation.contactId;

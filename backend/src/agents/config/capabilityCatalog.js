@@ -1,7 +1,8 @@
 const { compileStrictObjectSchema } = require('./capabilitySchemas');
 const {
   assignmentCapabilityConfigSchema,
-  closeCapabilityConfigSchema
+  closeCapabilityConfigSchema,
+  emptyCapabilityConfigSchema
 } = require('./capabilitySchemas');
 
 function createCapabilityCatalog(entries = []) {
@@ -65,7 +66,14 @@ const capabilityCatalog = createCapabilityCatalog([
     delivery: 'internal',
     terminalConversationCommand: true,
     configSchema: closeCapabilityConfigSchema
-  }
+  },
+  ...['update_contact', 'update_lifecycle', 'modify_tags', 'add_internal_comment'].map((type) => ({
+    type,
+    risk: 'crm_write',
+    delivery: 'internal',
+    terminalConversationCommand: false,
+    configSchema: emptyCapabilityConfigSchema
+  }))
 ]);
 
 module.exports = { capabilityCatalog, createCapabilityCatalog };

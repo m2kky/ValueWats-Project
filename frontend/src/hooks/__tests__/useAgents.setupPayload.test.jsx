@@ -106,7 +106,11 @@ describe('agent setup payload compatibility', () => {
       closeConversation: {
         enabled: true,
         instructions: 'Close resolved chats.'
-      }
+      },
+      updateContact: { enabled: false, instructions: '' },
+      updateLifecycle: { enabled: false, instructions: '' },
+      modifyTags: { enabled: false, instructions: '' },
+      addInternalComment: { enabled: false, instructions: '' }
     });
   });
 

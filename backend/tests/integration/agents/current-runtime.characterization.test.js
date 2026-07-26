@@ -419,19 +419,19 @@ describe('test database safety and vector drift', () => {
     }
   });
 
-  it('records the historical 1536 migration and schema while runtime still expects 768-dimensional embeddings', () => {
+  it('aligns current storage and runtime on 768-dimensional embeddings', () => {
     const migration = fs.readFileSync(path.join(__dirname, '../../../prisma/migrations/20260215175500_add_multi_agent_system/migration.sql'), 'utf8');
     const schema = fs.readFileSync(path.join(__dirname, '../../../prisma/schema.prisma'), 'utf8');
     const runtime = fs.readFileSync(path.join(__dirname, '../../../src/services/embeddingService.js'), 'utf8');
     expect(migration).toContain('"embedding" vector(1536)');
-    expect(schema).toContain('vector(1536)');
+    expect(schema).toContain('vector(768)');
     expect(runtime).toContain('produces exactly 768 dimensions');
+    expect(runtime).toContain('this.dimensions = 768');
   });
 
-  it.fails('keeps the legacy 1536-dimensional storage width compatible with the 768-dimensional runtime model', () => {
-    const migration = fs.readFileSync(path.join(__dirname, '../../../prisma/migrations/20260215175500_add_multi_agent_system/migration.sql'), 'utf8');
-    const migrationDimension = Number(migration.match(/"embedding" vector\((\d+)\)/)?.[1]);
-    const runtimeDimension = 768;
-    expect(migrationDimension).toBe(runtimeDimension);
+  it('adds an explicit migration from the historical vector width', () => {
+    const migration = fs.readFileSync(path.join(__dirname, '../../../prisma/migrations/20260806020000_align_agent_knowledge_vectors/migration.sql'), 'utf8');
+    expect(migration).toContain('TYPE vector(768)');
+    expect(migration).toContain('SET embedding = NULL');
   });
 });

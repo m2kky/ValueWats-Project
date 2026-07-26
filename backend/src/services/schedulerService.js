@@ -1,5 +1,58 @@
 const prisma = require('../config/database');
 const queueService = require('./queueService');
+const chatService = require('./chat.service');
+const { isWithinWorkingHours } = require('../agents/runtime/workingHoursPolicy');
+
+async function checkAgentFollowUps() {
+  const now = new Date();
+  const conversations = await prisma.conversation.findMany({
+    where: {
+      status: { not: 'closed' },
+      aiEnabled: true,
+      currentAgent: {
+        isActive: true,
+        isPublished: true,
+        deletedAt: null,
+        followUpEnabled: true,
+        followUpMessage: { not: null }
+      },
+      lastBotResponseAt: { not: null }
+    },
+    include: {
+      currentAgent: true,
+      messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { instanceId: true } }
+    }
+  });
+  for (const conversation of conversations) {
+    const agent = conversation.currentAgent;
+    const dueAt = new Date(conversation.lastBotResponseAt.getTime() + agent.followUpDelay * 1000);
+    if (dueAt > now || conversation.lastFollowUpAt?.getTime() >= conversation.lastBotResponseAt.getTime()) continue;
+    if (!isWithinWorkingHours(agent, now) || !conversation.messages[0]?.instanceId) continue;
+    const claimed = await prisma.conversation.updateMany({
+      where: {
+        id: conversation.id,
+        lastBotResponseAt: conversation.lastBotResponseAt,
+        lastFollowUpAt: conversation.lastFollowUpAt
+      },
+      data: { lastFollowUpAt: now }
+    });
+    if (claimed.count !== 1) continue;
+    try {
+      await chatService.sendMessage(conversation.tenantId, {
+        conversationId: conversation.id,
+        instanceId: conversation.messages[0].instanceId,
+        content: agent.followUpMessage,
+        messageType: 'text'
+      });
+    } catch (error) {
+      await prisma.conversation.updateMany({
+        where: { id: conversation.id, lastFollowUpAt: now },
+        data: { lastFollowUpAt: conversation.lastFollowUpAt }
+      });
+      throw error;
+    }
+  }
+}
 
 /**
  * Campaign Scheduler Service
@@ -11,6 +64,7 @@ const queueService = require('./queueService');
 async function checkScheduledCampaigns() {
   try {
     const now = new Date();
+    await checkAgentFollowUps();
 
     // ====== JOB 1: Launch scheduled campaigns ======
     const dueCampaigns = await prisma.campaign.findMany({
@@ -137,4 +191,4 @@ function stopScheduler() {
   }
 }
 
-module.exports = { startScheduler, stopScheduler, checkScheduledCampaigns };
+module.exports = { startScheduler, stopScheduler, checkScheduledCampaigns, checkAgentFollowUps };

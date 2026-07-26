@@ -180,6 +180,9 @@ class KnowledgeService {
     }
 
     console.log(`[KnowledgeService] Added ${results.length}/${chunks.length} chunks for "${title}"`);
+    if (results.length === 0 && chunks.length > 0) {
+      throw new Error('Embedding generation failed');
+    }
     return results;
   }
 

@@ -422,7 +422,7 @@ describe('agent setup security boundaries', () => {
     expect(script).toContain('vector(1536)');
     expect(script).toContain('pg_dump');
     expect(script).toContain('pg_restore');
-    expect(schema).toContain('Unsupported("vector(1536)")');
+    expect(schema).toContain('Unsupported("vector(768)")');
     expect(migration).not.toMatch(/ALTER\s+TABLE\s+"AgentKnowledge"\s+ALTER\s+COLUMN\s+"embedding"/i);
   });
 });

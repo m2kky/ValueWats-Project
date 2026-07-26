@@ -56,6 +56,7 @@ export function buildTerminalCapabilities(data = {}) {
   const assignment = data.actionConfig?.assignAgent || {};
   const assignmentConfig = assignment.config || {};
   const close = data.actionConfig?.closeConversation || {};
+  const internal = data.actionConfig || {};
   return {
     assignConversation: {
       enabled: assignment.enabled === true,
@@ -72,6 +73,22 @@ export function buildTerminalCapabilities(data = {}) {
     closeConversation: {
       enabled: close.enabled === true,
       instructions: close.instructions || '',
+    },
+    updateContact: {
+      enabled: internal.updateFields?.enabled === true,
+      instructions: internal.updateFields?.instructions || '',
+    },
+    updateLifecycle: {
+      enabled: internal.updateLifecycle?.enabled === true,
+      instructions: internal.updateLifecycle?.instructions || '',
+    },
+    modifyTags: {
+      enabled: internal.updateTags?.enabled === true,
+      instructions: internal.updateTags?.instructions || '',
+    },
+    addInternalComment: {
+      enabled: internal.addComment?.enabled === true,
+      instructions: internal.addComment?.instructions || '',
     },
   };
 }
