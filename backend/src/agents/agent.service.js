@@ -11,6 +11,9 @@ const lazyDependency = (load) => {
 const {
   createConversationOwnershipGateway
 } = require('../conversations/conversationOwnershipGateway');
+const { createAgentRunRepository } = require('./persistence/agentRunRepository');
+const { createAgentCommandExecutor } = require('./runtime/agentCommandRuntime');
+const { resolveAgentRuntimeMode } = require('./runtime/runtimeFlags');
 
 class AgentService {
   constructor({
@@ -20,6 +23,7 @@ class AgentService {
     knowledgeService = lazyDependency(() => require('../services/knowledgeService')),
     workflowService = lazyDependency(() => require('../services/workflow.service')),
     ownershipGateway = null,
+    commandExecutor = null,
     clock = () => new Date()
   } = {}) {
     this.prisma = prisma;
@@ -28,17 +32,22 @@ class AgentService {
     this.knowledgeService = knowledgeService;
     this.workflowService = workflowService;
     this.ownershipGateway = ownershipGateway || createConversationOwnershipGateway({ prisma });
+    this.commandExecutor = commandExecutor || createAgentCommandExecutor(prisma);
     this.clock = clock;
   }
   /**
    * Process incoming message with AI Agent
    */
   async processMessage({ conversationId, message, contactNumber, tenantId, inboundMessageId }) {
+    let activeRun = null;
     try {
       // 1. Get conversation with current agent
-      const conversation = await this.prisma.conversation.findFirst({
+      let conversation = await this.prisma.conversation.findFirst({
         where: { id: conversationId, tenantId },
         include: {
+          tenant: {
+            select: { agentRuntimeMode: true }
+          },
           currentAgent: {
             include: {
               knowledgeSources: {
@@ -57,10 +66,23 @@ class AgentService {
 
       if (!agent) {
         agent = await this.assignDefaultAgent(conversationId, tenantId);
+        if (agent) {
+          const ownerState = await this.prisma.conversation.findFirst({
+            where: { id: conversationId, tenantId },
+            select: { currentAgentId: true, assignmentVersion: true }
+          });
+          conversation = { ...conversation, ...ownerState };
+        }
       }
 
       if (!agent || !agent.isActive || !agent.isPublished || agent.deletedAt) {
         return null; // No AI agent available
+      }
+
+      const runtimeMode = resolveAgentRuntimeMode(conversation.tenant);
+      if (runtimeMode === 'v2' && !inboundMessageId) {
+        console.warn('[AgentService] V2 runtime requires an inbound message ID');
+        return null;
       }
 
       // 3. Check working hours
@@ -87,6 +109,17 @@ class AgentService {
             return null;
           }
         }
+      }
+
+      if (runtimeMode === 'v2') {
+        activeRun = await createAgentRunRepository(this.prisma).createOrGet({
+          tenantId,
+          conversationId,
+          inboundMessageId,
+          sourceAgentId: agent.id,
+          agentConfigVersion: agent.configVersion,
+          status: 'running'
+        });
       }
 
       // 2. Build Context (RAG + Conversation History)
@@ -167,14 +200,30 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
       const aiResponse = finalContent || '';
 
       // 7. Check for routing triggers
-      const routed = await this.checkRoutingRules(conversation, agent, message, aiResponse);
+      const commandContext = activeRun && {
+        runId: activeRun.id,
+        expectedAssignmentVersion: conversation.assignmentVersion
+      };
+      const routed = await this.checkRoutingRules(
+        conversation,
+        agent,
+        message,
+        aiResponse,
+        commandContext
+      );
 
       // 8. A route is terminal; legacy tags cannot overwrite it in the same response.
       let terminalAction = null;
       if (!routed) {
-        terminalAction = await this.executeActions(agent, conversation, message, aiResponse);
+        terminalAction = await this.executeActions(agent, conversation, message, aiResponse, commandContext);
       }
       if (routed || terminalAction?.terminal) {
+        if (activeRun) {
+          await this.prisma.agentRun.updateMany({
+            where: { id: activeRun.id, tenantId },
+            data: { status: 'completed', completedAt: this.clock() }
+          });
+        }
         return {
           response: '',
           agent,
@@ -184,6 +233,12 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
 
       // 9. Update conversation tracking
       await this.updateConversationTracking(conversationId, agent.id);
+      if (activeRun) {
+        await this.prisma.agentRun.updateMany({
+          where: { id: activeRun.id, tenantId },
+          data: { status: 'completed', completedAt: this.clock() }
+        });
+      }
 
       // Clean response (remove action tags)
       const cleanResponse = aiResponse.replace(/\[ACTION:\s*(.*?)\]/g, '').trim();
@@ -195,6 +250,17 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
 
     } catch (error) {
       console.error('[AgentService] Error processing message:', error);
+      if (activeRun) {
+        await this.prisma.agentRun.updateMany({
+          where: { id: activeRun.id, tenantId },
+          data: {
+            status: 'failed',
+            errorCode: 'RUNTIME_FAILED',
+            errorMessage: 'Agent runtime failed',
+            completedAt: this.clock()
+          }
+        }).catch(() => {});
+      }
 
       // Increment failed attempts
       await this.prisma.conversation.updateMany({
@@ -404,7 +470,7 @@ ${actionPrompts.join('\n')}`;
   /**
    * Check routing rules
    */
-  async checkRoutingRules(conversation, agent, message, aiResponse) {
+  async checkRoutingRules(conversation, agent, message, aiResponse, commandContext = null) {
     const rules = await this.prisma.agentRoutingRule.findMany({
       where: {
         fromAgentId: agent.id,
@@ -427,7 +493,13 @@ ${actionPrompts.join('\n')}`;
       }
 
       if (shouldRoute) {
-        return this.routeConversation(conversation.id, agent.id, rule, conversation.tenantId);
+        return this.routeConversation(
+          conversation.id,
+          agent.id,
+          rule,
+          conversation.tenantId,
+          commandContext
+        );
       }
     }
     return false;
@@ -436,7 +508,21 @@ ${actionPrompts.join('\n')}`;
   /**
    * Route conversation to another agent/team
    */
-  async routeConversation(conversationId, fromAgentId, rule, tenantId) {
+  async routeConversation(conversationId, fromAgentId, rule, tenantId, commandContext = null) {
+    if (commandContext) {
+      const result = await this.commandExecutor.execute({
+        tenantId,
+        runId: commandContext.runId,
+        expectedAssignmentVersion: commandContext.expectedAssignmentVersion,
+        type: 'assign_conversation',
+        arguments: {
+          target: rule.toAgentId ? `agent:${rule.toAgentId}` : 'human',
+          reasonCode: 'automation_rule',
+          reason: `Routing rule: ${rule.name || rule.triggerType}`
+        }
+      });
+      return result.status === 'succeeded';
+    }
     await this.ownershipGateway.assignConfiguredTarget({
       tenantId,
       conversationId,
@@ -452,7 +538,7 @@ ${actionPrompts.join('\n')}`;
   /**
    * Execute agent actions based on AI response tags
    */
-  async executeActions(agent, conversation, message, aiResponse) {
+  async executeActions(agent, conversation, message, aiResponse, commandContext = null) {
     // 1. Parse actions from response
     const actionRegex = /\[ACTION:\s*(.*?)\]/g;
     const matches = [...aiResponse.matchAll(actionRegex)];
@@ -467,6 +553,20 @@ ${actionPrompts.join('\n')}`;
       try {
         // CLOSE CONVERSATION
         if (actionString === 'CLOSE_CONVERSATION') {
+          if (commandContext) {
+            const result = await this.commandExecutor.execute({
+              tenantId: agent.tenantId,
+              runId: commandContext.runId,
+              expectedAssignmentVersion: commandContext.expectedAssignmentVersion,
+              type: 'close_conversation',
+              arguments: { reason: 'AI agent closed the conversation' }
+            });
+            if (result.status === 'succeeded') {
+              return { terminal: true, type: 'close_conversation' };
+            }
+            console.warn(`[AgentService] close_conversation ${result.status}: ${result.code || 'unknown'}`);
+            continue;
+          }
           await this.ownershipGateway.close({
             tenantId: agent.tenantId,
             conversationId: conversation.id,
@@ -481,6 +581,24 @@ ${actionPrompts.join('\n')}`;
         // ASSIGN AGENT / TEAM
         else if (actionString.startsWith('ASSIGN:')) {
           const target = actionString.replace(/^ASSIGN:/, '').trim();
+          if (commandContext) {
+            const result = await this.commandExecutor.execute({
+              tenantId: agent.tenantId,
+              runId: commandContext.runId,
+              expectedAssignmentVersion: commandContext.expectedAssignmentVersion,
+              type: 'assign_conversation',
+              arguments: {
+                target,
+                reasonCode: 'customer_request',
+                reason: 'AI agent assigned the conversation'
+              }
+            });
+            if (result.status === 'succeeded') {
+              return { terminal: true, type: 'assign_conversation' };
+            }
+            console.warn(`[AgentService] assign_conversation ${result.status}: ${result.code || 'unknown'}`);
+            continue;
+          }
           const assignment = await this.assignConversationTarget({
             tenantId: agent.tenantId,
             conversationId: conversation.id,

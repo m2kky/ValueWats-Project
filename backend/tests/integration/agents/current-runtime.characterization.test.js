@@ -199,6 +199,47 @@ describe('agent behavior with injected dependencies', () => {
     expect(gateway.close).not.toHaveBeenCalled();
   });
 
+  it('routes V2 agent rules through the command executor', async () => {
+    const prisma = database();
+    const source = agent({ id: 'source' });
+    const target = agent({ id: 'target' });
+    const item = conversation({ id: 'c1', currentAgentId: source.id, assignmentVersion: 3 });
+    prisma.agentRoutingRule.findMany.mockResolvedValue([{
+      name: 'Sales',
+      triggerType: 'keywords',
+      keywords: ['sales'],
+      toAgentId: target.id,
+      priority: 1
+    }]);
+    const gateway = ownershipGateway();
+    const commandExecutor = {
+      execute: vi.fn().mockResolvedValue({ status: 'succeeded', commandId: 'command-1' })
+    };
+    const service = createAgentService({ prisma, ownershipGateway: gateway, commandExecutor, clock });
+
+    await expect(
+      service.checkRoutingRules(
+        item,
+        source,
+        'sales please',
+        '',
+        { runId: 'run-1', expectedAssignmentVersion: 3 }
+      )
+    ).resolves.toBe(true);
+
+    expect(commandExecutor.execute).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      runId: 'run-1',
+      expectedAssignmentVersion: 3,
+      type: 'assign_conversation',
+      arguments: expect.objectContaining({
+        target: 'agent:target',
+        reasonCode: 'automation_rule'
+      })
+    }));
+    expect(gateway.assignConfiguredTarget).not.toHaveBeenCalled();
+  });
+
   it('closes a conversation when the close action tag is present', async () => {
     const prisma = database();
     const gateway = ownershipGateway();
@@ -212,6 +253,34 @@ describe('agent behavior with injected dependencies', () => {
       conversationId: 'conversation-1',
       reasonCode: 'agent_close'
     }));
+  });
+
+  it('routes V2 terminal action tags through the command executor', async () => {
+    const prisma = database();
+    const gateway = ownershipGateway();
+    const commandExecutor = {
+      execute: vi.fn().mockResolvedValue({ status: 'succeeded', commandId: 'command-1' })
+    };
+    const service = createAgentService({ prisma, ownershipGateway: gateway, commandExecutor, clock });
+
+    await expect(
+      service.executeActions(
+        agent(),
+        conversation({ id: 'conversation-1', assignmentVersion: 4 }),
+        'bye',
+        'Done [ACTION: CLOSE_CONVERSATION]',
+        { runId: 'run-1', expectedAssignmentVersion: 4 }
+      )
+    ).resolves.toEqual({ terminal: true, type: 'close_conversation' });
+
+    expect(commandExecutor.execute).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      runId: 'run-1',
+      expectedAssignmentVersion: 4,
+      type: 'close_conversation',
+      arguments: { reason: 'AI agent closed the conversation' }
+    });
+    expect(gateway.close).not.toHaveBeenCalled();
   });
 
   it('returns the out-of-hours message without calling the model gateway', async () => {
