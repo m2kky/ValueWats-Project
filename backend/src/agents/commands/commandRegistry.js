@@ -1,5 +1,7 @@
 const { capabilityCatalog } = require('../config/capabilityCatalog');
 const { compileStrictObjectSchema } = require('../config/capabilitySchemas');
+const { assignConversationCommand } = require('./internal/assignConversation');
+const { closeConversationCommand } = require('./internal/closeConversation');
 
 function createCommandRegistry(definitions = [], { catalog = capabilityCatalog } = {}) {
   const commands = new Map();
@@ -53,6 +55,9 @@ function createCommandRegistry(definitions = [], { catalog = capabilityCatalog }
   });
 }
 
-const commandRegistry = createCommandRegistry();
+const commandRegistry = createCommandRegistry([
+  assignConversationCommand,
+  closeConversationCommand
+]);
 
 module.exports = { commandRegistry, createCommandRegistry };

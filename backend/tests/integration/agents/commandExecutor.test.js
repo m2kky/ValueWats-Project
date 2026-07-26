@@ -23,6 +23,13 @@ const catalog = createCapabilityCatalog([
     configSchema: strictConfig
   },
   {
+    type: 'capture_command_id',
+    risk: 'medium',
+    delivery: 'internal',
+    terminalConversationCommand: false,
+    configSchema: strictConfig
+  },
+  {
     type: 'terminal_one',
     risk: 'ownership_change',
     delivery: 'internal',
@@ -129,6 +136,13 @@ const registry = createCommandRegistry([
     }
   }),
   makeDefinition({
+    type: 'capture_command_id',
+    execute: async (scope, context) => ({
+      contextCommandId: context.commandId,
+      scopeCommandId: scope.commandId
+    })
+  }),
+  makeDefinition({
     type: 'terminal_one',
     risk: 'ownership_change',
     terminalConversationCommand: true,
@@ -169,8 +183,9 @@ const registry = createCommandRegistry([
   })
 ], { catalog });
 
-function createExecutionScope({ transaction }) {
+function createExecutionScope({ transaction, commandId }) {
   return Object.freeze({
+    commandId,
     async recordEffect(context, amount) {
       const updated = await transaction.conversation.updateMany({
         where: {
@@ -243,6 +258,7 @@ async function seedContext() {
   await prisma.agentAction.createMany({
     data: [
       'record_effect',
+      'capture_command_id',
       'terminal_one',
       'terminal_two',
       'revoke_during_policy',
@@ -387,6 +403,18 @@ describe('authorized command executor', () => {
       where: { id: context.conversation.id },
       select: { failedAttempts: true }
     })).toEqual({ failedAttempts: 1 });
+  });
+
+  it('passes the server-derived command id into internal execution context and scope', async () => {
+    const result = await executor.execute(liveInput(context, {
+      type: 'capture_command_id'
+    }));
+
+    expect(result.status).toBe('succeeded');
+    expect(result.result).toEqual({
+      contextCommandId: result.commandId,
+      scopeCommandId: result.commandId
+    });
   });
 
   it('allows only one different terminal command to mutate a run', async () => {

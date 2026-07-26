@@ -6,6 +6,8 @@ const {
   createCommandIdempotencyKey
 } = require('../../../src/agents/commands/commandIdempotency');
 const { COMMAND_ERROR_CODES, CommandError } = require('../../../src/agents/commands/commandErrors');
+const { commandRegistry: staticCommandRegistry } = require('../../../src/agents/commands/commandRegistry');
+const { capabilityCatalog: staticCapabilityCatalog } = require('../../../src/agents/config/capabilityCatalog');
 const {
   sanitizeCommandError,
   sanitizeCommandValue
@@ -50,6 +52,23 @@ function createTestRegistry() {
 }
 
 describe('command registry', () => {
+  it('registers exactly one command for each static terminal capability', () => {
+    const terminalCapabilities = staticCapabilityCatalog.list()
+      .filter((capability) => capability.terminalConversationCommand);
+    const terminalCommands = staticCommandRegistry.list()
+      .filter((command) => command.terminalConversationCommand);
+
+    expect(terminalCapabilities.map(({ type }) => type).sort()).toEqual([
+      'assign_conversation',
+      'close_conversation'
+    ]);
+    expect(terminalCommands.map(({ capabilityType }) => capabilityType).sort()).toEqual([
+      'assign_conversation',
+      'close_conversation'
+    ]);
+    expect(new Set(terminalCommands.map(({ capabilityType }) => capabilityType)).size).toBe(2);
+  });
+
   it('resolves only exact, statically registered command names', () => {
     const registry = createTestRegistry();
 

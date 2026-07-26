@@ -266,13 +266,18 @@ function createCommandExecutor({
               'No scoped command execution service is configured'
             );
           }
+          const executionContext = Object.freeze({
+            ...currentDecision.context,
+            commandId: command.id
+          });
           const scope = createExecutionScope({
             transaction,
-            context: currentDecision.context,
-            capability: currentDecision.context.capability,
+            commandId: command.id,
+            context: executionContext,
+            capability: executionContext.capability,
             definition
           });
-          rawResult = await definition.execute(scope, currentDecision.context, args);
+          rawResult = await definition.execute(scope, executionContext, args);
         }
 
         const result = sanitizeCommandValue(rawResult);

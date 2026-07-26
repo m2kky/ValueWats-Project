@@ -31,6 +31,46 @@ const SUPPORTED_SCHEMA_KEYS = new Set([
   'contains',
   'patternProperties'
 ]);
+
+const ASSIGNMENT_REASON_CODES = Object.freeze([
+  'customer_request',
+  'specialist_required',
+  'policy_required',
+  'automation_rule',
+  'repeated_failure'
+]);
+
+const assignmentCapabilityConfigSchema = Object.freeze({
+  type: 'object',
+  additionalProperties: false,
+  required: ['allowedTargets', 'allowUnassignedHuman', 'teamStrategies', 'handoffMessage'],
+  properties: {
+    allowedTargets: {
+      type: 'array',
+      items: { type: 'string', minLength: 1, maxLength: 200 },
+      maxItems: 100,
+      uniqueItems: true
+    },
+    allowUnassignedHuman: { type: 'boolean' },
+    teamStrategies: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        'team:agents': { type: 'string', enum: ['least_open', 'round_robin'] },
+        'team:admins': { type: 'string', enum: ['least_open', 'round_robin'] },
+        'team:humans': { type: 'string', enum: ['least_open', 'round_robin'] }
+      }
+    },
+    handoffMessage: { type: 'string', minLength: 1, maxLength: 1000 },
+    requiresReview: { type: 'boolean' }
+  }
+});
+
+const closeCapabilityConfigSchema = Object.freeze({
+  type: 'object',
+  additionalProperties: false,
+  properties: {}
+});
 function assertStrictObjectNode(schema) {
   if (
     !schema
@@ -100,4 +140,10 @@ function compileStrictObjectSchema(schema) {
   return ajv.compile(assertStrictObjectSchema(schema));
 }
 
-module.exports = { assertStrictObjectSchema, compileStrictObjectSchema };
+module.exports = {
+  ASSIGNMENT_REASON_CODES,
+  assignmentCapabilityConfigSchema,
+  closeCapabilityConfigSchema,
+  assertStrictObjectSchema,
+  compileStrictObjectSchema
+};
