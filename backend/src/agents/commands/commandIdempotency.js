@@ -1,6 +1,7 @@
 const { createHash } = require('crypto');
 
 const SECRET_KEY_PATTERN = /(authorization|bearer|cookie|session|password|secret|access.?token|refresh.?token|id.?token|api.?key|private.?key|credential)/i;
+const PROTOTYPE_POLLUTION_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 
 function commandArgumentError(code, message, path) {
   return Object.assign(new Error(message), { code, path });
@@ -18,6 +19,9 @@ function canonicalize(value, path) {
   const normalized = {};
   for (const key of Object.keys(value).sort()) {
     const keyPath = `${path}.${key}`;
+    if (PROTOTYPE_POLLUTION_KEYS.has(key)) {
+      throw commandArgumentError('INVALID_COMMAND_ARGUMENTS', `Unsupported command argument key at ${keyPath}`, keyPath);
+    }
     if (SECRET_KEY_PATTERN.test(key.replace(/[^a-z0-9]/gi, ''))) {
       throw commandArgumentError('SECRET_ARGUMENT_KEY', `Secret-bearing command argument key at ${keyPath}`, keyPath);
     }

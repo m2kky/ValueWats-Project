@@ -2,7 +2,7 @@ const {
   canonicalizeCommandArguments,
   createCommandIdempotencyKey
 } = require('../commands/commandIdempotency');
-const { sanitizeError } = require('../../logging/redaction');
+const { sanitizeCommandError } = require('../commands/commandSanitizer');
 
 const TRANSITIONS = {
   authorized: ['proposed'],
@@ -43,9 +43,11 @@ function createAgentCommandRepository(prisma, {
   }
 
   async function transition({ tenantId, commandId, to, result, error, expectedAttempt }) {
-    const from = TRANSITIONS[to];
+    const deniedRunningAttempt = to === 'denied' && Number.isInteger(expectedAttempt);
+    const from = deniedRunningAttempt ? [...TRANSITIONS.denied, 'running'] : TRANSITIONS[to];
     if (!from) throw Object.assign(new Error(`Unsupported command status: ${to}`), { code: 'INVALID_COMMAND_STATUS' });
-    const requiresAttempt = ['succeeded', 'failed', 'outcome_unknown'].includes(to);
+    const requiresAttempt = ['succeeded', 'failed', 'outcome_unknown'].includes(to)
+      || deniedRunningAttempt;
     if (requiresAttempt && !Number.isInteger(expectedAttempt)) {
       throw Object.assign(
         new Error(`Command attempt is required for status: ${to}`),
@@ -57,7 +59,7 @@ function createAgentCommandRepository(prisma, {
     const data = { status: to };
     if (result !== undefined) data.result = result;
     if (error) {
-      const sanitized = sanitizeError(error);
+      const sanitized = sanitizeCommandError(error);
       data.errorCode = sanitized.code;
       data.errorMessage = sanitized.message;
     }
@@ -133,7 +135,7 @@ function createAgentCommandRepository(prisma, {
 
     transition,
 
-    async claimTerminalSlot({ tenantId, commandId }) {
+    async claimTerminalSlot({ tenantId, commandId, conflictError }) {
       const current = await getForTenant(tenantId, commandId);
       if (current.terminalSlot === true) return { claimed: true, command: current };
       if (current.status !== 'authorized') return { claimed: false, command: current };
@@ -155,7 +157,15 @@ function createAgentCommandRepository(prisma, {
         if (error?.code !== 'P2002') throw error;
       }
 
-      const conflicted = await transition({ tenantId, commandId, to: 'conflict' });
+      const latest = await getForTenant(tenantId, commandId);
+      if (latest.terminalSlot === true) return { claimed: true, command: latest };
+
+      const conflicted = await transition({
+        tenantId,
+        commandId,
+        to: 'conflict',
+        error: conflictError
+      });
       return { claimed: false, command: conflicted.command };
     }
   };

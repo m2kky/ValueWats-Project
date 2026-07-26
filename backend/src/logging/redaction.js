@@ -48,4 +48,10 @@ function sanitizeError(error) {
   return { code, message };
 }
 
-module.exports = { REDACTED, redactForLog, sanitizeError };
+module.exports = {
+  REDACTED,
+  isSensitiveKey,
+  redactForLog,
+  redactString,
+  sanitizeError
+};
