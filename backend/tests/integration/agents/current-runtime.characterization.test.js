@@ -23,6 +23,14 @@ const database = () => createMockPrisma({
   contactLabel: { findUnique: fn(), upsert: fn() }, contactLabelAssignment: { upsert: fn(), deleteMany: fn() }, lifecycleStage: { findFirst: fn() },
   contactNote: { create: fn() }
 });
+const ownershipGateway = () => ({
+  assignAi: fn(),
+  assignHuman: fn(),
+  assignConfiguredTarget: fn(),
+  ensureDefaultOwner: fn(),
+  unassign: fn(),
+  close: fn()
+});
 
 afterEach(() => { vi.clearAllMocks(); resetFactories(); });
 
@@ -68,6 +76,7 @@ describe('agent behavior with injected dependencies', () => {
     modelGateway,
     toolService: { getToolDefinitions: () => [], execute: fn() },
     knowledgeService: { searchKnowledge: fn().mockResolvedValue([]) },
+    ownershipGateway: ownershipGateway(),
     clock
   });
 
@@ -77,21 +86,25 @@ describe('agent behavior with injected dependencies', () => {
   });
 
   it('selects the default agent by priority, assigns it, and records a session', async () => {
-    const prisma = database(); const selected = agent({ id: 'agent-high' }); prisma.aIAgent.findFirst.mockResolvedValue(selected);
-    const service = createAgentService({ prisma, clock });
+    const prisma = database(); const selected = agent({ id: 'agent-high' }); const gateway = ownershipGateway(); prisma.aIAgent.findFirst.mockResolvedValue(selected);
+    const service = createAgentService({ prisma, ownershipGateway: gateway, clock });
     await expect(service.assignDefaultAgent('conversation-1', 'tenant-1')).resolves.toBe(selected);
     expect(prisma.aIAgent.findFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ tenantId: 'tenant-1', isActive: true, isPublished: true, deletedAt: null }),
       orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }]
     }));
-    expect(prisma.conversation.update).toHaveBeenCalledWith({ where: { id: 'conversation-1' }, data: { currentAgentId: 'agent-high' } });
-    expect(prisma.conversationAgent.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ agentId: 'agent-high' }) }));
+    expect(gateway.ensureDefaultOwner).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      conversationId: 'conversation-1',
+      targetAgentId: 'agent-high'
+    }));
   });
 
   it('manual assignment to another AI agent updates state and rotates sessions', async () => {
     const prisma = database();
-    prisma.aIAgent.findFirst.mockResolvedValue({ id: 'agent-target', name: 'Escalation bot' });
-    const service = createAgentService({ prisma, clock });
+    const gateway = ownershipGateway();
+    gateway.assignConfiguredTarget.mockResolvedValue({ resolvedTarget: { kind: 'ai', id: 'agent-target' } });
+    const service = createAgentService({ prisma, ownershipGateway: gateway, clock });
 
     await expect(service.assignConversationTarget({
       tenantId: 'tenant-1',
@@ -101,24 +114,17 @@ describe('agent behavior with injected dependencies', () => {
       targetRaw: '@agent:agent-target'
     })).resolves.toEqual({ assigned: true, targetType: 'agent' });
 
-    expect(prisma.aIAgent.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'agent-target', tenantId: 'tenant-1', isActive: true, isPublished: true, deletedAt: null }
+    expect(gateway.assignConfiguredTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      target: 'agent:agent-target'
     }));
-    expect(prisma.conversationAgent.updateMany).toHaveBeenCalledWith({
-      where: { conversationId: 'conversation-1', endedAt: null },
-      data: { endedAt: clock(), handoffReason: 'user_reassigned' }
-    });
-    expect(prisma.conversation.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'conversation-1' },
-      data: expect.objectContaining({ currentAgentId: 'agent-target', assignedUserId: null, escalated: false, aiEnabled: true })
-    }));
-    expect(prisma.conversationAgent.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ agentId: 'agent-target' }) }));
   });
 
   it('manual assignment to a human disables AI and ends the active agent session', async () => {
     const prisma = database();
-    prisma.user.findFirst.mockResolvedValue({ id: 'user-1', name: 'Ava', email: 'ava@example.com', role: 'agent' });
-    const service = createAgentService({ prisma, clock });
+    const gateway = ownershipGateway();
+    gateway.assignConfiguredTarget.mockResolvedValue({ resolvedTarget: { kind: 'human', id: 'user-1' } });
+    const service = createAgentService({ prisma, ownershipGateway: gateway, clock });
 
     await expect(service.assignConversationTarget({
       tenantId: 'tenant-1',
@@ -128,23 +134,17 @@ describe('agent behavior with injected dependencies', () => {
       targetRaw: '@user:user-1'
     })).resolves.toEqual({ assigned: true, targetType: 'user' });
 
-    expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'user-1', tenantId: 'tenant-1', isActive: true }
-    }));
-    expect(prisma.conversationAgent.updateMany).toHaveBeenCalledWith({
-      where: { conversationId: 'conversation-1', endedAt: null },
-      data: { endedAt: clock(), handoffReason: 'human_takeover' }
-    });
-    expect(prisma.conversation.update).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ currentAgentId: null, assignedUserId: 'user-1', escalated: true, aiEnabled: false })
+    expect(gateway.assignConfiguredTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      target: 'user:user-1'
     }));
   });
 
-  it('legacy name lookup only considers active human users', async () => {
+  it('rejects legacy partial-name assignment without a lookup', async () => {
     const prisma = database();
     prisma.user.findFirst.mockResolvedValue(null);
     prisma.aIAgent.findFirst.mockResolvedValue(null);
-    const service = createAgentService({ prisma, clock });
+    const service = createAgentService({ prisma, ownershipGateway: ownershipGateway(), clock });
 
     await expect(service.assignConversationTarget({
       tenantId: 'tenant-1',
@@ -154,15 +154,15 @@ describe('agent behavior with injected dependencies', () => {
       targetRaw: 'Ava'
     })).resolves.toEqual({ assigned: false, targetType: 'unknown' });
 
-    expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ tenantId: 'tenant-1', isActive: true })
-    }));
+    expect(prisma.user.findFirst).not.toHaveBeenCalled();
+    expect(prisma.aIAgent.findFirst).not.toHaveBeenCalled();
   });
 
   it('legacy team lookup excludes inactive users from assignment targets', async () => {
     const prisma = database();
-    prisma.user.findMany.mockResolvedValue([]);
-    const service = createAgentService({ prisma, clock });
+    const gateway = ownershipGateway();
+    gateway.assignConfiguredTarget.mockRejectedValue(Object.assign(new Error('disabled'), { code: 'CAPABILITY_DISABLED' }));
+    const service = createAgentService({ prisma, ownershipGateway: gateway, clock });
 
     await expect(service.assignConversationTarget({
       tenantId: 'tenant-1',
@@ -172,18 +172,14 @@ describe('agent behavior with injected dependencies', () => {
       targetRaw: '@team:humans'
     })).resolves.toEqual({ assigned: false, targetType: 'team' });
 
-    expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        tenantId: 'tenant-1',
-        isActive: true,
-        role: { in: ['agent', 'admin'] }
-      })
+    expect(gateway.assignConfiguredTarget).toHaveBeenCalledWith(expect.objectContaining({
+      target: 'team:humans'
     }));
   });
 
   it('does not run inactive, unpublished, or soft-deleted assigned agents', async () => {
     const prisma = database();
-    prisma.conversation.findUnique.mockResolvedValue({
+    prisma.conversation.findFirst.mockResolvedValue({
       ...conversation(),
       currentAgent: agent({ isActive: true, isPublished: false, deletedAt: null })
     });
@@ -192,24 +188,30 @@ describe('agent behavior with injected dependencies', () => {
     await expect(service.processMessage({ conversationId: 'conversation-1', message: 'hello', tenantId: 'tenant-1' })).resolves.toBeNull();
   });
 
-  it('routes keyword matches before applying legacy close and assignment actions', async () => {
+  it('treats a successful route as terminal before legacy actions', async () => {
     const prisma = database(); const source = agent({ id: 'source' }); const target = agent({ id: 'target' }); const item = conversation({ id: 'c1', currentAgentId: source.id });
     prisma.agentRoutingRule.findMany.mockResolvedValue([{ triggerType: 'keywords', keywords: ['sales'], toAgentId: target.id, priority: 1 }]);
-    const service = createAgentService({ prisma, clock }); service.assignConversationTarget = vi.fn().mockResolvedValue({ assigned: true, targetType: 'agent' });
-    await service.checkRoutingRules(item, source, 'sales please');
-    await service.executeActions(source, item, 'sales please', '[ACTION: CLOSE_CONVERSATION][ACTION: ASSIGN: @agent:target]');
-    expect(prisma.conversation.update).toHaveBeenCalledWith(expect.objectContaining({ data: { currentAgentId: target.id } }));
-    expect(prisma.conversation.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'closed', currentAgentId: null } }));
-    expect(service.assignConversationTarget).toHaveBeenCalledWith(expect.objectContaining({ targetRaw: '@agent:target' }));
+    const gateway = ownershipGateway();
+    gateway.assignConfiguredTarget.mockResolvedValue({ resolvedTarget: { kind: 'ai', id: target.id } });
+    const service = createAgentService({ prisma, ownershipGateway: gateway, clock });
+    await expect(service.checkRoutingRules(item, source, 'sales please')).resolves.toBe(true);
+    expect(gateway.assignConfiguredTarget).toHaveBeenCalledOnce();
+    expect(gateway.close).not.toHaveBeenCalled();
   });
 
   it('closes a conversation when the close action tag is present', async () => {
     const prisma = database();
-    const service = createAgentService({ prisma, clock });
+    const gateway = ownershipGateway();
+    const service = createAgentService({ prisma, ownershipGateway: gateway, clock });
 
-    await service.executeActions(agent(), conversation({ id: 'conversation-1' }), 'bye', 'Done [ACTION: CLOSE_CONVERSATION]');
+    await expect(
+      service.executeActions(agent(), conversation({ id: 'conversation-1' }), 'bye', 'Done [ACTION: CLOSE_CONVERSATION]')
+    ).resolves.toEqual({ terminal: true, type: 'close_conversation' });
 
-    expect(prisma.conversation.update).toHaveBeenCalledWith({ where: { id: 'conversation-1' }, data: { status: 'closed', currentAgentId: null } });
+    expect(gateway.close).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 'conversation-1',
+      reasonCode: 'agent_close'
+    }));
   });
 
   it('returns the out-of-hours message without calling the model gateway', async () => {
@@ -223,7 +225,7 @@ describe('agent behavior with injected dependencies', () => {
       knowledgeSources: [],
       actions: []
     });
-    prisma.conversation.findUnique.mockResolvedValue({ ...conversation(), currentAgent: configured });
+    prisma.conversation.findFirst.mockResolvedValue({ ...conversation(), currentAgent: configured });
     const service = createAgentService(testDeps(prisma, modelGateway));
 
     await expect(service.processMessage({ conversationId: 'conversation-1', message: 'hello', tenantId: 'tenant-1' })).resolves.toMatchObject({ response: 'Closed now.' });
@@ -233,7 +235,7 @@ describe('agent behavior with injected dependencies', () => {
   it('honors working hours, loads history, and normalizes the legacy default model', async () => {
     const prisma = database(); const modelGateway = new FakeModelGateway({ content: 'reply' }); const item = conversation({ id: 'c1' });
     const configured = agent({ isPublished: true, aiModel: 'deepseek-chat', workingHoursEnabled: true, workingHours: { monday: { enabled: true, start: '00:00', end: '23:59' } }, knowledgeSources: [], actions: [] });
-    prisma.conversation.findUnique.mockResolvedValue({ ...item, currentAgent: configured }); prisma.chatMessage.findMany.mockResolvedValue([{ direction: 'incoming', content: 'earlier' }]); prisma.agentRoutingRule.findMany.mockResolvedValue([]); prisma.conversationAgent.findFirst.mockResolvedValue(null);
+    prisma.conversation.findFirst.mockResolvedValue({ ...item, currentAgent: configured }); prisma.chatMessage.findMany.mockResolvedValue([{ direction: 'incoming', content: 'earlier' }]); prisma.agentRoutingRule.findMany.mockResolvedValue([]); prisma.conversationAgent.findFirst.mockResolvedValue(null);
     const service = createAgentService(testDeps(prisma, modelGateway));
     await expect(service.processMessage({ conversationId: item.id, message: 'hello', tenantId: 'tenant-1' })).resolves.toMatchObject({ response: 'reply' });
     expect(prisma.chatMessage.findMany).toHaveBeenCalled();
@@ -243,7 +245,7 @@ describe('agent behavior with injected dependencies', () => {
   it('passes a configured provider model through the injected model gateway', async () => {
     const prisma = database(); const modelGateway = new FakeModelGateway({ content: 'reply' });
     const configured = agent({ isPublished: true, aiProvider: 'openrouter', aiModel: 'anthropic/claude-sonnet-4', knowledgeSources: [], actions: [] });
-    prisma.conversation.findUnique.mockResolvedValue({ ...conversation(), currentAgent: configured });
+    prisma.conversation.findFirst.mockResolvedValue({ ...conversation(), currentAgent: configured });
     prisma.chatMessage.findMany.mockResolvedValue([]);
     prisma.agentRoutingRule.findMany.mockResolvedValue([]);
     prisma.conversationAgent.findFirst.mockResolvedValue(null);
@@ -255,7 +257,7 @@ describe('agent behavior with injected dependencies', () => {
   });
 
   it.fails('does not load history when useHistory is disabled', async () => {
-    const prisma = database(); const configured = agent({ isPublished: true, useHistory: false, knowledgeSources: [], actions: [] }); prisma.conversation.findUnique.mockResolvedValue({ ...conversation(), currentAgent: configured }); prisma.chatMessage.findMany.mockResolvedValue([]); prisma.agentRoutingRule.findMany.mockResolvedValue([]); prisma.conversationAgent.findFirst.mockResolvedValue(null);
+    const prisma = database(); const configured = agent({ isPublished: true, useHistory: false, knowledgeSources: [], actions: [] }); prisma.conversation.findFirst.mockResolvedValue({ ...conversation(), currentAgent: configured }); prisma.chatMessage.findMany.mockResolvedValue([]); prisma.agentRoutingRule.findMany.mockResolvedValue([]); prisma.conversationAgent.findFirst.mockResolvedValue(null);
     const service = createAgentService(testDeps(prisma));
     await service.processMessage({ conversationId: 'c1', message: 'hello', tenantId: 'tenant-1' });
     expect(prisma.chatMessage.findMany).not.toHaveBeenCalled();
@@ -297,7 +299,7 @@ describe('adjacent runtime behavior', () => {
     prisma.conversation.count.mockResolvedValue(0);
     prisma.aIAgent.updateMany.mockResolvedValue({ count: 1 });
     prisma.aIAgent.findUnique.mockResolvedValue(deletedAgent);
-    prisma.$transaction = vi.fn(async (callback) => callback(prisma));
+    prisma.$transaction = vi.fn(async (callback) => callback({ ...prisma, $transaction: undefined }));
     setCommonJsMock('../../../src/config/database', prisma);
     setCommonJsMock('../../../src/middleware/tenantContext', (req, res, next) => { req.user = { tenantId: 'tenant-1', role: 'admin' }; next(); });
     setCommonJsMock('../../../src/middleware/checkPermission', () => (req, res, next) => next());

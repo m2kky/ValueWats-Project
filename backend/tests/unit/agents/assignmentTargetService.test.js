@@ -204,9 +204,9 @@ describe('assignment target resolution', () => {
       { id: 'user-b' }
     ]);
     prisma.conversation.groupBy.mockResolvedValue([
-      { assignedUserId: 'user-c', _max: { updatedAt: new Date('2026-01-03') } },
-      { assignedUserId: 'user-a', _max: { updatedAt: new Date('2026-01-01') } },
-      { assignedUserId: 'user-b', _max: { updatedAt: new Date('2026-01-01') } }
+      { assignedUserId: 'user-c', _max: { assignmentChangedAt: new Date('2026-01-03') } },
+      { assignedUserId: 'user-a', _max: { assignmentChangedAt: new Date('2026-01-01') } },
+      { assignedUserId: 'user-b', _max: { assignmentChangedAt: new Date('2026-01-01') } }
     ]);
 
     await expect(createAssignmentTargetService(prisma).resolve({

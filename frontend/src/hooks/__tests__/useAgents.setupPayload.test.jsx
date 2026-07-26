@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import useAgents, { buildAgentSetupPayload } from '../useAgents';
+import useAgents, { buildAgentSetupPayload, buildTerminalCapabilities } from '../useAgents';
 import api from '../../api/client';
 
 vi.mock('../../api/client', () => ({
@@ -81,6 +81,35 @@ describe('agent setup payload compatibility', () => {
     expect(payload).not.toHaveProperty('actionConfig');
   });
 
+  it('builds structured terminal capabilities from the legacy editor shape', () => {
+    expect(buildTerminalCapabilities({
+      actionConfig: {
+        assignAgent: {
+          enabled: true,
+          instructions: 'Transfer specialists.',
+          allowedTargets: ['team:agents'],
+          allowUnassignedHuman: true,
+          teamStrategies: { 'team:agents': 'least_open' },
+          handoffMessage: 'Transferring now.'
+        },
+        closeConversation: { enabled: true, instructions: 'Close resolved chats.' }
+      }
+    })).toEqual({
+      assignConversation: {
+        enabled: true,
+        instructions: 'Transfer specialists.',
+        allowedTargets: ['team:agents'],
+        allowUnassignedHuman: true,
+        teamStrategies: { 'team:agents': 'least_open' },
+        handoffMessage: 'Transferring now.'
+      },
+      closeConversation: {
+        enabled: true,
+        instructions: 'Close resolved chats.'
+      }
+    });
+  });
+
   it('sends expectedConfigVersion on update, toggle, and delete requests without raw actionConfig', async () => {
     api.put.mockResolvedValue({ data: { ...loadedAgent, configVersion: 8 } });
     api.delete.mockResolvedValue({ data: { success: true } });
@@ -97,6 +126,12 @@ describe('agent setup payload compatibility', () => {
     expect(api.put.mock.calls[0][1]).not.toHaveProperty('tenantId');
     expect(api.put.mock.calls[0][1]).not.toHaveProperty('createdAt');
     expect(api.put.mock.calls[0][1]).not.toHaveProperty('actionConfig');
+    expect(api.put).toHaveBeenNthCalledWith(2, '/agents/agent-1/terminal-capabilities', {
+      expectedConfigVersion: 8,
+      capabilities: expect.objectContaining({
+        closeConversation: { enabled: true, instructions: 'done' }
+      })
+    });
 
     await act(async () => {
       await result.current.toggleAgent({ id: 'agent-1', isActive: true, configVersion: 8 });

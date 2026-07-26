@@ -2,6 +2,16 @@ const chatService = require('../services/chat.service');
 const socketService = require('../services/socketService');
 const storageService = require('../services/storageService');
 const prisma = require('../config/database');
+const {
+  conversationOwnershipGateway
+} = require('../conversations/conversationOwnershipGateway');
+
+function ownershipHttpStatus(error) {
+  if (error?.code === 'TENANT_MISMATCH') return 404;
+  if (['OWNERSHIP_STALE', 'CONVERSATION_CLOSED'].includes(error?.code)) return 409;
+  if (['TARGET_INELIGIBLE', 'SOURCE_TARGET_DENIED', 'ASSIGNMENT_TYPE_INVALID'].includes(error?.code)) return 400;
+  return 500;
+}
 
 // GET /api/chat/conversations
 const getConversations = async (req, res) => {
@@ -157,12 +167,16 @@ module.exports = {
       if (assignmentData.type === 'me') {
         assignmentData.userId = req.user.id;
       }
+      assignmentData.actorUserId = req.user.id;
 
       const updated = await chatService.updateAssignment(tenantId, id, assignmentData);
       res.json({ success: true, conversation: updated });
     } catch (error) {
       console.error('Assign conversation error:', error);
-      res.status(500).json({ error: 'Failed to assign conversation' });
+      res.status(ownershipHttpStatus(error)).json({
+        error: error.message || 'Failed to assign conversation',
+        code: error.code
+      });
     }
   },
 
@@ -178,9 +192,21 @@ module.exports = {
         return res.status(400).json({ error: 'Invalid status. Use: open, closed, pending' });
       }
 
+      if (status === 'closed') {
+        await conversationOwnershipGateway.close({
+          tenantId,
+          conversationId: id,
+          actorUserId: req.user.id,
+          reasonCode: 'manual_close',
+          reason: 'Conversation manually closed'
+        });
+      }
+
       const conversation = await prisma.conversation.updateMany({
         where: { id, tenantId },
-        data: { status, ...(status === 'closed' ? { unreadCount: 0 } : {}) }
+        data: status === 'closed'
+          ? { unreadCount: 0 }
+          : { status }
       });
 
       if (conversation.count === 0) {
@@ -195,7 +221,10 @@ module.exports = {
       res.json({ success: true, conversation: updated });
     } catch (error) {
       console.error('Update conversation status error:', error);
-      res.status(500).json({ error: 'Failed to update conversation status' });
+      res.status(ownershipHttpStatus(error)).json({
+        error: error.message || 'Failed to update conversation status',
+        code: error.code
+      });
     }
   },
 

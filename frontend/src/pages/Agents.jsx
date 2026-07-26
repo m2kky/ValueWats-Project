@@ -47,7 +47,14 @@ const defaultForm = {
   aiModel: 'deepseek-chat',
   actionConfig: {
     closeConversation: { enabled: false, instructions: '' },
-    assignAgent: { enabled: false, instructions: '' },
+    assignAgent: {
+      enabled: false,
+      instructions: '',
+      allowedTargets: [],
+      allowUnassignedHuman: false,
+      teamStrategies: {},
+      handoffMessage: 'I am transferring this conversation to the right specialist.',
+    },
     updateLifecycle: { enabled: false, instructions: '', stageId: null },
     updateFields: { enabled: false, instructions: '' },
     updateTags: { enabled: true, instructions: '', type: 'add' },
@@ -113,6 +120,19 @@ export default function Agents() {
   const [availableVariables, setAvailableVariables] = useState([]);
   const [availableIntegrations, setAvailableIntegrations] = useState([]);
   const mentionTargets = [...availableAgents, ...availableAiAgents, ...availableTeams];
+
+  useEffect(() => {
+    setAvailableAiAgents(
+      agents
+        .filter((agent) => agent.id !== editingId && agent.isActive && agent.isPublished && !agent.deletedAt)
+        .map((agent) => ({
+          label: agent.name,
+          value: `@agent:${agent.id}`,
+          subtitle: 'AI agent',
+          group: 'ai',
+        }))
+    );
+  }, [agents, editingId]);
 
   useEffect(() => {
     fetchAgents();
@@ -214,7 +234,15 @@ export default function Agents() {
         workingHoursEnabled: full.workingHoursEnabled ?? false, workingHours: full.workingHours, outOfHoursMessage: full.outOfHoursMessage || '',
         isActive: full.isActive ?? true, priority: full.priority ?? 0, isPublished: full.isPublished ?? false,
         aiModel: full.aiModel || full.model || 'deepseek-chat',
-        actionConfig: { ...defaultForm.actionConfig, ...(full.actionConfig || {}) },
+        actionConfig: {
+          ...defaultForm.actionConfig,
+          ...(full.actionConfig || {}),
+          assignAgent: {
+            ...defaultForm.actionConfig.assignAgent,
+            ...(full.actionConfig?.assignAgent || {}),
+            ...(full.actionConfig?.assignAgent?.config || {}),
+          },
+        },
       });
       setEditingId(full.id);
       setChatMessages([]);

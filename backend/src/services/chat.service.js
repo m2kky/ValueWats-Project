@@ -1,6 +1,9 @@
 const prisma = require('../config/database');
 const evolutionApi = require('./evolutionApi');
 const metaApi = require('./metaApi');
+const {
+  conversationOwnershipGateway
+} = require('../conversations/conversationOwnershipGateway');
 
 class ChatService {
   /**
@@ -271,62 +274,42 @@ class ChatService {
    */
   async updateAssignment(tenantId, conversationId, assignmentData) {
     const { type, agentId, userId } = assignmentData; // type: 'agent', 'user', 'me', 'unassign'
-
-    let updateData = {};
+    const common = {
+      tenantId,
+      conversationId,
+      actorUserId: assignmentData.actorUserId || null,
+      reasonCode: 'manual_assignment'
+    };
     if (type === 'agent') {
-      updateData = {
-        currentAgentId: agentId,
-        assignedUserId: null,
-        escalated: false,
-        aiEnabled: true
-      };
-
-      // End any other agent session
-      await prisma.conversationAgent.updateMany({
-        where: { conversationId, endedAt: null },
-        data: { endedAt: new Date(), handoffReason: 'user_reassigned' }
-      });
-
-      // Start new agent session
-      await prisma.conversationAgent.create({
-        data: {
-          conversationId,
-          agentId,
-          startedAt: new Date()
-        }
+      await conversationOwnershipGateway.assignAi({
+        ...common,
+        targetAgentId: agentId,
+        reason: 'Conversation manually assigned to AI agent'
       });
     } else if (type === 'user' || type === 'me') {
-      updateData = {
-        currentAgentId: null,
-        assignedUserId: userId,
-        escalated: true,
-        aiEnabled: false
-      };
-
-      // End AI sessions if taken over by human
-      await prisma.conversationAgent.updateMany({
-        where: { conversationId, endedAt: null },
-        data: { endedAt: new Date(), handoffReason: 'human_takeover' }
+      await conversationOwnershipGateway.assignHuman({
+        ...common,
+        targetUserId: userId,
+        reason: 'Conversation manually assigned to human'
       });
     } else if (type === 'unassign') {
-      updateData = {
-        currentAgentId: null,
-        assignedUserId: null,
-        escalated: false,
-        aiEnabled: true
-      };
+      await conversationOwnershipGateway.unassign({
+        ...common,
+        reason: 'Conversation manually unassigned'
+      });
+    } else {
+      const error = new Error('Unsupported assignment type');
+      error.code = 'ASSIGNMENT_TYPE_INVALID';
+      throw error;
     }
 
-    const conversation = await prisma.conversation.update({
-      where: { id: conversationId },
-      data: updateData,
+    return prisma.conversation.findFirst({
+      where: { id: conversationId, tenantId },
       include: {
         lifecycleStage: true,
         assignedUser: { select: { id: true, email: true } }
       }
     });
-
-    return conversation;
   }
 
   /**

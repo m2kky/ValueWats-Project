@@ -113,10 +113,10 @@ function createAssignmentTargetService(prisma) {
         tenantId,
         assignedUserId: { in: userIds }
       },
-      _max: { updatedAt: true }
+      _max: { assignmentChangedAt: true }
     });
     const lastAssignmentByUser = new Map(
-      assignments.map((row) => [row.assignedUserId, row._max?.updatedAt || null])
+      assignments.map((row) => [row.assignedUserId, row._max?.assignmentChangedAt || null])
     );
     users.sort((left, right) => {
       const leftTime = lastAssignmentByUser.get(left.id)?.getTime?.() || 0;

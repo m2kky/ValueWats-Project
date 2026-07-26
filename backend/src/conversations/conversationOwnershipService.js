@@ -142,7 +142,8 @@ function createConversationOwnershipService({ clock = () => new Date() } = {}) {
       },
       data: {
         ...data,
-        assignmentVersion: { increment: 1 }
+        assignmentVersion: { increment: 1 },
+        assignmentChangedAt: clock()
       }
     });
     if (changed.count !== 1) {
@@ -422,6 +423,17 @@ function createConversationOwnershipService({ clock = () => new Date() } = {}) {
       });
       lastAssignmentVersion = result.assignmentVersion;
     }
+    await transaction.conversationAgent.updateMany({
+      where: {
+        agentId: input.agentId,
+        endedAt: null,
+        conversation: { tenantId: input.tenantId }
+      },
+      data: {
+        endedAt: clock(),
+        handoffReason: input.reasonCode || 'agent_drain'
+      }
+    });
     return {
       drained: assignments.length,
       assignmentVersion: lastAssignmentVersion

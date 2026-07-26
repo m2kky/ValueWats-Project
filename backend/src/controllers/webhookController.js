@@ -257,6 +257,7 @@ const handleIncomingMessage = async (req, res) => {
 
     // ====== CHAT INBOX PERSISTENCE ======
     let conversation;
+    let chatMsg;
     try {
       console.log("[Webhook] 💾 Saving to chat inbox...");
 
@@ -331,7 +332,7 @@ const handleIncomingMessage = async (req, res) => {
         }
       }
 
-      const chatMsg = await chatService.saveMessage(conversation.id, {
+      chatMsg = await chatService.saveMessage(conversation.id, {
         instanceId: instance.id,
         fromMe,
         senderNumber: fromMe ? instanceName : contactNumber,
@@ -364,6 +365,10 @@ const handleIncomingMessage = async (req, res) => {
       }
     } catch (chatErr) {
       console.error("[Webhook] ❌ Chat persistence error:", chatErr.message);
+    }
+
+    if (!fromMe && !chatMsg) {
+      return res.status(200).send("OK");
     }
 
     // Ignore outgoing or empty messages for automation processing
@@ -557,6 +562,7 @@ const handleIncomingMessage = async (req, res) => {
           message: text,
           contactNumber,
           tenantId: conversation.tenantId,
+          inboundMessageId: chatMsg.id,
         });
 
         if (aiResult && aiResult.response) {

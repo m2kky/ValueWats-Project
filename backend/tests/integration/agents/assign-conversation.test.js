@@ -126,13 +126,20 @@ describe('atomic assignment command core', () => {
     const outbox = await prisma.outboxEvent.findFirstOrThrow({
       where: { commandId: result.commandId }
     });
-    expect(outbox.payload).toEqual({
+    expect(outbox.payload).toMatchObject({
       providerReference: {
         provider: 'meta',
         instanceId: context.instance.id
-      },
-      pendingMessageId: result.result.handoffMessageId
+      }
     });
+    expect(await prisma.chatMessage.count({
+      where: {
+        id: outbox.payload.pendingMessageId,
+        conversationId: context.conversation.id,
+        direction: 'outgoing',
+        status: 'pending'
+      }
+    })).toBe(1);
     expect(JSON.stringify(outbox.payload)).not.toContain('meta-phone-number-id');
     expect(JSON.stringify(outbox.payload)).not.toContain('meta-access-token');
   });

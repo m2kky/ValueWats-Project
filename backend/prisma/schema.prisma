@@ -386,6 +386,7 @@ model Conversation {
   waitingForWorkflowId String? @map("waiting_workflow_id")
   waitingForVariable   String? @map("waiting_variable")
   assignmentVersion    Int     @default(0) @map("assignment_version")
+  assignmentChangedAt  DateTime @default(now()) @map("assignment_changed_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

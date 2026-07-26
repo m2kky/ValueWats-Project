@@ -287,6 +287,124 @@ export default function AgentEditor({
               variables={availableVariables}
               showTags={true}
             />
+            {form.actionConfig?.assignAgent?.enabled && (
+              <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5 space-y-5">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-3">
+                    Authorized assignment targets
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {mentionTargets.map((target) => {
+                      const value = String(target.value || '').replace(/^@/, '');
+                      const selected = (form.actionConfig.assignAgent.allowedTargets || []).includes(value);
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setForm((current) => {
+                            const assignAgent = current.actionConfig.assignAgent;
+                            const targets = assignAgent.allowedTargets || [];
+                            return {
+                              ...current,
+                              actionConfig: {
+                                ...current.actionConfig,
+                                assignAgent: {
+                                  ...assignAgent,
+                                  allowedTargets: selected
+                                    ? targets.filter((item) => item !== value)
+                                    : [...targets, value],
+                                },
+                              },
+                            };
+                          })}
+                          className={`rounded-xl border px-3 py-2 text-[10px] font-bold transition-colors ${
+                            selected
+                              ? 'border-indigo-400 bg-indigo-500/20 text-white'
+                              : 'border-white/10 bg-black/20 text-zinc-400 hover:text-white'
+                          }`}
+                        >
+                          {target.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {(form.actionConfig.assignAgent.allowedTargets || []).length === 0
+                    && !form.actionConfig.assignAgent.allowUnassignedHuman && (
+                    <p className="mt-3 text-[10px] font-bold text-amber-400">
+                      Assignment remains blocked until at least one target is authorized.
+                    </p>
+                  )}
+                </div>
+
+                <label className="flex items-center gap-3 text-xs font-bold text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={form.actionConfig.assignAgent.allowUnassignedHuman || false}
+                    onChange={(event) => setForm((current) => ({
+                      ...current,
+                      actionConfig: {
+                        ...current.actionConfig,
+                        assignAgent: {
+                          ...current.actionConfig.assignAgent,
+                          allowUnassignedHuman: event.target.checked,
+                        },
+                      },
+                    }))}
+                    className="h-4 w-4 accent-indigo-500"
+                  />
+                  Allow transfer to an unassigned human queue
+                </label>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                    Server-controlled handoff message
+                  </label>
+                  <input
+                    value={form.actionConfig.assignAgent.handoffMessage || ''}
+                    onChange={(event) => setForm((current) => ({
+                      ...current,
+                      actionConfig: {
+                        ...current.actionConfig,
+                        assignAgent: {
+                          ...current.actionConfig.assignAgent,
+                          handoffMessage: event.target.value,
+                        },
+                      },
+                    }))}
+                    maxLength={1000}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/50"
+                  />
+                </div>
+
+                {(form.actionConfig.assignAgent.allowedTargets || [])
+                  .filter((target) => target.startsWith('team:'))
+                  .map((target) => (
+                    <label key={target} className="flex items-center justify-between gap-4 text-xs text-zinc-300">
+                      <span>{target}</span>
+                      <select
+                        value={form.actionConfig.assignAgent.teamStrategies?.[target] || 'round_robin'}
+                        onChange={(event) => setForm((current) => ({
+                          ...current,
+                          actionConfig: {
+                            ...current.actionConfig,
+                            assignAgent: {
+                              ...current.actionConfig.assignAgent,
+                              teamStrategies: {
+                                ...current.actionConfig.assignAgent.teamStrategies,
+                                [target]: event.target.value,
+                              },
+                            },
+                          },
+                        }))}
+                        className="rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-white"
+                      >
+                        <option value="round_robin">Round robin</option>
+                        <option value="least_open">Least open</option>
+                      </select>
+                    </label>
+                  ))}
+              </div>
+            )}
 
             <ActionCard
               title="Update contact information"

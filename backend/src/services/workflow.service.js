@@ -2,6 +2,9 @@ const axios = require('axios');
 const prisma = require('../config/database');
 const chatService = require('./chat.service');
 const integrationService = require('./integration.service');
+const {
+  conversationOwnershipGateway
+} = require('../conversations/conversationOwnershipGateway');
 
 const MAX_STEPS_PER_RUN = 200;
 const MAX_DELAY_SECONDS = 30;
@@ -369,17 +372,19 @@ class WorkflowService {
       const userId = config.userId || null;
       const agentId = config.agentId || null;
       const context = await this.ensureConversationContext(workflow, scope);
-      
-      const updateData = {
-        assignedUserId: type === 'user' ? userId : null,
-        assignedAgentId: type === 'ai_agent' ? agentId : null
+      const updated = await chatService.updateAssignment(
+        workflow.tenantId,
+        context.conversationId,
+        type === 'ai_agent'
+          ? { type: 'agent', agentId }
+          : { type: 'user', userId }
+      );
+      return {
+        result: {
+          currentAgentId: updated.currentAgentId,
+          assignedUserId: updated.assignedUserId
+        }
       };
-
-      await prisma.conversation.update({
-        where: { id: context.conversationId },
-        data: updateData
-      });
-      return { result: updateData };
     }
 
     if (actionType === 'jump_to') {
@@ -426,9 +431,11 @@ class WorkflowService {
       }
 
       if (actionType === 'close_conversation') {
-        await prisma.conversation.update({
-          where: { id: context.conversationId },
-          data: { status: 'closed', resolvedAt: new Date() }
+        await conversationOwnershipGateway.close({
+          tenantId: workflow.tenantId,
+          conversationId: context.conversationId,
+          reasonCode: 'workflow_close',
+          reason: 'Workflow closed the conversation'
         });
       }
       return { result: { commentAdded: !!comment, closed: actionType === 'close_conversation' } };

@@ -161,6 +161,7 @@ const processIncomingMessage = async ({
     });
   }
 
+  if (!chatMsg) return;
   if (!text) return;
 
   const tenant = await prisma.tenant.findUnique({
@@ -222,7 +223,8 @@ const processIncomingMessage = async ({
       conversationId: conversation.id,
       message: text,
       contactNumber,
-      tenantId: instance.tenantId
+      tenantId: instance.tenantId,
+      inboundMessageId: chatMsg.id
     });
 
     if (aiResult?.response) {

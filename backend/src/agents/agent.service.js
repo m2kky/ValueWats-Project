@@ -8,6 +8,9 @@ const lazyDependency = (load) => {
     }
   });
 };
+const {
+  createConversationOwnershipGateway
+} = require('../conversations/conversationOwnershipGateway');
 
 class AgentService {
   constructor({
@@ -16,6 +19,7 @@ class AgentService {
     toolService = lazyDependency(() => require('../services/toolService')),
     knowledgeService = lazyDependency(() => require('../services/knowledgeService')),
     workflowService = lazyDependency(() => require('../services/workflow.service')),
+    ownershipGateway = null,
     clock = () => new Date()
   } = {}) {
     this.prisma = prisma;
@@ -23,16 +27,17 @@ class AgentService {
     this.toolService = toolService;
     this.knowledgeService = knowledgeService;
     this.workflowService = workflowService;
+    this.ownershipGateway = ownershipGateway || createConversationOwnershipGateway({ prisma });
     this.clock = clock;
   }
   /**
    * Process incoming message with AI Agent
    */
-  async processMessage({ conversationId, message, contactNumber, tenantId }) {
+  async processMessage({ conversationId, message, contactNumber, tenantId, inboundMessageId }) {
     try {
       // 1. Get conversation with current agent
-      const conversation = await this.prisma.conversation.findUnique({
-        where: { id: conversationId },
+      const conversation = await this.prisma.conversation.findFirst({
+        where: { id: conversationId, tenantId },
         include: {
           currentAgent: {
             include: {
@@ -162,10 +167,20 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
       const aiResponse = finalContent || '';
 
       // 7. Check for routing triggers
-      await this.checkRoutingRules(conversation, agent, message, aiResponse);
+      const routed = await this.checkRoutingRules(conversation, agent, message, aiResponse);
 
-      // 8. Execute agent actions (legacy tag-based support)
-      await this.executeActions(agent, conversation, message, aiResponse);
+      // 8. A route is terminal; legacy tags cannot overwrite it in the same response.
+      let terminalAction = null;
+      if (!routed) {
+        terminalAction = await this.executeActions(agent, conversation, message, aiResponse);
+      }
+      if (routed || terminalAction?.terminal) {
+        return {
+          response: '',
+          agent,
+          terminalCommand: routed ? 'assign_conversation' : terminalAction.type
+        };
+      }
 
       // 9. Update conversation tracking
       await this.updateConversationTracking(conversationId, agent.id);
@@ -182,8 +197,8 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
       console.error('[AgentService] Error processing message:', error);
 
       // Increment failed attempts
-      await this.prisma.conversation.update({
-        where: { id: conversationId },
+      await this.prisma.conversation.updateMany({
+        where: { id: conversationId, tenantId },
         data: {
           failedAttempts: { increment: 1 },
           escalated: true,
@@ -221,19 +236,12 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
       return null;
     }
 
-    // Assign agent to conversation
-    await this.prisma.conversation.update({
-      where: { id: conversationId },
-      data: { currentAgentId: defaultAgent.id }
-    });
-
-    // Track agent assignment
-    await this.prisma.conversationAgent.create({
-      data: {
-        conversationId: conversationId,
-        agentId: defaultAgent.id,
-        startedAt: this.clock()
-      }
+    await this.ownershipGateway.ensureDefaultOwner({
+      tenantId,
+      conversationId,
+      targetAgentId: defaultAgent.id,
+      reasonCode: 'default_owner',
+      reason: 'Default agent selected'
     });
 
     return defaultAgent;
@@ -280,7 +288,7 @@ ${context.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}`;
       }
 
       if (actions.assignAgent?.enabled) {
-        actionPrompts.push(`- Assign conversation: When ${actions.assignAgent.instructions}, append [ACTION: ASSIGN: <target>]. Supported targets: @agent:<id>, @user:<id>, @team:agents, @team:admins, @team:humans, HUMAN, or a partial name/email.`);
+        actionPrompts.push(`- Assign conversation: When ${actions.assignAgent.instructions}, append [ACTION: ASSIGN: <exact-target>]. Use only an exact configured agent:<id>, user:<id>, team:agents, team:admins, team:humans, or human target.`);
       }
 
       if (actions.updateFields?.enabled) {
@@ -419,55 +427,26 @@ ${actionPrompts.join('\n')}`;
       }
 
       if (shouldRoute) {
-        await this.routeConversation(conversation.id, agent.id, rule);
-        break; // Stop after first matching rule
+        return this.routeConversation(conversation.id, agent.id, rule, conversation.tenantId);
       }
     }
+    return false;
   }
 
   /**
    * Route conversation to another agent/team
    */
-  async routeConversation(conversationId, fromAgentId, rule) {
-    // End current agent session
-    await this.prisma.conversationAgent.updateMany({
-      where: {
-        conversationId: conversationId,
-        agentId: fromAgentId,
-        endedAt: null
-      },
-      data: {
-        endedAt: this.clock(),
-        handoffReason: rule.triggerType
-      }
+  async routeConversation(conversationId, fromAgentId, rule, tenantId) {
+    await this.ownershipGateway.assignConfiguredTarget({
+      tenantId,
+      conversationId,
+      sourceAgentId: fromAgentId,
+      target: rule.toAgentId ? `agent:${rule.toAgentId}` : 'human',
+      actorAgentId: fromAgentId,
+      reasonCode: 'automation_rule',
+      reason: `Routing rule: ${rule.name || rule.triggerType}`
     });
-
-    // Assign new agent
-    if (rule.toAgentId) {
-      await this.prisma.conversation.update({
-        where: { id: conversationId },
-        data: { currentAgentId: rule.toAgentId }
-      });
-
-      await this.prisma.conversationAgent.create({
-        data: {
-          conversationId: conversationId,
-          agentId: rule.toAgentId,
-          startedAt: this.clock()
-        }
-      });
-    } else {
-      // Escalate to human
-      await this.prisma.conversation.update({
-        where: { id: conversationId },
-        data: {
-          currentAgentId: null,
-          escalated: true,
-          escalatedAt: this.clock(),
-          escalationReason: rule.triggerType
-        }
-      });
-    }
+    return true;
   }
 
   /**
@@ -488,11 +467,15 @@ ${actionPrompts.join('\n')}`;
       try {
         // CLOSE CONVERSATION
         if (actionString === 'CLOSE_CONVERSATION') {
-          await this.prisma.conversation.update({
-            where: { id: conversation.id },
-            data: { status: 'closed', currentAgentId: null }
+          await this.ownershipGateway.close({
+            tenantId: agent.tenantId,
+            conversationId: conversation.id,
+            actorAgentId: agent.id,
+            reasonCode: 'agent_close',
+            reason: 'AI agent closed the conversation'
           });
           console.log(`[AgentService] Action: Conversation closed`);
+          return { terminal: true, type: 'close_conversation' };
         }
 
         // ASSIGN AGENT / TEAM
@@ -508,6 +491,7 @@ ${actionPrompts.join('\n')}`;
 
           if (assignment?.assigned) {
             console.log(`[AgentService] Action: Assigned to ${target} (${assignment.targetType})`);
+            return { terminal: true, type: 'assign_conversation' };
           } else {
             console.warn(`[AgentService] Action: Failed to resolve ASSIGN target "${target}"`);
           }
@@ -762,290 +746,60 @@ ${actionPrompts.join('\n')}`;
     const target = String(targetRaw || '').trim();
     if (!target) return { assigned: false, targetType: 'none' };
 
-    const normalized = target.replace(/^@/, '');
-    const normalizedUpper = normalized.toUpperCase();
+    const normalized = target
+      .replace(/^@/, '')
+      .replace(/^human$/i, 'human')
+      .replace(/^escalate$/i, 'human')
+      .replace(/^(agent|user|team):/i, (prefix) => prefix.toLowerCase());
+    if (!/^(agent:[^:\s]+|user:[^:\s]+|team:(agents|admins|humans)|human)$/.test(normalized)) {
+      return { assigned: false, targetType: 'unknown' };
+    }
 
-    if (normalizedUpper === 'HUMAN' || normalizedUpper === 'ESCALATE') {
-      await this.assignToHumanUser({
+    try {
+      const result = await this.ownershipGateway.assignConfiguredTarget({
         tenantId,
         conversationId,
-        contactId,
-        requesterAgentId,
-        userId: null,
-        description: 'AI requested human handoff'
+        sourceAgentId: requesterAgentId,
+        target: normalized,
+        actorAgentId: requesterAgentId,
+        reasonCode: 'specialist_required',
+        reason: 'AI requested an authorized assignment'
       });
-      return { assigned: true, targetType: 'human' };
-    }
-
-    if (/^(USER:|@user:)/i.test(target)) {
-      const userId = target.replace(/^@?user:/i, '').trim();
-      const user = await this.prisma.user.findFirst({
-        where: { id: userId, tenantId, isActive: true },
-        select: { id: true, name: true, email: true, role: true }
-      });
-      if (user) {
-        await this.assignToHumanUser({
-          tenantId,
-          conversationId,
-          contactId,
-          requesterAgentId,
-          userId: user.id,
-          description: `AI assigned conversation to user ${user.email || user.name || user.id}`
-        });
-        return { assigned: true, targetType: 'user' };
+      return {
+        assigned: true,
+        targetType: result.resolvedTarget.kind === 'ai'
+          ? 'agent'
+          : (normalized.startsWith('team:')
+            ? 'team'
+            : (normalized.startsWith('user:') ? 'user' : 'human'))
+      };
+    } catch (error) {
+      if (['CAPABILITY_DISABLED', 'TARGET_INVALID', 'TARGET_INELIGIBLE'].includes(error.code)) {
+        return { assigned: false, targetType: normalized.split(':')[0] };
       }
-      return { assigned: false, targetType: 'user' };
+      throw error;
     }
-
-    if (/^(AGENT:|@agent:)/i.test(target)) {
-      const targetAgentId = target.replace(/^@?agent:/i, '').trim();
-      const targetAgent = await this.prisma.aIAgent.findFirst({
-        where: { id: targetAgentId, tenantId, isActive: true, isPublished: true, deletedAt: null },
-        select: { id: true, name: true }
-      });
-      if (targetAgent) {
-        await this.assignToAiAgent({
-          tenantId,
-          conversationId,
-          contactId,
-          requesterAgentId,
-          targetAgentId: targetAgent.id,
-          description: `AI assigned conversation to agent ${targetAgent.name}`
-        });
-        return { assigned: true, targetType: 'agent' };
-      }
-      return { assigned: false, targetType: 'agent' };
-    }
-
-    if (/^(TEAM:|@team:)/i.test(target)) {
-      const teamPayload = target.replace(/^@?team:/i, '').trim();
-      const { teamName, strategy } = this.parseTeamPayload(teamPayload);
-      const roleFilter = this.resolveTeamRoles(teamName);
-      const selectedUser = await this.selectUserForTeam({
-        tenantId,
-        roleFilter,
-        strategy
-      });
-
-      if (selectedUser) {
-        await this.assignToHumanUser({
-          tenantId,
-          conversationId,
-          contactId,
-          requesterAgentId,
-          userId: selectedUser.id,
-          description: `AI assigned to ${teamName || 'team'} (${strategy}) -> ${selectedUser.email || selectedUser.name || selectedUser.id}`
-        });
-        return { assigned: true, targetType: 'team' };
-      }
-      return { assigned: false, targetType: 'team' };
-    }
-
-    const userByName = await this.prisma.user.findFirst({
-      where: {
-        tenantId,
-        isActive: true,
-        OR: [
-          { id: normalized },
-          { email: { contains: normalized, mode: 'insensitive' } },
-          { name: { contains: normalized, mode: 'insensitive' } }
-        ]
-      },
-      select: { id: true, name: true, email: true, role: true }
-    });
-
-    if (userByName) {
-      await this.assignToHumanUser({
-        tenantId,
-        conversationId,
-        contactId,
-        requesterAgentId,
-        userId: userByName.id,
-        description: `AI assigned conversation to user ${userByName.email || userByName.name || userByName.id}`
-      });
-      return { assigned: true, targetType: 'user' };
-    }
-
-    const agentByName = await this.prisma.aIAgent.findFirst({
-      where: {
-        tenantId,
-        isActive: true,
-        isPublished: true,
-        deletedAt: null,
-        OR: [
-          { id: normalized },
-          { name: { contains: normalized, mode: 'insensitive' } }
-        ]
-      },
-      select: { id: true, name: true }
-    });
-
-    if (agentByName) {
-      await this.assignToAiAgent({
-        tenantId,
-        conversationId,
-        contactId,
-        requesterAgentId,
-        targetAgentId: agentByName.id,
-        description: `AI assigned conversation to agent ${agentByName.name}`
-      });
-      return { assigned: true, targetType: 'agent' };
-    }
-
-    return { assigned: false, targetType: 'unknown' };
-  }
-
-  parseTeamPayload(teamPayload = '') {
-    let payload = String(teamPayload || '').trim();
-    let strategy = 'round_robin';
-    let teamName = payload;
-
-    const separatorMatch = payload.match(/^(.*?)([|#])(.*)$/);
-    if (separatorMatch) {
-      teamName = separatorMatch[1].trim();
-      strategy = separatorMatch[3].trim().toLowerCase();
-      return { teamName, strategy: this.normalizeTeamStrategy(strategy) };
-    }
-
-    const parts = payload.split(':').map((p) => p.trim()).filter(Boolean);
-    if (parts.length > 1) {
-      const maybeStrategy = this.normalizeTeamStrategy(parts[parts.length - 1], false);
-      if (maybeStrategy) {
-        strategy = maybeStrategy;
-        teamName = parts.slice(0, -1).join(':').trim();
-      }
-    }
-
-    return { teamName, strategy: this.normalizeTeamStrategy(strategy) };
-  }
-
-  normalizeTeamStrategy(rawStrategy, fallbackToDefault = true) {
-    const strategy = String(rawStrategy || '').trim().toLowerCase();
-    if (['round_robin', 'least_open', 'least_loaded'].includes(strategy)) return strategy;
-    if (fallbackToDefault) return 'round_robin';
-    return null;
-  }
-
-  resolveTeamRoles(teamName = '') {
-    const team = String(teamName || '').trim().toLowerCase();
-    if (!team || team === 'default') return ['agent', 'admin'];
-    if (team.includes('agent')) return ['agent'];
-    if (team.includes('admin')) return ['admin'];
-    if (team.includes('viewer')) return [];
-    if (team.includes('human') || team.includes('all')) return ['agent', 'admin'];
-    return ['agent', 'admin'];
-  }
-
-  async selectUserForTeam({ tenantId, roleFilter, strategy = 'round_robin' }) {
-    const users = await this.prisma.user.findMany({
-      where: {
-        tenantId,
-        isActive: true,
-        role: { in: roleFilter && roleFilter.length ? roleFilter : ['agent', 'admin'] }
-      },
-      select: { id: true, email: true, name: true, role: true, createdAt: true },
-      orderBy: { createdAt: 'asc' }
-    });
-
-    if (!users.length) return null;
-    if (users.length === 1) return users[0];
-
-    if (strategy === 'least_open' || strategy === 'least_loaded') {
-      const counts = await this.prisma.conversation.groupBy({
-        by: ['assignedUserId'],
-        where: {
-          tenantId,
-          status: { not: 'closed' },
-          assignedUserId: { in: users.map((u) => u.id) }
-        },
-        _count: { _all: true }
-      });
-
-      const countMap = new Map(counts.map((row) => [row.assignedUserId, row._count?._all || 0]));
-      return [...users].sort((a, b) => {
-        const aCount = countMap.get(a.id) || 0;
-        const bCount = countMap.get(b.id) || 0;
-        if (aCount !== bCount) return aCount - bCount;
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      })[0];
-    }
-
-    const latestAssignments = await this.prisma.conversation.groupBy({
-      by: ['assignedUserId'],
-      where: {
-        tenantId,
-        assignedUserId: { in: users.map((u) => u.id) }
-      },
-      _max: { updatedAt: true }
-    });
-
-    const latestMap = new Map(latestAssignments.map((row) => [row.assignedUserId, row._max?.updatedAt || null]));
-    return [...users].sort((a, b) => {
-      const aTime = latestMap.get(a.id) ? new Date(latestMap.get(a.id)).getTime() : 0;
-      const bTime = latestMap.get(b.id) ? new Date(latestMap.get(b.id)).getTime() : 0;
-      if (aTime !== bTime) return aTime - bTime;
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    })[0];
   }
 
   async assignToHumanUser({ tenantId, conversationId, contactId, requesterAgentId, userId, description }) {
-    await this.prisma.conversationAgent.updateMany({
-      where: { conversationId, endedAt: null },
-      data: { endedAt: this.clock(), handoffReason: 'human_takeover' }
-    });
-
-    await this.prisma.conversation.update({
-      where: { id: conversationId },
-      data: {
-        currentAgentId: null,
-        assignedUserId: userId || null,
-        escalated: true,
-        escalationReason: 'Agent requested handoff',
-        aiEnabled: false
-      }
-    });
-
-    await this.logAssignmentActivity({
+    return this.ownershipGateway.assignHuman({
       tenantId,
       conversationId,
-      contactId,
-      requesterAgentId,
-      description: description || 'AI assigned conversation to human'
+      targetUserId: userId || null,
+      actorAgentId: requesterAgentId,
+      reasonCode: 'specialist_required',
+      reason: description || 'AI assigned conversation to human'
     });
   }
 
   async assignToAiAgent({ tenantId, conversationId, contactId, requesterAgentId, targetAgentId, description }) {
-    await this.prisma.conversationAgent.updateMany({
-      where: { conversationId, endedAt: null },
-      data: { endedAt: this.clock(), handoffReason: 'user_reassigned' }
-    });
-
-    await this.prisma.conversation.update({
-      where: { id: conversationId },
-      data: {
-        currentAgentId: targetAgentId,
-        assignedUserId: null,
-        escalated: false,
-        escalatedAt: null,
-        escalationReason: null,
-        aiEnabled: true
-      }
-    });
-
-    await this.prisma.conversationAgent.create({
-      data: {
-        conversationId,
-        agentId: targetAgentId,
-        startedAt: this.clock()
-      }
-    });
-
-    await this.logAssignmentActivity({
+    return this.ownershipGateway.assignAi({
       tenantId,
       conversationId,
-      contactId,
-      requesterAgentId,
-      description: description || 'AI assigned conversation to another AI agent'
+      targetAgentId,
+      actorAgentId: requesterAgentId,
+      reasonCode: 'specialist_required',
+      reason: description || 'AI assigned conversation to another AI agent'
     });
   }
 

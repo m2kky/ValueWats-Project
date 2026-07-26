@@ -1,0 +1,2 @@
+ALTER TABLE "conversations"
+ADD COLUMN "assignment_changed_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

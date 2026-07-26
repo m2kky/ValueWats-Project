@@ -7,6 +7,9 @@ const {
   providerModelSupported
 } = require('./agentSetupSchemas');
 const { buildLegacyActionConfigProjection } = require('./legacyActionConfigProjection');
+const {
+  createConversationOwnershipService
+} = require('../../conversations/conversationOwnershipService');
 
 class AgentSetupError extends Error {
   constructor(status, code, message, details) {
@@ -179,7 +182,22 @@ async function assertNoOpenConversations(tx, tenantId, agentId) {
   }
 }
 
-function createAgentSetupService({ prisma = prismaDefault, clock = () => new Date() } = {}) {
+async function serializableTransaction(prisma, callback) {
+  try {
+    return await prisma.$transaction(callback, { isolationLevel: 'Serializable' });
+  } catch (error) {
+    if (error?.code === 'P2034') {
+      throw new AgentSetupError(409, 'CONFIG_VERSION_CONFLICT', 'Agent config version is stale');
+    }
+    throw error;
+  }
+}
+
+function createAgentSetupService({
+  prisma = prismaDefault,
+  clock = () => new Date(),
+  ownershipService = createConversationOwnershipService({ clock })
+} = {}) {
   return {
     async createAgent({ tenantId, body }) {
       const payload = validateSetupInput(validateCreateAgent, body);
@@ -202,7 +220,7 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
       const updateData = buildUpdateData(payload);
       delete updateData.expectedConfigVersion;
 
-      return prisma.$transaction(async (tx) => {
+      return serializableTransaction(prisma, async (tx) => {
         const existing = await tx.aIAgent.findFirst({
           where: { id: agentId, tenantId, deletedAt: null }
         });
@@ -214,6 +232,12 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
         }
         if ((updateData.isActive === false && existing.isActive) || (updateData.isPublished === false && existing.isPublished)) {
           await assertNoOpenConversations(tx, tenantId, agentId);
+          await ownershipService.drainAgent(tx, {
+            tenantId,
+            agentId,
+            expectedAssignments: [],
+            reasonCode: 'agent_lifecycle'
+          });
         }
         const prismaData = {};
         for (const field of Object.keys(updateData)) {
@@ -248,7 +272,7 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
 
     async deleteAgent({ tenantId, agentId, body }) {
       validatePayload(validateDeleteAgent, body || {});
-      return prisma.$transaction(async (tx) => {
+      return serializableTransaction(prisma, async (tx) => {
         const existing = await tx.aIAgent.findFirst({
           where: { id: agentId, tenantId, deletedAt: null }
         });
@@ -259,6 +283,12 @@ function createAgentSetupService({ prisma = prismaDefault, clock = () => new Dat
           throw new AgentSetupError(409, 'CONFIG_VERSION_CONFLICT', 'Agent config version is stale');
         }
         await assertNoOpenConversations(tx, tenantId, agentId);
+        await ownershipService.drainAgent(tx, {
+          tenantId,
+          agentId,
+          expectedAssignments: [],
+          reasonCode: 'agent_delete'
+        });
         const updateResult = await tx.aIAgent.updateMany({
           where: {
             id: agentId,
