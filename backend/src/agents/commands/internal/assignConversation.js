@@ -3,13 +3,14 @@ const {
   buildAssignmentArgumentSchema
 } = require('./assignmentPolicy');
 
-function createAssignConversationDefinition({ allowedTargets } = {}) {
+function createAssignConversationDefinition({ allowedTargets, requiresReview } = {}) {
   const parameters = Array.isArray(allowedTargets)
     ? buildAssignmentArgumentSchema({
       allowedTargets,
       allowUnassignedHuman: allowedTargets.includes('human'),
       teamStrategies: {},
-      handoffMessage: 'Configured at runtime.'
+      handoffMessage: 'Configured at runtime.',
+      requiresReview
     })
     : {
       type: 'object',
@@ -32,6 +33,7 @@ function createAssignConversationDefinition({ allowedTargets } = {}) {
         reason: { type: 'string', minLength: 1, maxLength: 500 }
       }
     };
+  if (!parameters) return null;
   return Object.freeze({
     type: 'assign_conversation',
     capabilityType: 'assign_conversation',

@@ -3,6 +3,11 @@ const { createCommandRegistry } = require('../../../src/agents/commands/commandR
 const { createCommandExecutor } = require('../../../src/agents/commands/commandExecutor');
 const { CommandError, COMMAND_ERROR_CODES } = require('../../../src/agents/commands/commandErrors');
 const {
+  evaluateCommandPolicy,
+  loadLiveCommandContext,
+  loadPreviewCommandContext
+} = require('../../../src/agents/commands/commandPolicy');
+const {
   createTestDatabase,
   resetDatabase: resetRegisteredDatabase
 } = require('../../helpers/database');
@@ -386,6 +391,91 @@ describe('authorized command executor', () => {
       where: { id: context.conversation.id },
       select: { failedAttempts: true }
     })).toEqual({ failedAttempts: 0 });
+  });
+
+  it('does not load or authorize cross-tenant AgentAction rows in live or preview contexts', async () => {
+    const otherTenant = await prisma.tenant.create({
+      data: {
+        id: 'tenant-command-action-other',
+        name: 'Command Action Other',
+        email: 'command-action-other@example.test'
+      }
+    });
+    const crossTenantAgent = await prisma.aIAgent.create({
+      data: {
+        id: 'agent-command-action-cross',
+        tenantId: otherTenant.id,
+        name: 'Cross Tenant Command Agent',
+        instructions: 'Must not authorize in another tenant.',
+        isActive: true,
+        isPublished: true,
+        configVersion: 1
+      }
+    });
+    await prisma.agentAction.create({
+      data: {
+        agentId: crossTenantAgent.id,
+        key: 'record_effect',
+        type: 'record_effect',
+        config: {},
+        instructions: 'Cross-tenant capability.',
+        isEnabled: true
+      }
+    });
+    const crossTenantRun = await prisma.agentRun.create({
+      data: {
+        id: 'run-command-action-cross',
+        tenantId: context.tenant.id,
+        conversationId: context.conversation.id,
+        inboundMessageId: 'inbound-command-action-cross',
+        sourceAgentId: crossTenantAgent.id,
+        agentConfigVersion: crossTenantAgent.configVersion
+      }
+    });
+    const definition = registry.get('record_effect');
+
+    const liveState = await loadLiveCommandContext({
+      prisma,
+      tenantId: context.tenant.id,
+      runId: crossTenantRun.id,
+      expectedAssignmentVersion: 0,
+      definition
+    });
+    const previewState = await loadPreviewCommandContext({
+      prisma,
+      tenantId: context.tenant.id,
+      sourceAgentId: crossTenantAgent.id,
+      sourceConfigVersion: crossTenantAgent.configVersion,
+      definition,
+      mockContact: {}
+    });
+
+    expect(liveState.capabilityRows).toEqual([]);
+    expect(previewState.capabilityRows).toEqual([]);
+    await expect(evaluateCommandPolicy({
+      prisma,
+      state: liveState,
+      definition,
+      catalog,
+      args: { amount: 1 },
+      executionMode: 'live',
+      createPolicyScope: () => Object.freeze({})
+    })).resolves.toMatchObject({
+      allowed: false,
+      code: COMMAND_ERROR_CODES.CAPABILITY_DISABLED
+    });
+    await expect(evaluateCommandPolicy({
+      prisma,
+      state: previewState,
+      definition,
+      catalog,
+      args: { amount: 1 },
+      executionMode: 'preview',
+      createPolicyScope: () => Object.freeze({})
+    })).resolves.toMatchObject({
+      allowed: false,
+      code: COMMAND_ERROR_CODES.CAPABILITY_DISABLED
+    });
   });
 
   it('executes a duplicated intent once and replays its durable result', async () => {

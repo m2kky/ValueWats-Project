@@ -213,10 +213,25 @@ function createConversationOwnershipService({ clock = () => new Date() } = {}) {
     if (!inbound?.instanceId) {
       throw ownershipError(OWNERSHIP_ERROR_CODES.HANDOFF_CONTEXT_INVALID);
     }
+    const instance = await transaction.instance.findFirst({
+      where: {
+        id: inbound.instanceId,
+        tenantId: input.tenantId
+      },
+      select: {
+        id: true,
+        channelType: true,
+        phoneNumberId: true,
+        accessToken: true
+      }
+    });
+    if (!instance) {
+      throw ownershipError(OWNERSHIP_ERROR_CODES.HANDOFF_CONTEXT_INVALID);
+    }
     const pendingMessage = await transaction.chatMessage.create({
       data: {
         conversationId: input.conversationId,
-        instanceId: inbound.instanceId,
+        instanceId: instance.id,
         direction: 'outgoing',
         channelType: inbound.channelType || conversation.channelType,
         senderNumber: inbound.recipientNumber,
@@ -226,7 +241,14 @@ function createConversationOwnershipService({ clock = () => new Date() } = {}) {
         status: 'pending'
       }
     });
-    const provider = inbound.channelType === 'whatsapp' ? 'evolution' : 'meta';
+    const provider = (
+      ['messenger', 'instagram'].includes(instance.channelType)
+      || (
+        instance.channelType === 'whatsapp'
+        && instance.phoneNumberId
+        && instance.accessToken
+      )
+    ) ? 'meta' : 'evolution';
     const outboxEvent = await createOutboxService(transaction).createOrGet({
       tenantId: input.tenantId,
       commandId: input.commandId,
@@ -238,7 +260,7 @@ function createConversationOwnershipService({ clock = () => new Date() } = {}) {
       payload: {
         providerReference: {
           provider,
-          instanceId: inbound.instanceId
+          instanceId: instance.id
         },
         pendingMessageId: pendingMessage.id
       }

@@ -11,9 +11,13 @@ function denial(code, checks) {
   return { allowed: false, code, checks };
 }
 
-async function loadCapability(prisma, sourceAgentId, capabilityType) {
+async function loadCapability(prisma, tenantId, sourceAgentId, capabilityType) {
   return prisma.agentAction.findMany({
-    where: { agentId: sourceAgentId, key: capabilityType },
+    where: {
+      agentId: sourceAgentId,
+      key: capabilityType,
+      agent: { tenantId }
+    },
     select: {
       id: true,
       key: true,
@@ -80,7 +84,7 @@ async function loadLiveCommandContext({
   if (!run) return { errorCode: COMMAND_ERROR_CODES.TENANT_MISMATCH };
 
   const capabilityRows = run.sourceAgentId
-    ? await loadCapability(prisma, run.sourceAgentId, definition.capabilityType)
+    ? await loadCapability(prisma, tenantId, run.sourceAgentId, definition.capabilityType)
     : [];
 
   return {
@@ -118,7 +122,7 @@ async function loadPreviewCommandContext({
         deletedAt: true
       }
     }),
-    loadCapability(prisma, sourceAgentId, definition.capabilityType)
+    loadCapability(prisma, tenantId, sourceAgentId, definition.capabilityType)
   ]);
 
   return {

@@ -2,7 +2,6 @@ const { ASSIGNMENT_REASON_CODES } = require('../../config/capabilitySchemas');
 const { AssignmentTargetError } = require('./assignmentTargetService');
 
 const CAPABILITY_DISABLED = 'CAPABILITY_DISABLED';
-const DEFAULT_ASSIGNMENT_TARGETS = Object.freeze(['team:agents']);
 
 function isValidConfiguredTarget(target) {
   return target === 'human'
@@ -25,6 +24,7 @@ function exposedAssignmentTargets(config) {
 
 function buildAssignmentArgumentSchema(config = {}) {
   const targets = exposedAssignmentTargets(config);
+  if (targets.length === 0) return null;
   return {
     type: 'object',
     additionalProperties: false,
@@ -32,7 +32,7 @@ function buildAssignmentArgumentSchema(config = {}) {
     properties: {
       target: {
         type: 'string',
-        enum: targets.length > 0 ? targets : [...DEFAULT_ASSIGNMENT_TARGETS]
+        enum: targets
       },
       reasonCode: {
         type: 'string',

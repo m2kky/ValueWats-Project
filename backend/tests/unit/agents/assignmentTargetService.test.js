@@ -7,6 +7,9 @@ const {
   buildAssignmentArgumentSchema,
   exposedAssignmentTargets
 } = require('../../../src/agents/commands/internal/assignmentPolicy');
+const {
+  createAssignConversationDefinition
+} = require('../../../src/agents/commands/internal/assignConversation');
 
 function createPrisma(overrides = {}) {
   return {
@@ -19,15 +22,32 @@ function createPrisma(overrides = {}) {
 
 describe('assignment target policy', () => {
   it('exposes no targets for empty or unreviewed configuration', () => {
-    expect(exposedAssignmentTargets({
+    const emptyConfig = {
       allowedTargets: [],
       allowUnassignedHuman: true
-    })).toEqual([]);
-    expect(exposedAssignmentTargets({
+    };
+    const unreviewedConfig = {
       allowedTargets: ['team:agents'],
       allowUnassignedHuman: true,
       requiresReview: true
-    })).toEqual([]);
+    };
+
+    expect(exposedAssignmentTargets(emptyConfig)).toEqual([]);
+    expect(exposedAssignmentTargets(unreviewedConfig)).toEqual([]);
+    expect(buildAssignmentArgumentSchema(emptyConfig)).toBeNull();
+    expect(buildAssignmentArgumentSchema(unreviewedConfig)).toBeNull();
+    expect(createAssignConversationDefinition({ allowedTargets: [] })).toBeNull();
+    expect(createAssignConversationDefinition({
+      allowedTargets: ['team:agents'],
+      requiresReview: true
+    })).toBeNull();
+    expect(createAssignConversationDefinition()).toMatchObject({
+      type: 'assign_conversation',
+      parameters: {
+        type: 'object',
+        additionalProperties: false
+      }
+    });
   });
 
   it('exposes human only when explicitly enabled and builds an exact enum', () => {

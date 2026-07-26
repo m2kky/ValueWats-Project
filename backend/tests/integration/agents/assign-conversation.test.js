@@ -109,6 +109,76 @@ describe('atomic assignment command core', () => {
     }]);
   });
 
+  it('routes Meta-backed WhatsApp handoffs without persisting credentials', async () => {
+    const context = await seedOwnershipContext(prisma);
+    await prisma.instance.update({
+      where: { id: context.instance.id },
+      data: {
+        phoneNumberId: 'meta-phone-number-id',
+        accessToken: 'meta-access-token'
+      }
+    });
+
+    const result = await createOwnershipExecutor(prisma, ['agent:agent-target'])
+      .execute(assignmentInput(context, 'agent:agent-target'));
+
+    expect(result.status).toBe('succeeded');
+    const outbox = await prisma.outboxEvent.findFirstOrThrow({
+      where: { commandId: result.commandId }
+    });
+    expect(outbox.payload).toEqual({
+      providerReference: {
+        provider: 'meta',
+        instanceId: context.instance.id
+      },
+      pendingMessageId: result.result.handoffMessageId
+    });
+    expect(JSON.stringify(outbox.payload)).not.toContain('meta-phone-number-id');
+    expect(JSON.stringify(outbox.payload)).not.toContain('meta-access-token');
+  });
+
+  it('rejects a cross-tenant inbound instance before handoff writes', async () => {
+    const context = await seedOwnershipContext(prisma);
+    const otherTenant = await prisma.tenant.create({
+      data: {
+        id: 'tenant-handoff-other',
+        name: 'Handoff Other',
+        email: 'handoff-other@example.test'
+      }
+    });
+    const crossTenantInstance = await prisma.instance.create({
+      data: {
+        id: 'instance-handoff-cross',
+        tenantId: otherTenant.id,
+        instanceName: 'handoff-cross',
+        phoneNumber: '+15550003999',
+        status: 'connected'
+      }
+    });
+    await prisma.chatMessage.update({
+      where: { id: context.inboundMessage.id },
+      data: { instanceId: crossTenantInstance.id }
+    });
+
+    const result = await createOwnershipExecutor(prisma, ['agent:agent-target'])
+      .execute(assignmentInput(context, 'agent:agent-target'));
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      code: 'COMMAND_FAILED'
+    });
+    expect(await prisma.conversation.findUnique({
+      where: { id: context.conversation.id },
+      select: { currentAgentId: true, assignmentVersion: true }
+    })).toEqual({
+      currentAgentId: context.sourceAgent.id,
+      assignmentVersion: 0
+    });
+    expect(await prisma.activityLog.count()).toBe(0);
+    expect(await prisma.chatMessage.count({ where: { direction: 'outgoing' } })).toBe(0);
+    expect(await prisma.outboxEvent.count()).toBe(0);
+  });
+
   it('uses the reviewed runtime allowlist through the static production registry', async () => {
     const context = await seedOwnershipContext(prisma, {
       allowedTargets: ['agent:agent-target']
