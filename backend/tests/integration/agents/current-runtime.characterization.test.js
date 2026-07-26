@@ -425,8 +425,9 @@ describe('test database safety and vector drift', () => {
     const runtime = fs.readFileSync(path.join(__dirname, '../../../src/services/embeddingService.js'), 'utf8');
     expect(migration).toContain('"embedding" vector(1536)');
     expect(schema).toContain('vector(768)');
-    expect(runtime).toContain('produces exactly 768 dimensions');
+    expect(runtime).toContain("this.model = 'qwen/qwen3-embedding-8b'");
     expect(runtime).toContain('this.dimensions = 768');
+    expect(runtime).toContain('dimensions: this.dimensions');
   });
 
   it('adds an explicit migration from the historical vector width', () => {

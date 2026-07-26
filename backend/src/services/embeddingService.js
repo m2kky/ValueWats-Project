@@ -2,11 +2,10 @@ const axios = require('axios');
 
 class EmbeddingService {
   constructor() {
-    // Ollama is running on the same VPS. Use its direct port (11434) to bypass
-    // Open WebUI's auth proxy. The sslip.io URL routes through Open WebUI which requires login.
-    this.baseURL = process.env.OLLAMA_URL || 'http://72.62.50.238:11434';
-    // nomic-embed-text produces exactly 768 dimensions — matches our pgvector(768) schema.
-    this.model = 'nomic-embed-text';
+    this.apiKey = process.env.OPENROUTER_API_KEY;
+    this.baseURL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+    this.model = 'qwen/qwen3-embedding-8b';
+    // OpenRouter is asked to produce exactly 768 dimensions, matching pgvector(768).
     this.dimensions = 768;
   }
 
@@ -17,17 +16,28 @@ class EmbeddingService {
    */
   async generateEmbedding(text) {
     try {
-      const response = await axios.post(`${this.baseURL}/api/embeddings`, {
+      if (!this.apiKey) {
+        throw new Error('OPENROUTER_API_KEY is not set in environment variables');
+      }
+
+      const response = await axios.post(`${this.baseURL}/embeddings`, {
         model: this.model,
-        prompt: text
+        input: text,
+        dimensions: this.dimensions,
+        encoding_format: 'float'
       }, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 60000 // 60s — local model may take time on first call
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.APP_URL || 'https://valuewats.com',
+          'X-Title': 'ValueWats'
+        },
+        timeout: 60000
       });
 
-      const embedding = response.data.embedding;
+      const embedding = response.data?.data?.[0]?.embedding;
       if (!embedding || !Array.isArray(embedding)) {
-        throw new Error('Invalid embedding response from Ollama');
+        throw new Error('Invalid embedding response from OpenRouter');
       }
       if (embedding.length !== this.dimensions || embedding.some((value) => !Number.isFinite(value))) {
         throw new Error(`Invalid embedding dimensions: expected ${this.dimensions}, received ${embedding.length}`);
@@ -36,7 +46,7 @@ class EmbeddingService {
       return embedding;
     } catch (error) {
       const detail = error.response?.data || error.message;
-      console.error('[EmbeddingService] Ollama error:', detail);
+      console.error('[EmbeddingService] OpenRouter error:', detail);
       throw new Error(`Embedding failed: ${JSON.stringify(detail)}`);
     }
   }
@@ -55,23 +65,6 @@ class EmbeddingService {
     return embeddings;
   }
 
-  /**
-   * Health check — verify Ollama is reachable and model is loaded
-   */
-  async healthCheck() {
-    try {
-      const response = await axios.get(`${this.baseURL}/api/tags`, { timeout: 10000 });
-      const models = response.data.models || [];
-      const modelLoaded = models.some(m => m.name.startsWith('nomic-embed-text'));
-      return {
-        available: true,
-        modelLoaded,
-        models: models.map(m => m.name)
-      };
-    } catch (error) {
-      return { available: false, modelLoaded: false, error: error.message };
-    }
-  }
 }
 
 module.exports = new EmbeddingService();
