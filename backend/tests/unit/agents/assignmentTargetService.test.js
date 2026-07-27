@@ -127,7 +127,7 @@ describe('assignment target resolution', () => {
       where: expect.objectContaining({
         id: 'user-2',
         tenantId: 'tenant-1',
-        role: { in: ['agent', 'admin'] }
+        role: { in: ['owner', 'admin', 'agent'] }
       })
     }));
   });

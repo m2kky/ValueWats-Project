@@ -302,6 +302,9 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
   }
 
   const currentStage = lifecycleStages.find(s => s.id === conversation.lifecycleStageId);
+  const eligibleUsers = (users || []).filter(user => (
+    user.isActive !== false && ['owner', 'admin', 'agent'].includes(user.role)
+  ));
 
   // Label color based on hash
   const getLabelColor = (label) => {
@@ -369,7 +372,8 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
                 <button
                   key={agent.id}
                   onClick={() => handleAssign('agent', agent.id)}
-                  className="w-full text-left px-4 py-2 text-sm text-zinc-200 hover:bg-white/5 flex items-center justify-between"
+                  disabled={conversation.currentAgentId === agent.id}
+                  className="w-full text-left px-4 py-2 text-sm text-zinc-200 hover:bg-white/5 flex items-center justify-between disabled:opacity-50 disabled:cursor-default"
                 >
                   <span className="flex items-center gap-2">🤖 {agent.name}</span>
                   {conversation.currentAgentId === agent.id && <CheckIcon className="w-4 h-4 text-indigo-400" />}
@@ -383,7 +387,7 @@ export default function ContactSidebar({ conversation, agents, users, onToggle, 
               >
                 <span className="flex items-center gap-2">👤 Assign to me</span>
               </button>
-              {users?.map(user => (
+              {eligibleUsers.map(user => (
                 <button
                   key={user.id}
                   onClick={() => handleAssign('user', user.id)}

@@ -63,7 +63,7 @@ function createAssignmentTargetService(prisma) {
         id: parsed.id,
         tenantId,
         isActive: true,
-        role: { in: ['agent', 'admin'] }
+        role: { in: ['owner', 'admin', 'agent'] }
       },
       select: { id: true }
     });

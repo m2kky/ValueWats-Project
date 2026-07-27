@@ -118,7 +118,7 @@ function createConversationOwnershipService({ clock = () => new Date() } = {}) {
         id: targetUserId,
         tenantId,
         isActive: true,
-        role: { in: ['agent', 'admin'] }
+        role: { in: ['owner', 'admin', 'agent'] }
       },
       select: { id: true }
     });
