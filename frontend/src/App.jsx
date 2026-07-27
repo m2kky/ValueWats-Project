@@ -19,6 +19,7 @@ const CampaignDetails = React.lazy(() => import('./pages/CampaignDetails'));
 const Automations = React.lazy(() => import('./pages/Automations'));
 const Inbox = React.lazy(() => import('./pages/Inbox'));
 const Agents = React.lazy(() => import('./pages/Agents'));
+const CommentReplyWorkspace = React.lazy(() => import('./pages/agents/comment-replies/CommentReplyWorkspace'));
 const Templates = React.lazy(() => import('./pages/Templates'));
 const Workflows = React.lazy(() => import('./pages/Workflows'));
 const WorkflowBuilder = React.lazy(() => import('./pages/workflows/WorkflowBuilder'));
@@ -96,7 +97,7 @@ function PrivateRoute({ children }) {
         return <Navigate to="/onboarding" />;
       }
     }
-  } catch (e) { /* ignore parse errors */ }
+  } catch { /* ignore parse errors */ }
 
   return (
     <Layout>
@@ -263,6 +264,12 @@ function App() {
           <Route path="/agents" element={
             <PrivateRoute>
               <Agents />
+            </PrivateRoute>
+          } />
+
+          <Route path="/agents/:agentId/comment-replies" element={
+            <PrivateRoute>
+              <CommentReplyWorkspace />
             </PrivateRoute>
           } />
 

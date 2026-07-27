@@ -1,5 +1,6 @@
 import React from 'react';
-import { CpuChipIcon, PlusIcon, SparklesIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
+import { ChatBubbleLeftRightIcon, CpuChipIcon, PlusIcon, SparklesIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const templateMeta = {
   receptionist: {
@@ -23,6 +24,8 @@ const templateMeta = {
 };
 
 export default function AgentList({ agents, loading, handleCreateNew, handleEdit, handleDelete, handleToggle }) {
+  const navigate = useNavigate();
+
   return (
     <div className="max-w-7xl mx-auto px-8 py-12">
       {/* Header */}
@@ -139,7 +142,17 @@ export default function AgentList({ agents, loading, handleCreateNew, handleEdit
                     </div>
                   </div>
 
-                  <div className="mt-auto p-8 pt-0 border-t border-white/5 bg-transparent flex items-center justify-between group/status h-20">
+                  <div className="px-8 pb-5">
+                    <button
+                      onClick={() => navigate(`/agents/${agent.id}/comment-replies`)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-lime-400/20 bg-lime-400/5 px-4 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-lime-300 transition hover:border-lime-300/40 hover:bg-lime-400/10"
+                    >
+                      <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                      Comment Replies
+                    </button>
+                  </div>
+
+                  <div className="mt-auto p-8 pt-5 border-t border-white/5 bg-transparent flex items-center justify-between group/status h-20">
                     <div className="flex flex-col">
                       <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-1">MODULE_STATUS</span>
                       <div className="flex items-center gap-2">
