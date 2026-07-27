@@ -5,6 +5,46 @@ const { sanitizeError } = require('../logging/redaction');
 const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
 const FB_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 
+function publicReplyError(code, message, options = {}) {
+  return Object.assign(new Error(message), {
+    code,
+    dispatchOutcome: 'before_request',
+    outcomeUnknown: false,
+    retryable: false,
+    ...options
+  });
+}
+
+function classifyPublicReplyError(error) {
+  const status = Number(error?.response?.status || 0);
+  if (status) {
+    return publicReplyError(
+      status === 429 ? 'META_RATE_LIMITED' : 'META_PUBLIC_REPLY_REJECTED',
+      status === 429 ? 'Meta rate limited the public reply' : 'Meta rejected the public reply',
+      {
+        dispatchOutcome: 'response_received',
+        retryable: status === 429 || status >= 500,
+        providerStatus: status
+      }
+    );
+  }
+  if (error?.requestTransmitted === false) {
+    return publicReplyError(
+      'META_PUBLIC_REPLY_NOT_SENT',
+      'Meta public reply request was not transmitted',
+      { retryable: true }
+    );
+  }
+  return publicReplyError(
+    'META_PUBLIC_REPLY_OUTCOME_AMBIGUOUS',
+    'Meta public reply outcome is ambiguous',
+    {
+      dispatchOutcome: 'outcome_ambiguous',
+      outcomeUnknown: true
+    }
+  );
+}
+
 class MetaApi {
   getAccessToken(instance) {
     return decryptMetaToken(instance.accessToken);
@@ -176,6 +216,51 @@ class MetaApi {
     });
     console.log(`[MetaApi:Instagram] Sent to ${recipientId}:`, res.data);
     return res.data;
+  }
+
+  async publishPublicCommentReply(instance, commentId, message, edge) {
+    let token;
+    try {
+      token = this.getAccessToken(instance);
+    } catch (_) {
+      throw publicReplyError(
+        'META_CREDENTIALS_UNAVAILABLE',
+        'Meta credentials are unavailable for public reply'
+      );
+    }
+
+    let response;
+    try {
+      response = await axios.post(`${FB_BASE}/${encodeURIComponent(commentId)}/${edge}`, {
+        message
+      }, {
+        params: { access_token: token },
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      throw classifyPublicReplyError(error);
+    }
+
+    const id = String(response?.data?.id || '').trim();
+    if (!id) {
+      throw publicReplyError(
+        'META_PUBLIC_REPLY_OUTCOME_AMBIGUOUS',
+        'Meta returned an invalid public reply result',
+        {
+          dispatchOutcome: 'outcome_ambiguous',
+          outcomeUnknown: true
+        }
+      );
+    }
+    return { id };
+  }
+
+  async replyToFacebookComment(instance, commentId, message) {
+    return this.publishPublicCommentReply(instance, commentId, message, 'comments');
+  }
+
+  async replyToInstagramComment(instance, commentId, message) {
+    return this.publishPublicCommentReply(instance, commentId, message, 'replies');
   }
 
   // --- UNIFIED SEND (auto-detect channel) ---

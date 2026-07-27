@@ -25,6 +25,42 @@ function createOutboxWorker({
     const recovered = { retried: 0, outcomeUnknown: 0 };
 
     for (const event of stale) {
+      const dispatcher = dispatcherFor(event.eventType);
+      if (typeof dispatcher?.reconcile === 'function') {
+        let reconciliation;
+        try {
+          reconciliation = await dispatcher.reconcile(event);
+        } catch (_) {
+          reconciliation = { status: 'outcome_unknown' };
+        }
+
+        const succeeded = reconciliation?.status === 'succeeded';
+        const result = await prisma.outboxEvent.updateMany({
+          where: {
+            id: event.id,
+            status: 'dispatching',
+            leaseExpiresAt: { lte: now }
+          },
+          data: succeeded
+            ? {
+                status: 'succeeded',
+                leaseExpiresAt: null,
+                completedAt: now,
+                errorCode: null,
+                errorMessage: null
+              }
+            : {
+                status: 'outcome_unknown',
+                leaseExpiresAt: null,
+                completedAt: now,
+                errorCode: 'AMBIGUOUS_DISPATCH',
+                errorMessage: 'Worker lease expired after dispatch began'
+              }
+        });
+        if (result.count === 1 && !succeeded) recovered.outcomeUnknown += 1;
+        continue;
+      }
+
       const canRetry = dispatcherFor(event.eventType)?.supportsIdempotency === true
         && event.attempts < maxAttempts;
       const update = canRetry

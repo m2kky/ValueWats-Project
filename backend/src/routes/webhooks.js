@@ -18,6 +18,7 @@ router.post('/meta', (req, res, next) => {
 
   try {
     req.body = parseVerifiedMetaBody(req);
+    req.metaWebhookVerified = true;
   } catch (_) {
     return res.status(400).json({ error: 'INVALID_META_BODY' });
   }

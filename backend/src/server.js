@@ -2,6 +2,7 @@ require('dotenv').config();
 const http = require('http');
 const { createApp } = require('./app');
 const socketService = require('./services/socketService');
+const { startCommentReplyProcessing } = require('./commentReplies/commentReplyBoot');
 
 // Keep queue workers and provider clients in process boot, never in app construction.
 const dependencies = {
@@ -29,12 +30,22 @@ const app = createApp({ routes, middleware: { tenantContext: require('./middlewa
 const server = http.createServer(app);
 socketService.init(server);
 const PORT = process.env.PORT || 3000;
+let commentReplyProcessing = null;
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   require('./services/storageService').initBucket().catch((err) => console.error('[Boot] MinIO bucket init failed:', err.message));
+  commentReplyProcessing = startCommentReplyProcessing({
+    prisma: dependencies.prisma,
+    metaApi: dependencies.providers.meta,
+    clock: dependencies.clock
+  });
   require('./services/schedulerService').startScheduler();
+});
+
+server.on('close', () => {
+  commentReplyProcessing?.stop();
 });
 
 module.exports = app;

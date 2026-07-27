@@ -1,6 +1,8 @@
 const { redactForLog } = require('../logging/redaction');
 
 const PROVIDER_REFERENCE_FIELDS = ['provider', 'instanceId', 'accountId'];
+const COMMENT_PAYLOAD_FIELDS = ['executionId', 'providerReference'];
+const COMMENT_REFERENCE_FIELDS = ['provider', 'instanceId'];
 
 function normalizeChannelPayload(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -26,8 +28,38 @@ function normalizeChannelPayload(payload) {
   return { providerReference: reference, pendingMessageId };
 }
 
+function hasExactFields(value, fields) {
+  return value
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && Object.keys(value).sort().join(',') === fields.slice().sort().join(',');
+}
+
+function normalizeCommentReplyPayload(payload) {
+  if (!hasExactFields(payload, COMMENT_PAYLOAD_FIELDS)
+    || !hasExactFields(payload.providerReference, COMMENT_REFERENCE_FIELDS)) {
+    throw Object.assign(
+      new Error('Comment reply outbox payload must have the exact reference shape'),
+      { code: 'INVALID_OUTBOX_PAYLOAD' }
+    );
+  }
+
+  const executionId = String(payload.executionId || '').trim();
+  const provider = String(payload.providerReference.provider || '').trim().toLowerCase();
+  const instanceId = String(payload.providerReference.instanceId || '').trim();
+  if (!executionId || !instanceId || !['facebook', 'instagram'].includes(provider)) {
+    throw Object.assign(
+      new Error('Comment reply outbox payload contains an invalid reference'),
+      { code: 'INVALID_OUTBOX_PAYLOAD' }
+    );
+  }
+
+  return { executionId, providerReference: { provider, instanceId } };
+}
+
 function sanitizePayload(aggregateType, payload) {
   if (aggregateType === 'channel_message') return normalizeChannelPayload(payload);
+  if (aggregateType === 'comment_reply_execution') return normalizeCommentReplyPayload(payload);
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     throw Object.assign(new Error('Outbox payload must be an object'), { code: 'INVALID_OUTBOX_PAYLOAD' });
   }
@@ -55,10 +87,11 @@ function createOutboxService(prisma, { clock = () => new Date() } = {}) {
   if (!prisma) throw new Error('Prisma client is required');
 
   return {
-    async createOrGet(data) {
+    async createOrGet(data, { prisma: transaction } = {}) {
+      const client = transaction || prisma;
       const payload = sanitizePayload(data.aggregateType, data.payload);
       try {
-        return await prisma.outboxEvent.create({
+        return await client.outboxEvent.create({
           data: {
             tenantId: data.tenantId,
             commandId: data.commandId || null,
@@ -73,7 +106,7 @@ function createOutboxService(prisma, { clock = () => new Date() } = {}) {
         });
       } catch (error) {
         if (error?.code !== 'P2002') throw error;
-        const existing = await prisma.outboxEvent.findUniqueOrThrow({
+        const existing = await client.outboxEvent.findUniqueOrThrow({
           where: {
             tenantId_idempotencyKey: {
               tenantId: data.tenantId,
@@ -93,4 +126,8 @@ function createOutboxService(prisma, { clock = () => new Date() } = {}) {
   };
 }
 
-module.exports = { createOutboxService, normalizeChannelPayload };
+module.exports = {
+  createOutboxService,
+  normalizeChannelPayload,
+  normalizeCommentReplyPayload
+};

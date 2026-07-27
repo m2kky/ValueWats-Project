@@ -1,6 +1,7 @@
 const os = require('os');
 const { createOutboxWorker } = require('./events/outboxWorker');
 const { sanitizeError } = require('./logging/redaction');
+const { buildCommentReplyWorkers } = require('./commentReplies/commentReplyBoot');
 
 const defaultSleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -8,6 +9,7 @@ function createWorkerRuntime({
   prisma,
   redis,
   outboxWorker,
+  commentReplyWorker = null,
   workerId,
   clock = () => new Date(),
   sleep = defaultSleep,
@@ -39,15 +41,21 @@ function createWorkerRuntime({
 
   async function start() {
     await checkHealth();
+    if (commentReplyWorker) await commentReplyWorker.recoverStale();
     await outboxWorker.recoverStaleDispatches();
 
     while (!stopping) {
       await heartbeat();
+      if (commentReplyWorker) await commentReplyWorker.recoverStale();
       await outboxWorker.recoverStaleDispatches();
-      activeWork = outboxWorker.runOnce();
-      const event = await activeWork;
+      activeWork = (async () => {
+        const execution = commentReplyWorker ? await commentReplyWorker.runOnce() : null;
+        const event = await outboxWorker.runOnce();
+        return { event, execution };
+      })();
+      const work = await activeWork;
       activeWork = null;
-      if (!event && !stopping) await sleep(pollMs);
+      if (!work.event && !work.execution && !stopping) await sleep(pollMs);
     }
   }
 
@@ -74,12 +82,28 @@ function buildWorkerRuntime(options = {}) {
     maxRetriesPerRequest: null
   });
   const workerId = options.workerId || process.env.WORKER_ID || `${os.hostname()}-${process.pid}`;
-  const outboxWorker = options.outboxWorker || createOutboxWorker({
+  const commentWorkers = options.commentReplyWorker && options.outboxWorker
+    ? null
+    : buildCommentReplyWorkers({
+        prisma,
+        metaApi: options.metaApi || require('./services/metaApi'),
+        clock: options.clock,
+        dispatchers: options.dispatchers || {}
+      });
+  const outboxWorker = options.outboxWorker || commentWorkers.outboxWorker || createOutboxWorker({
     prisma,
     dispatchers: options.dispatchers || {}
   });
+  const commentReplyWorker = options.commentReplyWorker || commentWorkers?.commentReplyWorker || null;
 
-  return createWorkerRuntime({ ...options, prisma, redis, outboxWorker, workerId });
+  return createWorkerRuntime({
+    ...options,
+    prisma,
+    redis,
+    outboxWorker,
+    commentReplyWorker,
+    workerId
+  });
 }
 
 async function runWorkerProcess(options = {}) {

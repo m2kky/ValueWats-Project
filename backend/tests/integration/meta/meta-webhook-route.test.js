@@ -68,6 +68,9 @@ describe('Meta webhook route security', () => {
       .send(body)
       .expect(204);
 
-    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ body: { object: 'page', entry: [] } }), expect.anything(), expect.anything());
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+      body: { object: 'page', entry: [] },
+      metaWebhookVerified: true
+    }), expect.anything(), expect.anything());
   });
 });

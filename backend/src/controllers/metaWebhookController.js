@@ -5,8 +5,18 @@ const socketService = require('../services/socketService');
 const prisma = require('../config/database');
 const { getChannelConfig } = require('../services/channelConfig.service');
 const { sanitizeError } = require('../logging/redaction');
+const {
+  normalizeFacebookComment,
+  normalizeInstagramComment
+} = require('../commentReplies/commentEventNormalizer');
+const { createCommentReplyRuntime } = require('../commentReplies/commentReplyRuntime');
+const { createOutboxService } = require('../events/outboxService');
 
 const privateReplyCache = new Map();
+const commentReplyRuntime = createCommentReplyRuntime({
+  prisma,
+  outboxService: createOutboxService(prisma)
+});
 
 const verifyWebhook = (req, res) => {
   const mode = req.query['hub.mode'];
@@ -255,7 +265,38 @@ const processIncomingMessage = async ({
   }
 };
 
+const ingestVerifiedCommentReplies = async (body, runtime = commentReplyRuntime) => {
+  const entries = Array.isArray(body?.entry) ? body.entry : [];
+  const normalize = body?.object === 'page'
+    ? normalizeFacebookComment
+    : body?.object === 'instagram'
+      ? normalizeInstagramComment
+      : null;
+  if (!normalize) return;
+
+  for (const entry of entries) {
+    for (const event of normalize(entry)) {
+      try {
+        await runtime.ingest(event);
+      } catch (error) {
+        if (error?.code !== 'COMMENT_BINDING_NOT_FOUND') throw error;
+      }
+    }
+  }
+};
+
 const handleMetaWebhook = async (req, res) => {
+  if (req.metaWebhookVerified !== true) {
+    return res.status(401).json({ error: 'UNVERIFIED_META_BODY' });
+  }
+
+  try {
+    await ingestVerifiedCommentReplies(req.body);
+  } catch (error) {
+    console.error('[MetaWebhook] Comment ingestion failed:', sanitizeError(error));
+    return res.sendStatus(503);
+  }
+
   res.sendStatus(200);
 
   try {
@@ -392,5 +433,9 @@ const handleMetaWebhook = async (req, res) => {
   }
 };
 
-module.exports = { verifyWebhook, handleMetaWebhook };
+module.exports = {
+  handleMetaWebhook,
+  ingestVerifiedCommentReplies,
+  verifyWebhook
+};
 
