@@ -46,6 +46,18 @@ describe('comment reply rules', () => {
     expect(matchCommentRule({ text: 'price please', rules: [rules[1]] })).toBeNull();
   });
 
+  it('does not match a keyword inside a larger word', () => {
+    const rules = [{ id: 'art', priority: 1, matchMode: 'contains_any', keywords: ['art'], isEnabled: true }];
+
+    expect(matchCommentRule({ text: 'cart', rules })).toBeNull();
+  });
+
+  it('treats punctuation as a separator for exact matching', () => {
+    const rules = [{ id: 'price', priority: 1, matchMode: 'exact', keywords: ['price'], isEnabled: true }];
+
+    expect(matchCommentRule({ text: 'price?', rules })?.id).toBe('price');
+  });
+
   it('skips disabled, deleted, and unknown-mode rules', () => {
     const rules = [
       { id: 'disabled', priority: 1, matchMode: 'contains_any', keywords: ['price'], isEnabled: false },
@@ -71,7 +83,7 @@ describe('comment reply rules', () => {
     });
     expect(getVariantPool({ variants, platform: 'instagram' })).toEqual({
       pool: [variants[0]],
-      cursorField: 'instagramRotationCursor'
+      cursorField: 'sharedRotationCursor'
     });
   });
 

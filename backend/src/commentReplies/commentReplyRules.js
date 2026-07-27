@@ -6,6 +6,7 @@ const ALLOWED_TEMPLATE_VARIABLES = new Set([
 ]);
 
 const ARABIC_MARKS = /[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed\u0640]/giu;
+const MATCHING_TOKENS = /[\p{L}\p{N}]+/gu;
 const CURSOR_FIELDS = {
   facebook: 'facebookRotationCursor',
   instagram: 'instagramRotationCursor'
@@ -46,20 +47,35 @@ function compareVariants(left, right) {
   return String(left.id || '').localeCompare(String(right.id || ''));
 }
 
+function matchingTokens(text) {
+  return normalizeCommentText(text).match(MATCHING_TOKENS) || [];
+}
+
+function containsTokenSequence(textTokens, keywordTokens) {
+  if (keywordTokens.length === 0 || keywordTokens.length > textTokens.length) return false;
+
+  for (let index = 0; index <= textTokens.length - keywordTokens.length; index += 1) {
+    if (keywordTokens.every((token, offset) => textTokens[index + offset] === token)) return true;
+  }
+
+  return false;
+}
+
 function matchesRule(text, rule) {
-  const normalizedText = normalizeCommentText(text);
+  const normalizedText = matchingTokens(text);
   const keywords = Array.isArray(rule.keywords)
-    ? rule.keywords.map(normalizeCommentText).filter(Boolean)
+    ? rule.keywords.map(matchingTokens).filter((keyword) => keyword.length > 0)
     : [];
   if (keywords.length === 0) return false;
 
   switch (String(rule.matchMode || '').toLowerCase()) {
     case 'contains_any':
-      return keywords.some((keyword) => normalizedText.includes(keyword));
+      return keywords.some((keyword) => containsTokenSequence(normalizedText, keyword));
     case 'contains_all':
-      return keywords.every((keyword) => normalizedText.includes(keyword));
+      return keywords.every((keyword) => containsTokenSequence(normalizedText, keyword));
     case 'exact':
-      return keywords.some((keyword) => normalizedText === keyword);
+      return keywords.some((keyword) => normalizedText.length === keyword.length
+        && normalizedText.every((token, index) => token === keyword[index]));
     default:
       return false;
   }
@@ -77,13 +93,16 @@ function matchCommentRule({ text, rules } = {}) {
 }
 
 function getVariantPool({ variants, platform } = {}) {
-  const cursorField = CURSOR_FIELDS[platform] || 'sharedRotationCursor';
   const eligibleVariants = Array.isArray(variants)
     ? variants.filter((variant) => variant?.isEnabled === true && !variant.deletedAt)
     : [];
   const platformVariants = eligibleVariants.filter((variant) => variant.platform === platform);
   const sharedVariants = eligibleVariants.filter((variant) => variant.platform == null);
-  const pool = (platformVariants.length > 0 ? platformVariants : sharedVariants).slice().sort(compareVariants);
+  const usesPlatformVariants = platformVariants.length > 0;
+  const pool = (usesPlatformVariants ? platformVariants : sharedVariants).slice().sort(compareVariants);
+  const cursorField = usesPlatformVariants
+    ? (CURSOR_FIELDS[platform] || 'sharedRotationCursor')
+    : 'sharedRotationCursor';
 
   return { pool, cursorField };
 }
