@@ -15,6 +15,7 @@ const dependencies = {
 const routes = {
   auth: require('./routes/auth'), instances: require('./routes/instances'), campaigns: require('./routes/campaigns'),
   webhooks: require('./routes/webhooks'), chat: require('./routes/chat'), agents: require('./agents/agent.routes'),
+  commentReplies: require('./commentReplies/commentReply.routes').createCommentReplyRouter,
   knowledge: require('./agents/knowledge.routes'), integrations: require('./routes/integrations'), workflows: require('./routes/workflows'),
   plans: require('./routes/plans'), onboarding: require('./routes/onboarding'), dashboard: require('./routes/dashboard'),
   automations: require('./routes/automations'), team: require('./routes/team'), lifecycle: require('./routes/lifecycle.routes'),

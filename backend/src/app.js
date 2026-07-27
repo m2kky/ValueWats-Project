@@ -54,6 +54,7 @@ function createApp({ routes = {}, middleware = {}, dependencies = {} } = {}) {
   [
     ['instances', '/api/instances'], ['campaigns', '/api/campaigns'], ['dashboard', '/api/dashboard'], ['automations', '/api/automations'],
     ['team', '/api/team'], ['chat', '/api/chat'], ['agents', '/api/agents'], ['knowledge', '/api/agents'], ['lifecycle', '/api/lifecycle'],
+    ['commentReplies', '/api'],
     ['contacts', '/api/contacts'], ['templates', '/api/templates'], ['contactFields', '/api/contact-fields'], ['tags', '/api/tags'],
     ['snippets', '/api/snippets'], ['lifecycleRules', '/api/lifecycle-rules'], ['integrations', '/api/integrations'], ['segments', '/api/segments'],
     ['settings', '/api/settings'], ['notifications', '/api/notifications'], ['workflows', '/api/workflows']
