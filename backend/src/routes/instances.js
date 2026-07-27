@@ -13,6 +13,7 @@ const { resolveTenantPlanByTenantId } = require('../services/planLimit.service')
 const checkPermission = require('../middleware/checkPermission');
 const { encryptMetaToken } = require('../meta/metaTokenCrypto');
 const { toSafeInstanceDto } = require('../meta/metaInstanceDto');
+const { sanitizeError } = require('../logging/redaction');
 
 const router = express.Router();
 const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
@@ -71,7 +72,7 @@ const subscribeMetaPage = async ({ pageId, pageAccessToken, channelType }) => {
   } catch (err) {
     console.warn(
       `[Meta] Failed to subscribe page ${pageId} for ${channelType}:`,
-      err.response?.data?.error?.message || err.message
+      sanitizeError(err)
     );
   }
 };
@@ -237,7 +238,7 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
       return res.status(error.status).json(error.payload);
     }
 
-    console.error('Meta embedded connect error:', error.response?.data || error.message);
+    console.error('Meta embedded connect error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to connect via Meta Embedded Signup' });
   }
 });
@@ -291,7 +292,7 @@ router.get('/', async (req, res) => {
 
     res.json({ instances: syncedInstances.map(toSafeInstanceDto) });
   } catch (error) {
-    console.error('List instances error:', error);
+    console.error('List instances error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to fetch instances' });
   }
 });
@@ -359,8 +360,9 @@ router.post('/', checkPermission('channels.manage'), async (req, res) => {
       instance: toSafeInstanceDto(instance),
     });
   } catch (error) {
-    console.error('Create instance error:', error);
-    res.status(500).json({ error: error.message });
+    const safeError = sanitizeError(error);
+    console.error('Create instance error:', safeError);
+    res.status(500).json({ error: safeError.message || 'Failed to create instance' });
   }
 });
 
@@ -396,7 +398,7 @@ router.get('/:id/details', async (req, res) => {
 
     res.json({ instance: toSafeInstanceDto(instance) });
   } catch (error) {
-    console.error('Get instance details error:', error);
+    console.error('Get instance details error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to fetch instance details' });
   }
 });
@@ -417,7 +419,7 @@ router.get('/:id/channel-config', async (req, res) => {
 
     res.json({ config });
   } catch (error) {
-    console.error('Get channel config error:', error);
+    console.error('Get channel config error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to load channel configuration' });
   }
 });
@@ -440,8 +442,9 @@ router.put('/:id/channel-config', checkPermission('channels.manage'), async (req
 
     res.json({ message: 'Channel configuration saved', config });
   } catch (error) {
-    console.error('Save channel config error:', error);
-    res.status(400).json({ error: error.message || 'Failed to save channel configuration' });
+    const safeError = sanitizeError(error);
+    console.error('Save channel config error:', safeError);
+    res.status(400).json({ error: safeError.message || 'Failed to save channel configuration' });
   }
 });
 
@@ -497,9 +500,10 @@ router.post('/:id/messenger/chat-menu/sync', checkPermission('channels.manage'),
       config: mergedConfig
     });
   } catch (error) {
-    console.error('Sync messenger chat menu error:', error.response?.data || error.message);
+    const safeError = sanitizeError(error);
+    console.error('Sync messenger chat menu error:', safeError);
     res.status(400).json({
-      error: error.response?.data?.error?.message || error.message || 'Failed to sync Messenger chat menu'
+      error: safeError.message || 'Failed to sync Messenger chat menu'
     });
   }
 });
@@ -534,9 +538,10 @@ router.post('/:id/messenger/templates/send-test', checkPermission('channels.mana
     const result = await metaApi.sendMessengerTemplate(instance, recipientId, templatePayload);
     res.json({ message: 'Template sent successfully', result });
   } catch (error) {
-    console.error('Send messenger template test error:', error.response?.data || error.message);
+    const safeError = sanitizeError(error);
+    console.error('Send messenger template test error:', safeError);
     res.status(400).json({
-      error: error.response?.data?.error?.message || error.message || 'Failed to send template test message'
+      error: safeError.message || 'Failed to send template test message'
     });
   }
 });
@@ -565,9 +570,10 @@ router.post('/:id/messenger/private-replies/send', checkPermission('channels.man
     const result = await metaApi.sendMessengerPrivateReply(instance, { postId, commentId, text });
     res.json({ message: 'Private reply sent successfully', result });
   } catch (error) {
-    console.error('Send private reply test error:', error.response?.data || error.message);
+    const safeError = sanitizeError(error);
+    console.error('Send private reply test error:', safeError);
     res.status(400).json({
-      error: error.response?.data?.error?.message || error.message || 'Failed to send private reply'
+      error: safeError.message || 'Failed to send private reply'
     });
   }
 });
@@ -612,7 +618,7 @@ router.patch('/:id', checkPermission('channels.manage'), async (req, res) => {
 
     res.json({ instance: toSafeInstanceDto(updated), message: 'Instance updated successfully' });
   } catch (error) {
-    console.error('Update instance error:', error);
+    console.error('Update instance error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to update instance' });
   }
 });
@@ -644,7 +650,7 @@ router.get('/:id/status', async (req, res) => {
     // For non-whatsapp, assume connected
     res.json({ status: { state: 'open' } });
   } catch (error) {
-    console.error('Get status error:', error);
+    console.error('Get status error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to get instance status' });
   }
 });
@@ -675,7 +681,7 @@ router.get('/:id/connect', async (req, res) => {
 
     res.json({ qrCode });
   } catch (error) {
-    console.error('Get QR error:', error);
+    console.error('Get QR error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to get QR code' });
   }
 });
@@ -694,7 +700,7 @@ router.post('/:id/disconnect', checkPermission('channels.manage'), async (req, r
     await prisma.instance.update({ where: { id: instance.id }, data: { status: 'disconnected' } });
     res.json({ message: 'Disconnected successfully' });
   } catch (error) {
-    console.error('Disconnect instance error:', error);
+    console.error('Disconnect instance error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to disconnect instance' });
   }
 });
@@ -716,7 +722,7 @@ router.patch('/:id/toggle', checkPermission('channels.manage'), async (req, res)
     });
     res.json({ instance: toSafeInstanceDto(updated) });
   } catch (error) {
-    console.error('Toggle instance error:', error);
+    console.error('Toggle instance error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to toggle instance' });
   }
 });
@@ -744,7 +750,7 @@ router.delete('/:id', checkPermission('channels.manage'), async (req, res) => {
 
     res.json({ message: 'Instance deleted successfully' });
   } catch (error) {
-    console.error('Delete instance error:', error);
+    console.error('Delete instance error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to delete instance' });
   }
 });
@@ -785,8 +791,9 @@ router.post('/:id/send', async (req, res) => {
       result,
     });
   } catch (error) {
-    console.error('Send message error:', error);
-    res.status(500).json({ error: error.message });
+    const safeError = sanitizeError(error);
+    console.error('Send message error:', safeError);
+    res.status(500).json({ error: safeError.message || 'Failed to send message' });
   }
 });
 

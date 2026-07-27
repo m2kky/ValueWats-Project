@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { decryptMetaToken } = require('../meta/metaTokenCrypto');
+const { sanitizeError } = require('../logging/redaction');
 
 const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
 const FB_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
@@ -198,7 +199,7 @@ class MetaApi {
       });
       return { name: res.data.name || null, profilePic: res.data.profile_pic || null };
     } catch (err) {
-      console.warn(`[MetaApi] Failed to fetch profile for ${psid}:`, err.response?.data?.error?.message || err.message);
+      console.warn(`[MetaApi] Failed to fetch profile for ${psid}:`, sanitizeError(err));
       return { name: null, profilePic: null };
     }
   }

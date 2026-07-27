@@ -2,6 +2,7 @@ const chatService = require('../services/chat.service');
 const socketService = require('../services/socketService');
 const storageService = require('../services/storageService');
 const prisma = require('../config/database');
+const { sanitizeError } = require('../logging/redaction');
 const {
   conversationOwnershipGateway
 } = require('../conversations/conversationOwnershipGateway');
@@ -27,7 +28,7 @@ const getConversations = async (req, res) => {
     const conversations = await chatService.getConversations(tenantId, filters);
     res.json({ conversations });
   } catch (error) {
-    console.error('Get conversations error:', error);
+    console.error('Get conversations error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to fetch conversations' });
   }
 };
@@ -48,7 +49,7 @@ const getConversation = async (req, res) => {
 
     res.json({ conversation });
   } catch (error) {
-    console.error('Get conversation error:', error);
+    console.error('Get conversation error:', sanitizeError(error));
     res.status(500).json({ error: 'Failed to fetch conversation' });
   }
 };
@@ -87,8 +88,9 @@ const sendMessage = async (req, res) => {
 
     res.status(201).json({ message });
   } catch (error) {
-    console.error('Send message error:', error);
-    res.status(500).json({ error: error.message || 'Failed to send message' });
+    const safeError = sanitizeError(error);
+    console.error('Send message error:', safeError);
+    res.status(500).json({ error: safeError.message || 'Failed to send message' });
   }
 };
 
@@ -140,8 +142,9 @@ module.exports = {
 
       res.status(201).json({ message });
     } catch (error) {
-      console.error('Upload message file error:', error);
-      res.status(500).json({ error: error.message || 'Failed to upload file' });
+      const safeError = sanitizeError(error);
+      console.error('Upload message file error:', safeError);
+      res.status(500).json({ error: safeError.message || 'Failed to upload file' });
     }
   },
 
@@ -154,7 +157,7 @@ module.exports = {
       const updated = await chatService.updateContact(tenantId, id, data);
       res.json({ success: true, conversation: updated });
     } catch (error) {
-      console.error('Update contact error:', error);
+      console.error('Update contact error:', sanitizeError(error));
       res.status(500).json({ error: 'Failed to update contact' });
     }
   },
@@ -172,7 +175,7 @@ module.exports = {
       const updated = await chatService.updateAssignment(tenantId, id, assignmentData);
       res.json({ success: true, conversation: updated });
     } catch (error) {
-      console.error('Assign conversation error:', error);
+      console.error('Assign conversation error:', sanitizeError(error));
       res.status(ownershipHttpStatus(error)).json({
         error: error.message || 'Failed to assign conversation',
         code: error.code
@@ -220,7 +223,7 @@ module.exports = {
 
       res.json({ success: true, conversation: updated });
     } catch (error) {
-      console.error('Update conversation status error:', error);
+      console.error('Update conversation status error:', sanitizeError(error));
       res.status(ownershipHttpStatus(error)).json({
         error: error.message || 'Failed to update conversation status',
         code: error.code
@@ -240,7 +243,7 @@ module.exports = {
 
       res.json({ stages });
     } catch (error) {
-      console.error('Get stages error:', error);
+      console.error('Get stages error:', sanitizeError(error));
       res.status(500).json({ error: 'Failed to fetch stages' });
     }
   },
@@ -262,7 +265,7 @@ module.exports = {
 
       res.json({ labels: uniqueLabels });
     } catch (error) {
-      console.error('Get labels error:', error);
+      console.error('Get labels error:', sanitizeError(error));
       res.status(500).json({ error: 'Failed to fetch labels' });
     }
   },
@@ -321,7 +324,7 @@ Reply with ONLY the suggested message text, no quotes, no explanations.`;
       const suggestion = response.data.choices?.[0]?.message?.content?.trim();
       res.json({ suggestion });
     } catch (error) {
-      console.error('AI assist error:', error?.response?.data || error.message);
+      console.error('AI assist error:', sanitizeError(error));
       res.status(500).json({ error: 'AI assist failed. Please try again.' });
     }
   },
@@ -332,7 +335,7 @@ Reply with ONLY the suggested message text, no quotes, no explanations.`;
       const result = await chatService.syncConversations(tenantId);
       res.json(result);
     } catch (error) {
-      console.error('Sync conversations error:', error);
+      console.error('Sync conversations error:', sanitizeError(error));
       res.status(500).json({ error: 'Failed to sync conversations' });
     }
   }
