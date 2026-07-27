@@ -51,6 +51,7 @@ function createApp({ routes = {}, middleware = {}, dependencies = {} } = {}) {
   }
   ['plans', 'onboarding'].forEach((name) => { if (routes[name]) app.use(`/api/${name}`, route(routes[name], dependencies)); });
   app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+  if (routes.webhooks) app.use('/api/webhooks', webhookLimiter, route(routes.webhooks, dependencies));
   [
     ['instances', '/api/instances'], ['campaigns', '/api/campaigns'], ['dashboard', '/api/dashboard'], ['automations', '/api/automations'],
     ['team', '/api/team'], ['chat', '/api/chat'], ['agents', '/api/agents'], ['knowledge', '/api/agents'], ['lifecycle', '/api/lifecycle'],
@@ -60,7 +61,6 @@ function createApp({ routes = {}, middleware = {}, dependencies = {} } = {}) {
     ['settings', '/api/settings'], ['notifications', '/api/notifications'], ['workflows', '/api/workflows']
   ].forEach(([name, prefix]) => withTenant(prefix, name));
   if (routes.admin) app.use('/api/admin', route(routes.admin, dependencies));
-  if (routes.webhooks) app.use('/api/webhooks', webhookLimiter, route(routes.webhooks, dependencies));
   if (routes.oauth) app.use('/api/oauth', route(routes.oauth, dependencies));
 
   const frontendPath = path.join(__dirname, '../../frontend/dist');

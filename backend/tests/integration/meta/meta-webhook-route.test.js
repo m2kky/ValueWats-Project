@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const express = require('express');
 const request = require('supertest');
 const { createApp } = require('../../../src/app');
 
@@ -23,7 +24,15 @@ function loadWebhookApp(handleMetaWebhook) {
     loaded: true,
     exports: { handleIncomingMessage: (req, res) => res.sendStatus(204) }
   };
-  return createApp({ routes: { webhooks: require(routePath) } });
+  return createApp({
+    routes: {
+      webhooks: require(routePath),
+      commentReplies: express.Router()
+    },
+    middleware: {
+      tenantContext: (req, res) => res.status(401).json({ error: 'No token provided' })
+    }
+  });
 }
 
 describe('Meta webhook route security', () => {
