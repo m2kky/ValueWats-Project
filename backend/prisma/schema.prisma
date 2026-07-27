@@ -44,6 +44,20 @@ enum OutboxStatus {
   succeeded
   failed
   outcome_unknown
+  cancelled
+}
+
+enum CommentReplyExecutionStatus {
+  received
+  skipped
+  processing
+  ready
+  failed
+}
+
+enum CommentReplyPlatform {
+  facebook
+  instagram
 }
 
 // Subscription Plans — defines limits per tier
@@ -123,6 +137,12 @@ model Tenant {
   agentRuns               AgentRun[]
   agentCommands           AgentCommand[]
   outboxEvents            OutboxEvent[]
+  commentReplyProfiles    CommentReplyProfile[]
+  commentChannelBindings  CommentChannelBinding[]
+  commentReplyRules       CommentReplyRule[]
+  commentReplyVariants    CommentReplyVariant[]
+  commentPostOverrides    CommentPostOverride[]
+  commentReplyExecutions  CommentReplyExecution[]
 
   @@map("tenants")
 }
@@ -202,12 +222,14 @@ model Instance {
   qrCode        String?  @map("qr_code") @db.Text
   createdAt     DateTime @default(now()) @map("created_at")
 
-  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaigns         Campaign[]
   messages          Message[]
   campaignInstances CampaignInstance[]
   automationRules   AutomationRule[]
   chatMessages      ChatMessage[]
+  commentBindings   CommentChannelBinding[]
+  commentExecutions CommentReplyExecution[]
 
   @@map("instances")
 }
@@ -381,12 +403,12 @@ model Conversation {
 
   failedAttempts    Int       @default(0)
   lastBotResponseAt DateTime?
-  lastFollowUpAt     DateTime?
+  lastFollowUpAt    DateTime?
 
   // Workflow State Machine (Ask a Question)
-  waitingForWorkflowId String? @map("waiting_workflow_id")
-  waitingForVariable   String? @map("waiting_variable")
-  assignmentVersion    Int     @default(0) @map("assignment_version")
+  waitingForWorkflowId String?  @map("waiting_workflow_id")
+  waitingForVariable   String?  @map("waiting_variable")
+  assignmentVersion    Int      @default(0) @map("assignment_version")
   assignmentChangedAt  DateTime @default(now()) @map("assignment_changed_at")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -500,13 +522,15 @@ model AIAgent {
 
   actions              AgentAction[]
   knowledgeSources     AgentKnowledge[]
-  routingRules         AgentRoutingRule[]  @relation("FromAgent")
-  routingRulesTo       AgentRoutingRule[]  @relation("ToAgent")
+  routingRules         AgentRoutingRule[]      @relation("FromAgent")
+  routingRulesTo       AgentRoutingRule[]      @relation("ToAgent")
   conversations        ConversationAgent[]
-  currentConversations Conversation[]      @relation("CurrentAgent")
-  agentRuns            AgentRun[]          @relation("AgentRunSourceAgent")
-  agentCommands        AgentCommand[]      @relation("AgentCommandSourceAgent")
+  currentConversations Conversation[]          @relation("CurrentAgent")
+  agentRuns            AgentRun[]              @relation("AgentRunSourceAgent")
+  agentCommands        AgentCommand[]          @relation("AgentCommandSourceAgent")
   contactNotes         ContactNote[]
+  commentReplyProfiles CommentReplyProfile[]
+  commentExecutions    CommentReplyExecution[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -692,14 +716,185 @@ model OutboxEvent {
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  command AgentCommand? @relation(fields: [commandId], references: [id], onDelete: SetNull)
-  run     AgentRun?     @relation(fields: [runId], references: [id], onDelete: SetNull)
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  command               AgentCommand?          @relation(fields: [commandId], references: [id], onDelete: SetNull)
+  run                   AgentRun?              @relation(fields: [runId], references: [id], onDelete: SetNull)
+  commentReplyExecution CommentReplyExecution?
 
   @@unique([tenantId, idempotencyKey])
   @@index([status, availableAt])
   @@index([status, leaseExpiresAt])
   @@map("outbox_events")
+}
+
+model CommentReplyProfile {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  agentId           String    @map("agent_id")
+  isEnabled         Boolean   @default(false) @map("is_enabled")
+  aiFallbackEnabled Boolean   @default(false) @map("ai_fallback_enabled")
+  defaultMatchMode  String    @default("contains_any") @map("default_match_mode")
+  configVersion     Int       @default(1) @map("config_version")
+  deletedAt         DateTime? @map("deleted_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent         AIAgent                 @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  bindings      CommentChannelBinding[]
+  rules         CommentReplyRule[]
+  postOverrides CommentPostOverride[]   @relation("CommentReplyOverrideProfile")
+  executions    CommentReplyExecution[]
+
+  @@unique([tenantId, agentId])
+  @@map("comment_reply_profiles")
+}
+
+model CommentChannelBinding {
+  id                    String    @id @default(uuid())
+  tenantId              String    @map("tenant_id")
+  profileId             String    @map("profile_id")
+  instanceId            String    @map("instance_id")
+  provider              String
+  externalAccountId     String    @map("external_account_id")
+  isEnabled             Boolean   @default(false) @map("is_enabled")
+  permissionState       String    @default("unknown") @map("permission_state")
+  lastPermissionCheckAt DateTime? @map("last_permission_check_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile       CommentReplyProfile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  instance      Instance                @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  postOverrides CommentPostOverride[]
+  executions    CommentReplyExecution[]
+
+  @@unique([tenantId, instanceId])
+  @@unique([provider, externalAccountId])
+  @@map("comment_channel_bindings")
+}
+
+model CommentReplyRule {
+  id                      String    @id @default(uuid())
+  tenantId                String    @map("tenant_id")
+  profileId               String    @map("profile_id")
+  name                    String
+  isEnabled               Boolean   @default(false) @map("is_enabled")
+  priority                Int
+  matchMode               String    @map("match_mode")
+  keywords                String[]
+  sharedRotationCursor    Int       @default(0) @map("shared_rotation_cursor")
+  facebookRotationCursor  Int       @default(0) @map("facebook_rotation_cursor")
+  instagramRotationCursor Int       @default(0) @map("instagram_rotation_cursor")
+  deletedAt               DateTime? @map("deleted_at")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  tenant     Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile    CommentReplyProfile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  variants   CommentReplyVariant[]
+  executions CommentReplyExecution[]
+
+  @@index([profileId, deletedAt, isEnabled, priority])
+  @@map("comment_reply_rules")
+}
+
+model CommentReplyVariant {
+  id         String                @id @default(uuid())
+  tenantId   String                @map("tenant_id")
+  ruleId     String                @map("rule_id")
+  platform   CommentReplyPlatform?
+  body       String                @db.Text
+  orderIndex Int                   @map("order_index")
+  isEnabled  Boolean               @default(true) @map("is_enabled")
+  deletedAt  DateTime?             @map("deleted_at")
+  createdAt  DateTime              @default(now()) @map("created_at")
+  updatedAt  DateTime              @updatedAt @map("updated_at")
+
+  tenant     Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rule       CommentReplyRule        @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  executions CommentReplyExecution[]
+
+  @@map("comment_reply_variants")
+}
+
+model CommentPostOverride {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  bindingId         String    @map("binding_id")
+  externalPostId    String    @map("external_post_id")
+  mode              String    @default("inherit")
+  overrideProfileId String?   @map("override_profile_id")
+  postName          String?   @map("post_name")
+  thumbnailUrl      String?   @map("thumbnail_url") @db.Text
+  postPublishedAt   DateTime? @map("post_published_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  binding         CommentChannelBinding @relation(fields: [bindingId], references: [id], onDelete: Cascade)
+  overrideProfile CommentReplyProfile?  @relation("CommentReplyOverrideProfile", fields: [overrideProfileId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, bindingId, externalPostId])
+  @@map("comment_post_overrides")
+}
+
+model CommentReplyExecution {
+  id                   String                      @id @default(uuid())
+  tenantId             String                      @map("tenant_id")
+  instanceId           String?                     @map("instance_id")
+  bindingId            String?                     @map("binding_id")
+  profileId            String?                     @map("profile_id")
+  agentId              String?                     @map("agent_id")
+  agentNameSnapshot    String?                     @map("agent_name_snapshot")
+  platform             CommentReplyPlatform
+  providerAccountId    String                      @map("provider_account_id")
+  externalCommentId    String                      @map("external_comment_id")
+  externalPostId       String                      @map("external_post_id")
+  parentCommentId      String?                     @map("parent_comment_id")
+  commentText          String?                     @map("comment_text") @db.Text
+  commenterExternalId  String?                     @map("commenter_external_id")
+  commenterName        String?                     @map("commenter_name")
+  postName             String?                     @map("post_name")
+  eventCreatedAt       DateTime?                   @map("event_created_at")
+  isSelf               Boolean                     @default(false) @map("is_self")
+  skipReason           String?                     @map("skip_reason")
+  routeSource          String?                     @map("route_source")
+  ruleId               String?                     @map("rule_id")
+  ruleNameSnapshot     String?                     @map("rule_name_snapshot")
+  variantId            String?                     @map("variant_id")
+  profileConfigVersion Int?                        @map("profile_config_version")
+  agentConfigVersion   Int?                        @map("agent_config_version")
+  renderedReply        String?                     @map("rendered_reply") @db.Text
+  status               CommentReplyExecutionStatus @default(received)
+  providerReplyId      String?                     @map("provider_reply_id")
+  errorCode            String?                     @map("error_code")
+  errorMessage         String?                     @map("error_message") @db.Text
+  attempts             Int                         @default(0)
+  availableAt          DateTime                    @default(now()) @map("available_at")
+  leaseExpiresAt       DateTime?                   @map("lease_expires_at")
+  leaseToken           String?                     @map("lease_token")
+  outboxEventId        String?                     @unique @map("outbox_event_id")
+  receivedAt           DateTime                    @default(now()) @map("received_at")
+  completedAt          DateTime?                   @map("completed_at")
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  updatedAt            DateTime                    @updatedAt @map("updated_at")
+
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  instance    Instance?              @relation(fields: [instanceId], references: [id], onDelete: SetNull)
+  binding     CommentChannelBinding? @relation(fields: [bindingId], references: [id], onDelete: SetNull)
+  profile     CommentReplyProfile?   @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  agent       AIAgent?               @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  rule        CommentReplyRule?      @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  variant     CommentReplyVariant?   @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  outboxEvent OutboxEvent?           @relation(fields: [outboxEventId], references: [id], onDelete: SetNull)
+
+  @@unique([platform, providerAccountId, externalCommentId])
+  @@index([status, availableAt])
+  @@index([status, leaseExpiresAt])
+  @@index([tenantId, profileId, receivedAt(sort: Desc)])
+  @@index([tenantId, profileId, createdAt(sort: Desc), id])
+  @@map("comment_reply_executions")
 }
 
 // CRM: Contact
@@ -776,9 +971,9 @@ model ContactNote {
   contactId String  @map("contact_id")
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  userId String? @map("user_id")
-  user   User?   @relation(fields: [userId], references: [id])
-  agentId String? @map("agent_id")
+  userId  String?  @map("user_id")
+  user    User?    @relation(fields: [userId], references: [id])
+  agentId String?  @map("agent_id")
   agent   AIAgent? @relation(fields: [agentId], references: [id])
 
   content String @db.Text
