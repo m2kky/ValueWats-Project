@@ -93,8 +93,10 @@ export default function CommentReplyWorkspace() {
       ]);
       setWorkspace(workspaceResponse.data);
       setInstances((instancesResponse.data.instances || []).filter((item) => ['messenger', 'instagram'].includes(item.channelType)));
+      return workspaceResponse.data;
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to load comment replies');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -104,20 +106,38 @@ export default function CommentReplyWorkspace() {
     loadWorkspace();
   }, [loadWorkspace]);
 
-  async function mutate(request, successMessage) {
+  async function ensureProfile(currentWorkspace) {
+    if (currentWorkspace?.profile?.id) return currentWorkspace;
+    try {
+      await api.put(`/agents/${agentId}/comment-replies`, {
+        expectedConfigVersion: 0,
+        isEnabled: false
+      });
+    } catch (error) {
+      if (error.response?.data?.code !== 'CONFIG_VERSION_CONFLICT') throw error;
+    }
+    const initialized = await loadWorkspace();
+    if (!initialized?.profile?.id) throw new Error('Comment reply profile could not be initialized');
+    return initialized;
+  }
+
+  async function mutate(request, successMessage, { requiresProfile = false } = {}) {
     setSaving(true);
     try {
-      await request();
+      let currentWorkspace = requiresProfile ? await ensureProfile(workspace) : workspace;
+      try {
+        await request(currentWorkspace.configVersion);
+      } catch (error) {
+        if (error.response?.data?.code !== 'CONFIG_VERSION_CONFLICT') throw error;
+        currentWorkspace = await loadWorkspace();
+        if (requiresProfile) currentWorkspace = await ensureProfile(currentWorkspace);
+        await request(currentWorkspace.configVersion);
+      }
       toast.success(successMessage);
       await loadWorkspace();
       return true;
     } catch (error) {
-      if (error.response?.status === 409) {
-        await loadWorkspace();
-        toast.error(error.response?.data?.error || 'Settings changed. Reloaded the latest version.');
-      } else {
-        toast.error(error.response?.data?.error || 'Could not save changes');
-      }
+      toast.error(error.response?.data?.error || error.message || 'Could not save changes');
       return false;
     } finally {
       setSaving(false);
@@ -126,8 +146,8 @@ export default function CommentReplyWorkspace() {
 
   async function saveProfile(isEnabled) {
     await mutate(
-      () => api.put(`/agents/${agentId}/comment-replies`, {
-        expectedConfigVersion: workspace.configVersion,
+      (configVersion) => api.put(`/agents/${agentId}/comment-replies`, {
+        expectedConfigVersion: configVersion,
         isEnabled
       }),
       isEnabled ? 'Comment replies enabled' : 'Comment replies paused'
@@ -137,12 +157,13 @@ export default function CommentReplyWorkspace() {
   async function bindInstance() {
     if (!selectedInstance) return toast.error('Choose a Facebook or Instagram channel');
     const saved = await mutate(
-      () => api.post(`/agents/${agentId}/comment-replies/bindings`, {
-        expectedConfigVersion: workspace.configVersion,
+      (configVersion) => api.post(`/agents/${agentId}/comment-replies/bindings`, {
+        expectedConfigVersion: configVersion,
         instanceId: selectedInstance,
         isEnabled: true
       }),
-      'Channel connected'
+      'Channel connected',
+      { requiresProfile: true }
     );
     if (saved) setSelectedInstance('');
   }
@@ -150,10 +171,11 @@ export default function CommentReplyWorkspace() {
   async function unbind(bindingId) {
     if (!window.confirm('Remove this channel from public comment replies?')) return;
     await mutate(
-      () => api.delete(`/agents/${agentId}/comment-replies/bindings/${bindingId}`, {
-        data: { expectedConfigVersion: workspace.configVersion }
+      (configVersion) => api.delete(`/agents/${agentId}/comment-replies/bindings/${bindingId}`, {
+        data: { expectedConfigVersion: configVersion }
       }),
-      'Channel removed'
+      'Channel removed',
+      { requiresProfile: true }
     );
   }
 
@@ -165,7 +187,6 @@ export default function CommentReplyWorkspace() {
       ...splitLines(ruleDraft.instagramReplies).map((body) => ({ body, platform: 'instagram' }))
     ];
     const payload = {
-      expectedConfigVersion: workspace.configVersion,
       name: ruleDraft.name.trim(),
       priority: Number(ruleDraft.priority),
       matchMode: ruleDraft.matchMode,
@@ -174,10 +195,11 @@ export default function CommentReplyWorkspace() {
       isEnabled: ruleDraft.isEnabled
     };
     const saved = await mutate(
-      () => ruleDraft.id
-        ? api.put(`/agents/${agentId}/comment-replies/rules/${ruleDraft.id}`, payload)
-        : api.post(`/agents/${agentId}/comment-replies/rules`, payload),
-      ruleDraft.id ? 'Rule updated' : 'Rule created'
+      (configVersion) => ruleDraft.id
+        ? api.put(`/agents/${agentId}/comment-replies/rules/${ruleDraft.id}`, { ...payload, expectedConfigVersion: configVersion })
+        : api.post(`/agents/${agentId}/comment-replies/rules`, { ...payload, expectedConfigVersion: configVersion }),
+      ruleDraft.id ? 'Rule updated' : 'Rule created',
+      { requiresProfile: true }
     );
     if (saved) setRuleDraft(emptyRule);
   }
@@ -185,31 +207,34 @@ export default function CommentReplyWorkspace() {
   async function deleteRule(ruleId) {
     if (!window.confirm('Delete this reply rule?')) return;
     await mutate(
-      () => api.delete(`/agents/${agentId}/comment-replies/rules/${ruleId}`, {
-        data: { expectedConfigVersion: workspace.configVersion }
+      (configVersion) => api.delete(`/agents/${agentId}/comment-replies/rules/${ruleId}`, {
+        data: { expectedConfigVersion: configVersion }
       }),
-      'Rule deleted'
+      'Rule deleted',
+      { requiresProfile: true }
     );
   }
 
   async function saveOverride(event) {
     event.preventDefault();
     const saved = await mutate(
-      () => api.post(`/agents/${agentId}/comment-replies/overrides`, {
-        expectedConfigVersion: workspace.configVersion,
+      (configVersion) => api.post(`/agents/${agentId}/comment-replies/overrides`, {
+        expectedConfigVersion: configVersion,
         ...overrideDraft
       }),
-      'Post override saved'
+      'Post override saved',
+      { requiresProfile: true }
     );
     if (saved) setOverrideDraft({ bindingId: '', externalPostId: '', postName: '', mode: 'disabled' });
   }
 
   async function deleteOverride(overrideId) {
     await mutate(
-      () => api.delete(`/agents/${agentId}/comment-replies/overrides/${overrideId}`, {
-        data: { expectedConfigVersion: workspace.configVersion }
+      (configVersion) => api.delete(`/agents/${agentId}/comment-replies/overrides/${overrideId}`, {
+        data: { expectedConfigVersion: configVersion }
       }),
-      'Post override removed'
+      'Post override removed',
+      { requiresProfile: true }
     );
   }
 
