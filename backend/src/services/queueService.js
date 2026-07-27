@@ -4,7 +4,24 @@ const evolutionApi = require('./evolutionApi');
 const metaApi = require('./metaApi');
 const prisma = require('../config/database');
 const { emitCampaignProgress } = require('./socketService');
+const { sanitizeError } = require('../logging/redaction');
 
+const MAX_QUEUE_ERROR_CODE_LENGTH = 100;
+const MAX_QUEUE_ERROR_MESSAGE_LENGTH = 500;
+
+function toSafeQueueError(error) {
+  const sanitized = sanitizeError(error);
+  return {
+    code: String(sanitized.code || 'UNKNOWN_ERROR').slice(0, MAX_QUEUE_ERROR_CODE_LENGTH),
+    message: String(sanitized.message || 'Unknown error').slice(0, MAX_QUEUE_ERROR_MESSAGE_LENGTH)
+  };
+}
+
+function toJobError({ code, message }) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
 
 
 // Helper to extract IPs from text
@@ -75,10 +92,11 @@ messageQueue.process(async (job) => {
 
     return result;
   } catch (error) {
-    console.error(`Failed to send message to ${number}:`, error.message);
+    const safeError = toSafeQueueError(error);
+    console.error(`Failed to send message to ${number}:`, safeError);
 
     // Translate technical errors to human-readable reasons
-    const rawError = error.response?.data?.message || error.response?.data?.error?.message || error.response?.data?.error || error.message || '';
+    const rawError = safeError.message;
     let failReason = 'Unknown error';
     if (/not connected|disconnected|closed|logout/i.test(rawError)) {
       failReason = 'Instance disconnected — channel is not connected';
@@ -101,7 +119,7 @@ messageQueue.process(async (job) => {
       data: { status: 'failed', failReason }
     });
 
-    throw error;
+    throw toJobError(safeError);
   }
 });
 
@@ -130,12 +148,13 @@ messageQueue.on('completed', async (job) => {
     // Check if all messages for this campaign are processed
     await checkCampaignCompletion(campaignId);
   } catch (err) {
-    console.error('Error updating campaign count:', err.message);
+    console.error('Error updating campaign count:', toSafeQueueError(err));
   }
 });
 
 messageQueue.on('failed', async (job, err) => {
-  console.error(`Job ${job.id} failed: ${err.message}`);
+  const safeError = toSafeQueueError(err);
+  console.error(`Job ${job.id} failed:`, safeError);
 
   // Update campaign failed count
   try {
@@ -152,14 +171,15 @@ messageQueue.on('failed', async (job, err) => {
       channelType: channelType || 'whatsapp',
       instanceName: instanceName,
       status: 'failed',
-      error: err.message,
+      errorCode: safeError.code,
+      error: safeError.message,
       sentAt: new Date().toISOString()
     });
 
     // Check if all messages for this campaign are processed
     await checkCampaignCompletion(campaignId);
   } catch (err) {
-    console.error('Error updating campaign failed count:', err.message);
+    console.error('Error updating campaign failed count:', toSafeQueueError(err));
   }
 });
 
