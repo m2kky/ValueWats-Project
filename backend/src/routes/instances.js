@@ -18,6 +18,8 @@ const { sanitizeError } = require('../logging/redaction');
 const router = express.Router();
 const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
 const FB_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
+const META_PAGE_SUBSCRIPTION_FIELDS =
+  'messages,messaging_postbacks,messaging_referrals,message_reads,message_deliveries,feed';
 
 const enforceInstanceLimit = async (tenantId) => {
   const { plan } = await resolveTenantPlanByTenantId(tenantId);
@@ -76,20 +78,11 @@ const subscribeMetaAsset = async ({ assetId, accessToken, fields, label }) => {
 };
 
 const subscribeMetaChannel = async ({ page, channelType }) => {
-  const pageReady = await subscribeMetaAsset({
+  return subscribeMetaAsset({
     assetId: page.pageId,
     accessToken: page.pageAccessToken,
-    fields: channelType === 'instagram'
-      ? 'messages,messaging_postbacks,messaging_referrals'
-      : 'messages,messaging_postbacks,messaging_referrals,message_reads,message_deliveries,feed',
+    fields: META_PAGE_SUBSCRIPTION_FIELDS,
     label: channelType
-  });
-  if (channelType !== 'instagram') return pageReady;
-  return subscribeMetaAsset({
-    assetId: page.instagramId,
-    accessToken: page.pageAccessToken,
-    fields: 'comments',
-    label: 'instagram comments'
   });
 };
 
