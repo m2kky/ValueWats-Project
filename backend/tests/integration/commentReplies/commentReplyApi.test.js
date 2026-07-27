@@ -33,6 +33,7 @@ function createPrismaFixture() {
     bindings: [], rules: [], variants: [], overrides: []
   };
   const calls = { agentFinds: [], profileCreates: 0, profileUpdates: 0 };
+  const faults = { profileCreate: null };
   let sequence = 0;
   const id = (prefix) => `${prefix}-${++sequence}`;
   const decorateRule = (rule) => ({ ...rule, variants: rows.variants.filter((variant) => variant.ruleId === rule.id && variant.deletedAt == null) });
@@ -59,6 +60,7 @@ function createPrismaFixture() {
       },
       create: async ({ data }) => {
         calls.profileCreates += 1;
+        if (faults.profileCreate) throw faults.profileCreate;
         const row = { id: id('profile'), isEnabled: false, aiFallbackEnabled: false, defaultMatchMode: 'contains_any', configVersion: 1, deletedAt: null, ...data };
         rows.profiles.push(row);
         return clone(row);
@@ -140,7 +142,7 @@ function createPrismaFixture() {
       }
     }
   };
-  return { prisma, rows, calls };
+  return { prisma, rows, calls, faults };
 }
 
 function applyData(row, data) {
@@ -167,9 +169,10 @@ describe('Comment Reply configuration API', () => {
   let prisma;
   let rows;
   let calls;
+  let faults;
 
   beforeEach(() => {
-    ({ prisma, rows, calls } = createPrismaFixture());
+    ({ prisma, rows, calls, faults } = createPrismaFixture());
     app = createTestApp({ prisma, privateReplyInstances: ['instance-private'] });
   });
 
@@ -311,6 +314,17 @@ describe('Comment Reply configuration API', () => {
       .expect(409)
       .expect(({ body }) => expect(body.code).toBe('CONFIG_VERSION_CONFLICT'));
     expect(calls.profileCreates).toBe(0);
+  });
+
+  it('maps an initial profile unique conflict to the stable config conflict response', async () => {
+    const error = new Error('Unique constraint failed');
+    error.code = 'P2002';
+    faults.profileCreate = error;
+
+    await request(app).put('/api/agents/agent-empty/comment-replies')
+      .send({ expectedConfigVersion: 0, isEnabled: true })
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('CONFIG_VERSION_CONFLICT'));
   });
 
   it('validates and persists rule variants and post overrides under one config version', async () => {

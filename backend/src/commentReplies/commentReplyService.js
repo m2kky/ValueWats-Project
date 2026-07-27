@@ -191,7 +191,7 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
         return { profile: toProfile({ ...profile, ...data, configVersion: expectedConfigVersion + 1 }), configVersion: expectedConfigVersion + 1 };
       }, { isolationLevel: 'Serializable' });
     } catch (error) {
-      if (error?.code === 'P2034') throw conflict();
+      if (error?.code === 'P2034' || error?.code === 'P2002') throw conflict();
       throw error;
     }
   }
