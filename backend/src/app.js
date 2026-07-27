@@ -3,10 +3,13 @@ const express = require('express');
 const helmet = require('helmet');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const { assertMetaTokenEncryptionConfigured } = require('./meta/metaTokenCrypto');
 
 const route = (value, dependencies) => (typeof value === 'function' && !value.stack ? value(dependencies) : value);
 
 function createApp({ routes = {}, middleware = {}, dependencies = {} } = {}) {
+  if (process.env.NODE_ENV === 'production') assertMetaTokenEncryptionConfigured();
+
   const app = express();
   const tenantContext = middleware.tenantContext;
   const withTenant = (prefix, name) => {
@@ -16,6 +19,7 @@ function createApp({ routes = {}, middleware = {}, dependencies = {} } = {}) {
   app.locals.dependencies = dependencies;
   app.set('trust proxy', 1);
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' } }));
+  if (routes.webhooks) app.use('/api/webhooks/meta', express.raw({ type: 'application/json', limit: '1mb' }));
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
   app.use(cors({

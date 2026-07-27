@@ -11,6 +11,8 @@ const {
 const prisma = require('../config/database');
 const { resolveTenantPlanByTenantId } = require('../services/planLimit.service');
 const checkPermission = require('../middleware/checkPermission');
+const { encryptMetaToken } = require('../meta/metaTokenCrypto');
+const { toSafeInstanceDto } = require('../meta/metaInstanceDto');
 
 const router = express.Router();
 const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
@@ -177,7 +179,7 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
       const updatedInstance = await prisma.instance.update({
         where: { id: alreadyConnected.id },
         data: {
-          accessToken: chosenPage.pageAccessToken,
+          accessToken: encryptMetaToken(chosenPage.pageAccessToken),
           status: 'connected'
         }
       });
@@ -192,7 +194,7 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
       return res.json({
         message: 'Channel re-authenticated successfully. Token updated.',
         alreadyConnected: true,
-        instance: updatedInstance
+        instance: toSafeInstanceDto(updatedInstance)
       });
     }
 
@@ -209,7 +211,7 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
         instanceName: uniqueName,
         phoneNumberId: String(identifier),
         phoneNumber: channelType === 'instagram' ? chosenPage.pageId : null,
-        accessToken: chosenPage.pageAccessToken,
+        accessToken: encryptMetaToken(chosenPage.pageAccessToken),
         status: 'connected'
       }
     });
@@ -222,7 +224,7 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
 
     res.status(201).json({
       message: `${channelType === 'instagram' ? 'Instagram' : 'Messenger'} connected successfully via Embedded Signup.`,
-      instance,
+      instance: toSafeInstanceDto(instance),
       connectedAsset: {
         pageId: chosenPage.pageId,
         pageName: chosenPage.pageName,
@@ -287,7 +289,7 @@ router.get('/', async (req, res) => {
       })
     );
 
-    res.json({ instances: syncedInstances });
+    res.json({ instances: syncedInstances.map(toSafeInstanceDto) });
   } catch (error) {
     console.error('List instances error:', error);
     res.status(500).json({ error: 'Failed to fetch instances' });
@@ -344,7 +346,7 @@ router.post('/', checkPermission('channels.manage'), async (req, res) => {
           instanceName,
           channelType,
           phoneNumberId: String(phoneNumberId),
-          accessToken,
+          accessToken: encryptMetaToken(accessToken),
           status: 'connected'
         }
       });
@@ -354,7 +356,7 @@ router.post('/', checkPermission('channels.manage'), async (req, res) => {
 
     res.status(201).json({
       message: 'Instance created successfully',
-      instance,
+      instance: toSafeInstanceDto(instance),
     });
   } catch (error) {
     console.error('Create instance error:', error);
@@ -392,7 +394,7 @@ router.get('/:id/details', async (req, res) => {
       }
     }
 
-    res.json({ instance });
+    res.json({ instance: toSafeInstanceDto(instance) });
   } catch (error) {
     console.error('Get instance details error:', error);
     res.status(500).json({ error: 'Failed to fetch instance details' });
@@ -600,7 +602,7 @@ router.patch('/:id', checkPermission('channels.manage'), async (req, res) => {
     }
 
     if (Object.keys(updateData).length === 0) {
-      return res.json({ instance, message: 'No changes to save' });
+      return res.json({ instance: toSafeInstanceDto(instance), message: 'No changes to save' });
     }
 
     const updated = await prisma.instance.update({
@@ -608,7 +610,7 @@ router.patch('/:id', checkPermission('channels.manage'), async (req, res) => {
       data: updateData,
     });
 
-    res.json({ instance: updated, message: 'Instance updated successfully' });
+    res.json({ instance: toSafeInstanceDto(updated), message: 'Instance updated successfully' });
   } catch (error) {
     console.error('Update instance error:', error);
     res.status(500).json({ error: 'Failed to update instance' });
@@ -712,7 +714,7 @@ router.patch('/:id/toggle', checkPermission('channels.manage'), async (req, res)
       where: { id: instance.id },
       data: { status: newStatus },
     });
-    res.json({ instance: updated });
+    res.json({ instance: toSafeInstanceDto(updated) });
   } catch (error) {
     console.error('Toggle instance error:', error);
     res.status(500).json({ error: 'Failed to toggle instance' });

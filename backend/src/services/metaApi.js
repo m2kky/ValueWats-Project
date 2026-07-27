@@ -1,9 +1,14 @@
 const axios = require('axios');
+const { decryptMetaToken } = require('../meta/metaTokenCrypto');
 
 const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
 const FB_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 
 class MetaApi {
+  getAccessToken(instance) {
+    return decryptMetaToken(instance.accessToken);
+  }
+
   // Common headers builder (Bearer token auth — used by WhatsApp + Instagram)
   getHeaders(token) {
     return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -18,7 +23,7 @@ class MetaApi {
       to,
       type: 'text',
       text: { body: text }
-    }, { headers: this.getHeaders(instance.accessToken) });
+    }, { headers: this.getHeaders(this.getAccessToken(instance)) });
     console.log(`[MetaApi:WhatsApp] Sent to ${to}:`, res.data);
     return res.data;
   }
@@ -32,7 +37,7 @@ class MetaApi {
       type,
       [type]: { link: mediaUrl, ...(caption && type !== 'audio' ? { caption } : {}) }
     };
-    const res = await axios.post(`${FB_BASE}/${instance.phoneNumberId}/messages`, payload, { headers: this.getHeaders(instance.accessToken) });
+    const res = await axios.post(`${FB_BASE}/${instance.phoneNumberId}/messages`, payload, { headers: this.getHeaders(this.getAccessToken(instance)) });
     console.log(`[MetaApi:WhatsApp] Sent media to ${to}:`, res.data);
     return res.data;
   }
@@ -61,7 +66,7 @@ class MetaApi {
     }
 
     const res = await axios.post(`${FB_BASE}/${instance.phoneNumberId}/messages`, payload, {
-      params: { access_token: instance.accessToken },
+      params: { access_token: this.getAccessToken(instance) },
       headers: { 'Content-Type': 'application/json' }
     });
     console.log(`[MetaApi:Messenger] Sent to ${recipientId}:`, res.data);
@@ -70,7 +75,7 @@ class MetaApi {
 
   async postToMessengerPage(instance, payload) {
     const res = await axios.post(`${FB_BASE}/${instance.phoneNumberId}/messages`, payload, {
-      params: { access_token: instance.accessToken },
+      params: { access_token: this.getAccessToken(instance) },
       headers: { 'Content-Type': 'application/json' }
     });
     return res.data;
@@ -124,7 +129,7 @@ class MetaApi {
     };
 
     const res = await axios.post(`${FB_BASE}/me/messenger_profile`, payload, {
-      params: { access_token: instance.accessToken },
+      params: { access_token: this.getAccessToken(instance) },
       headers: { 'Content-Type': 'application/json' }
     });
 
@@ -133,7 +138,7 @@ class MetaApi {
 
   async clearMessengerPersistentMenu(instance) {
     const res = await axios.delete(`${FB_BASE}/me/messenger_profile`, {
-      params: { access_token: instance.accessToken },
+      params: { access_token: this.getAccessToken(instance) },
       headers: { 'Content-Type': 'application/json' },
       data: { fields: ['persistent_menu'] }
     });
@@ -165,7 +170,7 @@ class MetaApi {
     }
 
     const res = await axios.post(`${FB_BASE}/me/messages`, payload, {
-      params: { access_token: instance.accessToken },
+      params: { access_token: this.getAccessToken(instance) },
       headers: { 'Content-Type': 'application/json' }
     });
     console.log(`[MetaApi:Instagram] Sent to ${recipientId}:`, res.data);
@@ -186,10 +191,10 @@ class MetaApi {
 
   // Fetch Messenger/Instagram user profile (name, profile_pic)
   // Docs: https://developers.facebook.com/docs/messenger-platform/identity/user-profile/
-  async getUserProfile(psid, accessToken) {
+  async getUserProfile(instance, psid) {
     try {
       const res = await axios.get(`${FB_BASE}/${psid}`, {
-        params: { fields: 'name,profile_pic', access_token: accessToken }
+        params: { fields: 'name,profile_pic', access_token: this.getAccessToken(instance) }
       });
       return { name: res.data.name || null, profilePic: res.data.profile_pic || null };
     } catch (err) {
@@ -198,14 +203,14 @@ class MetaApi {
     }
   }
 
-  async getMediaUrl(mediaId, token) {
-    const res = await axios.get(`${FB_BASE}/${mediaId}`, { headers: this.getHeaders(token) });
+  async getMediaUrl(instance, mediaId) {
+    const res = await axios.get(`${FB_BASE}/${mediaId}`, { headers: this.getHeaders(this.getAccessToken(instance)) });
     return res.data.url;
   }
 
-  async downloadMedia(mediaUrl, token) {
+  async downloadMedia(instance, mediaUrl) {
     const res = await axios.get(mediaUrl, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${this.getAccessToken(instance)}` },
       responseType: 'arraybuffer'
     });
     return res.data;

@@ -303,7 +303,7 @@ const handleMetaWebhook = async (req, res) => {
           continue;
         }
 
-        const profile = await metaApi.getUserProfile(contactNumber, instance.accessToken);
+        const profile = await metaApi.getUserProfile(instance, contactNumber);
 
         await processIncomingMessage({
           instance,
@@ -363,7 +363,7 @@ const handleMetaWebhook = async (req, res) => {
         } else if (['image', 'video', 'audio', 'document'].includes(messageType)) {
           text = msg[messageType]?.caption || '';
           try {
-            mediaUrl = await metaApi.getMediaUrl(msg[messageType].id, instance.accessToken);
+            mediaUrl = await metaApi.getMediaUrl(instance, msg[messageType].id);
           } catch (_) {
             mediaUrl = null;
           }
