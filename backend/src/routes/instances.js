@@ -55,26 +55,62 @@ const ensureUniqueInstanceName = async (tenantId, preferredName) => {
   }
 };
 
-const subscribeMetaPage = async ({ pageId, pageAccessToken, channelType }) => {
-  if (!pageId || !pageAccessToken) return;
-
-  const subscribedFields = channelType === 'instagram'
-    ? 'messages,messaging_postbacks,messaging_referrals'
-    : 'messages,messaging_postbacks,messaging_referrals,message_reads,message_deliveries,feed';
+const subscribeMetaAsset = async ({ assetId, accessToken, fields, label }) => {
+  if (!assetId || !accessToken) return false;
 
   try {
-    await axios.post(`${FB_BASE}/${pageId}/subscribed_apps`, null, {
+    await axios.post(`${FB_BASE}/${assetId}/subscribed_apps`, null, {
       params: {
-        subscribed_fields: subscribedFields,
-        access_token: pageAccessToken
+        subscribed_fields: fields,
+        access_token: accessToken
       }
     });
+    return true;
   } catch (err) {
     console.warn(
-      `[Meta] Failed to subscribe page ${pageId} for ${channelType}:`,
+      `[Meta] Failed to subscribe ${label} ${assetId}:`,
       sanitizeError(err)
     );
+    return false;
   }
+};
+
+const subscribeMetaChannel = async ({ page, channelType }) => {
+  const pageReady = await subscribeMetaAsset({
+    assetId: page.pageId,
+    accessToken: page.pageAccessToken,
+    fields: channelType === 'instagram'
+      ? 'messages,messaging_postbacks,messaging_referrals'
+      : 'messages,messaging_postbacks,messaging_referrals,message_reads,message_deliveries,feed',
+    label: channelType
+  });
+  if (channelType !== 'instagram') return pageReady;
+  return subscribeMetaAsset({
+    assetId: page.instagramId,
+    accessToken: page.pageAccessToken,
+    fields: 'comments',
+    label: 'instagram comments'
+  });
+};
+
+const persistCommentReplyReadiness = async ({ tenantId, instanceId, ready }) => {
+  const checkedAt = new Date();
+  const existingConfig = await getChannelConfig({ tenantId, instanceId });
+  await saveChannelConfig({
+    tenantId,
+    instanceId,
+    config: {
+      ...existingConfig,
+      commentReplies: { permissionsReady: ready, checkedAt: checkedAt.toISOString() }
+    }
+  });
+  await prisma.commentChannelBinding.updateMany({
+    where: { tenantId, instanceId },
+    data: {
+      permissionState: ready ? 'ready' : 'reconnect_required',
+      lastPermissionCheckAt: checkedAt
+    }
+  });
 };
 
 const getMetaPagesFromUserToken = async (userAccessToken) => {
@@ -186,10 +222,14 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
       });
 
       // Re-subscribe the page to webhooks just in case it was dropped due to expiration
-      await subscribeMetaPage({
-        pageId: chosenPage.pageId,
-        pageAccessToken: chosenPage.pageAccessToken,
+      const commentPermissionsReady = await subscribeMetaChannel({
+        page: chosenPage,
         channelType
+      });
+      await persistCommentReplyReadiness({
+        tenantId: req.tenantId,
+        instanceId: updatedInstance.id,
+        ready: commentPermissionsReady
       });
 
       return res.json({
@@ -217,10 +257,14 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
       }
     });
 
-    await subscribeMetaPage({
-      pageId: chosenPage.pageId,
-      pageAccessToken: chosenPage.pageAccessToken,
+    const commentPermissionsReady = await subscribeMetaChannel({
+      page: chosenPage,
       channelType
+    });
+    await persistCommentReplyReadiness({
+      tenantId: req.tenantId,
+      instanceId: instance.id,
+      ready: commentPermissionsReady
     });
 
     res.status(201).json({
@@ -434,6 +478,23 @@ router.put('/:id/channel-config', checkPermission('channels.manage'), async (req
     if (!instance) return res.status(404).json({ error: 'Instance not found' });
 
     const sanitized = sanitizeChannelConfig(req.body?.config || DEFAULT_CHANNEL_CONFIG);
+    if (sanitized.privateReplies.enabled) {
+      const publicBinding = await prisma.commentChannelBinding.findFirst({
+        where: {
+          tenantId: req.tenantId,
+          instanceId: instance.id,
+          isEnabled: true,
+          profile: { isEnabled: true, deletedAt: null }
+        },
+        select: { id: true }
+      });
+      if (publicBinding) {
+        return res.status(409).json({
+          code: 'PUBLIC_COMMENT_REPLIES_ENABLED',
+          error: 'Pause public Comment Replies in the Agent before enabling private DM replies.'
+        });
+      }
+    }
     const config = await saveChannelConfig({
       tenantId: req.tenantId,
       instanceId: instance.id,

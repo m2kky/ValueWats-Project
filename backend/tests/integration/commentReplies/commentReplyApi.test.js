@@ -149,7 +149,7 @@ function applyData(row, data) {
   return Object.fromEntries(Object.entries(data).map(([key, value]) => [key, value?.increment != null ? row[key] + value.increment : value]));
 }
 
-function createTestApp({ prisma, privateReplyInstances = [] }) {
+function createTestApp({ prisma, privateReplyInstances = [], readyInstances = [] }) {
   const app = express();
   app.use(express.json());
   app.use((req, res, next) => {
@@ -159,7 +159,13 @@ function createTestApp({ prisma, privateReplyInstances = [] }) {
   });
   app.use('/api', createCommentReplyRouter({
     prisma,
-    getChannelConfig: async ({ instanceId }) => ({ privateReplies: { enabled: privateReplyInstances.includes(instanceId) } })
+    getChannelConfig: async ({ instanceId }) => ({
+      privateReplies: { enabled: privateReplyInstances.includes(instanceId) },
+      commentReplies: {
+        permissionsReady: readyInstances.includes(instanceId),
+        checkedAt: '2026-07-27T12:00:00.000Z'
+      }
+    })
   }));
   return app;
 }
@@ -245,6 +251,17 @@ describe('Comment Reply configuration API', () => {
       .send({ expectedConfigVersion: 1, instanceId: 'instance-private', isEnabled: false })
       .expect(409)
       .expect(({ body }) => expect(body.code).toBe('PRIVATE_REPLIES_ENABLED'));
+  });
+
+  it('marks a binding ready only after the channel permission check passed', async () => {
+    app = createTestApp({ prisma, readyInstances: ['instance-a'] });
+    await request(app).post('/api/agents/agent-a/comment-replies/bindings')
+      .send({ expectedConfigVersion: 1, instanceId: 'instance-a', isEnabled: true })
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body.permissionState).toBe('ready');
+        expect(body.lastPermissionCheckAt).toBe('2026-07-27T12:00:00.000Z');
+      });
   });
 
   it('uses tenant and route IDs instead of hostile body identity fields for mutations', async () => {

@@ -111,11 +111,12 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
     };
   }
 
-  async function assertPrivateRepliesDisabled(tenantId, instanceId) {
+  async function getCompatibleChannelConfig(tenantId, instanceId) {
     const config = await getChannelConfig({ tenantId, instanceId });
     if (config?.privateReplies?.enabled) {
       throw new CommentReplyError(409, 'PRIVATE_REPLIES_ENABLED', 'Disable private DM replies before enabling comment replies');
     }
+    return config;
   }
 
   async function mutate({ tenantId, agentId, expectedConfigVersion, operation }) {
@@ -181,7 +182,7 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
         if (profile.configVersion !== expectedConfigVersion) throw conflict();
         if (isEnabled === true && !profile.isEnabled) {
           const bindings = await tx.commentChannelBinding.findMany({ where: { tenantId, profileId: profile.id } });
-          await Promise.all(bindings.map((binding) => assertPrivateRepliesDisabled(tenantId, binding.instanceId)));
+          await Promise.all(bindings.map((binding) => getCompatibleChannelConfig(tenantId, binding.instanceId)));
         }
         const updated = await tx.commentReplyProfile.updateMany({
           where: { id: profile.id, tenantId, deletedAt: null, configVersion: expectedConfigVersion },
@@ -204,11 +205,23 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
       if (!instance || !derivedProvider || !instance.phoneNumberId || (provider !== undefined && provider !== derivedProvider)) {
         throw new CommentReplyError(400, 'COMMENT_REPLY_INVALID_BINDING', 'Bind a Messenger or Instagram instance with a provider identity');
       }
-      await assertPrivateRepliesDisabled(tenantId, instance.id);
+      const channelConfig = await getCompatibleChannelConfig(tenantId, instance.id);
       const existing = await tx.commentChannelBinding.findFirst({ where: { tenantId, instanceId: instance.id } });
       if (existing) throw new CommentReplyError(409, 'COMMENT_REPLY_BINDING_CONFLICT', 'Instance already has a comment reply binding');
       try {
-        return await tx.commentChannelBinding.create({ data: { tenantId, profileId: profile.id, instanceId: instance.id, provider: derivedProvider, externalAccountId: String(instance.phoneNumberId), isEnabled }, include: { instance: true } });
+        return await tx.commentChannelBinding.create({
+          data: {
+            tenantId,
+            profileId: profile.id,
+            instanceId: instance.id,
+            provider: derivedProvider,
+            externalAccountId: String(instance.phoneNumberId),
+            isEnabled,
+            permissionState: channelConfig?.commentReplies?.permissionsReady ? 'ready' : 'reconnect_required',
+            lastPermissionCheckAt: channelConfig?.commentReplies?.checkedAt ? new Date(channelConfig.commentReplies.checkedAt) : null
+          },
+          include: { instance: true }
+        });
       } catch (error) {
         if (error?.code === 'P2002') throw new CommentReplyError(409, 'COMMENT_REPLY_BINDING_CONFLICT', 'Provider account is already bound');
         throw error;

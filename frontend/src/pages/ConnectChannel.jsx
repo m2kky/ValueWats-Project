@@ -142,8 +142,8 @@ export default function ConnectChannel() {
     ? (import.meta.env.VITE_META_LOGIN_CONFIG_ID_INSTAGRAM || fallbackMetaConfigId)
     : (import.meta.env.VITE_META_LOGIN_CONFIG_ID_MESSENGER || fallbackMetaConfigId);
   const metaScopes = type === 'instagram'
-    ? 'business_management,pages_show_list,pages_manage_metadata,instagram_basic,instagram_manage_messages'
-    : 'business_management,pages_show_list,pages_manage_metadata,pages_messaging';
+    ? 'business_management,pages_show_list,pages_manage_metadata,pages_read_engagement,instagram_basic,instagram_manage_messages,instagram_manage_comments'
+    : 'business_management,pages_show_list,pages_manage_metadata,pages_read_engagement,pages_manage_engagement,pages_messaging';
 
   useEffect(() => {
     if (!isSupportedChannel) return;

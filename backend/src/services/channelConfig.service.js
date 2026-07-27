@@ -16,6 +16,10 @@ const DEFAULT_CHANNEL_CONFIG = {
     postId: '',
     message: 'Thanks for your comment! We just sent you a private message.'
   },
+  commentReplies: {
+    permissionsReady: false,
+    checkedAt: null
+  },
   templates: {
     items: []
   }
@@ -141,10 +145,15 @@ const sanitizeChannelConfig = (inputConfig = {}, options = {}) => {
   }
 
   const normalizedTemplates = sanitizeTemplates(inputConfig.templates || {});
+  const commentRepliesInput = inputConfig.commentReplies || {};
 
   return {
     chatMenu: normalizedChatMenu,
     privateReplies: normalizedPrivateReplies,
+    commentReplies: {
+      permissionsReady: commentRepliesInput.permissionsReady === true,
+      checkedAt: commentRepliesInput.checkedAt || null
+    },
     templates: normalizedTemplates
   };
 };
@@ -159,6 +168,10 @@ const mergeWithDefaults = (config) => ({
   privateReplies: {
     ...DEFAULT_CHANNEL_CONFIG.privateReplies,
     ...(config?.privateReplies || {})
+  },
+  commentReplies: {
+    ...DEFAULT_CHANNEL_CONFIG.commentReplies,
+    ...(config?.commentReplies || {})
   },
   templates: {
     ...DEFAULT_CHANNEL_CONFIG.templates,
