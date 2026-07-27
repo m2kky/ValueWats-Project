@@ -196,7 +196,7 @@ git commit -m "fix(meta): secure webhook and token boundaries"
 
 **Files:**
 - Modify: `backend/prisma/schema.prisma`
-- Create: `backend/prisma/migrations/20260727190000_add_comment_reply_engine/migration.sql`
+- Create: `backend/prisma/migrations/20260806030000_add_comment_reply_engine/migration.sql`
 - Test: `backend/tests/integration/commentReplies/commentReplySchema.test.js`
 
 **Interfaces:**

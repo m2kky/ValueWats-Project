@@ -5,7 +5,7 @@ const { createTestDatabase, resetDatabase } = require('../../helpers/database');
 const schemaPath = path.resolve(__dirname, '../../../prisma/schema.prisma');
 const migrationPath = path.resolve(
   __dirname,
-  '../../../prisma/migrations/20260727190000_add_comment_reply_engine/migration.sql'
+  '../../../prisma/migrations/20260806030000_add_comment_reply_engine/migration.sql'
 );
 
 describe('Comment Reply schema', () => {
