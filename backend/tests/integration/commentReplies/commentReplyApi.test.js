@@ -21,7 +21,8 @@ function createPrismaFixture() {
   const rows = {
     agents: [
       { id: 'agent-a', tenantId: 'tenant-a', name: 'Price Agent', deletedAt: null },
-      { id: 'agent-b', tenantId: 'tenant-b', name: 'Other Tenant Agent', deletedAt: null }
+      { id: 'agent-b', tenantId: 'tenant-b', name: 'Other Tenant Agent', deletedAt: null },
+      { id: 'agent-empty', tenantId: 'tenant-a', name: 'Unconfigured Agent', deletedAt: null }
     ],
     profiles: [{ id: 'profile-a', tenantId: 'tenant-a', agentId: 'agent-a', isEnabled: false, aiFallbackEnabled: false, defaultMatchMode: 'contains_any', configVersion: 1, deletedAt: null }],
     instances: [
@@ -31,6 +32,7 @@ function createPrismaFixture() {
     ],
     bindings: [], rules: [], variants: [], overrides: []
   };
+  const calls = { agentFinds: [], profileCreates: 0, profileUpdates: 0 };
   let sequence = 0;
   const id = (prefix) => `${prefix}-${++sequence}`;
   const decorateRule = (rule) => ({ ...rule, variants: rows.variants.filter((variant) => variant.ruleId === rule.id && variant.deletedAt == null) });
@@ -38,7 +40,10 @@ function createPrismaFixture() {
   const prisma = {
     $transaction: async (callback) => callback(prisma),
     aIAgent: {
-      findFirst: async ({ where }) => clone(rows.agents.find((row) => matches(row, where)) || null)
+      findFirst: async ({ where }) => {
+        calls.agentFinds.push(clone(where));
+        return clone(rows.agents.find((row) => matches(row, where)) || null);
+      }
     },
     instance: {
       findFirst: async ({ where }) => clone(rows.instances.find((row) => matches(row, where)) || null)
@@ -53,11 +58,13 @@ function createPrismaFixture() {
         return clone(result);
       },
       create: async ({ data }) => {
+        calls.profileCreates += 1;
         const row = { id: id('profile'), isEnabled: false, aiFallbackEnabled: false, defaultMatchMode: 'contains_any', configVersion: 1, deletedAt: null, ...data };
         rows.profiles.push(row);
         return clone(row);
       },
       updateMany: async ({ where, data }) => {
+        calls.profileUpdates += 1;
         const found = rows.profiles.filter((row) => matches(row, where));
         found.forEach((row) => Object.assign(row, applyData(row, data)));
         return { count: found.length };
@@ -121,12 +128,19 @@ function createPrismaFixture() {
       },
       deleteMany: async ({ where }) => {
         const before = rows.overrides.length;
-        rows.overrides = rows.overrides.filter((row) => !matches(row, where));
+        rows.overrides = rows.overrides.filter((row) => {
+          if (where.binding?.profileId) {
+            const binding = rows.bindings.find((candidate) => candidate.id === row.bindingId);
+            if (binding?.profileId !== where.binding.profileId) return true;
+          }
+          const { binding, ...directWhere } = where;
+          return !matches(row, directWhere);
+        });
         return { count: before - rows.overrides.length };
       }
     }
   };
-  return { prisma, rows };
+  return { prisma, rows, calls };
 }
 
 function applyData(row, data) {
@@ -151,9 +165,11 @@ function createTestApp({ prisma, privateReplyInstances = [] }) {
 describe('Comment Reply configuration API', () => {
   let app;
   let prisma;
+  let rows;
+  let calls;
 
   beforeEach(() => {
-    ({ prisma } = createPrismaFixture());
+    ({ prisma, rows, calls } = createPrismaFixture());
     app = createTestApp({ prisma, privateReplyInstances: ['instance-private'] });
   });
 
@@ -219,6 +235,82 @@ describe('Comment Reply configuration API', () => {
       .send({ expectedConfigVersion: 1, instanceId: 'instance-private', isEnabled: true })
       .expect(409)
       .expect(({ body }) => expect(body.code).toBe('PRIVATE_REPLIES_ENABLED'));
+  });
+
+  it('rejects a private-DM channel even when the requested binding is disabled', async () => {
+    await request(app).post('/api/agents/agent-a/comment-replies/bindings')
+      .send({ expectedConfigVersion: 1, instanceId: 'instance-private', isEnabled: false })
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('PRIVATE_REPLIES_ENABLED'));
+  });
+
+  it('uses tenant and route IDs instead of hostile body identity fields for mutations', async () => {
+    rows.profiles.push({ id: 'profile-b', tenantId: 'tenant-b', agentId: 'agent-b', isEnabled: false, aiFallbackEnabled: false, defaultMatchMode: 'contains_any', configVersion: 1, deletedAt: null });
+    rows.rules.push(
+      { id: 'rule-a', tenantId: 'tenant-a', profileId: 'profile-a', name: 'A', isEnabled: false, priority: 1, matchMode: 'contains_any', keywords: ['a'], deletedAt: null },
+      { id: 'rule-b', tenantId: 'tenant-b', profileId: 'profile-b', name: 'B', isEnabled: false, priority: 1, matchMode: 'contains_any', keywords: ['b'], deletedAt: null }
+    );
+    rows.bindings.push(
+      { id: 'binding-a', tenantId: 'tenant-a', profileId: 'profile-a', instanceId: 'instance-a', provider: 'facebook', externalAccountId: 'page-a', isEnabled: false },
+      { id: 'binding-b', tenantId: 'tenant-b', profileId: 'profile-b', instanceId: 'instance-b', provider: 'facebook', externalAccountId: 'page-b', isEnabled: false }
+    );
+    rows.overrides.push(
+      { id: 'override-a', tenantId: 'tenant-a', bindingId: 'binding-a', externalPostId: 'post-a', mode: 'inherit' },
+      { id: 'override-b', tenantId: 'tenant-b', bindingId: 'binding-b', externalPostId: 'post-b', mode: 'inherit' }
+    );
+    const hostile = {
+      tenantId: 'tenant-b', agentId: 'agent-b', profileId: 'profile-b', ruleId: 'rule-b', bindingId: 'binding-b', overrideId: 'override-b'
+    };
+
+    await request(app).delete('/api/agents/agent-a/comment-replies/rules/rule-a')
+      .send({ expectedConfigVersion: 1, ...hostile })
+      .expect(200);
+    expect(rows.rules.find((rule) => rule.id === 'rule-a').deletedAt).toEqual(expect.anything());
+    expect(rows.rules.find((rule) => rule.id === 'rule-b').deletedAt).toBeNull();
+
+    await request(app).delete('/api/agents/agent-a/comment-replies/overrides/override-a')
+      .send({ expectedConfigVersion: 2, ...hostile })
+      .expect(200);
+    expect(rows.overrides.some((override) => override.id === 'override-a')).toBe(false);
+    expect(rows.overrides.some((override) => override.id === 'override-b')).toBe(true);
+
+    await request(app).delete('/api/agents/agent-a/comment-replies/bindings/binding-a')
+      .send({ expectedConfigVersion: 3, ...hostile })
+      .expect(200);
+    expect(rows.bindings.some((binding) => binding.id === 'binding-a')).toBe(false);
+    expect(rows.bindings.some((binding) => binding.id === 'binding-b')).toBe(true);
+    expect(calls.agentFinds).toEqual([
+      { id: 'agent-a', tenantId: 'tenant-a', deletedAt: null },
+      { id: 'agent-a', tenantId: 'tenant-a', deletedAt: null },
+      { id: 'agent-a', tenantId: 'tenant-a', deletedAt: null }
+    ]);
+  });
+
+  it('keeps workspace reads write-free and creates the initial profile only on version zero update', async () => {
+    await request(app).get('/api/agents/agent-empty/comment-replies')
+      .expect(200)
+      .expect(({ body }) => expect(body).toEqual(expect.objectContaining({
+        profile: expect.objectContaining({ id: null, agentId: 'agent-empty', isEnabled: false, configVersion: 0 }),
+        bindings: [], rules: [], overrides: [], configVersion: 0
+      })));
+    await request(app).get('/api/agents/agent-empty/comment-replies/rules').expect(200);
+    await request(app).get('/api/agents/agent-empty/comment-replies/overrides').expect(200);
+    expect(calls.profileCreates).toBe(0);
+    expect(calls.profileUpdates).toBe(0);
+
+    const created = await request(app).put('/api/agents/agent-empty/comment-replies')
+      .send({ expectedConfigVersion: 0, isEnabled: true })
+      .expect(200);
+    expect(created.body).toEqual(expect.objectContaining({ configVersion: 1, profile: expect.objectContaining({ configVersion: 1, isEnabled: true }) }));
+    expect(calls.profileCreates).toBe(1);
+  });
+
+  it('requires a persisted profile for non-profile mutations', async () => {
+    await request(app).post('/api/agents/agent-empty/comment-replies/rules')
+      .send({ expectedConfigVersion: 0, name: 'Price', priority: 1, keywords: ['price'], variants: ['Ask our store'] })
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('CONFIG_VERSION_CONFLICT'));
+    expect(calls.profileCreates).toBe(0);
   });
 
   it('validates and persists rule variants and post overrides under one config version', async () => {

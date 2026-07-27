@@ -89,10 +89,6 @@ function normalizeVariants(variants) {
   });
 }
 
-function profileInclude() {
-  return { agent: { select: { id: true, name: true } }, bindings: { include: { instance: true } } };
-}
-
 function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = getChannelConfigDefault } = {}) {
   async function findAgent(tx, tenantId, agentId) {
     const agent = await tx.aIAgent.findFirst({ where: { id: agentId, tenantId, deletedAt: null }, select: { id: true, name: true } });
@@ -100,10 +96,19 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
     return agent;
   }
 
-  async function findOrCreateProfile(tx, tenantId, agentId) {
-    let profile = await tx.commentReplyProfile.findFirst({ where: { tenantId, agentId, deletedAt: null } });
-    if (!profile) profile = await tx.commentReplyProfile.create({ data: { tenantId, agentId } });
-    return profile;
+  async function findProfile(tx, tenantId, agentId) {
+    return tx.commentReplyProfile.findFirst({ where: { tenantId, agentId, deletedAt: null } });
+  }
+
+  function virtualProfile(agentId) {
+    return {
+      id: null,
+      agentId,
+      isEnabled: false,
+      aiFallbackEnabled: false,
+      defaultMatchMode: 'contains_any',
+      configVersion: 0
+    };
   }
 
   async function assertPrivateRepliesDisabled(tenantId, instanceId) {
@@ -118,7 +123,8 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
     try {
       return await prisma.$transaction(async (tx) => {
         await findAgent(tx, tenantId, agentId);
-        const profile = await findOrCreateProfile(tx, tenantId, agentId);
+        const profile = await findProfile(tx, tenantId, agentId);
+        if (!profile) throw conflict();
         if (profile.configVersion !== expectedConfigVersion) throw conflict();
         const result = await operation(tx, profile);
         const updated = await tx.commentReplyProfile.updateMany({
@@ -137,7 +143,13 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
   async function getWorkspace({ tenantId, agentId }) {
     return prisma.$transaction(async (tx) => {
       const agent = await findAgent(tx, tenantId, agentId);
-      const profile = await findOrCreateProfile(tx, tenantId, agentId);
+      const profile = await findProfile(tx, tenantId, agentId);
+      if (!profile) {
+        const virtual = virtualProfile(agentId);
+        return {
+          agent: { id: agent.id, name: agent.name }, profile: toProfile(virtual), bindings: [], rules: [], overrides: [], configVersion: 0
+        };
+      }
       const bindings = await tx.commentChannelBinding.findMany({ where: { tenantId, profileId: profile.id }, include: { instance: true }, orderBy: { createdAt: 'asc' } });
       const rules = await tx.commentReplyRule.findMany({ where: { tenantId, profileId: profile.id, deletedAt: null }, include: { variants: { where: { tenantId, deletedAt: null }, orderBy: { orderIndex: 'asc' } } }, orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }] });
       const overrides = await tx.commentPostOverride.findMany({ where: { tenantId, binding: { profileId: profile.id } }, orderBy: { createdAt: 'asc' } });
@@ -152,19 +164,36 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
     if (isEnabled !== undefined && typeof isEnabled !== 'boolean') throw validation('isEnabled must be a boolean');
     if (aiFallbackEnabled !== undefined && typeof aiFallbackEnabled !== 'boolean') throw validation('aiFallbackEnabled must be a boolean');
     if (defaultMatchMode !== undefined && !MATCH_MODES.has(defaultMatchMode)) throw validation('defaultMatchMode must be contains_any, contains_all, or exact');
-    const mutation = await mutate({ tenantId, agentId, expectedConfigVersion, operation: async (tx, profile) => {
-      if (isEnabled === true && !profile.isEnabled) {
-        const bindings = await tx.commentChannelBinding.findMany({ where: { tenantId, profileId: profile.id } });
-        await Promise.all(bindings.map((binding) => assertPrivateRepliesDisabled(tenantId, binding.instanceId)));
-      }
-      const data = {};
-      if (isEnabled !== undefined) data.isEnabled = isEnabled;
-      if (aiFallbackEnabled !== undefined) data.aiFallbackEnabled = aiFallbackEnabled;
-      if (defaultMatchMode !== undefined) data.defaultMatchMode = defaultMatchMode;
-      if (Object.keys(data).length) await tx.commentReplyProfile.updateMany({ where: { id: profile.id, tenantId, deletedAt: null }, data });
-      return { ...profile, ...data, configVersion: expectedConfigVersion + 1 };
-    } });
-    return { profile: toProfile(mutation.result), configVersion: mutation.configVersion };
+    requireVersion(expectedConfigVersion);
+    const data = {};
+    if (isEnabled !== undefined) data.isEnabled = isEnabled;
+    if (aiFallbackEnabled !== undefined) data.aiFallbackEnabled = aiFallbackEnabled;
+    if (defaultMatchMode !== undefined) data.defaultMatchMode = defaultMatchMode;
+    try {
+      return await prisma.$transaction(async (tx) => {
+        await findAgent(tx, tenantId, agentId);
+        const profile = await findProfile(tx, tenantId, agentId);
+        if (!profile) {
+          if (expectedConfigVersion !== 0) throw conflict();
+          const created = await tx.commentReplyProfile.create({ data: { tenantId, agentId, ...data } });
+          return { profile: toProfile(created), configVersion: created.configVersion };
+        }
+        if (profile.configVersion !== expectedConfigVersion) throw conflict();
+        if (isEnabled === true && !profile.isEnabled) {
+          const bindings = await tx.commentChannelBinding.findMany({ where: { tenantId, profileId: profile.id } });
+          await Promise.all(bindings.map((binding) => assertPrivateRepliesDisabled(tenantId, binding.instanceId)));
+        }
+        const updated = await tx.commentReplyProfile.updateMany({
+          where: { id: profile.id, tenantId, deletedAt: null, configVersion: expectedConfigVersion },
+          data: { ...data, configVersion: { increment: 1 } }
+        });
+        if (updated.count !== 1) throw conflict();
+        return { profile: toProfile({ ...profile, ...data, configVersion: expectedConfigVersion + 1 }), configVersion: expectedConfigVersion + 1 };
+      }, { isolationLevel: 'Serializable' });
+    } catch (error) {
+      if (error?.code === 'P2034') throw conflict();
+      throw error;
+    }
   }
 
   async function bindInstance({ tenantId, agentId, expectedConfigVersion, instanceId, isEnabled = false, provider }) {
@@ -175,7 +204,7 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
       if (!instance || !derivedProvider || !instance.phoneNumberId || (provider !== undefined && provider !== derivedProvider)) {
         throw new CommentReplyError(400, 'COMMENT_REPLY_INVALID_BINDING', 'Bind a Messenger or Instagram instance with a provider identity');
       }
-      if (isEnabled || profile.isEnabled) await assertPrivateRepliesDisabled(tenantId, instance.id);
+      await assertPrivateRepliesDisabled(tenantId, instance.id);
       const existing = await tx.commentChannelBinding.findFirst({ where: { tenantId, instanceId: instance.id } });
       if (existing) throw new CommentReplyError(409, 'COMMENT_REPLY_BINDING_CONFLICT', 'Instance already has a comment reply binding');
       try {
