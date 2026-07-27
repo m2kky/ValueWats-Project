@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { toSafeCampaignInstances } = require('../meta/metaInstanceDto');
 const queueService = require('../services/queueService');
 const googleSheetService = require('../services/googleSheetService');
 const crmService = require('../services/crmService');
@@ -171,7 +172,7 @@ const getCampaignById = async (req, res) => {
     });
 
     res.json({
-      ...campaign,
+      ...toSafeCampaignInstances(campaign),
       stats
     });
 

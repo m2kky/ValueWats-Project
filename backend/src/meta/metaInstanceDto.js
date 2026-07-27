@@ -4,4 +4,19 @@ function toSafeInstanceDto(instance) {
   return safeInstance;
 }
 
-module.exports = { toSafeInstanceDto };
+function toSafeCampaignInstances(campaign) {
+  if (!campaign) return campaign;
+
+  return {
+    ...campaign,
+    instance: toSafeInstanceDto(campaign.instance),
+    campaignInstances: Array.isArray(campaign.campaignInstances)
+      ? campaign.campaignInstances.map((campaignInstance) => ({
+        ...campaignInstance,
+        instance: toSafeInstanceDto(campaignInstance.instance)
+      }))
+      : campaign.campaignInstances
+  };
+}
+
+module.exports = { toSafeCampaignInstances, toSafeInstanceDto };
