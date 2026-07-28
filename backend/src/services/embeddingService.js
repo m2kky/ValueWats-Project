@@ -15,6 +15,7 @@ class EmbeddingService {
    * @returns {number[]} - 768-dimensional vector
    */
   async generateEmbedding(text) {
+    const startedAt = Date.now();
     try {
       if (!this.apiKey) {
         throw new Error('OPENROUTER_API_KEY is not set in environment variables');
@@ -24,7 +25,8 @@ class EmbeddingService {
         model: this.model,
         input: text,
         dimensions: this.dimensions,
-        encoding_format: 'float'
+        encoding_format: 'float',
+        provider: { sort: 'latency' }
       }, {
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
@@ -32,7 +34,7 @@ class EmbeddingService {
           'HTTP-Referer': process.env.APP_URL || 'https://valuewats.com',
           'X-Title': 'ValueWats'
         },
-        timeout: 60000
+        timeout: 12_000
       });
 
       const embedding = response.data?.data?.[0]?.embedding;
@@ -43,6 +45,10 @@ class EmbeddingService {
         throw new Error(`Invalid embedding dimensions: expected ${this.dimensions}, received ${embedding.length}`);
       }
 
+      console.log(
+        `[OpenRouter] Embedding completed in ${Date.now() - startedAt}ms`
+        + ` model=${this.model} provider=${response.data.provider || 'unknown'}`
+      );
       return embedding;
     } catch (error) {
       const detail = error.response?.data || error.message;

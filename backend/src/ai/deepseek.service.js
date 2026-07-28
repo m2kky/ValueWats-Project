@@ -7,6 +7,7 @@ class DeepseekService {
   }
 
   async chat({ messages, temperature = 0.7, max_tokens = 500, model = 'qwen/qwen3.5-flash-02-23', tools = null, tool_choice = null }) {
+    const startedAt = Date.now();
     try {
       if (!this.apiKey) {
         throw new Error('OPENROUTER_API_KEY is not set in environment variables');
@@ -16,7 +17,9 @@ class DeepseekService {
         model,
         messages,
         temperature,
-        max_tokens
+        max_tokens,
+        reasoning: { effort: 'none' },
+        provider: { sort: 'latency' }
       };
 
       if (tools) body.tools = tools;
@@ -31,10 +34,15 @@ class DeepseekService {
             'Content-Type': 'application/json',
             'HTTP-Referer': process.env.APP_URL || 'https://valuechat.app',
             'X-Title': 'ValueChat'
-          }
+          },
+          timeout: 45_000
         }
       );
 
+      console.log(
+        `[OpenRouter] Chat completed in ${Date.now() - startedAt}ms`
+        + ` model=${model} provider=${response.data.provider || 'unknown'}`
+      );
       return response.data.choices[0].message;
     } catch (error) {
       console.error('[DeepseekService] Error:', error.response?.data || error.message);

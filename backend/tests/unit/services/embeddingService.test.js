@@ -20,12 +20,14 @@ describe('embedding service', () => {
         model: 'qwen/qwen3-embedding-8b',
         input: 'اختبار',
         dimensions: 768,
-        encoding_format: 'float'
+        encoding_format: 'float',
+        provider: { sort: 'latency' }
       },
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer test-key'
-        })
+        }),
+        timeout: 12_000
       })
     );
   });
