@@ -1,6 +1,7 @@
 const { createOutboxService } = require('../events/outboxService');
 const { createOutboxWorker } = require('../events/outboxWorker');
 const { sanitizeError } = require('../logging/redaction');
+const { createCommentAiDecisionService } = require('./commentAiDecisionService');
 const { createCommentReplyDispatcher } = require('./commentReplyDispatcher');
 const { createCommentReplyRuntime } = require('./commentReplyRuntime');
 const { createCommentReplyWorker } = require('./commentReplyWorker');
@@ -11,13 +12,17 @@ const defaultSleep = (milliseconds) => new Promise((resolve) => setTimeout(resol
 function buildCommentReplyWorkers({
   prisma,
   metaApi,
+  decisionService,
   clock = () => new Date(),
   dispatchers = {},
   leaseMs = 30_000,
   maxAttempts = 3
 }) {
   const outboxService = createOutboxService(prisma, { clock });
-  const runtime = createCommentReplyRuntime({ prisma, outboxService, clock });
+  const lazyDecisionService = decisionService || {
+    decide: async (input) => createCommentAiDecisionService().decide(input)
+  };
+  const runtime = createCommentReplyRuntime({ prisma, outboxService, decisionService: lazyDecisionService, clock });
   const commentReplyWorker = createCommentReplyWorker({
     prisma,
     runtime,
