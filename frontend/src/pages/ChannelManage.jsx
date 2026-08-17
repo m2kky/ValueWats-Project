@@ -217,9 +217,14 @@ export default function ChannelManage() {
   const [privateReplyTestPostId, setPrivateReplyTestPostId] = useState('');
   const [privateReplyTestCommentId, setPrivateReplyTestCommentId] = useState('');
   const [privateReplySending, setPrivateReplySending] = useState(false);
+  const [agents, setAgents] = useState([]);
+  const [selectedPrimaryAgentId, setSelectedPrimaryAgentId] = useState('');
+  const [routingSaving, setRoutingSaving] = useState(false);
+  const [routingMessage, setRoutingMessage] = useState('');
 
   useEffect(() => {
     fetchInstance();
+    fetchAgents();
   }, [instanceId]);
 
   useEffect(() => {
@@ -232,10 +237,41 @@ export default function ChannelManage() {
       const res = await api.get(`/instances/${instanceId}/details`);
       setInstance(res.data.instance);
       setChannelName(res.data.instance.instanceName);
+      setSelectedPrimaryAgentId(res.data.instance.primaryAgentId || '');
     } catch (err) {
       console.error('Failed to fetch instance:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAgents = async () => {
+    try {
+      const res = await api.get('/agents');
+      const rows = Array.isArray(res.data) ? res.data : (res.data?.agents || []);
+      setAgents(rows.filter((agent) => agent.isActive && agent.isPublished && !agent.deletedAt));
+    } catch (err) {
+      console.warn('Failed to load eligible Agents:', err.response?.data || err.message);
+      setAgents([]);
+    }
+  };
+
+  const handleSavePrimaryAgent = async () => {
+    setRoutingSaving(true);
+    setRoutingMessage('');
+    try {
+      const res = await api.put(`/instances/${instanceId}/primary-agent`, {
+        primaryAgentId: selectedPrimaryAgentId || null
+      });
+      setInstance(res.data.instance);
+      setSelectedPrimaryAgentId(res.data.instance.primaryAgentId || '');
+      setRoutingMessage(res.data.instance.primaryAgentId
+        ? `${res.data.instance.primaryAgent?.name || 'The selected Agent'} owns new inbox conversations and comments.`
+        : 'Automation blocked until a Primary Agent is assigned.');
+    } catch (err) {
+      setRoutingMessage(err.response?.data?.error || 'Failed to save Agent routing');
+    } finally {
+      setRoutingSaving(false);
     }
   };
 
@@ -671,6 +707,64 @@ export default function ChannelManage() {
                   className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                 />
               </div>
+
+              {['messenger', 'instagram'].includes(instance.channelType) && (
+                <section className="mb-8 rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.04] p-5">
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-base font-bold text-white">Primary AI Agent</h3>
+                      <p className="mt-1 text-xs leading-5 text-zinc-500">
+                        This Agent owns new inbox conversations and the default Comment AI identity for this account.
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-wider ${instance.primaryAgentId ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-300'}`}>
+                      {instance.primaryAgentId ? 'Routed' : 'Automation blocked'}
+                    </span>
+                  </div>
+
+                  <label htmlFor="primary-agent" className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                    Primary AI Agent
+                  </label>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <select
+                      id="primary-agent"
+                      aria-label="Primary AI Agent"
+                      value={selectedPrimaryAgentId}
+                      onChange={(event) => setSelectedPrimaryAgentId(event.target.value)}
+                      className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#1c1f26] px-4 py-3 text-sm text-white"
+                    >
+                      <option value="">Unassigned — block automation</option>
+                      {agents.map((agent) => (
+                        <option key={agent.id} value={agent.id}>{agent.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleSavePrimaryAgent}
+                      disabled={routingSaving || selectedPrimaryAgentId === (instance.primaryAgentId || '')}
+                      className="rounded-xl bg-indigo-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600"
+                    >
+                      {routingSaving ? 'Saving...' : 'Save Agent Routing'}
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+                    <p className={instance.primaryAgentId ? 'text-emerald-300' : 'text-amber-300'}>
+                      {routingMessage || (instance.primaryAgentId
+                        ? `${instance.primaryAgent?.name || 'The selected Agent'} owns new inbox conversations and comments.`
+                        : 'Assign a Primary Agent before enabling account automation.')}
+                    </p>
+                    {instance.primaryAgentId && (
+                      <Link
+                        to={`/agents/${instance.primaryAgentId}/comment-replies`}
+                        className="font-bold text-indigo-300 hover:text-indigo-200"
+                      >
+                        Open Comment Replies →
+                      </Link>
+                    )}
+                  </div>
+                </section>
+              )}
 
               {/* Save Button */}
               <div className="flex items-center gap-4 mb-12">
