@@ -256,7 +256,7 @@ export default function ConnectChannel() {
         }
 
         setMetaUserAccessToken(token);
-        connectMetaWithToken(token).catch((connectError) => {
+        connectMetaWithToken(token, selectedMetaPageId.trim()).catch((connectError) => {
           console.error('Meta embedded connect error:', connectError);
           setError(connectError?.response?.data?.error || 'Meta connection failed');
         });
@@ -503,6 +503,27 @@ export default function ConnectChannel() {
                     {/* Messenger / Instagram now use Embedded Signup only */}
                     {isMetaChannel && (
                       <>
+                        <div>
+                          <label
+                            htmlFor="meta-page-id"
+                            className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider"
+                          >
+                            Facebook Page ID (optional)
+                          </label>
+                          <input
+                            id="meta-page-id"
+                            type="text"
+                            inputMode="numeric"
+                            className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-mono"
+                            value={selectedMetaPageId}
+                            onChange={(e) => setSelectedMetaPageId(e.target.value.replace(/\D/g, ''))}
+                            placeholder="e.g., 359509670571259"
+                          />
+                          <p className="text-[11px] text-zinc-600 mt-1.5">
+                            Use this when Meta does not include a Page in the automatic list. The Page ID is verified against your Meta access before connection.
+                          </p>
+                        </div>
+
                         <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-5 space-y-4 mb-4 mt-2">
                           <div>
                             <h4 className="text-sm font-bold text-indigo-400">1. {config.name} Webhook Setup</h4>

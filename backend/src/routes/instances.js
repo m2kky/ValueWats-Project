@@ -118,6 +118,16 @@ const persistCommentReplyReadiness = async ({ tenantId, instanceId, ready }) => 
   });
 };
 
+const normalizeMetaPage = (page) => ({
+  pageId: String(page.id),
+  pageName: page.name || `Page ${page.id}`,
+  pageAccessToken: page.access_token || null,
+  instagramId: page.instagram_business_account?.id
+    ? String(page.instagram_business_account.id)
+    : null,
+  instagramUsername: page.instagram_business_account?.username || null
+});
+
 const getMetaPagesFromUserToken = async (userAccessToken) => {
   const response = await axios.get(`${FB_BASE}/me/accounts`, {
     params: {
@@ -127,15 +137,17 @@ const getMetaPagesFromUserToken = async (userAccessToken) => {
   });
 
   const pages = response.data?.data || [];
-  return pages.map((page) => ({
-    pageId: String(page.id),
-    pageName: page.name || `Page ${page.id}`,
-    pageAccessToken: page.access_token || null,
-    instagramId: page.instagram_business_account?.id
-      ? String(page.instagram_business_account.id)
-      : null,
-    instagramUsername: page.instagram_business_account?.username || null
-  }));
+  return pages.map(normalizeMetaPage);
+};
+
+const getMetaPageByIdFromUserToken = async ({ userAccessToken, pageId, includeInstagram }) => {
+  const fields = includeInstagram
+    ? 'id,name,access_token,instagram_business_account{id,username}'
+    : 'id,name,access_token';
+  const response = await axios.get(`${FB_BASE}/${encodeURIComponent(pageId)}`, {
+    params: { fields, access_token: userAccessToken }
+  });
+  return normalizeMetaPage(response.data);
 };
 
 const getTenantInstanceById = async (tenantId, instanceId) => {
@@ -163,11 +175,27 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
     await enforceInstanceLimit(req.tenantId);
 
     const pages = await getMetaPagesFromUserToken(userAccessToken);
-    const eligiblePages = pages.filter((page) => {
+    let eligiblePages = pages.filter((page) => {
       if (!page.pageAccessToken) return false;
       if (channelType === 'instagram') return Boolean(page.instagramId);
       return true;
     });
+
+    if (selectedPageId && !eligiblePages.some((page) => page.pageId === String(selectedPageId))) {
+      try {
+        const selectedPage = await getMetaPageByIdFromUserToken({
+          userAccessToken,
+          pageId: String(selectedPageId),
+          includeInstagram: channelType === 'instagram'
+        });
+        const selectedPageIsEligible = Boolean(selectedPage.pageAccessToken)
+          && (channelType !== 'instagram' || Boolean(selectedPage.instagramId));
+        if (selectedPageIsEligible) eligiblePages = [...eligiblePages, selectedPage];
+      } catch (error) {
+        const status = error.response?.status;
+        if (!status || status >= 500) throw error;
+      }
+    }
 
     if (!eligiblePages.length) {
       return res.status(400).json({

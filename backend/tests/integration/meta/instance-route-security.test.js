@@ -120,6 +120,57 @@ describe('Instance route token boundary', () => {
     expect(subscribe.mock.calls[0][0]).not.toContain('instagram-account-1');
   });
 
+  it('connects a selected Messenger page directly when /me/accounts omits it', async () => {
+    process.env.ENCRYPTION_KEY = Buffer.alloc(32, 6).toString('base64');
+    const prisma = {
+      instance: {
+        count: vi.fn().mockResolvedValue(0),
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockImplementation(async ({ data }) => ({ id: 'messenger-1', ...data }))
+      },
+      integration: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({ id: 'config-1' })
+      },
+      commentChannelBinding: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 })
+      }
+    };
+    const get = vi.spyOn(axios, 'get')
+      .mockResolvedValueOnce({ data: { data: [] } })
+      .mockResolvedValueOnce({
+        data: {
+          id: '359509670571259',
+          name: 'NASA International Schools',
+          access_token: 'nasa-page-access-token'
+        }
+      });
+    vi.spyOn(axios, 'post').mockResolvedValue({ data: { success: true } });
+    const app = loadInstancesApp(prisma);
+
+    const response = await request(app)
+      .post('/api/instances/meta/embedded')
+      .send({
+        channelType: 'messenger',
+        userAccessToken: 'user-access-token',
+        selectedPageId: '359509670571259',
+        instanceName: 'NASA Messenger'
+      })
+      .expect(201);
+
+    expect(get).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('/359509670571259'),
+      expect.objectContaining({
+        params: expect.objectContaining({ access_token: 'user-access-token' })
+      })
+    );
+    expect(response.body.connectedAsset).toMatchObject({
+      pageId: '359509670571259',
+      pageName: 'NASA International Schools'
+    });
+  });
+
   it('assigns an eligible Primary Agent atomically without exposing the Instance token', async () => {
     const instance = {
       id: 'instance-1',
