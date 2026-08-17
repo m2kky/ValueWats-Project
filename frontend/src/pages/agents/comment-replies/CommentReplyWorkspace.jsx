@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import api from '../../../api/client';
 
-const tabs = ['Overview', 'Reply Rules', 'Post Overrides', 'Test Lab'];
+const tabs = ['Overview', 'Comment AI', 'Reply Rules', 'Post Overrides', 'Test Lab'];
 const emptyRule = {
   id: null,
   name: '',
@@ -84,6 +84,12 @@ export default function CommentReplyWorkspace() {
   const [ruleDraft, setRuleDraft] = useState(emptyRule);
   const [overrideDraft, setOverrideDraft] = useState({ bindingId: '', externalPostId: '', postName: '', mode: 'disabled' });
   const [testInput, setTestInput] = useState({ text: '', platform: 'facebook', customerName: '', postName: '' });
+  const [testResult, setTestResult] = useState(null);
+  const [testLoading, setTestLoading] = useState(false);
+  const [aiDraft, setAiDraft] = useState({
+    aiMode: 'rules_only', commentAiInstructions: '', privateReplyEnabled: false,
+    privateReplyInstructions: '', publicAfterPrivateSuccess: true
+  });
 
   const loadWorkspace = useCallback(async () => {
     try {
@@ -105,6 +111,17 @@ export default function CommentReplyWorkspace() {
   useEffect(() => {
     loadWorkspace();
   }, [loadWorkspace]);
+
+  useEffect(() => {
+    if (!workspace?.profile) return;
+    setAiDraft({
+      aiMode: workspace.profile.aiMode || 'rules_only',
+      commentAiInstructions: workspace.profile.commentAiInstructions || '',
+      privateReplyEnabled: workspace.profile.privateReplyEnabled === true,
+      privateReplyInstructions: workspace.profile.privateReplyInstructions || '',
+      publicAfterPrivateSuccess: workspace.profile.publicAfterPrivateSuccess !== false
+    });
+  }, [workspace]);
 
   async function ensureProfile(currentWorkspace) {
     if (currentWorkspace?.profile?.id) return currentWorkspace;
@@ -152,6 +169,39 @@ export default function CommentReplyWorkspace() {
       }),
       isEnabled ? 'Comment replies enabled' : 'Comment replies paused'
     );
+  }
+
+  async function saveAiSettings(event) {
+    event.preventDefault();
+    await mutate(
+      (configVersion) => api.put(`/agents/${agentId}/comment-replies`, {
+        expectedConfigVersion: configVersion,
+        ...aiDraft
+      }),
+      'Comment AI settings saved',
+      { requiresProfile: true }
+    );
+  }
+
+  async function runPreview() {
+    if (!testInput.text.trim()) return toast.error('Enter a sample comment');
+    const binding = workspace.bindings.find((item) => item.provider === testInput.platform);
+    if (!binding) return toast.error(`Connect a ${testInput.platform} account first`);
+    setTestLoading(true);
+    setTestResult(null);
+    try {
+      const response = await api.post(`/agents/${agentId}/comment-replies/preview`, {
+        platform: testInput.platform,
+        commentText: testInput.text,
+        instanceId: binding.instanceId,
+        postName: testInput.postName
+      });
+      setTestResult(response.data);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Preview failed');
+    } finally {
+      setTestLoading(false);
+    }
   }
 
   async function bindInstance() {
@@ -249,13 +299,6 @@ export default function CommentReplyWorkspace() {
   const availableInstances = instances.filter((item) => !boundIds.has(item.id));
   const readyBindings = workspace.bindings.filter((item) => item.isEnabled && item.permissionState === 'ready').length;
   const activeRules = workspace.rules.filter((item) => item.isEnabled).length;
-  const testResult = previewRule(workspace.rules, testInput.text, testInput.platform);
-  const testReply = testResult?.variant?.body
-    ?.replaceAll('{{customer_name}}', testInput.customerName)
-    .replaceAll('{{post_name}}', testInput.postName)
-    .replaceAll('{{page_name}}', workspace.agent.name)
-    .replaceAll('{{platform}}', testInput.platform);
-
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(163,230,53,0.08),transparent_32%),linear-gradient(180deg,rgba(28,33,18,0.45),transparent_45%)] px-5 py-8 text-white md:px-10">
       <Toaster position="top-right" />
@@ -326,7 +369,63 @@ export default function CommentReplyWorkspace() {
                 ))}
               </div>
             </section>
+            <section className="rounded-3xl border border-white/5 bg-zinc-950/45 p-6 md:p-8">
+              <h2 className="text-xl font-black uppercase italic tracking-tight">Recent Activity</h2>
+              <p className="mt-2 text-xs text-zinc-500">Private and public delivery states are tracked independently.</p>
+              <div className="mt-5 space-y-3">
+                {(workspace.activity || []).length === 0 && <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-zinc-500">No comment decisions yet.</p>}
+                {(workspace.activity || []).map((execution) => (
+                  <div key={execution.id} className="rounded-2xl border border-white/5 bg-black/20 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-bold">{execution.postName || execution.platform} · {execution.routeSource || 'eligibility'}</p>
+                      <span className="text-[9px] font-black uppercase text-zinc-400">{execution.status}{execution.skipReason ? ` · ${execution.skipReason}` : ''}</span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {(execution.deliveries || []).map((delivery) => (
+                        <span key={delivery.id} className={`rounded-full px-3 py-1 text-[9px] font-black uppercase ${delivery.status === 'succeeded' ? 'bg-lime-300/10 text-lime-300' : delivery.status === 'failed' || delivery.status === 'outcome_unknown' ? 'bg-rose-400/10 text-rose-300' : 'bg-amber-400/10 text-amber-300'}`}>
+                          {delivery.kind === 'private_message' ? 'DM' : 'Public'} · {delivery.status}{delivery.attempts ? ` · ${delivery.attempts} attempt${delivery.attempts === 1 ? '' : 's'}` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
+        )}
+
+        {activeTab === 'Comment AI' && (
+          <form onSubmit={saveAiSettings} className="mx-auto max-w-4xl space-y-6 rounded-3xl border border-white/5 bg-zinc-950/45 p-6 md:p-8">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-lime-300">Read-only decision layer</p>
+              <h2 className="mt-2 text-2xl font-black uppercase italic">Comment AI</h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">Uses this Agent's instructions and knowledge. It cannot run tools, change CRM data, or modify ad accounts.</p>
+            </div>
+            <label className="block text-sm font-bold text-zinc-300">
+              AI mode
+              <select aria-label="AI mode" value={aiDraft.aiMode} onChange={(event) => setAiDraft({ ...aiDraft, aiMode: event.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm">
+                <option value="rules_only">Rules only</option>
+                <option value="rules_then_ai">Rules, then AI fallback</option>
+                <option value="ai_only">AI only</option>
+              </select>
+            </label>
+            <label className="block text-sm font-bold text-zinc-300">
+              Public comment instructions
+              <textarea aria-label="Public comment instructions" rows="7" value={aiDraft.commentAiInstructions} onChange={(event) => setAiDraft({ ...aiDraft, commentAiInstructions: event.target.value })} placeholder="Define tone, when to answer, when to skip, and when a human should review..." className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-normal" />
+            </label>
+            <div className="rounded-2xl border border-indigo-400/10 bg-indigo-400/[0.04] p-5">
+              <label className="flex items-center gap-3 text-sm font-bold text-zinc-200">
+                <input aria-label="Enable private message" type="checkbox" checked={aiDraft.privateReplyEnabled} onChange={(event) => setAiDraft({ ...aiDraft, privateReplyEnabled: event.target.checked })} />
+                Enable private message
+              </label>
+              <textarea aria-label="Private message instructions" disabled={!aiDraft.privateReplyEnabled} rows="5" value={aiDraft.privateReplyInstructions} onChange={(event) => setAiDraft({ ...aiDraft, privateReplyInstructions: event.target.value })} placeholder="What should the DM achieve? Which qualifying question should it ask?" className="mt-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm disabled:opacity-40" />
+              <label className="mt-4 flex items-center gap-3 text-xs font-bold text-zinc-400">
+                <input type="checkbox" checked={aiDraft.publicAfterPrivateSuccess} onChange={(event) => setAiDraft({ ...aiDraft, publicAfterPrivateSuccess: event.target.checked })} />
+                Publish the public reply only after Meta confirms the DM
+              </label>
+            </div>
+            <button disabled={saving} className="w-full rounded-xl bg-lime-300 px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-950 disabled:opacity-50">Save Comment AI</button>
+          </form>
         )}
 
         {activeTab === 'Reply Rules' && (
@@ -408,14 +507,19 @@ export default function CommentReplyWorkspace() {
                 <input value={testInput.customerName} onChange={(event) => setTestInput({ ...testInput, customerName: event.target.value })} placeholder="Customer name" className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm" />
                 <input value={testInput.postName} onChange={(event) => setTestInput({ ...testInput, postName: event.target.value })} placeholder="Post name" className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm" />
               </div>
+              <button type="button" disabled={testLoading || !testInput.text.trim()} onClick={runPreview} className="w-full rounded-xl bg-lime-300 px-5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-950 disabled:opacity-40">{testLoading ? 'Analyzing...' : 'Run Safe Preview'}</button>
               <p className="text-xs text-zinc-600">Preview only. Nothing is published and rotation counters do not change.</p>
             </section>
             <section className="rounded-3xl border border-lime-300/10 bg-lime-300/[0.03] p-6">
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-lime-300">Result</p>
-              {!testInput.text ? <p className="mt-5 text-sm text-zinc-500">Enter a sample comment.</p> : !testResult ? <p className="mt-5 text-sm text-amber-300">No fixed rule matched.</p> : (
+              {!testResult ? <p className="mt-5 text-sm text-zinc-500">Run a preview to see the selected route and proposed texts.</p> : (
                 <div className="mt-5 space-y-4">
-                  <div><p className="text-[9px] uppercase text-zinc-500">Matched rule</p><p className="mt-1 font-bold">{testResult.rule.name}</p></div>
-                  <div><p className="text-[9px] uppercase text-zinc-500">Reply preview</p><p className="mt-2 rounded-2xl bg-black/25 p-5 leading-7 text-zinc-200">{testReply || 'Matched rule has no reply for this platform.'}</p></div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div><p className="text-[9px] uppercase text-zinc-500">Route</p><p className="mt-1 font-bold uppercase text-lime-300">{testResult.route}</p></div>
+                    <div><p className="text-[9px] uppercase text-zinc-500">Decision</p><p className="mt-1 font-bold">{testResult.decision?.action} · {testResult.decision?.reasonCode}</p></div>
+                  </div>
+                  {testResult.decision?.privateReply && <div><p className="text-[9px] uppercase text-zinc-500">Private message first</p><p className="mt-2 rounded-2xl bg-indigo-400/5 p-5 leading-7 text-zinc-200">{testResult.decision.privateReply}</p></div>}
+                  {testResult.decision?.publicReply && <div><p className="text-[9px] uppercase text-zinc-500">Public reply after confirmation</p><p className="mt-2 rounded-2xl bg-black/25 p-5 leading-7 text-zinc-200">{testResult.decision.publicReply}</p></div>}
                 </div>
               )}
             </section>

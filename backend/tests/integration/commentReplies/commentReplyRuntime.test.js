@@ -29,7 +29,7 @@ function applyData(row, data) {
   }
 }
 
-function createRuntimeFixture() {
+function createRuntimeFixture({ decision } = {}) {
   let sequence = 0;
   let transactionDepth = 0;
   const currentTime = { value: new Date('2026-07-27T12:00:00.000Z') };
@@ -39,11 +39,11 @@ function createRuntimeFixture() {
       { id: 'agent-b', tenantId: 'tenant-a', name: 'Override Agent', isActive: true, isPublished: true, configVersion: 7, deletedAt: null }
     ],
     profiles: [
-      { id: 'profile-a', tenantId: 'tenant-a', agentId: 'agent-a', isEnabled: true, aiFallbackEnabled: false, configVersion: 4, deletedAt: null }
+      { id: 'profile-a', tenantId: 'tenant-a', agentId: 'agent-a', isEnabled: true, aiFallbackEnabled: false, aiMode: 'rules_only', privateReplyEnabled: false, publicAfterPrivateSuccess: true, configVersion: 4, deletedAt: null }
     ],
     instances: [
-      { id: 'instance-fb', tenantId: 'tenant-a', channelType: 'messenger', instanceName: 'Value Page', phoneNumberId: 'page-a' },
-      { id: 'instance-ig', tenantId: 'tenant-a', channelType: 'instagram', instanceName: 'Value IG', phoneNumberId: 'ig-a' }
+      { id: 'instance-fb', tenantId: 'tenant-a', primaryAgentId: 'agent-a', channelType: 'messenger', instanceName: 'Value Page', phoneNumberId: 'page-a' },
+      { id: 'instance-ig', tenantId: 'tenant-a', primaryAgentId: 'agent-a', channelType: 'instagram', instanceName: 'Value IG', phoneNumberId: 'ig-a' }
     ],
     bindings: [
       { id: 'binding-fb', tenantId: 'tenant-a', profileId: 'profile-a', instanceId: 'instance-fb', provider: 'facebook', externalAccountId: 'page-a', isEnabled: true, permissionState: 'ready' },
@@ -69,6 +69,7 @@ function createRuntimeFixture() {
       { id: 'variant-a', tenantId: 'tenant-a', ruleId: 'rule-a', platform: null, body: 'Hi {{customer_name}}, ask our store.', orderIndex: 0, isEnabled: true, deletedAt: null }
     ],
     executions: [],
+    deliveries: [],
     outbox: []
   };
   const calls = { atomicOutboxCreates: 0, atomicReadyWrites: 0 };
@@ -179,6 +180,32 @@ function createRuntimeFixture() {
         return { count: found.length };
       }
     },
+    commentReplyDelivery: {
+      create: async ({ data }) => {
+        if (rows.deliveries.some((delivery) => delivery.executionId === data.executionId && delivery.kind === data.kind)) {
+          throw Object.assign(new Error('Unique constraint'), { code: 'P2002' });
+        }
+        const row = {
+          id: `delivery-${++sequence}`,
+          status: 'pending', attempts: 0, availableAt: currentTime.value,
+          outboxEventId: null, providerMessageId: null, createdAt: currentTime.value,
+          ...data
+        };
+        rows.deliveries.push(row);
+        return clone(row);
+      },
+      findUnique: async ({ where }) => clone(rows.deliveries.find((delivery) => (
+        where.id ? delivery.id === where.id : (
+          delivery.executionId === where.executionId_kind.executionId
+          && delivery.kind === where.executionId_kind.kind
+        )
+      )) || null),
+      updateMany: async ({ where, data }) => {
+        const found = rows.deliveries.filter((delivery) => matches(delivery, where));
+        found.forEach((delivery) => applyData(delivery, data));
+        return { count: found.length };
+      }
+    },
     outboxEvent: {
       create: async ({ data }) => {
         if (rows.outbox.some((event) => event.tenantId === data.tenantId && event.idempotencyKey === data.idempotencyKey)) {
@@ -202,7 +229,12 @@ function createRuntimeFixture() {
 
   const clock = () => currentTime.value;
   const outboxService = createOutboxService(prisma, { clock });
-  const runtime = createCommentReplyRuntime({ prisma, outboxService, clock });
+  const decisionService = {
+    decide: vi.fn().mockResolvedValue(decision || {
+      action: 'reply_only', publicReply: 'AI public reply', privateReply: null, reasonCode: 'ai_answer'
+    })
+  };
+  const runtime = createCommentReplyRuntime({ prisma, outboxService, decisionService, clock });
   const worker = createCommentReplyWorker({ prisma, runtime, clock, leaseMs: 30_000 });
 
   function event(overrides = {}) {
@@ -223,7 +255,7 @@ function createRuntimeFixture() {
     };
   }
 
-  return { calls, clock, currentTime, event, prisma, rows, runtime, worker };
+  return { calls, clock, currentTime, decisionService, event, prisma, rows, runtime, worker };
 }
 
 describe('comment reply runtime', () => {
@@ -305,8 +337,10 @@ describe('comment reply runtime', () => {
       status: 'ready',
       profileId: 'profile-b',
       agentId: 'agent-b',
-      ruleId: 'rule-b',
-      renderedReply: 'Override reply'
+      ruleId: 'rule-b'
+    }));
+    expect(fixture.rows.deliveries[0]).toEqual(expect.objectContaining({
+      kind: 'public_reply', renderedText: 'Override reply'
     }));
 
     fixture.rows.overrides.push({
@@ -337,7 +371,7 @@ describe('comment reply runtime', () => {
     await fixture.worker.runOnce();
     await fixture.worker.runOnce();
 
-    expect(fixture.rows.executions.map((execution) => execution.renderedReply)).toEqual([
+    expect(fixture.rows.deliveries.map((delivery) => delivery.renderedText)).toEqual([
       'Facebook one',
       'Instagram one',
       'Facebook two'
@@ -383,6 +417,68 @@ describe('comment reply runtime', () => {
       attempts: 3,
       errorCode: 'PROCESSING_ATTEMPTS_EXHAUSTED'
     }));
+    expect(fixture.rows.outbox).toHaveLength(0);
+  });
+
+  it('uses AI after an unmatched rule and creates one public child delivery', async () => {
+    const fixture = createRuntimeFixture();
+    fixture.rows.profiles[0].aiMode = 'rules_then_ai';
+    await fixture.runtime.ingest(fixture.event({ text: 'How do I apply?' }));
+
+    await fixture.worker.runOnce();
+
+    expect(fixture.decisionService.decide).toHaveBeenCalledOnce();
+    expect(fixture.rows.executions[0]).toEqual(expect.objectContaining({ status: 'ready', routeSource: 'ai' }));
+    expect(fixture.rows.deliveries).toEqual([
+      expect.objectContaining({ kind: 'public_reply', renderedText: 'AI public reply', status: 'pending' })
+    ]);
+    expect(fixture.rows.outbox).toHaveLength(1);
+  });
+
+  it('ai_only reply_and_dm snapshots both texts but enqueues only the private delivery', async () => {
+    const fixture = createRuntimeFixture({
+      decision: {
+        action: 'reply_and_dm', publicReply: 'We sent you a DM.',
+        privateReply: 'Welcome! Which grade?', reasonCode: 'collect_grade'
+      }
+    });
+    fixture.rows.profiles[0].aiMode = 'ai_only';
+    fixture.rows.profiles[0].privateReplyEnabled = true;
+    await fixture.runtime.ingest(fixture.event({ text: 'price please' }));
+
+    await fixture.worker.runOnce();
+
+    expect(fixture.rows.deliveries).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'private_message', renderedText: 'Welcome! Which grade?', outboxEventId: expect.any(String) }),
+      expect.objectContaining({ kind: 'public_reply', renderedText: 'We sent you a DM.', outboxEventId: null })
+    ]));
+    expect(fixture.rows.outbox).toHaveLength(1);
+    expect(fixture.rows.outbox[0].aggregateId).toBe(fixture.rows.deliveries.find((item) => item.kind === 'private_message').id);
+  });
+
+  it.each(['skip', 'human_review'])('records AI %s without publishing', async (action) => {
+    const fixture = createRuntimeFixture({
+      decision: { action, publicReply: null, privateReply: null, reasonCode: 'not_actionable' }
+    });
+    fixture.rows.profiles[0].aiMode = 'ai_only';
+    await fixture.runtime.ingest(fixture.event());
+    await fixture.worker.runOnce();
+    expect(fixture.rows.executions[0]).toEqual(expect.objectContaining({
+      status: 'skipped', routeSource: 'ai', skipReason: `${action}:not_actionable`
+    }));
+    expect(fixture.rows.deliveries).toHaveLength(0);
+    expect(fixture.rows.outbox).toHaveLength(0);
+  });
+
+  it('fails closed when the connected account Primary Agent and binding Agent disagree', async () => {
+    const fixture = createRuntimeFixture();
+    fixture.rows.instances[0].primaryAgentId = 'agent-b';
+    await fixture.runtime.ingest(fixture.event());
+    await fixture.worker.runOnce();
+    expect(fixture.rows.executions[0]).toEqual(expect.objectContaining({
+      status: 'skipped', skipReason: 'primary_agent_mismatch'
+    }));
+    expect(fixture.decisionService.decide).not.toHaveBeenCalled();
     expect(fixture.rows.outbox).toHaveLength(0);
   });
 });

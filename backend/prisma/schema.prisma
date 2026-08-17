@@ -60,6 +60,20 @@ enum CommentReplyPlatform {
   instagram
 }
 
+enum CommentReplyDeliveryKind {
+  private_message
+  public_reply
+}
+
+enum CommentReplyDeliveryStatus {
+  pending
+  dispatching
+  succeeded
+  failed
+  outcome_unknown
+  cancelled
+}
+
 // Subscription Plans — defines limits per tier
 model Plan {
   id                     String   @id @default(uuid())
@@ -143,6 +157,7 @@ model Tenant {
   commentReplyVariants    CommentReplyVariant[]
   commentPostOverrides    CommentPostOverride[]
   commentReplyExecutions  CommentReplyExecution[]
+  commentReplyDeliveries  CommentReplyDelivery[]
 
   @@map("tenants")
 }
@@ -211,23 +226,26 @@ model Invitation {
 }
 
 model Instance {
-  id            String   @id @default(uuid())
-  tenantId      String   @map("tenant_id")
-  channelType   String   @default("whatsapp") @map("channel_type") // 'whatsapp', 'messenger', 'instagram'
-  instanceName  String   @map("instance_name")
-  phoneNumber   String?  @map("phone_number")
-  phoneNumberId String?  @map("phone_number_id") // Meta Cloud API Phone Number ID OR Facebook Page ID
-  accessToken   String?  @map("access_token") @db.Text // Meta Cloud API token OR Page Access Token (encrypted)
-  status        String // 'connected', 'disconnected', 'active'
-  qrCode        String?  @map("qr_code") @db.Text
-  createdAt     DateTime @default(now()) @map("created_at")
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  primaryAgentId String?  @map("primary_agent_id")
+  channelType    String   @default("whatsapp") @map("channel_type") // 'whatsapp', 'messenger', 'instagram'
+  instanceName   String   @map("instance_name")
+  phoneNumber    String?  @map("phone_number")
+  phoneNumberId  String?  @map("phone_number_id") // Meta Cloud API Phone Number ID OR Facebook Page ID
+  accessToken    String?  @map("access_token") @db.Text // Meta Cloud API token OR Page Access Token (encrypted)
+  status         String // 'connected', 'disconnected', 'active'
+  qrCode         String?  @map("qr_code") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
 
   tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  primaryAgent      AIAgent?                @relation("InstancePrimaryAgent", fields: [primaryAgentId], references: [id], onDelete: SetNull)
   campaigns         Campaign[]
   messages          Message[]
   campaignInstances CampaignInstance[]
   automationRules   AutomationRule[]
   chatMessages      ChatMessage[]
+  conversations     Conversation[]
   commentBindings   CommentChannelBinding[]
   commentExecutions CommentReplyExecution[]
 
@@ -367,6 +385,7 @@ model AutomationRule {
 model Conversation {
   id            String    @id @default(uuid())
   tenantId      String    @map("tenant_id")
+  instanceId    String?   @map("instance_id")
   channelType   String    @default("whatsapp") @map("channel_type") // 'whatsapp', 'messenger', 'instagram'
   contactNumber String    @map("contact_number")
   contactName   String?   @map("contact_name")
@@ -381,6 +400,7 @@ model Conversation {
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
   tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  instance Instance?     @relation(fields: [instanceId], references: [id], onDelete: SetNull)
   messages ChatMessage[]
 
   currentAgentId String?
@@ -414,8 +434,9 @@ model Conversation {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([tenantId, contactNumber, channelType])
+  @@unique([tenantId, instanceId, contactNumber, channelType])
   @@index([tenantId, lastMessageAt(sort: Desc)])
+  @@index([tenantId, instanceId, lastMessageAt(sort: Desc)])
   @@map("conversations")
 }
 
@@ -529,6 +550,7 @@ model AIAgent {
   agentRuns            AgentRun[]              @relation("AgentRunSourceAgent")
   agentCommands        AgentCommand[]          @relation("AgentCommandSourceAgent")
   contactNotes         ContactNote[]
+  primaryInstances     Instance[]             @relation("InstancePrimaryAgent")
   commentReplyProfiles CommentReplyProfile[]
   commentExecutions    CommentReplyExecution[]
 
@@ -720,6 +742,7 @@ model OutboxEvent {
   command               AgentCommand?          @relation(fields: [commandId], references: [id], onDelete: SetNull)
   run                   AgentRun?              @relation(fields: [runId], references: [id], onDelete: SetNull)
   commentReplyExecution CommentReplyExecution?
+  commentReplyDelivery  CommentReplyDelivery?
 
   @@unique([tenantId, idempotencyKey])
   @@index([status, availableAt])
@@ -733,6 +756,11 @@ model CommentReplyProfile {
   agentId           String    @map("agent_id")
   isEnabled         Boolean   @default(false) @map("is_enabled")
   aiFallbackEnabled Boolean   @default(false) @map("ai_fallback_enabled")
+  aiMode            String    @default("rules_only") @map("ai_mode")
+  commentAiInstructions String? @map("comment_ai_instructions") @db.Text
+  privateReplyEnabled Boolean @default(false) @map("private_reply_enabled")
+  privateReplyInstructions String? @map("private_reply_instructions") @db.Text
+  publicAfterPrivateSuccess Boolean @default(true) @map("public_after_private_success")
   defaultMatchMode  String    @default("contains_any") @map("default_match_mode")
   configVersion     Int       @default(1) @map("config_version")
   deletedAt         DateTime? @map("deleted_at")
@@ -888,6 +916,7 @@ model CommentReplyExecution {
   rule        CommentReplyRule?      @relation(fields: [ruleId], references: [id], onDelete: SetNull)
   variant     CommentReplyVariant?   @relation(fields: [variantId], references: [id], onDelete: SetNull)
   outboxEvent OutboxEvent?           @relation(fields: [outboxEventId], references: [id], onDelete: SetNull)
+  deliveries  CommentReplyDelivery[]
 
   @@unique([platform, providerAccountId, externalCommentId])
   @@index([status, availableAt])
@@ -895,6 +924,38 @@ model CommentReplyExecution {
   @@index([tenantId, profileId, receivedAt(sort: Desc)])
   @@index([tenantId, profileId, createdAt(sort: Desc), id])
   @@map("comment_reply_executions")
+}
+
+model CommentReplyDelivery {
+  id                String                     @id @default(uuid())
+  tenantId          String                     @map("tenant_id")
+  executionId       String                     @map("execution_id")
+  kind              CommentReplyDeliveryKind
+  status            CommentReplyDeliveryStatus @default(pending)
+  renderedText      String                     @map("rendered_text") @db.Text
+  providerMessageId String?                    @map("provider_message_id")
+  idempotencyKey    String                     @map("idempotency_key")
+  outboxEventId     String?                    @unique @map("outbox_event_id")
+  attempts          Int                        @default(0)
+  availableAt       DateTime                   @default(now()) @map("available_at")
+  leaseExpiresAt    DateTime?                  @map("lease_expires_at")
+  leaseToken        String?                    @map("lease_token")
+  completedAt       DateTime?                  @map("completed_at")
+  errorCode         String?                    @map("error_code")
+  errorMessage      String?                    @map("error_message") @db.Text
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
+
+  tenant      Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  execution   CommentReplyExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  outboxEvent OutboxEvent?          @relation(fields: [outboxEventId], references: [id], onDelete: SetNull)
+
+  @@unique([executionId, kind])
+  @@unique([tenantId, idempotencyKey])
+  @@index([status, availableAt])
+  @@index([status, leaseExpiresAt])
+  @@index([tenantId, executionId, createdAt(sort: Desc)])
+  @@map("comment_reply_deliveries")
 }
 
 // CRM: Contact

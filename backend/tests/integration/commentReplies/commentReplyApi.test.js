@@ -20,17 +20,17 @@ function matches(row, where = {}) {
 function createPrismaFixture() {
   const rows = {
     agents: [
-      { id: 'agent-a', tenantId: 'tenant-a', name: 'Price Agent', deletedAt: null },
+      { id: 'agent-a', tenantId: 'tenant-a', name: 'Price Agent', isActive: true, isPublished: true, deletedAt: null },
       { id: 'agent-b', tenantId: 'tenant-b', name: 'Other Tenant Agent', deletedAt: null },
       { id: 'agent-empty', tenantId: 'tenant-a', name: 'Unconfigured Agent', deletedAt: null }
     ],
-    profiles: [{ id: 'profile-a', tenantId: 'tenant-a', agentId: 'agent-a', isEnabled: false, aiFallbackEnabled: false, defaultMatchMode: 'contains_any', configVersion: 1, deletedAt: null }],
+    profiles: [{ id: 'profile-a', tenantId: 'tenant-a', agentId: 'agent-a', isEnabled: false, aiFallbackEnabled: false, aiMode: 'rules_only', commentAiInstructions: '', privateReplyEnabled: false, privateReplyInstructions: '', publicAfterPrivateSuccess: true, defaultMatchMode: 'contains_any', configVersion: 1, deletedAt: null }],
     instances: [
       { id: 'instance-a', tenantId: 'tenant-a', channelType: 'messenger', instanceName: 'Main Page', phoneNumberId: 'page-a', accessToken: 'secret-token', status: 'connected' },
       { id: 'instance-private', tenantId: 'tenant-a', channelType: 'instagram', instanceName: 'Private Replies', phoneNumberId: 'ig-a', accessToken: 'private-token', status: 'connected' },
       { id: 'instance-b', tenantId: 'tenant-b', channelType: 'messenger', instanceName: 'Other Page', phoneNumberId: 'page-b', accessToken: 'other-token', status: 'connected' }
     ],
-    bindings: [], rules: [], variants: [], overrides: []
+    bindings: [], rules: [], variants: [], overrides: [], executions: []
   };
   const calls = { agentFinds: [], profileCreates: 0, profileUpdates: 0 };
   const faults = { profileCreate: null };
@@ -107,6 +107,9 @@ function createPrismaFixture() {
         return { count: found.length };
       }
     },
+    commentReplyExecution: {
+      findMany: async ({ where }) => clone(rows.executions.filter((row) => matches(row, where)))
+    },
     commentReplyVariant: {
       updateMany: async ({ where, data }) => {
         const found = rows.variants.filter((row) => matches(row, where));
@@ -149,7 +152,7 @@ function applyData(row, data) {
   return Object.fromEntries(Object.entries(data).map(([key, value]) => [key, value?.increment != null ? row[key] + value.increment : value]));
 }
 
-function createTestApp({ prisma, privateReplyInstances = [], readyInstances = [] }) {
+function createTestApp({ prisma, privateReplyInstances = [], readyInstances = [], decisionService } = {}) {
   const app = express();
   app.use(express.json());
   app.use((req, res, next) => {
@@ -165,7 +168,8 @@ function createTestApp({ prisma, privateReplyInstances = [], readyInstances = []
         permissionsReady: readyInstances.includes(instanceId),
         checkedAt: '2026-07-27T12:00:00.000Z'
       }
-    })
+    }),
+    decisionService
   }));
   return app;
 }
@@ -196,6 +200,46 @@ describe('Comment Reply configuration API', () => {
     expect(response.body.code).toBe('CONFIG_VERSION_CONFLICT');
   });
 
+  it('persists explicit AI settings and previews without creating operational records', async () => {
+    const decisionService = {
+      decide: vi.fn().mockResolvedValue({
+        action: 'reply_and_dm',
+        publicReply: 'Check your inbox.',
+        privateReply: 'Welcome! Which grade?',
+        reasonCode: 'admissions_question'
+      })
+    };
+    app = createTestApp({ prisma, readyInstances: ['instance-a'], decisionService });
+    await request(app).post('/api/agents/agent-a/comment-replies/bindings')
+      .send({ expectedConfigVersion: 1, instanceId: 'instance-a', isEnabled: true })
+      .expect(201);
+    const updated = await request(app).put('/api/agents/agent-a/comment-replies')
+      .send({
+        expectedConfigVersion: 2,
+        aiMode: 'ai_only',
+        commentAiInstructions: 'Answer admissions questions.',
+        privateReplyEnabled: true,
+        privateReplyInstructions: 'Collect the grade.',
+        publicAfterPrivateSuccess: true
+      })
+      .expect(200);
+    expect(updated.body.profile).toEqual(expect.objectContaining({
+      aiMode: 'ai_only', privateReplyEnabled: true, publicAfterPrivateSuccess: true
+    }));
+    const before = clone({ profiles: rows.profiles.length, bindings: rows.bindings.length, rules: rows.rules.length });
+    const preview = await request(app).post('/api/agents/agent-a/comment-replies/preview')
+      .send({ platform: 'facebook', commentText: 'How can I apply?', instanceId: 'instance-a', postName: 'Admissions' })
+      .expect(200);
+
+    expect(preview.body).toEqual(expect.objectContaining({
+      route: 'ai',
+      agent: { id: 'agent-a', name: 'Price Agent' },
+      decision: expect.objectContaining({ action: 'reply_and_dm' })
+    }));
+    expect(decisionService.decide).toHaveBeenCalledOnce();
+    expect({ profiles: rows.profiles.length, bindings: rows.bindings.length, rules: rows.rules.length }).toEqual(before);
+  });
+
   it('returns a minimal workspace and never serializes an instance access token', async () => {
     const binding = await request(app).post('/api/agents/agent-a/comment-replies/bindings')
       .send({ expectedConfigVersion: 1, instanceId: 'instance-a', isEnabled: true })
@@ -205,6 +249,22 @@ describe('Comment Reply configuration API', () => {
     expect(binding.body.instance.accessToken).toBeUndefined();
     const workspace = await request(app).get('/api/agents/agent-a/comment-replies').expect(200);
     expect(workspace.body).toEqual(expect.objectContaining({ agent: { id: 'agent-a', name: 'Price Agent' }, profile: expect.any(Object), bindings: expect.any(Array), configVersion: 2 }));
+  });
+
+  it('returns private and public delivery states separately in recent activity', async () => {
+    rows.executions.push({
+      id: 'execution-a', tenantId: 'tenant-a', profileId: 'profile-a', platform: 'facebook',
+      status: 'ready', routeSource: 'ai', receivedAt: '2026-08-17T10:00:00.000Z',
+      deliveries: [
+        { id: 'delivery-private', kind: 'private_message', status: 'succeeded', attempts: 1 },
+        { id: 'delivery-public', kind: 'public_reply', status: 'pending', attempts: 0 }
+      ]
+    });
+    const response = await request(app).get('/api/agents/agent-a/comment-replies').expect(200);
+    expect(response.body.activity[0].deliveries).toEqual([
+      expect.objectContaining({ kind: 'private_message', status: 'succeeded' }),
+      expect.objectContaining({ kind: 'public_reply', status: 'pending' })
+    ]);
   });
 
   it('tenant-scopes agent and instance reads', async () => {

@@ -59,7 +59,9 @@ function normalizeCommentReplyPayload(payload) {
 
 function sanitizePayload(aggregateType, payload) {
   if (aggregateType === 'channel_message') return normalizeChannelPayload(payload);
-  if (aggregateType === 'comment_reply_execution') return normalizeCommentReplyPayload(payload);
+  if (['comment_reply_execution', 'comment_reply_delivery'].includes(aggregateType)) {
+    return normalizeCommentReplyPayload(payload);
+  }
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     throw Object.assign(new Error('Outbox payload must be an object'), { code: 'INVALID_OUTBOX_PAYLOAD' });
   }

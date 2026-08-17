@@ -85,18 +85,25 @@ describe('agent behavior with injected dependencies', () => {
     expect(createAgentService(testDeps(database()))).toBeInstanceOf(require('../../../src/agents/agent.service').AgentService);
   });
 
-  it('selects the default agent by priority, assigns it, and records a session', async () => {
-    const prisma = database(); const selected = agent({ id: 'agent-high' }); const gateway = ownershipGateway(); prisma.aIAgent.findFirst.mockResolvedValue(selected);
+  it('selects the connected account Primary Agent, assigns it, and records a session', async () => {
+    const prisma = database(); const selected = agent({ id: 'agent-page', isPublished: true, knowledgeSources: [], actions: [] }); const gateway = ownershipGateway();
+    prisma.conversation.findFirst.mockResolvedValue({
+      id: 'conversation-1',
+      tenantId: 'tenant-1',
+      instanceId: 'instance-1',
+      instance: { id: 'instance-1', primaryAgentId: selected.id, primaryAgent: selected }
+    });
     const service = createAgentService({ prisma, ownershipGateway: gateway, clock });
     await expect(service.assignDefaultAgent('conversation-1', 'tenant-1')).resolves.toBe(selected);
-    expect(prisma.aIAgent.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ tenantId: 'tenant-1', isActive: true, isPublished: true, deletedAt: null }),
-      orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }]
+    expect(prisma.aIAgent.findFirst).not.toHaveBeenCalled();
+    expect(prisma.conversation.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'conversation-1', tenantId: 'tenant-1' },
+      include: expect.objectContaining({ instance: expect.any(Object) })
     }));
     expect(gateway.ensureDefaultOwner).toHaveBeenCalledWith(expect.objectContaining({
       tenantId: 'tenant-1',
       conversationId: 'conversation-1',
-      targetAgentId: 'agent-high'
+      targetAgentId: 'agent-page'
     }));
   });
 

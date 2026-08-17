@@ -282,6 +282,7 @@ const handleIncomingMessage = async (req, res) => {
         instance.tenantId,
         contactNumber,
         {
+          instanceId: instance.id,
           content: text || `[${messageType}]`,
           fromMe,
           // Only update contactName if we have a real name (preserve existing group name if API fails)

@@ -281,25 +281,29 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
    * Assign default agent to conversation
    */
   async assignDefaultAgent(conversationId, tenantId) {
-    const defaultAgent = await this.prisma.aIAgent.findFirst({
-      where: {
-        tenantId: tenantId,
-        isActive: true,
-        isPublished: true,
-        deletedAt: null
-      },
-      orderBy: [
-        { priority: 'desc' },
-        { createdAt: 'asc' }
-      ],
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, tenantId },
       include: {
-        knowledgeSources: { where: { isActive: true } },
-        actions: { where: { isEnabled: true } }
+        instance: {
+          include: {
+            primaryAgent: {
+              include: {
+                knowledgeSources: { where: { isActive: true } },
+                actions: { where: { isEnabled: true } }
+              }
+            }
+          }
+        }
       }
     });
+    const defaultAgent = conversation?.instance?.primaryAgent;
 
-    if (!defaultAgent) {
-      console.warn('[AgentService] No active default agent found for tenant:', tenantId);
+    if (!defaultAgent
+      || defaultAgent.tenantId !== tenantId
+      || !defaultAgent.isActive
+      || !defaultAgent.isPublished
+      || defaultAgent.deletedAt) {
+      console.warn('[AgentService] No usable Primary Agent found for connected account:', conversation?.instanceId || 'unresolved');
       return null;
     }
 

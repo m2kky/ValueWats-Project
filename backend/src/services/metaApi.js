@@ -45,6 +45,27 @@ function classifyPublicReplyError(error) {
   );
 }
 
+function classifyPrivateReplyError(error) {
+  const status = Number(error?.response?.status || 0);
+  if (status) {
+    return publicReplyError(
+      status === 429 ? 'META_RATE_LIMITED' : 'META_PRIVATE_REPLY_REJECTED',
+      status === 429 ? 'Meta rate limited the private reply' : 'Meta rejected the private reply',
+      {
+        dispatchOutcome: 'response_received',
+        retryable: status === 429 || status >= 500,
+        providerStatus: status
+      }
+    );
+  }
+  if (error?.requestTransmitted === false) {
+    return publicReplyError('META_PRIVATE_REPLY_NOT_SENT', 'Meta private reply request was not transmitted', { retryable: true });
+  }
+  return publicReplyError('META_PRIVATE_REPLY_OUTCOME_AMBIGUOUS', 'Meta private reply outcome is ambiguous', {
+    dispatchOutcome: 'outcome_ambiguous', outcomeUnknown: true
+  });
+}
+
 class MetaApi {
   getAccessToken(instance) {
     return decryptMetaToken(instance.accessToken);
@@ -150,12 +171,11 @@ class MetaApi {
       }
     };
 
-    const data = await this.postToMessengerPage(instance, payload);
-    console.log(
-      `[MetaApi:Messenger] Private reply sent for ${commentId ? `comment ${commentId}` : `post ${postId}`}:`,
-      data
-    );
-    return data;
+    try {
+      return await this.postToMessengerPage(instance, payload);
+    } catch (error) {
+      throw classifyPrivateReplyError(error);
+    }
   }
 
   async setMessengerPersistentMenu(instance, { locale = 'default', allowUserInput = true, buttons = [] }) {
@@ -216,6 +236,32 @@ class MetaApi {
     });
     console.log(`[MetaApi:Instagram] Sent to ${recipientId}:`, res.data);
     return res.data;
+  }
+
+  async sendInstagramPrivateReply(instance, commentId, text) {
+    let token;
+    try {
+      token = this.getAccessToken(instance);
+    } catch (_) {
+      throw publicReplyError('META_CREDENTIALS_UNAVAILABLE', 'Meta credentials are unavailable for private reply');
+    }
+    try {
+      const response = await axios.post(
+        `${FB_BASE}/${encodeURIComponent(commentId)}/private_replies`,
+        { message: text },
+        { params: { access_token: token }, headers: { 'Content-Type': 'application/json' } }
+      );
+      const id = String(response?.data?.id || response?.data?.message_id || response?.data?.recipient_id || '').trim();
+      if (!id) {
+        throw publicReplyError('META_PRIVATE_REPLY_OUTCOME_AMBIGUOUS', 'Meta returned an invalid private reply result', {
+          dispatchOutcome: 'outcome_ambiguous', outcomeUnknown: true
+        });
+      }
+      return { ...response.data, id };
+    } catch (error) {
+      if (error?.dispatchOutcome) throw error;
+      throw classifyPrivateReplyError(error);
+    }
   }
 
   async publishPublicCommentReply(instance, commentId, message, edge) {

@@ -66,6 +66,7 @@ function normalizeRenderedReply(template, variables, platform) {
 function createCommentReplyRuntime({
   prisma,
   outboxService,
+  decisionService,
   clock = () => new Date(),
   maxEventAgeMs = MAX_EVENT_AGE_MS
 }) {
@@ -182,6 +183,11 @@ function createCommentReplyRuntime({
     }
     if (!profile.isEnabled) return { skipReason: 'profile_disabled' };
     if (!validAgent(agent, execution.tenantId)) return { skipReason: 'agent_inactive' };
+    if (!binding.instance.primaryAgentId
+      || binding.instance.primaryAgentId !== agent.id
+      || execution.agentId !== agent.id) {
+      return { skipReason: 'primary_agent_mismatch' };
+    }
 
     const override = await client.commentPostOverride.findFirst({
       where: {
@@ -207,13 +213,11 @@ function createCommentReplyRuntime({
       }
     }
 
-    const mode = override?.mode && override.mode !== 'inherit'
+    const profileMode = profile.aiMode || (profile.aiFallbackEnabled ? 'rules_then_ai' : 'rules_only');
+    const mode = ['rules_only', 'rules_then_ai', 'ai_only'].includes(override?.mode)
       ? override.mode
-      : 'rules_then_ai';
-    if (mode === 'ai_only') return { skipReason: 'fixed_rules_disabled' };
-    if (!['rules_then_ai', 'rules_only'].includes(mode)) {
-      return { skipReason: 'override_mode_invalid' };
-    }
+      : profileMode;
+    if (!['rules_then_ai', 'rules_only', 'ai_only'].includes(mode)) return { skipReason: 'ai_mode_invalid' };
     return { agent, binding, mode, override, profile };
   }
 
@@ -249,6 +253,46 @@ function createCommentReplyRuntime({
       errorMessage: 'Configuration changed before reply finalization'
     });
     return prisma.commentReplyExecution.findUnique({ where: { id: executionId } });
+  }
+
+  function deliveryIdempotency(execution, kind) {
+    return [
+      'comment-reply', execution.platform, execution.providerAccountId,
+      execution.externalCommentId, kind
+    ].join(':');
+  }
+
+  async function createDelivery(tx, execution, binding, kind, renderedText, enqueue) {
+    const delivery = await tx.commentReplyDelivery.create({
+      data: {
+        tenantId: execution.tenantId,
+        executionId: execution.id,
+        kind,
+        renderedText,
+        idempotencyKey: deliveryIdempotency(execution, kind),
+        availableAt: clock()
+      }
+    });
+    if (!enqueue) return delivery;
+    const outboxEvent = await outboxService.createOrGet({
+      tenantId: execution.tenantId,
+      aggregateType: 'comment_reply_delivery',
+      aggregateId: delivery.id,
+      eventType: 'comment_reply.delivery_requested',
+      idempotencyKey: `${delivery.idempotencyKey}:outbox`,
+      payload: {
+        executionId: execution.id,
+        providerReference: {
+          provider: execution.platform,
+          instanceId: binding.instanceId
+        }
+      }
+    }, { prisma: tx });
+    await tx.commentReplyDelivery.updateMany({
+      where: { id: delivery.id, tenantId: execution.tenantId, outboxEventId: null },
+      data: { outboxEventId: outboxEvent.id }
+    });
+    return { ...delivery, outboxEventId: outboxEvent.id };
   }
 
   async function finalizeRule(execution, leaseToken, selected) {
@@ -317,20 +361,7 @@ function createCommentReplyRuntime({
             post_name: current.override?.postName || fenced.postName,
             platform: fenced.platform
           }, fenced.platform);
-          const outboxEvent = await outboxService.createOrGet({
-            tenantId: fenced.tenantId,
-            aggregateType: 'comment_reply_execution',
-            aggregateId: fenced.id,
-            eventType: 'comment_reply.publish_requested',
-            idempotencyKey: `comment-reply:${fenced.id}:publish`,
-            payload: {
-              executionId: fenced.id,
-              providerReference: {
-                provider: fenced.platform,
-                instanceId: current.binding.instanceId
-              }
-            }
-          }, { prisma: tx });
+          await createDelivery(tx, fenced, current.binding, 'public_reply', renderedReply, true);
 
           await fencedUpdate(tx, fenced.id, leaseToken, {
             profileId: current.profile.id,
@@ -342,9 +373,7 @@ function createCommentReplyRuntime({
             ruleId: rule.id,
             ruleNameSnapshot: bounded(rule.name, 255),
             variantId: variant.id,
-            renderedReply,
             status: 'ready',
-            outboxEventId: outboxEvent.id,
             completedAt: clock(),
             leaseExpiresAt: null,
             leaseToken: null,
@@ -362,6 +391,52 @@ function createCommentReplyRuntime({
     throw new CommentReplyRuntimeError('ROTATION_CONFLICT', 'Reply variant cursor remained contended');
   }
 
+  async function finalizeAi(execution, leaseToken, selected, decision) {
+    return prisma.$transaction(async (tx) => {
+      const fenced = await tx.commentReplyExecution.findUnique({ where: { id: execution.id } });
+      assertProcessingLease(fenced, execution.id, leaseToken);
+      const current = await resolveConfiguration(tx, fenced);
+      if (current.skipReason
+        || current.profile.id !== selected.profile.id
+        || current.agent.id !== selected.agent.id
+        || current.profile.configVersion !== selected.profile.configVersion
+        || current.agent.configVersion !== selected.agent.configVersion) {
+        throw new CommentReplyRuntimeError('CONFIGURATION_CHANGED', 'Configuration changed before AI finalization');
+      }
+
+      if (decision.action === 'reply_only') {
+        await createDelivery(tx, fenced, current.binding, 'public_reply', decision.publicReply, true);
+      } else if (decision.action === 'reply_and_dm') {
+        await createDelivery(
+          tx,
+          fenced,
+          current.binding,
+          'public_reply',
+          decision.publicReply,
+          current.profile.publicAfterPrivateSuccess === false
+        );
+        await createDelivery(tx, fenced, current.binding, 'private_message', decision.privateReply, true);
+      }
+
+      await fencedUpdate(tx, fenced.id, leaseToken, {
+        profileId: current.profile.id,
+        agentId: current.agent.id,
+        agentNameSnapshot: bounded(current.agent.name, 255),
+        profileConfigVersion: current.profile.configVersion,
+        agentConfigVersion: current.agent.configVersion,
+        routeSource: 'ai',
+        status: 'ready',
+        completedAt: clock(),
+        leaseExpiresAt: null,
+        leaseToken: null,
+        skipReason: null,
+        errorCode: null,
+        errorMessage: null
+      });
+      return tx.commentReplyExecution.findUnique({ where: { id: fenced.id } });
+    });
+  }
+
   async function process(executionId, leaseToken) {
     const execution = await prisma.commentReplyExecution.findUnique({ where: { id: executionId } });
     assertProcessingLease(execution, executionId, leaseToken);
@@ -376,7 +451,7 @@ function createCommentReplyRuntime({
     const resolved = await resolveConfiguration(prisma, execution);
     if (resolved.skipReason) return skip(execution, leaseToken, resolved.skipReason);
 
-    const rules = await prisma.commentReplyRule.findMany({
+    const rules = resolved.mode === 'ai_only' ? [] : await prisma.commentReplyRule.findMany({
       where: {
         tenantId: execution.tenantId,
         profileId: resolved.profile.id,
@@ -387,7 +462,15 @@ function createCommentReplyRuntime({
       orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }]
     });
     const rule = matchCommentRule({ text: execution.commentText, rules });
-    if (!rule) {
+    if (rule) {
+      try {
+        return await finalizeRule(execution, leaseToken, { ...resolved, rule });
+      } catch (error) {
+        if (error?.code === 'CONFIGURATION_CHANGED') return requeue(execution.id, leaseToken);
+        throw error;
+      }
+    }
+    if (resolved.mode === 'rules_only') {
       return skip(execution, leaseToken, 'no_rule_match', {
         profileId: resolved.profile.id,
         agentId: resolved.agent.id,
@@ -395,9 +478,25 @@ function createCommentReplyRuntime({
         agentConfigVersion: resolved.agent.configVersion
       });
     }
-
+    if (!decisionService?.decide) return skip(execution, leaseToken, 'comment_ai_unavailable');
+    const decision = await decisionService.decide({
+      execution,
+      agent: resolved.agent,
+      profile: resolved.profile,
+      binding: resolved.binding,
+      post: { name: resolved.override?.postName || execution.postName }
+    });
+    if (['skip', 'human_review'].includes(decision.action)) {
+      return skip(execution, leaseToken, `${decision.action}:${decision.reasonCode}`, {
+        routeSource: 'ai',
+        profileId: resolved.profile.id,
+        agentId: resolved.agent.id,
+        profileConfigVersion: resolved.profile.configVersion,
+        agentConfigVersion: resolved.agent.configVersion
+      });
+    }
     try {
-      return await finalizeRule(execution, leaseToken, { ...resolved, rule });
+      return await finalizeAi(execution, leaseToken, resolved, decision);
     } catch (error) {
       if (error?.code === 'CONFIGURATION_CHANGED') return requeue(execution.id, leaseToken);
       throw error;

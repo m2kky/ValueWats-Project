@@ -7,6 +7,14 @@ const migrationPath = path.resolve(
   __dirname,
   '../../../prisma/migrations/20260806030000_add_comment_reply_engine/migration.sql'
 );
+const routingMigrationPath = path.resolve(
+  __dirname,
+  '../../../prisma/migrations/20260817000000_add_page_agent_routing/migration.sql'
+);
+const aiDeliveryMigrationPath = path.resolve(
+  __dirname,
+  '../../../prisma/migrations/20260817010000_add_comment_ai_deliveries/migration.sql'
+);
 
 function extractModelBlock(schema, modelName) {
   const match = schema.match(new RegExp(`^model ${modelName} \\{([\\s\\S]*?)^\\}`, 'm'));
@@ -22,7 +30,42 @@ function expectModelFields(modelBlock, fields) {
 }
 
 describe('Comment Reply schema', () => {
-  it('defines the six Comment Reply models, required enum values, and operational constraints', () => {
+  it('defines account-scoped page Agent ownership and conversation identity', () => {
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    const instance = extractModelBlock(schema, 'Instance');
+    const conversation = extractModelBlock(schema, 'Conversation');
+    const agent = extractModelBlock(schema, 'AIAgent');
+
+    expectModelFields(instance, [
+      ['primaryAgentId', 'String?'],
+      ['primaryAgent', 'AIAgent?'],
+      ['conversations', 'Conversation[]']
+    ]);
+    expect(instance).toContain('@relation("InstancePrimaryAgent"');
+
+    expectModelFields(conversation, [
+      ['instanceId', 'String?'],
+      ['instance', 'Instance?']
+    ]);
+    expect(conversation).toContain('@@unique([tenantId, instanceId, contactNumber, channelType])');
+    expect(conversation).not.toContain('@@unique([tenantId, contactNumber, channelType])');
+    expect(conversation).toContain('@@index([tenantId, instanceId, lastMessageAt(sort: Desc)])');
+
+    expectModelFields(agent, [['primaryInstances', 'Instance[]']]);
+    expect(agent).toContain('@relation("InstancePrimaryAgent")');
+
+    expect(fs.existsSync(routingMigrationPath)).toBe(true);
+    const migration = fs.readFileSync(routingMigrationPath, 'utf8');
+    expect(migration).toContain('ADD COLUMN "primary_agent_id" TEXT');
+    expect(migration).toContain('ADD COLUMN "instance_id" TEXT');
+    expect(migration).toContain('COUNT(DISTINCT "instance_id") = 1');
+    expect(migration).toContain('DROP CONSTRAINT IF EXISTS "conversations_tenant_id_contact_number_channel_type_key"');
+    expect(migration).toContain('conversations_tenant_id_instance_id_contact_number_channel_type_key');
+    expect(migration).toContain('instances_primary_agent_id_fkey');
+    expect(migration).toContain('conversations_instance_id_fkey');
+  });
+
+  it('defines the Comment Reply models, required enum values, and operational constraints', () => {
     const schema = fs.readFileSync(schemaPath, 'utf8');
     const modelNames = [
       'CommentReplyProfile',
@@ -30,7 +73,8 @@ describe('Comment Reply schema', () => {
       'CommentReplyRule',
       'CommentReplyVariant',
       'CommentPostOverride',
-      'CommentReplyExecution'
+      'CommentReplyExecution',
+      'CommentReplyDelivery'
     ];
     const declaredModels = [...schema.matchAll(/^model (CommentReply\w+|CommentChannelBinding|CommentPostOverride) \{/gm)]
       .map((match) => match[1]);
@@ -146,7 +190,7 @@ describe('Comment Reply schema', () => {
     expect(migration).toContain('comment_reply_executions_tenant_id_profile_id_received_at_idx');
 
     const executionSetNullFks = [...migration.matchAll(
-      /ADD CONSTRAINT "comment_reply_executions_([a-z_]+)_fkey"\n\s+FOREIGN KEY \("[a-z_]+"\) REFERENCES "[A-Za-z_]+"\("id"\) ON DELETE SET NULL ON UPDATE CASCADE/g
+      /ADD CONSTRAINT "comment_reply_executions_([a-z_]+)_fkey"\r?\n\s+FOREIGN KEY \("[a-z_]+"\) REFERENCES "[A-Za-z_]+"\("id"\) ON DELETE SET NULL ON UPDATE CASCADE/g
     )].map((match) => match[1]);
     expect(executionSetNullFks).toEqual([
       'instance_id',
@@ -157,6 +201,48 @@ describe('Comment Reply schema', () => {
       'variant_id',
       'outbox_event_id'
     ]);
+  });
+
+  it('defines explicit Comment AI configuration and independently durable deliveries', () => {
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    const profile = extractModelBlock(schema, 'CommentReplyProfile');
+    const execution = extractModelBlock(schema, 'CommentReplyExecution');
+    const delivery = extractModelBlock(schema, 'CommentReplyDelivery');
+    const tenant = extractModelBlock(schema, 'Tenant');
+    const outbox = extractModelBlock(schema, 'OutboxEvent');
+
+    expect(schema).toMatch(/enum CommentReplyDeliveryKind \{[\s\S]*private_message[\s\S]*public_reply[\s\S]*\}/);
+    expect(schema).toMatch(/enum CommentReplyDeliveryStatus \{[\s\S]*pending[\s\S]*dispatching[\s\S]*succeeded[\s\S]*failed[\s\S]*outcome_unknown[\s\S]*cancelled[\s\S]*\}/);
+    expectModelFields(profile, [
+      ['aiMode', 'String'], ['commentAiInstructions', 'String?'],
+      ['privateReplyEnabled', 'Boolean'], ['privateReplyInstructions', 'String?'],
+      ['publicAfterPrivateSuccess', 'Boolean']
+    ]);
+    expectModelFields(delivery, [
+      ['id', 'String'], ['tenantId', 'String'], ['executionId', 'String'],
+      ['kind', 'CommentReplyDeliveryKind'], ['status', 'CommentReplyDeliveryStatus'],
+      ['renderedText', 'String'], ['providerMessageId', 'String?'], ['idempotencyKey', 'String'],
+      ['outboxEventId', 'String?'], ['attempts', 'Int'], ['availableAt', 'DateTime'],
+      ['leaseExpiresAt', 'DateTime?'], ['leaseToken', 'String?'], ['completedAt', 'DateTime?'],
+      ['errorCode', 'String?'], ['errorMessage', 'String?'], ['createdAt', 'DateTime'],
+      ['updatedAt', 'DateTime'], ['tenant', 'Tenant'], ['execution', 'CommentReplyExecution'],
+      ['outboxEvent', 'OutboxEvent?']
+    ]);
+    expect(delivery).toContain('@@unique([executionId, kind])');
+    expect(delivery).toContain('@@unique([tenantId, idempotencyKey])');
+    expect(delivery).toContain('@@index([status, availableAt])');
+    expect(delivery).toContain('@@map("comment_reply_deliveries")');
+    expectModelFields(execution, [['deliveries', 'CommentReplyDelivery[]']]);
+    expectModelFields(tenant, [['commentReplyDeliveries', 'CommentReplyDelivery[]']]);
+    expectModelFields(outbox, [['commentReplyDelivery', 'CommentReplyDelivery?']]);
+
+    expect(fs.existsSync(aiDeliveryMigrationPath)).toBe(true);
+    const migration = fs.readFileSync(aiDeliveryMigrationPath, 'utf8');
+    expect(migration).toContain('CREATE TYPE "CommentReplyDeliveryKind"');
+    expect(migration).toContain('CREATE TABLE "comment_reply_deliveries"');
+    expect(migration).toContain('WHEN "ai_fallback_enabled" THEN \'rules_then_ai\'');
+    expect(migration).toContain('comment_reply_deliveries_execution_id_kind_key');
+    expect(migration).toContain('comment_reply_deliveries_tenant_id_idempotency_key_key');
   });
 });
 
