@@ -10,6 +10,11 @@ const { buildLegacyActionConfigProjection } = require('./legacyActionConfigProje
 const {
   createConversationOwnershipService
 } = require('../../conversations/conversationOwnershipService');
+const {
+  DEFAULT_CHAT_MODEL,
+  DEFAULT_TEMPERATURE,
+  DEFAULT_MAX_TOKENS
+} = require('../../ai/modelPolicy');
 
 class AgentSetupError extends Error {
   constructor(status, code, message, details) {
@@ -50,10 +55,10 @@ const SETUP_FIELDS = [
 ];
 
 const FIELD_DEFAULTS = {
-  aiProvider: 'deepseek',
-  aiModel: 'deepseek-chat',
-  temperature: 0.7,
-  maxTokens: 500,
+  aiProvider: 'openrouter',
+  aiModel: DEFAULT_CHAT_MODEL,
+  temperature: DEFAULT_TEMPERATURE,
+  maxTokens: DEFAULT_MAX_TOKENS,
   tone: 'professional',
   responseStyle: 'concise',
   useHistory: true,

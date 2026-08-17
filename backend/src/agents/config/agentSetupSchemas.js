@@ -6,6 +6,7 @@ const SUPPORTED_PROVIDER_MODELS = Object.freeze({
   deepseek: ['deepseek-chat'],
   openrouter: [
     'qwen/qwen3.5-flash-02-23',
+    'deepseek/deepseek-v3.2',
     'anthropic/claude-sonnet-4',
     'openai/gpt-4o-mini'
   ]
@@ -77,7 +78,7 @@ const validateTemplateCreateAgent = ajv.compile(templateCreateAgentSchema);
 const validateUpdateAgent = ajv.compile(updateAgentSchema);
 const validateDeleteAgent = ajv.compile(deleteAgentSchema);
 
-function providerModelSupported(provider = 'deepseek', model = 'deepseek-chat') {
+function providerModelSupported(provider = 'openrouter', model = 'qwen/qwen3.5-flash-02-23') {
   return Boolean(SUPPORTED_PROVIDER_MODELS[provider]?.includes(model));
 }
 

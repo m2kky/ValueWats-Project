@@ -2,6 +2,7 @@ const ACTIONS = new Set(['skip', 'reply_only', 'reply_and_dm', 'human_review']);
 const PUBLIC_LIMITS = { facebook: 8_000, instagram: 2_200 };
 const PRIVATE_LIMIT = 2_000;
 const UNSAFE_MARKER = /\{\{[\s\S]*?\}\}|\[(?:ACTION|COMMAND|TOOL)\s*:/iu;
+const { COMMENT_MAX_TOKENS, resolveChatModel } = require('../ai/modelPolicy');
 
 function closed(reasonCode) {
   return { action: 'human_review', publicReply: null, privateReply: null, reasonCode };
@@ -100,9 +101,9 @@ function createCommentAiDecisionService({
     try {
       const output = await modelGateway.generate({
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-        model: agent.aiModel,
+        model: resolveChatModel(agent.aiModel),
         temperature: agent.temperature,
-        maxTokens: agent.maxTokens,
+        maxTokens: Math.min(agent.maxTokens || COMMENT_MAX_TOKENS, COMMENT_MAX_TOKENS),
         responseFormat: 'json',
         tools: []
       });

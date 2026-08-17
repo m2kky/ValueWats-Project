@@ -509,9 +509,9 @@ model AIAgent {
 
   instructions String @db.Text
 
-  aiProvider  String @default("deepseek")
-  aiModel     String @default("deepseek-chat")
-  temperature Float  @default(0.7)
+  aiProvider  String @default("openrouter")
+  aiModel     String @default("qwen/qwen3.5-flash-02-23")
+  temperature Float  @default(0.4)
   maxTokens   Int    @default(500)
 
   greeting      String? @db.Text

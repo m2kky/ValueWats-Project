@@ -31,7 +31,7 @@ const defaultForm = {
   templateType: 'custom',
   tone: 'professional',
   responseStyle: 'concise',
-  temperature: 0.7,
+  temperature: 0.4,
   maxTokens: 500,
   greeting: '',
   useHistory: true,
@@ -44,7 +44,7 @@ const defaultForm = {
   outOfHoursMessage: '',
   isActive: true,
   priority: 0,
-  aiModel: 'deepseek-chat',
+  aiModel: 'qwen/qwen3.5-flash-02-23',
   actionConfig: {
     closeConversation: { enabled: false, instructions: '' },
     assignAgent: {
@@ -233,7 +233,7 @@ export default function Agents() {
         followUpEnabled: full.followUpEnabled ?? false, followUpDelay: full.followUpDelay ?? 300, followUpMessage: full.followUpMessage || '',
         workingHoursEnabled: full.workingHoursEnabled ?? false, workingHours: full.workingHours, outOfHoursMessage: full.outOfHoursMessage || '',
         isActive: full.isActive ?? true, priority: full.priority ?? 0, isPublished: full.isPublished ?? false,
-        aiModel: full.aiModel || full.model || 'deepseek-chat',
+        aiModel: full.aiModel || full.model || 'qwen/qwen3.5-flash-02-23',
         actionConfig: {
           ...defaultForm.actionConfig,
           ...(full.actionConfig || {}),

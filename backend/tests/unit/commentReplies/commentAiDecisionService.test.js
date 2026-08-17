@@ -36,10 +36,14 @@ describe('read-only Comment AI decisions', () => {
     const { input, knowledgeService, modelGateway, service } = subject({
       action: 'reply_only', publicReply: 'Applications are open.', privateReply: null, reasonCode: 'kb_answer'
     });
+    input.agent.aiModel = 'deepseek-chat';
+    input.agent.maxTokens = 500;
     await service.decide(input);
 
     expect(knowledgeService.searchKnowledge).toHaveBeenCalledWith('How can I apply?', 'agent-a', 5);
     expect(modelGateway.generate).toHaveBeenCalledWith(expect.objectContaining({
+      model: 'qwen/qwen3.5-flash-02-23',
+      maxTokens: 300,
       tools: [],
       responseFormat: 'json'
     }));

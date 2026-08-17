@@ -15,6 +15,7 @@ const { createAgentRunRepository } = require('./persistence/agentRunRepository')
 const { createAgentCommandExecutor } = require('./runtime/agentCommandRuntime');
 const { resolveAgentRuntimeMode } = require('./runtime/runtimeFlags');
 const { isWithinWorkingHours } = require('./runtime/workingHoursPolicy');
+const { resolveChatModel } = require('../ai/modelPolicy');
 
 class AgentService {
   constructor({
@@ -158,10 +159,7 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
       let loopCount = 0;
       const MAX_LOOPS = 5;
 
-      // Normalize model name: old DB default 'deepseek-chat' is invalid on OpenRouter
-      const resolvedModel = (!agent.aiModel || agent.aiModel === 'deepseek-chat')
-        ? 'qwen/qwen3.5-flash-02-23'
-        : agent.aiModel;
+      const resolvedModel = resolveChatModel(agent.aiModel);
 
       while (loopCount < MAX_LOOPS) {
         const responseMessage = await this.modelGateway.chat({
