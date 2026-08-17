@@ -44,10 +44,18 @@ function validateDecision(output, platform, privateReplyEnabled) {
   return { action, publicReply, privateReply, reasonCode };
 }
 
-function createDefaultModelGateway(aiService) {
+function createDefaultModelGateway(chatGateway) {
   return {
-    async generate({ messages }) {
-      return aiService.generateResponse(messages[1].content, messages[0].content);
+    async generate({ messages, model, temperature, maxTokens }) {
+      const response = await chatGateway.chat({
+        messages,
+        model,
+        temperature,
+        max_tokens: maxTokens,
+        tools: null,
+        tool_choice: null
+      });
+      return response?.content || response?.message || response;
     }
   };
 }
@@ -57,7 +65,7 @@ function createCommentAiDecisionService({
   knowledgeService,
   clock = () => new Date()
 } = {}) {
-  modelGateway ||= createDefaultModelGateway(require('../services/aiService'));
+  modelGateway ||= createDefaultModelGateway(require('../ai/deepseek.service'));
   knowledgeService ||= require('../services/knowledgeService');
   if (typeof modelGateway?.generate !== 'function') throw new Error('Comment AI model gateway is required');
 
