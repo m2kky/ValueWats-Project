@@ -41,3 +41,4 @@ evolution-api-*
 .gemini/
 .agent/
 .superpowers/
+.worktrees/
