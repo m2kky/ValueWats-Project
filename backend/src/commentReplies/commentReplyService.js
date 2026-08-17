@@ -3,6 +3,7 @@ const { getChannelConfig: getChannelConfigDefault } = require('../services/chann
 
 const MATCH_MODES = new Set(['contains_any', 'contains_all', 'exact']);
 const OVERRIDE_MODES = new Set(['inherit', 'disabled', 'profile']);
+const AI_MODES = new Set(['rules_only', 'rules_then_ai', 'ai_only']);
 const PLATFORM_BY_CHANNEL = { messenger: 'facebook', instagram: 'instagram' };
 
 class CommentReplyError extends Error {
@@ -35,8 +36,20 @@ function toSafeInstance(instance) {
 
 function toProfile(profile) {
   if (!profile) return null;
-  const { id, agentId, isEnabled, aiFallbackEnabled, defaultMatchMode, configVersion } = profile;
-  return { id, agentId, isEnabled, aiFallbackEnabled, defaultMatchMode, configVersion };
+  const {
+    id, agentId, isEnabled, aiFallbackEnabled, aiMode, commentAiInstructions,
+    privateReplyEnabled, privateReplyInstructions, publicAfterPrivateSuccess,
+    defaultMatchMode, configVersion
+  } = profile;
+  return {
+    id, agentId, isEnabled, aiFallbackEnabled,
+    aiMode: aiMode || (aiFallbackEnabled ? 'rules_then_ai' : 'rules_only'),
+    commentAiInstructions: commentAiInstructions || '',
+    privateReplyEnabled: privateReplyEnabled === true,
+    privateReplyInstructions: privateReplyInstructions || '',
+    publicAfterPrivateSuccess: publicAfterPrivateSuccess !== false,
+    defaultMatchMode, configVersion
+  };
 }
 
 function toBinding(binding) {
@@ -89,7 +102,10 @@ function normalizeVariants(variants) {
   });
 }
 
-function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = getChannelConfigDefault } = {}) {
+function createCommentReplyService(prisma = prismaDefault, {
+  getChannelConfig = getChannelConfigDefault,
+  decisionService
+} = {}) {
   async function findAgent(tx, tenantId, agentId) {
     const agent = await tx.aIAgent.findFirst({ where: { id: agentId, tenantId, deletedAt: null }, select: { id: true, name: true } });
     if (!agent) throw new CommentReplyError(404, 'AGENT_NOT_FOUND', 'Agent not found');
@@ -106,6 +122,11 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
       agentId,
       isEnabled: false,
       aiFallbackEnabled: false,
+      aiMode: 'rules_only',
+      commentAiInstructions: '',
+      privateReplyEnabled: false,
+      privateReplyInstructions: '',
+      publicAfterPrivateSuccess: true,
       defaultMatchMode: 'contains_any',
       configVersion: 0
     };
@@ -161,14 +182,35 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
     });
   }
 
-  async function updateProfile({ tenantId, agentId, expectedConfigVersion, isEnabled, aiFallbackEnabled, defaultMatchMode }) {
+  async function updateProfile({
+    tenantId, agentId, expectedConfigVersion, isEnabled, aiFallbackEnabled, aiMode,
+    commentAiInstructions, privateReplyEnabled, privateReplyInstructions,
+    publicAfterPrivateSuccess, defaultMatchMode
+  }) {
     if (isEnabled !== undefined && typeof isEnabled !== 'boolean') throw validation('isEnabled must be a boolean');
     if (aiFallbackEnabled !== undefined && typeof aiFallbackEnabled !== 'boolean') throw validation('aiFallbackEnabled must be a boolean');
+    if (aiMode !== undefined && !AI_MODES.has(aiMode)) throw validation('aiMode must be rules_only, rules_then_ai, or ai_only');
+    if (privateReplyEnabled !== undefined && typeof privateReplyEnabled !== 'boolean') throw validation('privateReplyEnabled must be a boolean');
+    if (publicAfterPrivateSuccess !== undefined && typeof publicAfterPrivateSuccess !== 'boolean') throw validation('publicAfterPrivateSuccess must be a boolean');
+    for (const [name, value] of [['commentAiInstructions', commentAiInstructions], ['privateReplyInstructions', privateReplyInstructions]]) {
+      if (value !== undefined && (typeof value !== 'string' || value.length > 20_000)) throw validation(`${name} must be a string up to 20000 characters`);
+    }
     if (defaultMatchMode !== undefined && !MATCH_MODES.has(defaultMatchMode)) throw validation('defaultMatchMode must be contains_any, contains_all, or exact');
     requireVersion(expectedConfigVersion);
     const data = {};
     if (isEnabled !== undefined) data.isEnabled = isEnabled;
-    if (aiFallbackEnabled !== undefined) data.aiFallbackEnabled = aiFallbackEnabled;
+    if (aiFallbackEnabled !== undefined) {
+      data.aiFallbackEnabled = aiFallbackEnabled;
+      if (aiMode === undefined) data.aiMode = aiFallbackEnabled ? 'rules_then_ai' : 'rules_only';
+    }
+    if (aiMode !== undefined) {
+      data.aiMode = aiMode;
+      data.aiFallbackEnabled = aiMode === 'rules_then_ai';
+    }
+    if (commentAiInstructions !== undefined) data.commentAiInstructions = commentAiInstructions.trim();
+    if (privateReplyEnabled !== undefined) data.privateReplyEnabled = privateReplyEnabled;
+    if (privateReplyInstructions !== undefined) data.privateReplyInstructions = privateReplyInstructions.trim();
+    if (publicAfterPrivateSuccess !== undefined) data.publicAfterPrivateSuccess = publicAfterPrivateSuccess;
     if (defaultMatchMode !== undefined) data.defaultMatchMode = defaultMatchMode;
     try {
       return await prisma.$transaction(async (tx) => {
@@ -319,7 +361,38 @@ function createCommentReplyService(prisma = prismaDefault, { getChannelConfig = 
     return { binding: toBinding(binding), profile: toProfile(binding.profile), agent: binding.profile?.agent ? { id: binding.profile.agent.id, name: binding.profile.agent.name } : null };
   }
 
-  return { getWorkspace, updateProfile, bindInstance, unbindInstance, listRules, saveRule, deleteRule, listOverrides, saveOverride, deleteOverride, getInstanceBinding };
+  async function preview({ tenantId, agentId, platform, commentText, instanceId, postName }) {
+    if (!decisionService?.decide) throw new CommentReplyError(503, 'COMMENT_AI_UNAVAILABLE', 'Comment AI preview is unavailable');
+    if (!['facebook', 'instagram'].includes(platform) || !String(commentText || '').trim()) {
+      throw validation('platform and commentText are required');
+    }
+    const agent = await prisma.aIAgent.findFirst({
+      where: { id: agentId, tenantId, deletedAt: null, isActive: true, isPublished: true }
+    });
+    if (!agent) throw new CommentReplyError(404, 'AGENT_NOT_FOUND', 'Agent not found');
+    const profile = await findProfile(prisma, tenantId, agentId);
+    if (!profile) throw new CommentReplyError(409, 'COMMENT_REPLY_PROFILE_REQUIRED', 'Save Comment AI settings before previewing');
+    const binding = await prisma.commentChannelBinding.findFirst({
+      where: { tenantId, profileId: profile.id, ...(instanceId ? { instanceId } : {}) },
+      include: { instance: true }
+    });
+    if (!binding) throw new CommentReplyError(404, 'COMMENT_REPLY_BINDING_NOT_FOUND', 'Connect an account before previewing');
+    const decision = await decisionService.decide({
+      execution: { tenantId, platform, commentText: String(commentText).slice(0, 10_000), postName: postName || null },
+      agent,
+      profile,
+      binding,
+      post: { name: postName || null }
+    });
+    return {
+      decision,
+      route: 'ai',
+      agent: { id: agent.id, name: agent.name },
+      account: toSafeInstance(binding.instance)
+    };
+  }
+
+  return { getWorkspace, updateProfile, bindInstance, unbindInstance, listRules, saveRule, deleteRule, listOverrides, saveOverride, deleteOverride, getInstanceBinding, preview };
 }
 
 module.exports = { CommentReplyError, createCommentReplyService };

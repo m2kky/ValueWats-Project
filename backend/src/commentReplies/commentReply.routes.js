@@ -1,5 +1,6 @@
 const express = require('express');
 const checkPermission = require('../middleware/checkPermission');
+const { createCommentAiDecisionService } = require('./commentAiDecisionService');
 const { CommentReplyError, createCommentReplyService } = require('./commentReplyService');
 
 function sendError(res, error) {
@@ -9,8 +10,11 @@ function sendError(res, error) {
   throw error;
 }
 
-function createCommentReplyRouter({ prisma, getChannelConfig } = {}) {
-  const service = createCommentReplyService(prisma, { getChannelConfig });
+function createCommentReplyRouter({ prisma, getChannelConfig, decisionService } = {}) {
+  const lazyDecisionService = decisionService || {
+    decide: async (input) => createCommentAiDecisionService().decide(input)
+  };
+  const service = createCommentReplyService(prisma, { getChannelConfig, decisionService: lazyDecisionService });
   const router = express.Router();
   const run = (handler) => async (req, res) => {
     try {
@@ -33,6 +37,7 @@ function createCommentReplyRouter({ prisma, getChannelConfig } = {}) {
   });
 
   router.get('/agents/:agentId/comment-replies', run((req) => service.getWorkspace(context(req))));
+  router.post('/agents/:agentId/comment-replies/preview', checkPermission('agents.manage'), run((req) => service.preview(mutation(req, {}, ['ruleId', 'bindingId', 'overrideId']))));
   router.put('/agents/:agentId/comment-replies', checkPermission('agents.manage'), run((req) => service.updateProfile(mutation(req, {}, ['ruleId', 'bindingId', 'overrideId']))));
   router.post('/agents/:agentId/comment-replies/bindings', checkPermission('agents.manage'), checkPermission('channels.manage'), run(async (req, res) => {
     const result = await service.bindInstance(mutation(req, {}, ['ruleId', 'bindingId', 'overrideId']));
