@@ -30,7 +30,7 @@ function createPrismaFixture() {
       { id: 'instance-private', tenantId: 'tenant-a', channelType: 'instagram', instanceName: 'Private Replies', phoneNumberId: 'ig-a', accessToken: 'private-token', status: 'connected' },
       { id: 'instance-b', tenantId: 'tenant-b', channelType: 'messenger', instanceName: 'Other Page', phoneNumberId: 'page-b', accessToken: 'other-token', status: 'connected' }
     ],
-    bindings: [], rules: [], variants: [], overrides: []
+    bindings: [], rules: [], variants: [], overrides: [], executions: []
   };
   const calls = { agentFinds: [], profileCreates: 0, profileUpdates: 0 };
   const faults = { profileCreate: null };
@@ -106,6 +106,9 @@ function createPrismaFixture() {
         found.forEach((row) => Object.assign(row, applyData(row, data)));
         return { count: found.length };
       }
+    },
+    commentReplyExecution: {
+      findMany: async ({ where }) => clone(rows.executions.filter((row) => matches(row, where)))
     },
     commentReplyVariant: {
       updateMany: async ({ where, data }) => {
@@ -246,6 +249,22 @@ describe('Comment Reply configuration API', () => {
     expect(binding.body.instance.accessToken).toBeUndefined();
     const workspace = await request(app).get('/api/agents/agent-a/comment-replies').expect(200);
     expect(workspace.body).toEqual(expect.objectContaining({ agent: { id: 'agent-a', name: 'Price Agent' }, profile: expect.any(Object), bindings: expect.any(Array), configVersion: 2 }));
+  });
+
+  it('returns private and public delivery states separately in recent activity', async () => {
+    rows.executions.push({
+      id: 'execution-a', tenantId: 'tenant-a', profileId: 'profile-a', platform: 'facebook',
+      status: 'ready', routeSource: 'ai', receivedAt: '2026-08-17T10:00:00.000Z',
+      deliveries: [
+        { id: 'delivery-private', kind: 'private_message', status: 'succeeded', attempts: 1 },
+        { id: 'delivery-public', kind: 'public_reply', status: 'pending', attempts: 0 }
+      ]
+    });
+    const response = await request(app).get('/api/agents/agent-a/comment-replies').expect(200);
+    expect(response.body.activity[0].deliveries).toEqual([
+      expect.objectContaining({ kind: 'private_message', status: 'succeeded' }),
+      expect.objectContaining({ kind: 'public_reply', status: 'pending' })
+    ]);
   });
 
   it('tenant-scopes agent and instance reads', async () => {

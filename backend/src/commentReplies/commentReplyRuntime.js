@@ -407,7 +407,14 @@ function createCommentReplyRuntime({
       if (decision.action === 'reply_only') {
         await createDelivery(tx, fenced, current.binding, 'public_reply', decision.publicReply, true);
       } else if (decision.action === 'reply_and_dm') {
-        await createDelivery(tx, fenced, current.binding, 'public_reply', decision.publicReply, false);
+        await createDelivery(
+          tx,
+          fenced,
+          current.binding,
+          'public_reply',
+          decision.publicReply,
+          current.profile.publicAfterPrivateSuccess === false
+        );
         await createDelivery(tx, fenced, current.binding, 'private_message', decision.privateReply, true);
       }
 

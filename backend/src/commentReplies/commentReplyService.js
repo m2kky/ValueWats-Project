@@ -169,15 +169,31 @@ function createCommentReplyService(prisma = prismaDefault, {
       if (!profile) {
         const virtual = virtualProfile(agentId);
         return {
-          agent: { id: agent.id, name: agent.name }, profile: toProfile(virtual), bindings: [], rules: [], overrides: [], configVersion: 0
+          agent: { id: agent.id, name: agent.name }, profile: toProfile(virtual), bindings: [], rules: [], overrides: [], activity: [], configVersion: 0
         };
       }
       const bindings = await tx.commentChannelBinding.findMany({ where: { tenantId, profileId: profile.id }, include: { instance: true }, orderBy: { createdAt: 'asc' } });
       const rules = await tx.commentReplyRule.findMany({ where: { tenantId, profileId: profile.id, deletedAt: null }, include: { variants: { where: { tenantId, deletedAt: null }, orderBy: { orderIndex: 'asc' } } }, orderBy: [{ priority: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }] });
       const overrides = await tx.commentPostOverride.findMany({ where: { tenantId, binding: { profileId: profile.id } }, orderBy: { createdAt: 'asc' } });
+      const activity = tx.commentReplyExecution?.findMany ? await tx.commentReplyExecution.findMany({
+        where: { tenantId, profileId: profile.id },
+        select: {
+          id: true, platform: true, postName: true, commenterName: true, routeSource: true,
+          status: true, skipReason: true, errorCode: true, receivedAt: true,
+          deliveries: {
+            select: {
+              id: true, kind: true, status: true, providerMessageId: true,
+              attempts: true, errorCode: true, availableAt: true, completedAt: true
+            },
+            orderBy: { createdAt: 'asc' }
+          }
+        },
+        orderBy: { receivedAt: 'desc' },
+        take: 50
+      }) : [];
       return {
         agent: { id: agent.id, name: agent.name }, profile: toProfile(profile), bindings: bindings.map(toBinding), rules: rules.map(toRule), overrides: overrides.map(toOverride),
-        configVersion: profile.configVersion
+        activity, configVersion: profile.configVersion
       };
     });
   }
