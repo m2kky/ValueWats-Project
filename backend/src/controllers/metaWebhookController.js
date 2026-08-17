@@ -145,6 +145,7 @@ const processIncomingMessage = async ({
     instance.tenantId,
     contactNumber,
     {
+      instanceId: instance.id,
       content: safeText,
       fromMe: false,
       contactName: pushName,
@@ -247,6 +248,7 @@ const processIncomingMessage = async ({
       const saved = await prisma.chatMessage.create({
         data: {
           conversationId: conversation.id,
+          instanceId: conversation.instanceId || instance.id,
           content: aiResult.response,
           direction: 'outgoing',
           senderNumber: instance.phoneNumberId,

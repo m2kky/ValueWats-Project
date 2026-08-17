@@ -22,35 +22,62 @@ class ChatService {
   async upsertConversation(tenantId, contactNumber, messageData = {}) {
     try {
       const channelType = messageData.channelType || 'whatsapp';
+      const instanceId = messageData.instanceId ? String(messageData.instanceId).trim() : null;
+      if (['messenger', 'instagram'].includes(channelType) && !instanceId) {
+        const error = new Error('A resolved connected account is required for Meta conversations');
+        error.code = 'CONVERSATION_INSTANCE_REQUIRED';
+        throw error;
+      }
       
       // Sanitize ALL string inputs to prevent Prisma hex escape errors
       const cleanContent = ChatService.sanitize(messageData.content)?.substring(0, 100) || '[Media]';
       const cleanContactName = ChatService.sanitize(messageData.contactName);
       const cleanContactNumber = ChatService.sanitize(contactNumber);
 
-      const conversation = await prisma.conversation.upsert({
-        where: {
-          tenantId_contactNumber_channelType: { tenantId, contactNumber: cleanContactNumber, channelType }
-        },
-        update: {
-          lastMessage: cleanContent,
-          lastMessageAt: new Date(),
-          unreadCount: messageData.fromMe ? { set: 0 } : { increment: 1 },
-          status: 'open',
-          // Update contact name if provided and not just a phone number
-          ...(cleanContactName && { contactName: cleanContactName })
-        },
-        create: {
-          tenantId,
-          channelType,
-          contactNumber: cleanContactNumber,
-          contactName: cleanContactName || cleanContactNumber,
-          lastMessage: cleanContent,
-          lastMessageAt: new Date(),
-          unreadCount: messageData.fromMe ? 0 : 1,
-          status: 'open'
-        }
-      });
+      const update = {
+        lastMessage: cleanContent,
+        lastMessageAt: new Date(),
+        unreadCount: messageData.fromMe ? { set: 0 } : { increment: 1 },
+        status: 'open',
+        ...(cleanContactName && { contactName: cleanContactName })
+      };
+      const create = {
+        tenantId,
+        instanceId,
+        channelType,
+        contactNumber: cleanContactNumber,
+        contactName: cleanContactName || cleanContactNumber,
+        lastMessage: cleanContent,
+        lastMessageAt: new Date(),
+        unreadCount: messageData.fromMe ? 0 : 1,
+        status: 'open'
+      };
+
+      let conversation;
+      if (instanceId) {
+        conversation = await prisma.conversation.upsert({
+          where: {
+            tenantId_instanceId_contactNumber_channelType: {
+              tenantId,
+              instanceId,
+              contactNumber: cleanContactNumber,
+              channelType
+            }
+          },
+          update,
+          create
+        });
+      } else {
+        const legacy = await prisma.conversation.findFirst({
+          where: { tenantId, instanceId: null, contactNumber: cleanContactNumber, channelType }
+        });
+        conversation = legacy
+          ? await prisma.conversation.update({
+            where: { id: legacy.id },
+            data: update
+          })
+          : await prisma.conversation.create({ data: create });
+      }
 
       return conversation;
     } catch (error) {
@@ -115,6 +142,7 @@ class ChatService {
       include: {
         lifecycleStage: true,
         assignedUser: { select: { id: true, email: true } },
+        instance: { select: { id: true, instanceName: true, channelType: true } },
         messages: {
           take: 1,
           orderBy: { createdAt: 'desc' },
@@ -131,7 +159,7 @@ class ChatService {
     // Attach instance info from most recent message for easy access on frontend
     return conversations.map(conv => ({
       ...conv,
-      instanceName: conv.messages?.[0]?.instance?.instanceName || null,
+      instanceName: conv.instance?.instanceName || conv.messages?.[0]?.instance?.instanceName || null,
       isGroup: conv.contactNumber?.includes('@g.us') || false
     }));
   }
@@ -145,6 +173,7 @@ class ChatService {
       include: {
         lifecycleStage: true,
         assignedUser: { select: { id: true, email: true } },
+        instance: { select: { id: true, instanceName: true, channelType: true } },
         messages: {
           include: {
             instance: {
@@ -451,6 +480,7 @@ class ChatService {
 
             // 3. Upsert conversation
             const conversation = await this.upsertConversation(tenantId, contactNumber, {
+              instanceId: instance.id,
               content: chat.message || chat.lastMessage?.message?.conversation || '',
               contactName: displayName,
               fromMe: false // Default to false for sync
