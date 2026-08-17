@@ -177,6 +177,7 @@ export default function useAgents() {
   }, []);
 
   const deleteAgent = useCallback(async (agentOrId) => {
+    setError(null);
     try {
       const agent = typeof agentOrId === 'object' ? agentOrId : { id: agentOrId };
       await api.delete(`/agents/${agent.id}`, {
@@ -229,6 +230,7 @@ export default function useAgents() {
   }, []);
 
   const toggleAgent = useCallback(async (agentOrId, isActiveArg) => {
+    setError(null);
     try {
       const agent = typeof agentOrId === 'object' ? agentOrId : { id: agentOrId, isActive: isActiveArg };
       const res = await api.put(`/agents/${agent.id}`, {
@@ -238,6 +240,7 @@ export default function useAgents() {
       setAgents(prev => prev.map(a => a.id === agent.id ? res.data : a));
       return true;
     } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update agent status');
       console.error('[useAgents] toggleAgent error:', err);
       return false;
     }

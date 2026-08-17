@@ -67,7 +67,7 @@ const defaultForm = {
 export default function Agents() {
   usePageTitle('AI Agents');
   const {
-    agents, templates, loading, saving,
+    agents, templates, loading, saving, error,
     fetchAgents, fetchAgent, createAgent, updateAgent,
     deleteAgent, fetchTemplates,
     testChat, toggleAgent,
@@ -391,6 +391,7 @@ export default function Agents() {
   return (
     <AgentList
       agents={agents} loading={loading}
+      error={error}
       handleCreateNew={handleCreateNew} handleEdit={handleEdit}
       handleDelete={handleDelete} handleToggle={handleToggle}
     />

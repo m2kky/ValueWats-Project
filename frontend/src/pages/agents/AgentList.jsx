@@ -23,7 +23,7 @@ const templateMeta = {
   },
 };
 
-export default function AgentList({ agents, loading, handleCreateNew, handleEdit, handleDelete, handleToggle }) {
+export default function AgentList({ agents, loading, error, handleCreateNew, handleEdit, handleDelete, handleToggle }) {
   const navigate = useNavigate();
 
   return (
@@ -54,6 +54,12 @@ export default function AgentList({ agents, loading, handleCreateNew, handleEdit
           <span className="relative z-10">INITIALIZE NEW MODULE</span>
         </button>
       </div>
+
+      {error && (
+        <div role="alert" className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-5 py-4 text-sm font-bold text-rose-200">
+          {error}
+        </div>
+      )}
 
       {/* Agents Grid */}
       <div className="relative">

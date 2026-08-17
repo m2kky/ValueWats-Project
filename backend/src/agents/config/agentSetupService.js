@@ -165,23 +165,6 @@ function templatePayload(template, body) {
   return result;
 }
 
-async function countOpenConversations(tx, tenantId, agentId) {
-  return tx.conversation.count({
-    where: {
-      tenantId,
-      currentAgentId: agentId,
-      status: { not: 'closed' }
-    }
-  });
-}
-
-async function assertNoOpenConversations(tx, tenantId, agentId) {
-  const openCount = await countOpenConversations(tx, tenantId, agentId);
-  if (openCount > 0) {
-    throw new AgentSetupError(409, 'AGENT_HAS_OPEN_CONVERSATIONS', 'Agent owns open conversations');
-  }
-}
-
 async function serializableTransaction(prisma, callback) {
   try {
     return await prisma.$transaction(callback, { isolationLevel: 'Serializable' });
@@ -231,11 +214,9 @@ function createAgentSetupService({
           throw new AgentSetupError(409, 'CONFIG_VERSION_CONFLICT', 'Agent config version is stale');
         }
         if ((updateData.isActive === false && existing.isActive) || (updateData.isPublished === false && existing.isPublished)) {
-          await assertNoOpenConversations(tx, tenantId, agentId);
           await ownershipService.drainAgent(tx, {
             tenantId,
             agentId,
-            expectedAssignments: [],
             reasonCode: 'agent_lifecycle'
           });
         }
@@ -282,11 +263,9 @@ function createAgentSetupService({
         if (existing.configVersion !== body.expectedConfigVersion) {
           throw new AgentSetupError(409, 'CONFIG_VERSION_CONFLICT', 'Agent config version is stale');
         }
-        await assertNoOpenConversations(tx, tenantId, agentId);
         await ownershipService.drainAgent(tx, {
           tenantId,
           agentId,
-          expectedAssignments: [],
           reasonCode: 'agent_delete'
         });
         const updateResult = await tx.aIAgent.updateMany({

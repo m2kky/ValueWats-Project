@@ -154,4 +154,36 @@ describe('agent setup payload compatibility', () => {
       data: { expectedConfigVersion: 8 },
     });
   });
+
+  it('exposes lifecycle toggle errors for the agents screen', async () => {
+    api.put.mockRejectedValueOnce({
+      response: { data: { error: 'Agent config version is stale' } },
+    });
+    const { result } = renderHook(() => useAgents());
+
+    await act(async () => {
+      await result.current.toggleAgent({ id: 'agent-1', isActive: true, configVersion: 8 });
+    });
+
+    expect(result.current.error).toBe('Agent config version is stale');
+  });
+
+  it('clears a previous lifecycle error when delete succeeds', async () => {
+    api.put.mockRejectedValueOnce({
+      response: { data: { error: 'Agent config version is stale' } },
+    });
+    api.delete.mockResolvedValueOnce({ data: { success: true } });
+    const { result } = renderHook(() => useAgents());
+
+    await act(async () => {
+      await result.current.toggleAgent({ id: 'agent-1', isActive: true, configVersion: 8 });
+    });
+    expect(result.current.error).toBe('Agent config version is stale');
+
+    await act(async () => {
+      await result.current.deleteAgent({ id: 'agent-1', configVersion: 8 });
+    });
+
+    expect(result.current.error).toBeNull();
+  });
 });
