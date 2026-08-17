@@ -7,6 +7,10 @@ const migrationPath = path.resolve(
   __dirname,
   '../../../prisma/migrations/20260806030000_add_comment_reply_engine/migration.sql'
 );
+const routingMigrationPath = path.resolve(
+  __dirname,
+  '../../../prisma/migrations/20260817000000_add_page_agent_routing/migration.sql'
+);
 
 function extractModelBlock(schema, modelName) {
   const match = schema.match(new RegExp(`^model ${modelName} \\{([\\s\\S]*?)^\\}`, 'm'));
@@ -22,6 +26,41 @@ function expectModelFields(modelBlock, fields) {
 }
 
 describe('Comment Reply schema', () => {
+  it('defines account-scoped page Agent ownership and conversation identity', () => {
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    const instance = extractModelBlock(schema, 'Instance');
+    const conversation = extractModelBlock(schema, 'Conversation');
+    const agent = extractModelBlock(schema, 'AIAgent');
+
+    expectModelFields(instance, [
+      ['primaryAgentId', 'String?'],
+      ['primaryAgent', 'AIAgent?'],
+      ['conversations', 'Conversation[]']
+    ]);
+    expect(instance).toContain('@relation("InstancePrimaryAgent"');
+
+    expectModelFields(conversation, [
+      ['instanceId', 'String?'],
+      ['instance', 'Instance?']
+    ]);
+    expect(conversation).toContain('@@unique([tenantId, instanceId, contactNumber, channelType])');
+    expect(conversation).not.toContain('@@unique([tenantId, contactNumber, channelType])');
+    expect(conversation).toContain('@@index([tenantId, instanceId, lastMessageAt(sort: Desc)])');
+
+    expectModelFields(agent, [['primaryInstances', 'Instance[]']]);
+    expect(agent).toContain('@relation("InstancePrimaryAgent")');
+
+    expect(fs.existsSync(routingMigrationPath)).toBe(true);
+    const migration = fs.readFileSync(routingMigrationPath, 'utf8');
+    expect(migration).toContain('ADD COLUMN "primary_agent_id" TEXT');
+    expect(migration).toContain('ADD COLUMN "instance_id" TEXT');
+    expect(migration).toContain('COUNT(DISTINCT "instance_id") = 1');
+    expect(migration).toContain('DROP CONSTRAINT IF EXISTS "conversations_tenant_id_contact_number_channel_type_key"');
+    expect(migration).toContain('conversations_tenant_id_instance_id_contact_number_channel_type_key');
+    expect(migration).toContain('instances_primary_agent_id_fkey');
+    expect(migration).toContain('conversations_instance_id_fkey');
+  });
+
   it('defines the six Comment Reply models, required enum values, and operational constraints', () => {
     const schema = fs.readFileSync(schemaPath, 'utf8');
     const modelNames = [

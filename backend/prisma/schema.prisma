@@ -211,23 +211,26 @@ model Invitation {
 }
 
 model Instance {
-  id            String   @id @default(uuid())
-  tenantId      String   @map("tenant_id")
-  channelType   String   @default("whatsapp") @map("channel_type") // 'whatsapp', 'messenger', 'instagram'
-  instanceName  String   @map("instance_name")
-  phoneNumber   String?  @map("phone_number")
-  phoneNumberId String?  @map("phone_number_id") // Meta Cloud API Phone Number ID OR Facebook Page ID
-  accessToken   String?  @map("access_token") @db.Text // Meta Cloud API token OR Page Access Token (encrypted)
-  status        String // 'connected', 'disconnected', 'active'
-  qrCode        String?  @map("qr_code") @db.Text
-  createdAt     DateTime @default(now()) @map("created_at")
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  primaryAgentId String?  @map("primary_agent_id")
+  channelType    String   @default("whatsapp") @map("channel_type") // 'whatsapp', 'messenger', 'instagram'
+  instanceName   String   @map("instance_name")
+  phoneNumber    String?  @map("phone_number")
+  phoneNumberId  String?  @map("phone_number_id") // Meta Cloud API Phone Number ID OR Facebook Page ID
+  accessToken    String?  @map("access_token") @db.Text // Meta Cloud API token OR Page Access Token (encrypted)
+  status         String // 'connected', 'disconnected', 'active'
+  qrCode         String?  @map("qr_code") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
 
   tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  primaryAgent      AIAgent?                @relation("InstancePrimaryAgent", fields: [primaryAgentId], references: [id], onDelete: SetNull)
   campaigns         Campaign[]
   messages          Message[]
   campaignInstances CampaignInstance[]
   automationRules   AutomationRule[]
   chatMessages      ChatMessage[]
+  conversations     Conversation[]
   commentBindings   CommentChannelBinding[]
   commentExecutions CommentReplyExecution[]
 
@@ -367,6 +370,7 @@ model AutomationRule {
 model Conversation {
   id            String    @id @default(uuid())
   tenantId      String    @map("tenant_id")
+  instanceId    String?   @map("instance_id")
   channelType   String    @default("whatsapp") @map("channel_type") // 'whatsapp', 'messenger', 'instagram'
   contactNumber String    @map("contact_number")
   contactName   String?   @map("contact_name")
@@ -381,6 +385,7 @@ model Conversation {
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
   tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  instance Instance?     @relation(fields: [instanceId], references: [id], onDelete: SetNull)
   messages ChatMessage[]
 
   currentAgentId String?
@@ -414,8 +419,9 @@ model Conversation {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([tenantId, contactNumber, channelType])
+  @@unique([tenantId, instanceId, contactNumber, channelType])
   @@index([tenantId, lastMessageAt(sort: Desc)])
+  @@index([tenantId, instanceId, lastMessageAt(sort: Desc)])
   @@map("conversations")
 }
 
@@ -529,6 +535,7 @@ model AIAgent {
   agentRuns            AgentRun[]              @relation("AgentRunSourceAgent")
   agentCommands        AgentCommand[]          @relation("AgentCommandSourceAgent")
   contactNotes         ContactNote[]
+  primaryInstances     Instance[]             @relation("InstancePrimaryAgent")
   commentReplyProfiles CommentReplyProfile[]
   commentExecutions    CommentReplyExecution[]
 
