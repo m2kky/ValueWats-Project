@@ -8,7 +8,7 @@ const {
 const { createOutboxWorker } = require('../../../src/events/outboxWorker');
 const { createCommentReplyDispatcher } = require('../../../src/commentReplies/commentReplyDispatcher');
 
-function createDeliveryPrisma() {
+function createDeliveryPrisma({ kind = 'public_reply', withDependentPublic = false } = {}) {
   const rows = {
     execution: {
       id: 'execution-1',
@@ -16,10 +16,14 @@ function createDeliveryPrisma() {
       instanceId: 'instance-a',
       platform: 'facebook',
       externalCommentId: 'comment-1',
-      renderedReply: 'Public reply',
-      status: 'ready',
-      providerReplyId: null
+      status: 'ready'
     },
+    deliveries: [{
+      id: 'delivery-1', tenantId: 'tenant-a', executionId: 'execution-1', kind,
+      status: 'pending', renderedText: kind === 'private_message' ? 'Private reply' : 'Public reply',
+      providerMessageId: null, idempotencyKey: `delivery-${kind}`, outboxEventId: 'outbox-1', attempts: 0
+    }],
+    outbox: [],
     instance: {
       id: 'instance-a',
       tenantId: 'tenant-a',
@@ -27,23 +31,40 @@ function createDeliveryPrisma() {
       accessToken: 'encrypted-token'
     }
   };
+  if (withDependentPublic) rows.deliveries.push({
+    id: 'delivery-public', tenantId: 'tenant-a', executionId: 'execution-1', kind: 'public_reply',
+    status: 'pending', renderedText: 'We sent you a DM.', providerMessageId: null,
+    idempotencyKey: 'delivery-public', outboxEventId: null, attempts: 0
+  });
   const prisma = {
-    commentReplyExecution: {
-      findFirst: vi.fn(async ({ where }) => (
-        where.id === rows.execution.id
-        && where.tenantId === rows.execution.tenantId
-        && where.instanceId === rows.execution.instanceId
-        && where.platform === rows.execution.platform
-        && where.status === rows.execution.status
-          ? { ...rows.execution }
-          : null
-      )),
+    $transaction: async (callback) => callback(prisma),
+    commentReplyDelivery: {
+      findFirst: vi.fn(async ({ where }) => {
+        const row = rows.deliveries.find((item) => item.id === where.id
+          && item.tenantId === where.tenantId && item.executionId === where.executionId
+          && item.outboxEventId === where.outboxEventId);
+        return row ? { ...row, execution: { ...rows.execution } } : null;
+      }),
+      findUnique: vi.fn(async ({ where }) => {
+        const identity = where.executionId_kind;
+        return { ...rows.deliveries.find((item) => item.executionId === identity.executionId && item.kind === identity.kind) };
+      }),
       updateMany: vi.fn(async ({ where, data }) => {
-        if (where.id !== rows.execution.id || where.tenantId !== rows.execution.tenantId) return { count: 0 };
-        if (where.providerReplyId === null && rows.execution.providerReplyId !== null) return { count: 0 };
-        Object.assign(rows.execution, data);
-        return { count: 1 };
+        const found = rows.deliveries.filter((item) => item.id === where.id && item.tenantId === where.tenantId
+          && (where.providerMessageId !== null || item.providerMessageId === null)
+          && (where.outboxEventId !== null || item.outboxEventId === null));
+        found.forEach((row) => Object.entries(data).forEach(([key, value]) => {
+          row[key] = value?.increment != null ? Number(row[key] || 0) + value.increment : value;
+        }));
+        return { count: found.length };
       })
+    },
+    outboxEvent: {
+      create: vi.fn(async ({ data }) => {
+        const row = { id: `outbox-${rows.outbox.length + 2}`, ...data };
+        rows.outbox.push(row); return { ...row };
+      }),
+      findUniqueOrThrow: vi.fn()
     },
     instance: {
       findFirst: vi.fn(async ({ where }) => (
@@ -56,14 +77,14 @@ function createDeliveryPrisma() {
   return { prisma, rows };
 }
 
-function createOutboxPrisma(event, execution = {}) {
+function createOutboxPrisma(event, delivery = {}) {
   const row = {
     id: 'outbox-1',
     tenantId: 'tenant-a',
-    aggregateType: 'comment_reply_execution',
-    aggregateId: 'execution-1',
-    eventType: 'comment_reply.publish_requested',
-    idempotencyKey: 'comment-reply:execution-1:publish',
+    aggregateType: 'comment_reply_delivery',
+    aggregateId: 'delivery-1',
+    eventType: 'comment_reply.delivery_requested',
+    idempotencyKey: 'delivery-public:outbox',
     payload: {
       executionId: 'execution-1',
       providerReference: { provider: 'facebook', instanceId: 'instance-a' }
@@ -90,8 +111,13 @@ function createOutboxPrisma(event, execution = {}) {
         return { count: 1 };
       })
     },
-    commentReplyExecution: {
-      findFirst: vi.fn(async () => ({ id: 'execution-1', providerReplyId: null, ...execution }))
+    commentReplyDelivery: {
+      findFirst: vi.fn(async () => ({
+        id: 'delivery-1', tenantId: 'tenant-a', executionId: 'execution-1', kind: 'public_reply',
+        status: 'succeeded', providerMessageId: null, outboxEventId: 'outbox-1',
+        execution: { id: 'execution-1', tenantId: 'tenant-a', instanceId: 'instance-a', platform: 'facebook' },
+        ...delivery
+      }))
     }
   };
   return { prisma, row };
@@ -135,7 +161,9 @@ describe('comment reply delivery', () => {
     };
     const dispatcher = createCommentReplyDispatcher({ prisma, metaApi: provider });
     const event = {
+      id: 'outbox-1',
       tenantId: 'tenant-a',
+      aggregateId: 'delivery-1',
       payload: {
         executionId: 'execution-1',
         providerReference: { provider: 'facebook', instanceId: 'instance-a' }
@@ -149,7 +177,9 @@ describe('comment reply delivery', () => {
       'comment-1',
       'Public reply'
     );
-    expect(rows.execution.providerReplyId).toBe('provider-reply-1');
+    expect(rows.deliveries[0]).toEqual(expect.objectContaining({
+      providerMessageId: 'provider-reply-1', status: 'succeeded'
+    }));
   });
 
   it('rejects cross-tenant or mismatched provider references before publishing', async () => {
@@ -161,13 +191,82 @@ describe('comment reply delivery', () => {
     const dispatcher = createCommentReplyDispatcher({ prisma, metaApi: provider });
 
     await expect(dispatcher.dispatch({
+      id: 'outbox-1',
       tenantId: 'tenant-b',
+      aggregateId: 'delivery-1',
       payload: {
         executionId: 'execution-1',
         providerReference: { provider: 'facebook', instanceId: 'instance-a' }
       }
     })).rejects.toMatchObject({ code: 'COMMENT_REPLY_DELIVERY_NOT_FOUND' });
     expect(provider.replyToFacebookComment).not.toHaveBeenCalled();
+  });
+
+  it('confirms the private reply before atomically enqueueing the dependent public reply', async () => {
+    const { prisma, rows } = createDeliveryPrisma({ kind: 'private_message', withDependentPublic: true });
+    const provider = {
+      sendMessengerPrivateReply: vi.fn().mockResolvedValue({ message_id: 'private-provider-1' }),
+      replyToFacebookComment: vi.fn()
+    };
+    const dispatcher = createCommentReplyDispatcher({ prisma, metaApi: provider });
+
+    await dispatcher.dispatch({
+      id: 'outbox-1', tenantId: 'tenant-a', aggregateId: 'delivery-1',
+      payload: {
+        executionId: 'execution-1',
+        providerReference: { provider: 'facebook', instanceId: 'instance-a' }
+      }
+    });
+
+    expect(provider.sendMessengerPrivateReply).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'instance-a' }),
+      { commentId: 'comment-1', postId: null, text: 'Private reply' }
+    );
+    expect(provider.replyToFacebookComment).not.toHaveBeenCalled();
+    expect(rows.deliveries.find((item) => item.kind === 'private_message')).toEqual(expect.objectContaining({
+      status: 'succeeded', providerMessageId: 'private-provider-1'
+    }));
+    expect(rows.deliveries.find((item) => item.kind === 'public_reply').outboxEventId).toMatch(/^outbox-/);
+    expect(rows.outbox).toHaveLength(1);
+  });
+
+  it('does not repeat a succeeded private reply when the public delivery is retried', async () => {
+    const { prisma } = createDeliveryPrisma();
+    const provider = {
+      sendMessengerPrivateReply: vi.fn(),
+      replyToFacebookComment: vi.fn().mockResolvedValue({ id: 'public-provider-1' })
+    };
+    const dispatcher = createCommentReplyDispatcher({ prisma, metaApi: provider });
+    await dispatcher.dispatch({
+      id: 'outbox-1', tenantId: 'tenant-a', aggregateId: 'delivery-1',
+      payload: {
+        executionId: 'execution-1',
+        providerReference: { provider: 'facebook', instanceId: 'instance-a' }
+      }
+    });
+    expect(provider.replyToFacebookComment).toHaveBeenCalledOnce();
+    expect(provider.sendMessengerPrivateReply).not.toHaveBeenCalled();
+  });
+
+  it('never enqueues the dependent public reply after a permanent private failure', async () => {
+    const { prisma, rows } = createDeliveryPrisma({ kind: 'private_message', withDependentPublic: true });
+    const provider = {
+      sendMessengerPrivateReply: vi.fn().mockRejectedValue(Object.assign(new Error('Not eligible'), {
+        code: 'META_PRIVATE_REPLY_REJECTED', retryable: false, outcomeUnknown: false
+      }))
+    };
+    const dispatcher = createCommentReplyDispatcher({ prisma, metaApi: provider });
+    await expect(dispatcher.dispatch({
+      id: 'outbox-1', tenantId: 'tenant-a', aggregateId: 'delivery-1',
+      payload: {
+        executionId: 'execution-1',
+        providerReference: { provider: 'facebook', instanceId: 'instance-a' }
+      }
+    })).rejects.toMatchObject({ code: 'META_PRIVATE_REPLY_REJECTED' });
+
+    expect(rows.deliveries.find((item) => item.kind === 'private_message').status).toBe('failed');
+    expect(rows.deliveries.find((item) => item.kind === 'public_reply').outboxEventId).toBeNull();
+    expect(rows.outbox).toHaveLength(0);
   });
 
   it('publishes Facebook and Instagram replies without logging token or reply text', async () => {
@@ -191,6 +290,28 @@ describe('comment reply delivery', () => {
     expect(JSON.stringify([...log.mock.calls, ...warn.mock.calls])).not.toContain(token);
     expect(JSON.stringify([...log.mock.calls, ...warn.mock.calls])).not.toContain('Facebook reply');
     expect(JSON.stringify([...log.mock.calls, ...warn.mock.calls])).not.toContain('Instagram reply');
+  });
+
+  it('uses the source comment for Facebook and Instagram private replies', async () => {
+    const encryptedToken = encryptMetaToken('private-reply-token');
+    const post = vi.spyOn(axios, 'post')
+      .mockResolvedValueOnce({ data: { message_id: 'fb-private' } })
+      .mockResolvedValueOnce({ data: { id: 'ig-private' } });
+
+    await expect(metaApi.sendMessengerPrivateReply(
+      { phoneNumberId: 'page-a', accessToken: encryptedToken },
+      { commentId: 'fb-comment', postId: null, text: 'Facebook DM' }
+    )).resolves.toEqual({ message_id: 'fb-private' });
+    await expect(metaApi.sendInstagramPrivateReply(
+      { accessToken: encryptedToken }, 'ig-comment', 'Instagram DM'
+    )).resolves.toEqual({ id: 'ig-private' });
+
+    expect(post.mock.calls[0][0]).toMatch(/\/page-a\/messages$/);
+    expect(post.mock.calls[0][1]).toEqual(expect.objectContaining({
+      recipient: { comment_id: 'fb-comment' }, message: { text: 'Facebook DM' }
+    }));
+    expect(post.mock.calls[1][0]).toMatch(/\/ig-comment\/private_replies$/);
+    expect(post.mock.calls[1][1]).toEqual({ message: 'Instagram DM' });
   });
 
   it('classifies explicit rejection, proven pre-request failure, and ambiguous transmission', async () => {
@@ -222,7 +343,7 @@ describe('comment reply delivery', () => {
         prisma,
         clock: () => now,
         dispatchers: {
-          'comment_reply.publish_requested': {
+          'comment_reply.delivery_requested': {
             supportsIdempotency: false,
             dispatch: vi.fn(async () => {
               throw Object.assign(new Error('Sanitized delivery failure'), {
@@ -244,12 +365,12 @@ describe('comment reply delivery', () => {
       status: 'dispatching',
       attempts: 1,
       leaseExpiresAt: new Date('2026-07-27T11:59:00.000Z')
-    }, { providerReplyId: 'provider-reply-1' });
+    }, { providerMessageId: 'provider-reply-1' });
     const dispatcher = createCommentReplyDispatcher({ prisma, metaApi: {} });
     const worker = createOutboxWorker({
       prisma,
       clock: () => now,
-      dispatchers: { 'comment_reply.publish_requested': dispatcher }
+      dispatchers: { 'comment_reply.delivery_requested': dispatcher }
     });
 
     await worker.recoverStaleDispatches();
@@ -271,10 +392,10 @@ describe('comment reply delivery', () => {
 
     await service.createOrGet({
       tenantId: 'tenant-a',
-      aggregateType: 'comment_reply_execution',
-      aggregateId: 'execution-1',
-      eventType: 'comment_reply.publish_requested',
-      idempotencyKey: 'comment-reply:execution-1:publish',
+      aggregateType: 'comment_reply_delivery',
+      aggregateId: 'delivery-1',
+      eventType: 'comment_reply.delivery_requested',
+      idempotencyKey: 'delivery-public:outbox',
       payload: {
         executionId: 'execution-1',
         providerReference: { provider: 'facebook', instanceId: 'instance-a' }

@@ -6,7 +6,7 @@ const { createCommentReplyDispatcher } = require('./commentReplyDispatcher');
 const { createCommentReplyRuntime } = require('./commentReplyRuntime');
 const { createCommentReplyWorker } = require('./commentReplyWorker');
 
-const PUBLISH_EVENT = 'comment_reply.publish_requested';
+const PUBLISH_EVENT = 'comment_reply.delivery_requested';
 const defaultSleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 function buildCommentReplyWorkers({
