@@ -16,7 +16,7 @@ const clearCommonJsModule = (request) => {
   delete require.cache[require.resolve(request)];
 };
 const database = () => createMockPrisma({
-  aIAgent: { findFirst: fn(), findMany: fn(), findUnique: fn(), update: fn(), updateMany: fn(), delete: fn() }, conversation: { findUnique: fn(), findFirst: fn(), update: fn(), updateMany: fn(), groupBy: fn(), count: fn() },
+  aIAgent: { findFirst: fn(), findMany: fn(), findUnique: fn(), update: fn(), updateMany: fn(), delete: fn() }, conversation: { findUnique: fn(), findFirst: fn(), findMany: fn(), update: fn(), updateMany: fn(), groupBy: fn(), count: fn() },
   conversationAgent: { create: fn(), update: fn(), updateMany: fn(), findFirst: fn(), deleteMany: fn() }, chatMessage: { create: fn(), findMany: fn() },
   agentRoutingRule: { findMany: fn(), deleteMany: fn() }, agentAction: { deleteMany: fn() }, agentKnowledge: { deleteMany: fn() }, workflow: { findFirst: fn() }, activityLog: { create: fn() },
   user: { findFirst: fn(), findMany: fn() }, contact: { findUnique: fn(), upsert: fn() }, contactField: { findMany: fn(), upsert: fn() },
@@ -372,7 +372,7 @@ describe('adjacent runtime behavior', () => {
     const prisma = database();
     const deletedAgent = agent({ id: 'agent-delete', tenantId: 'tenant-1', isActive: false, isPublished: false, deletedAt: new Date(), configVersion: 2 });
     prisma.aIAgent.findFirst.mockResolvedValue(agent({ id: 'agent-delete', tenantId: 'tenant-1', configVersion: 1 }));
-    prisma.conversation.count.mockResolvedValue(0);
+    prisma.conversation.findMany.mockResolvedValue([]);
     prisma.aIAgent.updateMany.mockResolvedValue({ count: 1 });
     prisma.aIAgent.findUnique.mockResolvedValue(deletedAgent);
     prisma.$transaction = vi.fn(async (callback) => callback({ ...prisma, $transaction: undefined }));

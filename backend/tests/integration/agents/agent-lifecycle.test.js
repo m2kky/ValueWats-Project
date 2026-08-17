@@ -100,30 +100,28 @@ describe('agent lifecycle setup boundaries', () => {
     await prisma.$disconnect();
   });
 
-  it('blocks deactivate, unpublish, and delete while the agent owns open conversations', async () => {
+  it.each([
+    ['deactivate', 'put', { isActive: false }],
+    ['unpublish', 'put', { isPublished: false }],
+    ['delete', 'delete', null]
+  ])('drains open conversations before agent %s', async (_label, method, update) => {
     const agent = await createAgent(tenant.id);
-    await createOpenConversation(tenant.id, agent.id);
+    const conversation = await createOpenConversation(tenant.id, agent.id);
+    const call = request(app)[method](`/api/agents/${agent.id}`)
+      .set('Authorization', `Bearer ${auth}`);
 
-    await request(app)
-      .put(`/api/agents/${agent.id}`)
-      .set('Authorization', `Bearer ${auth}`)
-      .send({ expectedConfigVersion: 1, isActive: false })
-      .expect(409)
-      .expect(({ body }) => expect(body.code).toBe('AGENT_HAS_OPEN_CONVERSATIONS'));
+    await call
+      .send({ expectedConfigVersion: 1, ...update })
+      .expect(200);
 
-    await request(app)
-      .put(`/api/agents/${agent.id}`)
-      .set('Authorization', `Bearer ${auth}`)
-      .send({ expectedConfigVersion: 1, isPublished: false })
-      .expect(409)
-      .expect(({ body }) => expect(body.code).toBe('AGENT_HAS_OPEN_CONVERSATIONS'));
-
-    await request(app)
-      .delete(`/api/agents/${agent.id}`)
-      .set('Authorization', `Bearer ${auth}`)
-      .send({ expectedConfigVersion: 1 })
-      .expect(409)
-      .expect(({ body }) => expect(body.code).toBe('AGENT_HAS_OPEN_CONVERSATIONS'));
+    const [storedConversation] = await prisma.$queryRawUnsafe(
+      'SELECT "currentAgentId", "assignedUserId", "aiEnabled", status FROM "conversations" WHERE id = $1',
+      conversation.id
+    );
+    expect(storedConversation.currentAgentId).toBeNull();
+    expect(storedConversation.assignedUserId).toBeNull();
+    expect(storedConversation.aiEnabled).toBe(false);
+    expect(storedConversation.status).toBe('open');
   });
 
   it('requires expectedConfigVersion for delete and returns stable stale-delete conflicts', async () => {
