@@ -1,6 +1,6 @@
 # Agency Page Agent Routing and Comment AI Design
 
-**Status:** Design approved in conversation; awaiting final written-spec review  
+**Status:** Design approved; engineering review complete; ready for implementation planning
 **Date:** 2026-08-17  
 **Owner:** Agents Architecture
 
@@ -23,7 +23,7 @@ This design extends and, where the decisions conflict, supersedes `2026-07-27-co
 
 `CommentChannelBinding` already maps one connected `Instance` to one `CommentReplyProfile`, and that profile belongs to one Agent. The unique `(tenantId, instanceId)` constraint correctly prevents two Agents from replying to the same connected account.
 
-This existing binding remains the source of truth for comment ownership.
+However, adding `Instance.primaryAgentId` without reconciling this existing profile link would create two competing ownership sources: inbox messages could use one Agent while comments use another. `Instance.primaryAgentId` must become the canonical page-level owner, while the binding retains provider readiness and points to the Primary Agent's comment profile as a synchronized operational projection.
 
 ### 2.2 Inbox Agent routing is tenant-wide
 
@@ -48,8 +48,11 @@ That behavior is unsafe for an agency tenant because a message to Greens can be 
 ## 3. Product Decisions
 
 - One agency tenant may contain many client brands and connected accounts.
-- Every connected Facebook or Instagram `Instance` has exactly one Primary Agent for new inbox conversations.
+- Every connected Facebook or Instagram `Instance` has at most one Primary Agent. An Instance may remain unassigned during setup, but inbox AI and Comment AI cannot be enabled until it has one valid Primary Agent.
+- `Instance.primaryAgentId` is the canonical page-level Agent for both inbox and comment routing.
+- Page reassignment updates the Instance and its Comment Reply binding atomically; the two routes cannot drift.
 - Facebook and Instagram accounts for the same brand may share the same Primary Agent.
+- Reusing one Agent across multiple Instances is always an explicit agency-admin action. The platform never infers that two Pages belong to the same brand and never shares knowledge implicitly.
 - A Primary Agent may hand off only to explicitly allowed Specialist Agents using the existing assignment allowlist.
 - The Agent attached to the connected account owns comment rules, comment AI instructions, and knowledge retrieval.
 - Comment behavior is instruction-driven. The user may instruct the AI to reply, send a DM, request human review, or skip particular categories of comments.
@@ -101,7 +104,11 @@ The first release will not:
 
 ### 6.1 Connected-account ownership
 
-Add `primaryAgentId` to `Instance` as the source of truth for new private-conversation ownership. The selected Agent must belong to the same tenant and be active, published, and not deleted before automatic processing is enabled.
+Add nullable `primaryAgentId` to `Instance` as the source of truth for new private-conversation ownership. The selected Agent must belong to the same tenant and be active, published, and not deleted before automatic processing is enabled. An unassigned Instance remains connected and visible but cannot run inbox or comment AI.
+
+The same Primary Agent also owns the Instance's default Comment Reply Profile. `CommentChannelBinding.profileId` remains for the current runtime and relational graph, but assignment and reassignment services must synchronize it to the profile belonging to `Instance.primaryAgentId` in the same transaction. The runtime treats a mismatch as a configuration error and publishes nothing. A future explicit comment-Agent override is outside this release; per-post profile overrides remain supported.
+
+Expose one atomic page-assignment operation rather than requiring the UI to unbind one Agent and bind another. The operation validates the tenant and Agent state, updates `Instance.primaryAgentId`, creates or resolves the Agent's Comment Reply Profile, moves the binding, and increments the affected configuration versions together.
 
 The existing `AgentAction` assignment configuration remains the source of truth for approved Specialist handoffs. No second Specialist mapping table is required.
 
@@ -115,7 +122,7 @@ Replace the existing uniqueness constraint with account-scoped identity:
 (tenantId, instanceId, contactNumber, channelType)
 ```
 
-Legacy WhatsApp and incomplete historical rows require an explicit migration path. The application must not guess an Instance when multiple candidates exist. Ambiguous rows remain unassigned and are excluded from automatic Agent routing until resolved.
+Legacy WhatsApp and incomplete historical rows require an explicit migration path. The application must not guess an Instance when multiple candidates exist. Ambiguous historical conversations remain read-only legacy containers for their existing messages and are excluded from automatic Agent routing. A new Messenger or Instagram message with a resolved Instance creates or loads the new account-scoped conversation instead of appending to an ambiguous legacy row.
 
 ### 6.3 Inbox Agent resolution
 
@@ -165,6 +172,8 @@ It returns schema-validated data:
 
 The generator has no command executor, workflow tools, CRM tools, ownership tools, or arbitrary HTTP access. Invalid or unsafe output fails closed to `human_review` or `skip`; it is never published as raw model text.
 
+`human_review` is a terminal no-publish decision in this release. It appears in Activity Log with the proposed context and reason so an operator can respond manually in the normal Meta inbox. Building an approval queue that can resume the same execution is a separate feature.
+
 ### 6.6 Delivery state machine
 
 Add `CommentReplyDelivery` as a child of `CommentReplyExecution`. Each delivery contains:
@@ -198,12 +207,19 @@ received
 
 The durable outbox remains responsible for provider calls, leases, retries, and unknown outcomes.
 
+When a private delivery succeeds, the worker must mark it completed and create-or-get the dependent public delivery and outbox event in one database transaction. This closes the crash gap where Meta accepted the DM but the process stopped before the public job was created. Public delivery retries read the persisted private success and never call the private adapter again.
+
+The AI decision, selected Agent/profile IDs, configuration versions, and both rendered texts are snapshotted before delivery. Reassigning a Page after classification affects new comments only; an already classified execution finishes with its snapshot and cannot switch brand identity mid-flight.
+
+Legacy single-delivery fields on `CommentReplyExecution` remain readable during one compatibility release. New two-stage executions write `CommentReplyDelivery` records exclusively; the runtime must not write both representations for the same side effect.
+
 ### 6.7 Provider adapters
 
 Provider-specific behavior stays behind Meta adapters:
 
 - Instagram private replies use the source comment ID and follow Meta's one-private-reply and time-window constraints.
 - Facebook private replies use the supported Page private-reply endpoint and are enabled only when permissions and the post/comment type are eligible.
+- Organic, ad-post, Live, nested-reply, and other provider surfaces are checked through an explicit capability matrix. Ad comments that require additional scopes such as ads access fail closed or downgrade only when the configured instructions explicitly allow a public-only response.
 - Public replies use the existing comment publishing adapter.
 - An unsupported or expired private-reply window produces a typed non-retryable error.
 
@@ -230,10 +246,13 @@ Add a section inside each Agent that shows eligible Facebook and Instagram Insta
 - Client/page name and platform.
 - Current Primary Agent.
 - Assign/unassign control.
+- Automation-blocked state while unassigned.
 - Permission and reconnect state.
 - Approved Specialist Agents inherited from assignment capabilities.
 
 Reassignment affects new unowned conversations. It must not silently steal open conversations from their current Agent or human owner.
+
+The page-assignment screen calls the atomic assignment operation. It must never implement reassignment as separate unbind and bind requests, which would create a routing gap or leave inbox and comment ownership inconsistent.
 
 ### 8.2 Comment AI
 
@@ -265,6 +284,7 @@ Display the aggregate execution and both delivery states separately. Operators m
 
 - AI skipped.
 - Human review required.
+- A provider permalink or equivalent navigation context for manual handling.
 - Private reply pending/sent/failed.
 - Public reply pending/sent/failed.
 - Retry scheduled.
@@ -281,6 +301,8 @@ Display the aggregate execution and both delivery states separately. Operators m
 - Token expired or missing permissions: mark binding reconnect-required and stop automated publishing for that binding.
 - Primary Agent invalid: preserve inbound data and surface an operational routing error; do not fall back to another client's Agent.
 - Reassignment race: use optimistic ownership/version checks through the ownership service.
+- Page reassignment during a pending comment execution: finish the existing snapshotted execution; route only newly ingested comments to the new Primary Agent.
+- Instance/profile ownership mismatch: fail closed, expose a configuration error, and require the atomic assignment operation to repair it.
 
 ## 10. Performance and Cost
 
@@ -296,7 +318,7 @@ Display the aggregate execution and both delivery states separately. Operators m
 1. Add nullable routing and delivery schema without changing current behavior.
 2. Backfill `Conversation.instanceId` from related messages where the mapping is unambiguous.
 3. Report ambiguous or missing mappings; do not auto-select a page.
-4. Add Primary Agent configuration and new account-scoped conversation lookup behind a feature flag.
+4. Add Primary Agent configuration, atomic Instance/profile assignment, and new account-scoped conversation lookup behind a feature flag.
 5. Deploy read-only routing diagnostics and compare selected Agents without sending AI replies.
 6. Enable page routing per tenant after mappings are reviewed.
 7. Add Comment AI in dry-run/Test Lab mode.
@@ -315,6 +337,8 @@ Rollback disables the feature flags and returns to deterministic comment rules. 
 - Greens messages never select NASA or Meylor Agents or knowledge.
 - An explicit Specialist handoff survives subsequent messages.
 - Reassigning a Page does not steal already owned open conversations.
+- Reassigning a Page changes both inbox and comment routing atomically.
+- A deliberately corrupted Instance/profile mismatch is detected and publishes nothing.
 - An invalid Primary Agent fails closed without choosing a tenant-wide fallback.
 
 ### 12.2 Comment decisions
@@ -329,6 +353,7 @@ Rollback disables the feature flags and returns to deterministic comment rules. 
 
 - Duplicate webhooks create one execution and at most one delivery of each kind.
 - Private success followed by public failure retries public only.
+- A crash immediately after private provider success still creates or recovers the dependent public delivery without repeating private delivery.
 - Private permanent failure never creates the dependent public delivery.
 - `reply_only` creates no private delivery.
 - Provider outcome-unknown does not trigger a blind duplicate.
@@ -338,17 +363,21 @@ Rollback disables the feature flags and returns to deterministic comment rules. 
 
 - Unambiguous conversations backfill to the correct Instance.
 - Ambiguous conversations are reported and left unresolved.
+- A new resolved message never appends to an ambiguous legacy conversation.
 - Existing explicitly owned conversations preserve ownership.
 - The old uniqueness constraint is replaced only after duplicate preflight checks pass.
 
 ## 13. Acceptance Criteria
 
-- Every active Facebook and Instagram Instance can be assigned exactly one Primary Agent.
+- Every active Facebook and Instagram Instance can be assigned at most one Primary Agent, and automation is blocked while it is unassigned.
+- The Primary Agent is the single canonical owner for both inbox and default comment routing.
+- Page reassignment updates Instance ownership and Comment Reply binding atomically.
 - New private messages select the Primary Agent from their Instance, not tenant priority.
 - Two client Pages cannot collide into one conversation for the same external user.
 - Every Comment Reply Profile exposes modes and separate public/private instructions.
 - `reply_and_dm` publishes the public reply only after confirmed private success.
 - Retrying public delivery never repeats private delivery.
+- Page reassignment cannot change the Agent, instructions, or rendered text of an execution already classified.
 - Duplicate Meta webhooks never produce duplicate replies.
 - Comment AI has no access to Agent commands or cross-client knowledge.
 - Missing permissions, invalid Agents, and provider ineligibility are visible and fail closed.
