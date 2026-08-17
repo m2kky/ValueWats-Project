@@ -11,6 +11,10 @@ const routingMigrationPath = path.resolve(
   __dirname,
   '../../../prisma/migrations/20260817000000_add_page_agent_routing/migration.sql'
 );
+const routingIndexRepairMigrationPath = path.resolve(
+  __dirname,
+  '../../../prisma/migrations/20260817020000_drop_legacy_conversation_identity_index/migration.sql'
+);
 const aiDeliveryMigrationPath = path.resolve(
   __dirname,
   '../../../prisma/migrations/20260817010000_add_comment_ai_deliveries/migration.sql'
@@ -63,6 +67,12 @@ describe('Comment Reply schema', () => {
     expect(migration).toContain('conversations_tenant_id_instance_id_contact_number_channel_type_key');
     expect(migration).toContain('instances_primary_agent_id_fkey');
     expect(migration).toContain('conversations_instance_id_fkey');
+
+    expect(fs.existsSync(routingIndexRepairMigrationPath)).toBe(true);
+    const routingIndexRepair = fs.readFileSync(routingIndexRepairMigrationPath, 'utf8');
+    expect(routingIndexRepair).toContain(
+      'DROP INDEX IF EXISTS "conversations_tenant_id_contact_number_channel_type_key"'
+    );
   });
 
   it('defines the Comment Reply models, required enum values, and operational constraints', () => {
