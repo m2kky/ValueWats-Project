@@ -11,6 +11,7 @@ const {
 } = require('../commentReplies/commentEventNormalizer');
 const { createCommentReplyRuntime } = require('../commentReplies/commentReplyRuntime');
 const { createOutboxService } = require('../events/outboxService');
+const { shouldIgnoreMessagingEvent } = require('../meta/messagingEventFilter');
 
 const privateReplyCache = new Map();
 const commentReplyRuntime = createCommentReplyRuntime({
@@ -316,7 +317,7 @@ const handleMetaWebhook = async (req, res) => {
         const instance = await findMetaInstance(identifier, channelType, payload.recipient?.id);
         if (!instance) continue;
 
-        if (payload.read || payload.delivery) continue;
+        if (shouldIgnoreMessagingEvent(payload, entry.id)) continue;
 
         const contactNumber = String(payload.sender?.id || '').trim();
         if (!contactNumber) continue;
