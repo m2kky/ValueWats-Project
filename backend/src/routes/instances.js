@@ -14,12 +14,24 @@ const checkPermission = require('../middleware/checkPermission');
 const { encryptMetaToken } = require('../meta/metaTokenCrypto');
 const { toSafeInstanceDto } = require('../meta/metaInstanceDto');
 const { sanitizeError } = require('../logging/redaction');
+const {
+  PAGE_AGENT_ROUTING_ERROR_CODES,
+  createPageAgentRoutingService
+} = require('../agents/pageAgentRoutingService');
 
 const router = express.Router();
 const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
 const FB_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 const META_PAGE_SUBSCRIPTION_FIELDS =
   'messages,messaging_postbacks,messaging_referrals,message_reads,message_deliveries,feed';
+const PRIMARY_AGENT_SELECT = {
+  id: true,
+  name: true,
+  isActive: true,
+  isPublished: true,
+  deletedAt: true
+};
+const pageAgentRoutingService = createPageAgentRoutingService({ prisma });
 
 const enforceInstanceLimit = async (tenantId) => {
   const { plan } = await resolveTenantPlanByTenantId(tenantId);
@@ -288,6 +300,7 @@ router.get('/', async (req, res) => {
   try {
     const instances = await prisma.instance.findMany({
       where: { tenantId: req.tenantId },
+      include: { primaryAgent: { select: PRIMARY_AGENT_SELECT } },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -410,6 +423,7 @@ router.get('/:id/details', async (req, res) => {
   try {
     const instance = await prisma.instance.findFirst({
       where: { id: req.params.id, tenantId: req.tenantId },
+      include: { primaryAgent: { select: PRIMARY_AGENT_SELECT } },
     });
 
     if (!instance) return res.status(404).json({ error: 'Instance not found' });
@@ -629,6 +643,46 @@ router.post('/:id/messenger/private-replies/send', checkPermission('channels.man
     res.status(400).json({
       error: safeError.message || 'Failed to send private reply'
     });
+  }
+});
+
+/**
+ * PUT /api/instances/:id/primary-agent
+ * Atomically assign or unassign the canonical AI Agent for one connected account.
+ */
+router.put('/:id/primary-agent', checkPermission('channels.manage'), async (req, res) => {
+  try {
+    if (!Object.prototype.hasOwnProperty.call(req.body || {}, 'primaryAgentId')) {
+      return res.status(400).json({
+        code: PAGE_AGENT_ROUTING_ERROR_CODES.INPUT_INVALID,
+        error: 'primaryAgentId is required and may be null to unassign the account.'
+      });
+    }
+
+    const instance = await pageAgentRoutingService.assignPrimaryAgent({
+      tenantId: req.tenantId,
+      instanceId: req.params.id,
+      primaryAgentId: req.body.primaryAgentId
+    });
+
+    return res.json({
+      message: instance.primaryAgentId
+        ? 'Primary Agent assigned successfully.'
+        : 'Primary Agent unassigned. Inbox and comment AI automation are blocked for this account.',
+      instance: toSafeInstanceDto(instance)
+    });
+  } catch (error) {
+    const statusByCode = {
+      [PAGE_AGENT_ROUTING_ERROR_CODES.INPUT_INVALID]: 400,
+      [PAGE_AGENT_ROUTING_ERROR_CODES.INSTANCE_NOT_FOUND]: 404,
+      [PAGE_AGENT_ROUTING_ERROR_CODES.PRIMARY_AGENT_INELIGIBLE]: 409
+    };
+    const status = statusByCode[error?.code];
+    if (status) {
+      return res.status(status).json({ code: error.code, error: error.message });
+    }
+    console.error('Assign Primary Agent error:', sanitizeError(error));
+    return res.status(500).json({ error: 'Failed to assign Primary Agent' });
   }
 });
 

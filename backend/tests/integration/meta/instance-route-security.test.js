@@ -119,4 +119,78 @@ describe('Instance route token boundary', () => {
     );
     expect(subscribe.mock.calls[0][0]).not.toContain('instagram-account-1');
   });
+
+  it('assigns an eligible Primary Agent atomically without exposing the Instance token', async () => {
+    const instance = {
+      id: 'instance-1',
+      tenantId: 'tenant-1',
+      channelType: 'messenger',
+      instanceName: 'Greens Facebook',
+      primaryAgentId: null,
+      accessToken: 'meta:v1:secret'
+    };
+    const agent = {
+      id: 'agent-1',
+      tenantId: 'tenant-1',
+      name: 'Greens Agent',
+      isActive: true,
+      isPublished: true,
+      deletedAt: null
+    };
+    const prisma = {
+      $transaction: vi.fn((operation) => operation(prisma)),
+      instance: {
+        findFirst: vi.fn().mockResolvedValue(instance),
+        update: vi.fn(({ data }) => Promise.resolve({
+          ...instance,
+          ...data,
+          primaryAgent: agent
+        }))
+      },
+      aIAgent: { findFirst: vi.fn().mockResolvedValue(agent) },
+      commentReplyProfile: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'profile-1',
+          tenantId: 'tenant-1',
+          agentId: 'agent-1'
+        }),
+        create: vi.fn(),
+        updateMany: vi.fn()
+      },
+      commentChannelBinding: { findFirst: vi.fn().mockResolvedValue(null) }
+    };
+    const app = loadInstancesApp(prisma);
+
+    const response = await request(app)
+      .put('/api/instances/instance-1/primary-agent')
+      .send({ primaryAgentId: 'agent-1' })
+      .expect(200);
+
+    expect(response.body.instance).toMatchObject({
+      id: 'instance-1',
+      primaryAgentId: 'agent-1',
+      primaryAgent: { id: 'agent-1', name: 'Greens Agent' }
+    });
+    expect(response.body.instance).not.toHaveProperty('accessToken');
+    expect(prisma.$transaction).toHaveBeenCalledOnce();
+  });
+
+  it('returns stable routing errors without mutating a cross-tenant or missing Instance', async () => {
+    const prisma = {
+      $transaction: vi.fn((operation) => operation(prisma)),
+      instance: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
+      aIAgent: { findFirst: vi.fn() },
+      commentReplyProfile: {},
+      commentChannelBinding: {}
+    };
+    const app = loadInstancesApp(prisma);
+
+    await request(app)
+      .put('/api/instances/instance-other/primary-agent')
+      .send({ primaryAgentId: 'agent-1' })
+      .expect(404)
+      .expect(({ body }) => expect(body.code).toBe('PAGE_AGENT_ROUTING_INSTANCE_NOT_FOUND'));
+
+    expect(prisma.instance.update).not.toHaveBeenCalled();
+  });
 });
