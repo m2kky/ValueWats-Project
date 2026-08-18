@@ -128,6 +128,43 @@ const normalizeMetaPage = (page) => ({
   instagramUsername: page.instagram_business_account?.username || null
 });
 
+const exchangeMetaUserToken = async (shortLivedToken) => {
+  const appId = process.env.META_APP_ID || process.env.VITE_META_APP_ID;
+  const appSecret = process.env.META_APP_SECRET;
+
+  if (!appId || !appSecret) {
+    const error = new Error('Meta long-lived token exchange is not configured.');
+    error.status = 503;
+    error.payload = {
+      code: 'META_TOKEN_EXCHANGE_NOT_CONFIGURED',
+      error: 'Meta connection is not configured for durable access tokens.'
+    };
+    throw error;
+  }
+
+  const response = await axios.get(`${FB_BASE}/oauth/access_token`, {
+    params: {
+      grant_type: 'fb_exchange_token',
+      client_id: appId,
+      client_secret: appSecret,
+      fb_exchange_token: shortLivedToken
+    }
+  });
+  const longLivedToken = String(response.data?.access_token || '').trim();
+
+  if (!longLivedToken) {
+    const error = new Error('Meta did not return a long-lived access token.');
+    error.status = 502;
+    error.payload = {
+      code: 'META_TOKEN_EXCHANGE_FAILED',
+      error: 'Meta did not return a durable access token. Please reconnect.'
+    };
+    throw error;
+  }
+
+  return longLivedToken;
+};
+
 const getMetaPagesFromUserToken = async (userAccessToken) => {
   const response = await axios.get(`${FB_BASE}/me/accounts`, {
     params: {
@@ -174,7 +211,8 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
 
     await enforceInstanceLimit(req.tenantId);
 
-    const pages = await getMetaPagesFromUserToken(userAccessToken);
+    const durableUserAccessToken = await exchangeMetaUserToken(userAccessToken);
+    const pages = await getMetaPagesFromUserToken(durableUserAccessToken);
     let eligiblePages = pages.filter((page) => {
       if (!page.pageAccessToken) return false;
       if (channelType === 'instagram') return Boolean(page.instagramId);
@@ -184,7 +222,7 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
     if (selectedPageId && !eligiblePages.some((page) => page.pageId === String(selectedPageId))) {
       try {
         const selectedPage = await getMetaPageByIdFromUserToken({
-          userAccessToken,
+          userAccessToken: durableUserAccessToken,
           pageId: String(selectedPageId),
           includeInstagram: channelType === 'instagram'
         });

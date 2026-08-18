@@ -34,6 +34,13 @@ function loadInstancesApp(prisma) {
 
 describe('Instance route token boundary', () => {
   const originalKey = process.env.ENCRYPTION_KEY;
+  const originalMetaAppId = process.env.META_APP_ID;
+  const originalMetaAppSecret = process.env.META_APP_SECRET;
+
+  beforeEach(() => {
+    process.env.META_APP_ID = 'meta-app-id';
+    process.env.META_APP_SECRET = 'meta-app-secret';
+  });
 
   afterEach(() => {
     delete require.cache[routePath];
@@ -43,6 +50,68 @@ describe('Instance route token boundary', () => {
     vi.restoreAllMocks();
     if (originalKey === undefined) delete process.env.ENCRYPTION_KEY;
     else process.env.ENCRYPTION_KEY = originalKey;
+    if (originalMetaAppId === undefined) delete process.env.META_APP_ID;
+    else process.env.META_APP_ID = originalMetaAppId;
+    if (originalMetaAppSecret === undefined) delete process.env.META_APP_SECRET;
+    else process.env.META_APP_SECRET = originalMetaAppSecret;
+  });
+
+  it('exchanges Facebook Login credentials before requesting a durable Page token', async () => {
+    process.env.ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
+    process.env.META_APP_ID = 'meta-app-id';
+    process.env.META_APP_SECRET = 'meta-app-secret';
+    const prisma = {
+      instance: {
+        count: vi.fn().mockResolvedValue(0),
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockImplementation(async ({ data }) => ({ id: 'messenger-1', ...data }))
+      },
+      integration: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({ id: 'config-1' })
+      },
+      commentChannelBinding: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 })
+      }
+    };
+    const get = vi.spyOn(axios, 'get')
+      .mockResolvedValueOnce({ data: { access_token: 'long-lived-user-token' } })
+      .mockResolvedValueOnce({
+        data: {
+          data: [{
+            id: 'page-1',
+            name: 'NASA International Schools',
+            access_token: 'durable-page-token'
+          }]
+        }
+      });
+    vi.spyOn(axios, 'post').mockResolvedValue({ data: { success: true } });
+    const app = loadInstancesApp(prisma);
+
+    await request(app)
+      .post('/api/instances/meta/embedded')
+      .send({ channelType: 'messenger', userAccessToken: 'short-lived-user-token' })
+      .expect(201);
+
+    expect(get).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('/oauth/access_token'),
+      expect.objectContaining({
+        params: {
+          grant_type: 'fb_exchange_token',
+          client_id: 'meta-app-id',
+          client_secret: 'meta-app-secret',
+          fb_exchange_token: 'short-lived-user-token'
+        }
+      })
+    );
+    expect(get).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('/me/accounts'),
+      expect.objectContaining({
+        params: expect.objectContaining({ access_token: 'long-lived-user-token' })
+      })
+    );
   });
 
   it('encrypts Meta writes and omits stored tokens from create and list responses', async () => {
@@ -88,16 +157,18 @@ describe('Instance route token boundary', () => {
         updateMany: vi.fn().mockResolvedValue({ count: 0 })
       }
     };
-    vi.spyOn(axios, 'get').mockResolvedValue({
-      data: {
-        data: [{
-          id: 'page-1',
-          name: 'Brand Page',
-          access_token: 'page-access-token',
-          instagram_business_account: { id: 'instagram-account-1', username: 'brand' }
-        }]
-      }
-    });
+    vi.spyOn(axios, 'get')
+      .mockResolvedValueOnce({ data: { access_token: 'long-lived-user-token' } })
+      .mockResolvedValueOnce({
+        data: {
+          data: [{
+            id: 'page-1',
+            name: 'Brand Page',
+            access_token: 'page-access-token',
+            instagram_business_account: { id: 'instagram-account-1', username: 'brand' }
+          }]
+        }
+      });
     const subscribe = vi.spyOn(axios, 'post').mockResolvedValue({ data: { success: true } });
     const app = loadInstancesApp(prisma);
 
@@ -137,6 +208,7 @@ describe('Instance route token boundary', () => {
       }
     };
     const get = vi.spyOn(axios, 'get')
+      .mockResolvedValueOnce({ data: { access_token: 'long-lived-user-token' } })
       .mockResolvedValueOnce({ data: { data: [] } })
       .mockResolvedValueOnce({
         data: {
@@ -159,10 +231,10 @@ describe('Instance route token boundary', () => {
       .expect(201);
 
     expect(get).toHaveBeenNthCalledWith(
-      2,
+      3,
       expect.stringContaining('/359509670571259'),
       expect.objectContaining({
-        params: expect.objectContaining({ access_token: 'user-access-token' })
+        params: expect.objectContaining({ access_token: 'long-lived-user-token' })
       })
     );
     expect(response.body.connectedAsset).toMatchObject({
