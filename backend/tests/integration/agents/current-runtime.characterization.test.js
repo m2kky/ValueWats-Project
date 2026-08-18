@@ -318,6 +318,25 @@ describe('agent behavior with injected dependencies', () => {
     expect(modelGateway.calls[0].model).toBe('qwen/qwen3.5-flash-02-23');
   });
 
+  it('tells the inbox agent that a Messenger reply is private rather than a public comment', async () => {
+    const prisma = database();
+    const modelGateway = new FakeModelGateway({ content: 'Here is the product link.' });
+    const item = conversation({ id: 'messenger-conversation', channelType: 'messenger' });
+    const configured = agent({ isPublished: true, knowledgeSources: [], actions: [] });
+    prisma.conversation.findFirst.mockResolvedValue({ ...item, currentAgent: configured });
+    prisma.chatMessage.findMany.mockResolvedValue([]);
+    prisma.agentRoutingRule.findMany.mockResolvedValue([]);
+    prisma.conversationAgent.findFirst.mockResolvedValue(null);
+
+    const service = createAgentService(testDeps(prisma, modelGateway));
+
+    await service.processMessage({ conversationId: item.id, message: 'كم سعر بيلوجين؟', tenantId: 'tenant-1' });
+
+    expect(modelGateway.calls[0].messages[0].content).toContain('# CURRENT INTERACTION');
+    expect(modelGateway.calls[0].messages[0].content).toContain('private inbox message');
+    expect(modelGateway.calls[0].messages[0].content).toContain('not a public comment');
+  });
+
   it('passes a configured provider model through the injected model gateway', async () => {
     const prisma = database(); const modelGateway = new FakeModelGateway({ content: 'reply' });
     const configured = agent({ isPublished: true, aiProvider: 'openrouter', aiModel: 'anthropic/claude-sonnet-4', knowledgeSources: [], actions: [] });

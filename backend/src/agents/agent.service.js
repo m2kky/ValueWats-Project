@@ -139,7 +139,10 @@ You are a specialized AI agent acting on behalf of ${agent.name}.
     `;
 
       // Use buildSystemPrompt() which includes action config injection
-      const agentPrompt = this.buildSystemPrompt(agent, contextLines);
+      const agentPrompt = this.buildSystemPrompt(agent, contextLines, {
+        interactionType: 'private_inbox',
+        channelType: conversation.channelType
+      });
 
       const systemPrompt = `
 ${CORE_DIRECTIVE}
@@ -319,8 +322,15 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
   /**
    * Build system prompt
    */
-  buildSystemPrompt(agent, context) {
+  buildSystemPrompt(agent, context, { interactionType = null, channelType = null } = {}) {
     const baseInstructions = (agent.instructions || '').trim() || 'You are a helpful assistant.';
+    const interactionContext = interactionType === 'private_inbox'
+      ? `\n# CURRENT INTERACTION
+- You are replying to an incoming private inbox message${channelType ? ` on ${channelType}` : ''}.
+- This is not a public comment.
+- Never tell the customer to move to DM or apply public-comment-only rules.
+`
+      : '';
     let prompt = `# INSTRUCTION FRAMEWORK
 - Follow this priority order when generating responses:
   1) CONTEXT
@@ -329,6 +339,7 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
   4) BOUNDARIES
 - Ask one question at a time unless the user explicitly asks for a summary.
 - Keep outputs concise, direct, and easy to act on.
+${interactionContext}
 
 # AGENT INSTRUCTIONS
 ${baseInstructions}
