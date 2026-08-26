@@ -146,25 +146,30 @@ function createStoreService({ prisma, registry, clock = () => new Date(), enqueu
       });
       if (!cached) throw storeError('STORE_PRODUCT_NOT_FOUND');
       const adapter = registry.get(integration.type);
+      const requestedProductId = String(productId);
+      const notFound = async () => {
+        await prisma.storeProduct.updateMany({
+          where: { tenantId, integrationId, externalId: requestedProductId, deletedAt: null }, data: { deletedAt: clock() }
+        });
+        source = 'live';
+        logLookup({ integrationId, operation: 'get_product', source, startedAt, resultCount: 0, outcome: 'not_found' });
+        return { source, product: null, notFound: true };
+      };
       try {
-        const product = await adapter.getProduct({ tenantId, integrationId }, String(productId));
-        if (!product) {
-          await prisma.storeProduct.updateMany({
-            where: { tenantId, integrationId, externalId: String(productId), deletedAt: null }, data: { deletedAt: clock() }
-          });
-          source = 'live';
-          logLookup({ integrationId, operation: 'get_product', source, startedAt, resultCount: 0, outcome: 'not_found' });
-          return { source, product: null, notFound: true };
-        }
+        const product = await adapter.getProduct({ tenantId, integrationId }, requestedProductId);
+        if (!product) return notFound();
+        if (String(product.externalId) !== requestedProductId) throw storeError('STORE_INVALID_PROVIDER_RESPONSE');
         await upsertProduct({ tenantId, integrationId, product });
         source = 'live';
         const result = compactProduct(product, { liveVerified: true, verifiedAt: clock() });
         logLookup({ integrationId, operation: 'get_product', source, startedAt, resultCount: 1, outcome: 'success' });
         return { source, product: result };
       } catch (error) {
+        if (error?.code === 'STORE_PROVIDER_NOT_FOUND') return notFound();
+        if (error?.code === 'STORE_INVALID_PROVIDER_RESPONSE') throw error;
         if (!TRANSIENT_PROVIDER_ERRORS.has(error?.code)) throw storeError('STORE_LOOKUP_FAILED');
         const result = compactProduct(cached, { liveVerified: false });
-        await enqueueRefresh({ tenantId, integrationId, productId: String(productId), operation: 'get_product', delayMs: REFRESH_DELAY_MS });
+        await enqueueRefresh({ tenantId, integrationId, productId: requestedProductId, operation: 'get_product', delayMs: REFRESH_DELAY_MS });
         logLookup({ integrationId, operation: 'get_product', source, startedAt, resultCount: 1, outcome: 'fallback', errorCode: error.code });
         return { source, product: result };
       }

@@ -22,7 +22,7 @@ function liveProduct(overrides = {}) {
 function createService({ cached = [cachedProduct()], live = [liveProduct()] } = {}) {
   const adapter = {
     searchProducts: vi.fn().mockResolvedValue(live),
-    getProduct: vi.fn().mockResolvedValue(liveProduct()),
+    getProduct: vi.fn().mockResolvedValue(liveProduct({ externalId: cached[0]?.externalId || '1' })),
     listProductsPage: vi.fn()
   };
   const prisma = {
@@ -96,7 +96,7 @@ describe('Store service', () => {
 
     expect(prisma.storeProduct.findFirst).toHaveBeenCalledWith({ where: { tenantId: 'tenant-1', integrationId: 'integration-1', externalId: '1', deletedAt: null } });
     expect(adapter.getProduct).toHaveBeenCalledWith({ tenantId: 'tenant-1', integrationId: 'integration-1' }, '1');
-    expect(result.product).toMatchObject({ externalId: '2', liveVerified: true, currentPriceVerified: true, variants: [] });
+    expect(result.product).toMatchObject({ externalId: '1', liveVerified: true, currentPriceVerified: true, variants: [] });
   });
 
   it('soft deletes a cached product when the provider reports it missing', async () => {
@@ -108,6 +108,26 @@ describe('Store service', () => {
     expect(prisma.storeProduct.updateMany).toHaveBeenCalledWith({
       where: { tenantId: 'tenant-1', integrationId: 'integration-1', externalId: '1', deletedAt: null }, data: { deletedAt: now }
     });
+  });
+
+  it('soft deletes only the requested cached product when the provider rejects it as missing', async () => {
+    const { service, prisma, adapter } = createService();
+    adapter.getProduct.mockRejectedValue(Object.assign(new Error('provider body'), { code: 'STORE_PROVIDER_NOT_FOUND' }));
+
+    await expect(service.getProduct({ tenantId: 'tenant-1', integrationId: 'integration-1', productId: '1' }))
+      .resolves.toEqual({ source: 'live', product: null, notFound: true });
+    expect(prisma.storeProduct.updateMany).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1', integrationId: 'integration-1', externalId: '1', deletedAt: null }, data: { deletedAt: now }
+    });
+  });
+
+  it('rejects a mismatched provider product ID before any cache write', async () => {
+    const { service, prisma, adapter } = createService();
+    adapter.getProduct.mockResolvedValue(liveProduct({ externalId: '2' }));
+
+    await expect(service.getProduct({ tenantId: 'tenant-1', integrationId: 'integration-1', productId: '1' }))
+      .rejects.toMatchObject({ code: 'STORE_INVALID_PROVIDER_RESPONSE', message: 'STORE_INVALID_PROVIDER_RESPONSE' });
+    expect(prisma.storeProduct.upsert).not.toHaveBeenCalled();
   });
 
   it('upserts sync pages with the tenant and only deletes stale rows after a completed full sync', async () => {
