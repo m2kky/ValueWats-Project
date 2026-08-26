@@ -11,9 +11,17 @@ function boundedRetryAfter(value, now) {
   return Math.min(60_000, Math.max(1000, Number.isFinite(milliseconds) ? milliseconds : 1000));
 }
 
+function missingProductsScope(error) {
+  const message = error?.response?.data?.error?.message;
+  return error?.response?.status === 401 && typeof message === 'string' &&
+    /scopes?/i.test(message) && /products\.read(?:_write)?/i.test(message);
+}
+
 function providerError(error, now) {
   const status = error?.response?.status;
-  const code = error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT'
+  const code = missingProductsScope(error)
+    ? 'STORE_PROVIDER_SCOPE_MISSING'
+    : error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT'
     ? 'STORE_PROVIDER_TIMEOUT'
     : status === 404 ? 'STORE_PROVIDER_NOT_FOUND'
       : status === 429 ? 'STORE_RATE_LIMITED'
@@ -46,7 +54,7 @@ function createSallaClient({ http = axios, tokenService, timeoutMs = 2500, clock
         }));
         return response.data;
       } catch (error) {
-        if (error?.response?.status === 401 && !forceRefresh) {
+        if (error?.response?.status === 401 && !missingProductsScope(error) && !forceRefresh) {
           forceRefresh = true;
           continue;
         }

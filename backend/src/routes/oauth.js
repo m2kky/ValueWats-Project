@@ -29,7 +29,11 @@ router.get('/salla/callback', async (req, res) => {
     const sallaOAuthService = dependencies.sallaOAuthService || createSallaOAuthService({
       prisma: dependencies.prisma || require('../config/database'), queue: dependencies.queues?.storeSync, clock: dependencies.clock
     });
-    await sallaOAuthService.completeCallback({ code: req.query.code, state: req.query.state });
+    await sallaOAuthService.completeCallback({
+      code: req.query.code,
+      state: req.query.state,
+      grantedScope: req.query.scope
+    });
     res.redirect('/settings/integrations?success=true');
   } catch (error) {
     const code = /^SALLA_[A-Z0-9_]+$|^STORE_INTEGRATION_NOT_FOUND$/.test(error?.code || '') ? error.code : 'SALLA_OAUTH_FAILED';

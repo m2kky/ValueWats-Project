@@ -33,9 +33,15 @@ function merchant(data) {
   return { id: String(id), metadata };
 }
 
-function token(data, now) {
+function hasProductReadScope(value) {
+  return typeof value === 'string' && value.split(/[\s,]+/)
+    .some((scope) => scope === 'products.read' || scope === 'products.read_write');
+}
+
+function token(data, now, grantedScope) {
   if (typeof data?.access_token !== 'string' || !data.access_token || typeof data.refresh_token !== 'string' || !data.refresh_token ||
       !Number.isFinite(Number(data.expires_in)) || Number(data.expires_in) <= 0) throw codedError('SALLA_TOKEN_EXCHANGE_FAILED');
+  if (!hasProductReadScope(grantedScope || data.scope)) throw codedError('SALLA_REQUIRED_SCOPE_MISSING');
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
@@ -87,7 +93,7 @@ function createSallaOAuthService({ prisma, http = axios, queue, clock = () => ne
     return { authUrl: url.toString() };
   }
 
-  async function completeCallback({ code, state }) {
+  async function completeCallback({ code, state, grantedScope }) {
     const startedAt = Date.now();
     let integrationId;
     try {
@@ -115,7 +121,7 @@ function createSallaOAuthService({ prisma, http = axios, queue, clock = () => ne
       } catch (_) {
         throw codedError('SALLA_TOKEN_EXCHANGE_FAILED');
       }
-      const credentials = token(tokenResponse?.data, clock());
+      const credentials = token(tokenResponse?.data, clock(), grantedScope);
       let merchantResponse;
       try {
         merchantResponse = await http.get(USER_INFO_URL, { timeout: 2500, headers: { Authorization: `Bearer ${credentials.accessToken}` } });

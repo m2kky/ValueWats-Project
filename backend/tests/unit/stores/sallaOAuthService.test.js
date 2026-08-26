@@ -31,7 +31,7 @@ function harness(overrides = {}) {
     }
   };
   const http = {
-    post: vi.fn(async () => ({ data: { access_token: 'access-secret', refresh_token: 'refresh-secret', expires_in: 3600 } })),
+    post: vi.fn(async () => ({ data: { access_token: 'access-secret', refresh_token: 'refresh-secret', expires_in: 3600, scope: 'products.read offline_access' } })),
     get: vi.fn(async () => ({ data: { merchant: { id: 42, name: 'Safe Store', domain: 'safe-store' } } }))
   };
   const queue = { enqueueFullSync: vi.fn(async () => ({ id: 'sync-1' })) };
@@ -138,6 +138,22 @@ describe('Salla OAuth service', () => {
     });
     expect(integration).toMatchObject({ status: 'active', externalAccountId: '42', metadata: { merchantName: 'Safe Store', merchantDomain: 'safe-store' } });
     expect(queue.enqueueFullSync).toHaveBeenCalledWith({ tenantId: 'tenant-1', integrationId: 'integration-1' });
+  });
+
+  it('rejects a token that was issued without product read access', async () => {
+    const { service, integration, http, queue, now } = harness();
+    http.post.mockResolvedValue({
+      data: { access_token: 'access-secret', refresh_token: 'refresh-secret', expires_in: 3600, scope: 'settings.read offline_access' }
+    });
+    const state = createStoreOAuthState({
+      integrationId: integration.id, tenantId: integration.tenantId, flow: 'connect', now
+    });
+
+    await expect(service.completeCallback({ code: 'authorization-code', state }))
+      .rejects.toMatchObject({ code: 'SALLA_REQUIRED_SCOPE_MISSING' });
+    expect(http.get).not.toHaveBeenCalled();
+    expect(queue.enqueueFullSync).not.toHaveBeenCalled();
+    expect(integration.status).toBe('pending');
   });
 
   it.each(['active', 'error', 'reauthorization_required'])(

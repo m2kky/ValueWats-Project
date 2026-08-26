@@ -68,6 +68,22 @@ describe('Salla adapter', () => {
     });
   });
 
+  it('does not refresh a token that is missing the products scope', async () => {
+    const http = { get: vi.fn().mockRejectedValue(Object.assign(new Error('unauthorized'), {
+      response: {
+        status: 401,
+        data: { error: { code: 'Unauthorized', message: 'The access token should have access to one of those scopes: products.read,products.read_write' } }
+      }
+    })) };
+    const tokenService = { getAccessToken: vi.fn().mockResolvedValue('token') };
+    const client = createSallaClient({ http, tokenService });
+
+    await expect(client.listProductsPage({ tenantId: 'tenant-1', integrationId: 'integration-1' }, 1))
+      .rejects.toMatchObject({ code: 'STORE_PROVIDER_SCOPE_MISSING' });
+    expect(http.get).toHaveBeenCalledOnce();
+    expect(tokenService.getAccessToken).toHaveBeenCalledOnce();
+  });
+
   it('caps provider search responses at five products', async () => {
     const http = { get: vi.fn().mockResolvedValue({ data: { data: Array.from({ length: 8 }, (_, id) => ({ id })) } }) };
     const client = createSallaClient({ http, tokenService: { getAccessToken: vi.fn().mockResolvedValue('token') } });

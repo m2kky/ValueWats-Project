@@ -163,13 +163,15 @@ describe('Salla integration API', () => {
       .expect(302).expect('Location', '/settings/integrations?error=SALLA_INVALID_STATE');
     expect(sallaOAuthService.completeCallback).not.toHaveBeenCalled();
 
-    const response = await request(app).get('/api/oauth/salla/callback?code=code&state=state')
+    const response = await request(app).get('/api/oauth/salla/callback?code=code&state=state&scope=products.read%20offline_access')
       .set('Cookie', `other=value; salla_oauth_verifier=${verifier('state')}`)
       .expect(302).expect('Location', '/settings/integrations?success=true');
     expect(response.headers['set-cookie']).toEqual([
       'salla_oauth_verifier=; Max-Age=0; Path=/api/oauth/salla/callback; HttpOnly; SameSite=Lax'
     ]);
-    expect(sallaOAuthService.completeCallback).toHaveBeenCalledWith({ code: 'code', state: 'state' });
+    expect(sallaOAuthService.completeCallback).toHaveBeenCalledWith({
+      code: 'code', state: 'state', grantedScope: 'products.read offline_access'
+    });
 
     sallaOAuthService.completeCallback.mockRejectedValue(Object.assign(new Error('secret'), { code: 'SALLA_INVALID_STATE' }));
     await request(app).get('/api/oauth/salla/callback?code=code&state=state')
@@ -191,11 +193,13 @@ describe('Salla integration API', () => {
     const state = 'public-callback-state';
 
     await request(app)
-      .get(`/api/oauth/salla/callback?code=authorization-code&state=${state}`)
+      .get(`/api/oauth/salla/callback?code=authorization-code&state=${state}&scope=products.read%20offline_access`)
       .set('Cookie', `salla_oauth_verifier=${verifier(state)}`)
       .expect(302)
       .expect('Location', '/settings/integrations?success=true');
-    expect(sallaOAuthService.completeCallback).toHaveBeenCalledWith({ code: 'authorization-code', state });
+    expect(sallaOAuthService.completeCallback).toHaveBeenCalledWith({
+      code: 'authorization-code', state, grantedScope: 'products.read offline_access'
+    });
   });
 
   it('redirects Google and Notion OAuth errors to settings', async () => {
