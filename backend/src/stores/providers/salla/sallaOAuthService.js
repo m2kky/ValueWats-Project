@@ -63,7 +63,7 @@ function createSallaOAuthService({ prisma, http = axios, queue, clock = () => ne
     const url = new URL(AUTH_URL);
     url.search = new URLSearchParams({
       client_id: process.env.SALLA_CLIENT_ID, redirect_uri: redirectUri,
-      response_type: 'code', scope: 'products.read offline_access', state
+      response_type: 'code', scope: 'offline_access', state
     }).toString();
     return { authUrl: url.toString() };
   }
@@ -82,7 +82,7 @@ function createSallaOAuthService({ prisma, http = axios, queue, clock = () => ne
     const url = new URL(AUTH_URL);
     url.search = new URLSearchParams({
       client_id: process.env.SALLA_CLIENT_ID, redirect_uri: redirectUri,
-      response_type: 'code', scope: 'products.read offline_access', state
+      response_type: 'code', scope: 'offline_access', state
     }).toString();
     return { authUrl: url.toString() };
   }
