@@ -5,7 +5,7 @@ const { createApp } = require('../../../src/app');
 const integrationsRouter = require('../../../src/routes/integrations');
 const oauthRouter = require('../../../src/routes/oauth');
 
-function createHarness(role = 'admin', integration = null) {
+function createHarness(role = 'admin', integration = null, authMode = 'custom') {
   const prisma = {
     integration: {
       findFirst: vi.fn(async () => integration),
@@ -22,13 +22,26 @@ function createHarness(role = 'admin', integration = null) {
     reconnect: vi.fn(async () => ({ authUrl: 'https://accounts.salla.sa/oauth2/auth?state=reconnect-state' })),
     completeCallback: vi.fn(async () => ({ id: 'integration-1' }))
   };
+  const sallaEasyModeService = {
+    createConnection: vi.fn(async () => ({
+      mode: 'easy', integrationId: 'integration-1', pairingCode: 'pair-code',
+      installUrl: 'https://s.salla.sa/apps/install/946600964'
+    })),
+    reconnect: vi.fn(async () => ({
+      mode: 'easy', integrationId: 'integration-1', pairingCode: 'new-pair-code',
+      installUrl: 'https://s.salla.sa/apps/install/946600964'
+    }))
+  };
   const integrationService = { listIntegrations: vi.fn(), upsertIntegration: vi.fn() };
   const app = createApp({
     routes: { integrations: integrationsRouter, oauth: oauthRouter },
     middleware: { tenantContext: (req, res, next) => { req.user = { tenantId: 'tenant-1', role }; next(); } },
-    dependencies: { prisma, queues: { storeSync }, sallaOAuthService, integrationService }
+    dependencies: {
+      prisma, queues: { storeSync }, sallaOAuthService, sallaEasyModeService,
+      sallaAuthMode: authMode, integrationService
+    }
   });
-  return { app, prisma, storeSync, sallaOAuthService, integrationService };
+  return { app, prisma, storeSync, sallaOAuthService, sallaEasyModeService, integrationService };
 }
 
 function verifier(state) {
@@ -59,6 +72,37 @@ describe('Salla integration API', () => {
       `salla_oauth_verifier=${verifier('connect-state')}; Max-Age=600; Path=/api/oauth/salla/callback; HttpOnly; SameSite=Lax`
     ]);
     expect(sallaOAuthService.createAuthUrl).toHaveBeenCalledWith({ tenantId: 'tenant-1' });
+  });
+
+  it('returns an Easy Mode pairing code without setting an OAuth verifier cookie', async () => {
+    const { app, sallaOAuthService, sallaEasyModeService } = createHarness('admin', null, 'easy');
+
+    const response = await request(app).post('/api/integrations/salla/auth-url').expect(200);
+
+    expect(response.body).toEqual({
+      mode: 'easy', integrationId: 'integration-1', pairingCode: 'pair-code',
+      installUrl: 'https://s.salla.sa/apps/install/946600964'
+    });
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(sallaEasyModeService.createConnection).toHaveBeenCalledWith({ tenantId: 'tenant-1' });
+    expect(sallaOAuthService.createAuthUrl).not.toHaveBeenCalled();
+  });
+
+  it('returns a replacement Easy Mode code for reconnect without setting a cookie', async () => {
+    const { app, sallaOAuthService, sallaEasyModeService } = createHarness(
+      'admin', storeIntegration('pending'), 'easy'
+    );
+
+    const response = await request(app)
+      .post('/api/integrations/salla/integration-1/reconnect')
+      .expect(200);
+
+    expect(response.body.pairingCode).toBe('new-pair-code');
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(sallaEasyModeService.reconnect).toHaveBeenCalledWith({
+      tenantId: 'tenant-1', integrationId: 'integration-1'
+    });
+    expect(sallaOAuthService.reconnect).not.toHaveBeenCalled();
   });
 
   it('sets the same browser-binding cookie for reconnect and marks it Secure in production', async () => {
