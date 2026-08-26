@@ -351,6 +351,70 @@ describe('agent behavior with injected dependencies', () => {
 });
 
 describe('adjacent runtime behavior', () => {
+  it('runs Test Lab through the shared read-only loop with active canonical actions', async () => {
+    const express = require('express');
+    const request = require('supertest');
+    const prisma = database();
+    const previewAgent = agent({
+      id: 'agent-preview',
+      isPublished: true,
+      knowledgeSources: [],
+      actions: [{
+        id: 'action-preview',
+        key: 'store_catalog_read',
+        type: 'store_catalog_read',
+        isEnabled: true,
+        integrationId: 'store-1',
+        instructions: '',
+        config: { maxResults: 5 }
+      }]
+    });
+    const previewService = {
+      buildContext: vi.fn().mockResolvedValue([]),
+      buildSystemPrompt: vi.fn().mockReturnValue('Preview prompt'),
+      runModelToolLoop: vi.fn().mockResolvedValue('Preview response')
+    };
+    const directModel = { chat: vi.fn() };
+    prisma.aIAgent.findFirst.mockResolvedValue(previewAgent);
+    setCommonJsMock('../../../src/config/database', prisma);
+    setCommonJsMock('../../../src/middleware/tenantContext', (req, res, next) => { req.user = { tenantId: 'tenant-1', role: 'admin' }; next(); });
+    setCommonJsMock('../../../src/middleware/checkPermission', () => (req, res, next) => next());
+    setCommonJsMock('../../../src/agents/agent.service', previewService);
+    setCommonJsMock('../../../src/ai/deepseek.service', directModel);
+    clearCommonJsModule('../../../src/agents/agent.routes');
+    const router = require('../../../src/agents/agent.routes');
+    const app = express();
+    app.use(express.json());
+    app.use('/agents', router);
+
+    const response = await request(app).post('/agents/agent-preview/test').send({ message: 'Find greens' });
+    clearCommonJsModule('../../../src/agents/agent.routes');
+    clearCommonJsModule('../../../src/agents/agent.service');
+    clearCommonJsModule('../../../src/agents/config/agentSetupService');
+    clearCommonJsModule('../../../src/agents/config/agentCapabilityService');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ response: 'Preview response' });
+
+    expect(prisma.aIAgent.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      include: {
+        knowledgeSources: { where: { isActive: true } },
+        actions: { where: { isEnabled: true } }
+      }
+    }));
+    expect(previewService.runModelToolLoop).toHaveBeenCalledWith({
+      agent: previewAgent,
+      messages: [
+        { role: 'system', content: 'Preview prompt' },
+        { role: 'user', content: 'Find greens' }
+      ],
+      tenantId: 'tenant-1',
+      conversationId: null,
+      allowCommands: false
+    });
+    expect(directModel.chat).not.toHaveBeenCalled();
+  });
+
   it('skips duplicate inbound messages by WAMID without throwing', async () => {
     const prisma = database();
     const duplicate = new Error('duplicate');

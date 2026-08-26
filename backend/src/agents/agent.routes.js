@@ -156,8 +156,6 @@ router.delete('/:id', tenantContext, checkPermission('agents.manage'), async (re
 });
 
 // Test chat with agent (for live preview in editor)
-const deepseekService = require('../ai/deepseek.service');
-
 router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
     const { message } = req.body;
@@ -174,7 +172,8 @@ router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async 
         isPublished: true
       },
       include: {
-        knowledgeSources: { where: { isActive: true } }
+        knowledgeSources: { where: { isActive: true } },
+        actions: { where: { isEnabled: true } }
       }
     });
 
@@ -193,14 +192,15 @@ router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async 
       { role: 'user', content: message }
     ];
 
-    const response = await deepseekService.chat({
+    const aiReply = await agentService.runModelToolLoop({
+      agent,
       messages,
-      temperature: agent.temperature ?? 0.7,
-      max_tokens: agent.maxTokens ?? 500
+      tenantId: req.user.tenantId,
+      conversationId: null,
+      allowCommands: false
     });
 
-    const aiReply = typeof response === 'string' ? response : (response?.content || response?.message || 'No response');
-    res.json({ response: aiReply });
+    res.json({ response: aiReply || 'No response' });
   } catch (error) {
     console.error('[Agents] Test chat error:', error?.response?.data || error.message);
     const apiError = error?.response?.data?.error?.message || error.message || 'Error processing your message.';

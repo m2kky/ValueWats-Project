@@ -6,6 +6,7 @@ const prisma = require('../config/database');
 const { decrypt } = require('../utils/encryption');
 const NotionService = require('./notionService');
 const { sanitizeError } = require('../logging/redaction');
+const storeToolService = require('../stores/storeToolService');
 
 const toolFailure = (error, prefix = '') => ({
     success: false,
@@ -27,15 +28,19 @@ class ToolService {
             create_notion_page: this.handleCreateNotionPage.bind(this),
             update_notion_page: this.handleUpdateNotionPage.bind(this),
             append_notion_block: this.handleAppendNotionBlock.bind(this),
-            archive_notion_page: this.handleArchiveNotionPage.bind(this)
+            archive_notion_page: this.handleArchiveNotionPage.bind(this),
+            search_store_products: (args, context) => storeToolService.execute('search_store_products', args, context),
+            get_store_product: (args, context) => storeToolService.execute('get_store_product', args, context)
         };
     }
 
     /**
      * Get tool definitions for the AI model dynamically based on Agent Config
      */
-    getToolDefinitions(actionConfig = {}) {
-        actionConfig = actionConfig || {};
+    getToolDefinitions(input = {}) {
+        const envelope = input && (Object.hasOwn(input, 'actionConfig') || Object.hasOwn(input, 'actions'));
+        const actionConfig = (envelope ? input.actionConfig : input) || {};
+        const actions = envelope ? input.actions : [];
         const tools = [];
 
         // Calendar
@@ -242,6 +247,7 @@ class ToolService {
             });
         }
 
+        tools.push(...storeToolService.getToolDefinitions(actions));
         return tools;
     }
 

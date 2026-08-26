@@ -37,6 +37,66 @@ class AgentService {
     this.commandExecutor = commandExecutor || createAgentCommandExecutor(prisma);
     this.clock = clock;
   }
+
+  async runModelToolLoop({ agent, messages, tenantId, conversationId, allowCommands = true }) {
+    let finalContent = '';
+    let loopCount = 0;
+    const maxLoops = 5;
+    const actionConfig = allowCommands ? agent.actionConfig : {};
+    const resolvedModel = resolveChatModel(agent.aiModel);
+
+    while (loopCount < maxLoops) {
+      const tools = this.toolService.getToolDefinitions({ actionConfig, actions: agent.actions });
+      const allowedToolNames = new Set(tools.map((tool) => tool.function.name));
+      const response = await this.modelGateway.chat({
+        messages,
+        temperature: agent.temperature,
+        max_tokens: agent.maxTokens,
+        model: resolvedModel,
+        tools
+      });
+      const responseMessage = typeof response === 'string'
+        ? { role: 'assistant', content: response }
+        : response;
+
+      messages.push(responseMessage);
+
+      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+        console.log(`[AgentService] AI requested ${responseMessage.tool_calls.length} tool calls`);
+
+        for (const toolCall of responseMessage.tool_calls) {
+          const result = !allowCommands && !allowedToolNames.has(toolCall.function.name)
+            ? { success: false, code: 'TOOL_NOT_AVAILABLE', message: 'Tool unavailable in preview.' }
+            : await this.toolService.execute(
+              toolCall.function.name,
+              JSON.parse(toolCall.function.arguments),
+              {
+                tenantId,
+                conversationId,
+                agentId: agent.id,
+                actionConfig: agent.actionConfig,
+                actions: agent.actions
+              }
+            );
+
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            name: toolCall.function.name,
+            content: JSON.stringify(result)
+          });
+        }
+        loopCount++;
+      } else {
+        finalContent = responseMessage.content;
+        break;
+      }
+    }
+
+    const content = finalContent || '';
+    return allowCommands ? content : content.replace(/\[ACTION:\s*(.*?)\]/g, '').trim();
+  }
+
   /**
    * Process incoming message with AI Agent
    */
@@ -155,48 +215,13 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
         { role: 'user', content: message }
       ];
 
-      let finalContent = '';
-      let loopCount = 0;
-      const MAX_LOOPS = 5;
-
-      const resolvedModel = resolveChatModel(agent.aiModel);
-
-      while (loopCount < MAX_LOOPS) {
-        const responseMessage = await this.modelGateway.chat({
-          messages: chatMessages,
-          temperature: agent.temperature,
-          max_tokens: agent.maxTokens,
-          model: resolvedModel,
-          tools: this.toolService.getToolDefinitions(agent.actionConfig)
-        });
-
-        chatMessages.push(responseMessage);
-
-        if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-          console.log(`[AgentService] AI requested ${responseMessage.tool_calls.length} tool calls`);
-
-          for (const toolCall of responseMessage.tool_calls) {
-            const result = await this.toolService.execute(
-              toolCall.function.name,
-              JSON.parse(toolCall.function.arguments),
-              { tenantId, conversationId, actionConfig: agent.actionConfig }
-            );
-
-            chatMessages.push({
-              role: 'tool',
-              tool_call_id: toolCall.id,
-              name: toolCall.function.name,
-              content: JSON.stringify(result)
-            });
-          }
-          loopCount++;
-        } else {
-          finalContent = responseMessage.content;
-          break;
-        }
-      }
-
-      const aiResponse = finalContent || '';
+      const aiResponse = await this.runModelToolLoop({
+        agent,
+        messages: chatMessages,
+        tenantId,
+        conversationId,
+        allowCommands: true
+      });
 
       // 7. Check for routing triggers
       const commandContext = activeRun && {
