@@ -15,6 +15,9 @@ export default function AgentEditor({
   kbMode, setKbMode, kbTitle, setKbTitle, kbContent, setKbContent, kbFile, setKbFile,
   knowledgeSources, knowledgeLoading, fetchKnowledge, addTextKnowledge, uploadFileKnowledge, deleteKnowledge
 }) {
+  const storeEnabled = form.actionConfig?.store?.enabled || false;
+  const storeConnectionMissing = storeEnabled && !form.actionConfig?.store?.integrationId;
+
   return (
     <div className="w-3/5 overflow-y-auto border-r border-white/5 custom-scrollbar">
       {/* Editor Header */}
@@ -47,19 +50,24 @@ export default function AgentEditor({
           </button>
           <button
             onClick={() => handleSave(false)}
-            disabled={saving || !form.name || !form.instructions || instructionOverLimit}
+            disabled={saving || !form.name || !form.instructions || instructionOverLimit || storeConnectionMissing}
             className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest transition-all active:scale-95"
           >
             Save Draft
           </button>
           <button
             onClick={() => handleSave(true)}
-            disabled={saving || !form.name || !form.instructions || instructionOverLimit}
+            disabled={saving || !form.name || !form.instructions || instructionOverLimit || storeConnectionMissing}
             className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-lg shadow-indigo-500/10 transition-all active:scale-95"
           >
             {saving ? 'Uploading...' : (form.isPublished ? 'Update Published' : 'Publish Agent')}
           </button>
         </div>
+        {storeConnectionMissing && (
+          <p className="px-8 pb-3 text-[10px] font-bold uppercase tracking-widest text-rose-400">
+            Select one active Store connection before saving or publishing.
+          </p>
+        )}
       </div>
 
       <div className="p-8 space-y-8">
@@ -511,6 +519,38 @@ export default function AgentEditor({
                 >
                   <option value="">-- Select Notion Workspace Connection --</option>
                   {availableIntegrations.filter(i => i.type === 'notion_oauth' || i.type === 'notion').map(i => (
+                    <option key={i.id} value={i.id}>{i.name}</option>
+                  ))}
+                </select>
+              </div>
+            </ActionCard>
+
+            <ActionCard
+              title="Store"
+              description="ALLOW AGENT TO SEARCH PRODUCTS FROM A CONNECTED STORE."
+              enabled={storeEnabled}
+              setEnabled={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, store: { ...f.actionConfig.store, enabled: val } } }))}
+              config={form.actionConfig?.store?.instructions || ''}
+              setConfig={(val) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, store: { ...f.actionConfig.store, instructions: val } } }))}
+              placeholder="USE THIS STORE FOR PRODUCT FACTS AND AVAILABILITY..."
+              mentions={mentionTargets}
+              showMentions={true}
+              tags={availableTags}
+              variables={availableVariables}
+              showTags={true}
+            >
+              <div className="mb-4">
+                <label htmlFor="store-integration" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
+                  Linked Store
+                </label>
+                <select
+                  id="store-integration"
+                  className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs font-medium text-white outline-none focus:border-indigo-500/50 appearance-none cursor-pointer"
+                  value={form.actionConfig?.store?.integrationId || ''}
+                  onChange={(e) => setForm(f => ({ ...f, actionConfig: { ...f.actionConfig, store: { ...f.actionConfig.store, integrationId: e.target.value } } }))}
+                >
+                  <option value="">-- Select Store Connection --</option>
+                  {availableIntegrations.filter(i => i.type === 'store_salla' && i.status === 'active').map(i => (
                     <option key={i.id} value={i.id}>{i.name}</option>
                   ))}
                 </select>

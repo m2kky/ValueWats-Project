@@ -52,11 +52,12 @@ export function buildAgentSetupPayload(data = {}, { includeExpectedConfigVersion
   return payload;
 }
 
-export function buildTerminalCapabilities(data = {}) {
+export function buildAgentCapabilities(data = {}) {
   const assignment = data.actionConfig?.assignAgent || {};
   const assignmentConfig = assignment.config || {};
   const close = data.actionConfig?.closeConversation || {};
   const internal = data.actionConfig || {};
+  const store = internal.store || {};
   return {
     assignConversation: {
       enabled: assignment.enabled === true,
@@ -90,8 +91,17 @@ export function buildTerminalCapabilities(data = {}) {
       enabled: internal.addComment?.enabled === true,
       instructions: internal.addComment?.instructions || '',
     },
+    store: {
+      enabled: store.enabled === true,
+      integrationId: store.integrationId || '',
+      instructions: store.instructions || '',
+      maxResults: 5,
+    },
   };
 }
+
+// Compatibility for existing consumers while capability naming is generalized.
+export const buildTerminalCapabilities = buildAgentCapabilities;
 
 export default function useAgents() {
   const [agents, setAgents] = useState([]);
@@ -140,9 +150,9 @@ export default function useAgents() {
     setError(null);
     try {
       const created = await api.post('/agents', buildAgentSetupPayload(data));
-      const res = await api.put(`/agents/${created.data.id}/terminal-capabilities`, {
+      const res = await api.put(`/agents/${created.data.id}/capabilities`, {
         expectedConfigVersion: Number(created.data.configVersion),
-        capabilities: buildTerminalCapabilities(data),
+        capabilities: buildAgentCapabilities(data),
       });
       setAgents(prev => [res.data, ...prev]);
       return res.data;
@@ -160,9 +170,9 @@ export default function useAgents() {
     setError(null);
     try {
       const setup = await api.put(`/agents/${id}`, buildAgentSetupPayload(data, { includeExpectedConfigVersion: true }));
-      const res = await api.put(`/agents/${id}/terminal-capabilities`, {
+      const res = await api.put(`/agents/${id}/capabilities`, {
         expectedConfigVersion: Number(setup.data.configVersion),
-        capabilities: buildTerminalCapabilities(data),
+        capabilities: buildAgentCapabilities(data),
       });
       setAgents(prev => prev.map(a => a.id === id ? res.data : a));
       setSelectedAgent(res.data);

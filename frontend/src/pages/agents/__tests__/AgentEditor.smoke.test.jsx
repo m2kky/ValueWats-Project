@@ -20,4 +20,5 @@ it('renders the editor without network access', () => {
   />);
 
   expect(screen.getByText('Create Agent')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Enable Store' })).toBeInTheDocument();
 });

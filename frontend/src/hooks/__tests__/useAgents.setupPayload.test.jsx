@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import useAgents, { buildAgentSetupPayload, buildTerminalCapabilities } from '../useAgents';
+import useAgents, { buildAgentCapabilities, buildAgentSetupPayload, buildTerminalCapabilities } from '../useAgents';
 import api from '../../api/client';
 
 vi.mock('../../api/client', () => ({
@@ -110,8 +110,15 @@ describe('agent setup payload compatibility', () => {
       updateContact: { enabled: false, instructions: '' },
       updateLifecycle: { enabled: false, instructions: '' },
       modifyTags: { enabled: false, instructions: '' },
-      addInternalComment: { enabled: false, instructions: '' }
+      addInternalComment: { enabled: false, instructions: '' },
+      store: { enabled: false, integrationId: '', instructions: '', maxResults: 5 }
     });
+  });
+
+  it('builds one Store capability from the editor state', () => {
+    expect(buildAgentCapabilities({
+      actionConfig: { store: { enabled: true, integrationId: 'salla-1', instructions: 'Use for products.' } }
+    }).store).toEqual({ enabled: true, integrationId: 'salla-1', instructions: 'Use for products.', maxResults: 5 });
   });
 
   it('sends expectedConfigVersion on update, toggle, and delete requests without raw actionConfig', async () => {
@@ -130,7 +137,7 @@ describe('agent setup payload compatibility', () => {
     expect(api.put.mock.calls[0][1]).not.toHaveProperty('tenantId');
     expect(api.put.mock.calls[0][1]).not.toHaveProperty('createdAt');
     expect(api.put.mock.calls[0][1]).not.toHaveProperty('actionConfig');
-    expect(api.put).toHaveBeenNthCalledWith(2, '/agents/agent-1/terminal-capabilities', {
+    expect(api.put).toHaveBeenNthCalledWith(2, '/agents/agent-1/capabilities', {
       expectedConfigVersion: 8,
       capabilities: expect.objectContaining({
         closeConversation: { enabled: true, instructions: 'done' }

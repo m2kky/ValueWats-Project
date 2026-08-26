@@ -60,6 +60,7 @@ const defaultForm = {
     updateTags: { enabled: true, instructions: '', type: 'add' },
     triggerWorkflow: { enabled: false, instructions: '' },
     addComment: { enabled: false, instructions: '' },
+    store: { enabled: false, integrationId: '', instructions: '' },
     httpRequests: { enabled: false, actions: [] },
   },
 };
@@ -224,6 +225,7 @@ export default function Agents() {
   const handleEdit = async (agent) => {
     const full = await fetchAgent(agent.id);
     if (full) {
+      const storeAction = full.actions?.find((action) => action.key === 'store_catalog_read');
       setForm({
         ...defaultForm, ...full,
         name: full.name || '', description: full.description || '', instructions: full.instructions || '',
@@ -241,6 +243,11 @@ export default function Agents() {
             ...defaultForm.actionConfig.assignAgent,
             ...(full.actionConfig?.assignAgent || {}),
             ...(full.actionConfig?.assignAgent?.config || {}),
+          },
+          store: {
+            enabled: Boolean(storeAction?.isEnabled),
+            integrationId: storeAction?.integrationId || '',
+            instructions: storeAction?.instructions || '',
           },
         },
       });

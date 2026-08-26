@@ -38,6 +38,7 @@ export default function ActionCard({
 
         <button
           type="button"
+          aria-label={`${enabled ? 'Disable' : 'Enable'} ${title}`}
           onClick={() => setEnabled(!enabled)}
           className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 ${enabled ? 'bg-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.4)]' : 'bg-zinc-800'
             }`}
