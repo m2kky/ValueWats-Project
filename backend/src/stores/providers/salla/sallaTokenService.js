@@ -32,7 +32,7 @@ function createSallaTokenService({ prisma, http = axios, clock = () => new Date(
     const startedAt = Date.now();
     try {
       const now = clock();
-      const where = { id: integrationId, tenantId, type: 'store_salla' };
+      const where = { id: integrationId, tenantId, type: 'store_salla', status: 'active' };
       const initial = await prisma.integration.findFirst({ where });
       if (!initial) throw tokenError('STORE_INTEGRATION_NOT_FOUND');
       const initialCredentials = decryptStoreCredentials(initial.credentials);

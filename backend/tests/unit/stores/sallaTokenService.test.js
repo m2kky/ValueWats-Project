@@ -50,7 +50,7 @@ describe('Salla token service', () => {
     expect(second).toBe('new-a');
     expect(http.post).toHaveBeenCalledOnce();
     expect(prisma.integration.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla' }
+      where: { id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla', status: 'active' }
     }));
     expect(decryptStoreCredentials(integration.credentials)).toMatchObject({ accessToken: 'new-a', refreshToken: 'new-r' });
     expect(JSON.stringify(log.mock.calls)).not.toContain('old-r');
@@ -81,7 +81,7 @@ describe('Salla token service', () => {
       .getAccessToken({ tenantId: 'tenant-1', integrationId: 'integration-1', forceRefresh: true }))
       .rejects.toMatchObject({ code: 'STORE_REAUTHORIZATION_REQUIRED' });
     expect(prisma.integration.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla' },
+      where: { id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla', status: 'active' },
       data: { status: 'reauthorization_required' }
     }));
     expect(transactionCommitted).toBe(true);
@@ -111,6 +111,35 @@ describe('Salla token service', () => {
     expect(normal).toBe('old-a');
     expect(forced).toBe('new-a');
     expect(http.post).toHaveBeenCalledOnce();
+  });
+
+  it('does not reactivate an integration revoked during token refresh', async () => {
+    const integration = {
+      id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla', status: 'active',
+      credentials: encryptStoreCredentials({ accessToken: 'old-a', refreshToken: 'old-r', expiresAt: '2026-08-01T00:00:00.000Z' })
+    };
+    const prisma = {
+      integration: {
+        findFirst: vi.fn().mockImplementation(async ({ where }) => (!where.status || integration.status === 'active') ? { ...integration } : null),
+        updateMany: vi.fn().mockImplementation(async ({ where, data }) => {
+          integration.status = 'revoked';
+          if (where.status === 'active' && integration.status !== 'active') return { count: 0 };
+          integration.status = data.status || integration.status;
+          return { count: 1 };
+        })
+      },
+      $transaction: vi.fn(async (callback) => callback(prisma)),
+      $queryRawUnsafe: vi.fn().mockResolvedValue(undefined)
+    };
+    const http = { post: vi.fn().mockResolvedValue({ data: { access_token: 'new-a', refresh_token: 'new-r', expires_in: 1209600 } }) };
+
+    await expect(createSallaTokenService({ prisma, http, clock: () => new Date('2026-08-26T10:00:00Z') })
+      .getAccessToken({ tenantId: 'tenant-1', integrationId: 'integration-1', forceRefresh: true }))
+      .rejects.toMatchObject({ code: 'STORE_INTEGRATION_NOT_FOUND' });
+    expect(integration.status).toBe('revoked');
+    expect(prisma.integration.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla', status: 'active' }
+    }));
   });
 
   it('sanitizes unexpected token lifecycle failures into a stable error', async () => {

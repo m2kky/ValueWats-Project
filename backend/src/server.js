@@ -4,6 +4,7 @@ const { createApp } = require('./app');
 const socketService = require('./services/socketService');
 const { startCommentReplyProcessing } = require('./commentReplies/commentReplyBoot');
 const { createStoreSyncQueue } = require('./stores/storeSyncQueue');
+const { createGracefulShutdown } = require('./serverShutdown');
 
 const prisma = require('./config/database');
 const storeSyncQueue = createStoreSyncQueue({ prisma });
@@ -40,6 +41,7 @@ const server = http.createServer(app);
 socketService.init(server);
 const PORT = process.env.PORT || 3000;
 let commentReplyProcessing = null;
+const { closeQueue, shutdown } = createGracefulShutdown({ server, storeSyncQueue });
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
@@ -58,9 +60,15 @@ server.listen(PORT, () => {
 
 server.on('close', () => {
   commentReplyProcessing?.stop();
-  storeSyncQueue.close().catch(() => {
+  closeQueue().catch(() => {
     console.error('[Shutdown] Store queue close failed', { errorCode: 'STORE_QUEUE_CLOSE_FAILED' });
   });
 });
+
+const handleSignal = () => shutdown().catch(() => {
+  console.error('[Shutdown] Graceful shutdown failed', { errorCode: 'SERVER_SHUTDOWN_FAILED' });
+});
+process.once('SIGTERM', handleSignal);
+process.once('SIGINT', handleSignal);
 
 module.exports = app;
