@@ -44,11 +44,17 @@ function createHarness(overrides = {}) {
   const registry = { get: vi.fn().mockReturnValue(adapter) };
   const clock = vi.fn().mockReturnValue(new Date('2026-08-26T12:00:00.000Z'));
   const sleep = vi.fn().mockResolvedValue(undefined);
+  const sallaEasyModeService = overrides.sallaEasyModeService || {
+    reconcilePending: vi.fn().mockResolvedValue({ integrations: 0, authorizations: 0 })
+  };
   const queueApi = createStoreSyncQueue({
     prisma, registry, storeService, Queue: FakeQueue, clock, sleep, random: () => 0.5,
-    ...overrides
+    ...overrides, sallaEasyModeService
   });
-  return { queueApi, queue: FakeQueue.instance, prisma, registry, adapter, storeService, integrations, sleep };
+  return {
+    queueApi, queue: FakeQueue.instance, prisma, registry, adapter, storeService,
+    integrations, sleep, sallaEasyModeService
+  };
 }
 
 describe('Store catalog sync queue', () => {
@@ -200,7 +206,7 @@ describe('Store catalog sync queue', () => {
   });
 
   it('enumerates active Salla integrations sequentially with bounded jitter', async () => {
-    const { queue, prisma } = createHarness();
+    const { queue, prisma, sallaEasyModeService } = createHarness();
     prisma.integration.findMany.mockResolvedValue([
       { id: 'integration-1', tenantId: 'tenant-1' },
       { id: 'integration-2', tenantId: 'tenant-2' },
@@ -221,6 +227,7 @@ describe('Store catalog sync queue', () => {
       where: { type: 'store_salla', status: 'active' },
       select: { id: true, tenantId: true }
     });
+    expect(sallaEasyModeService.reconcilePending).toHaveBeenCalledOnce();
     expect(maxActiveAdds).toBe(1);
     expect(queue.add.mock.calls.map((call) => [call[2].jobId, call[2].delay])).toEqual([
       ['store-full:integration-1', 0],
