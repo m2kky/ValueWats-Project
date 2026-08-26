@@ -139,6 +139,7 @@ model Tenant {
   lifecycleStages LifecycleStage[]
   contactFields   ContactField[]
   integrations    Integration[]
+  storeProducts   StoreProduct[]
   workflows       Workflow[]
 
   contacts                Contact[]
@@ -1140,12 +1141,49 @@ model Integration {
   name        String
   credentials String @db.Text // Encrypted JSON
   status      String @default("active") // active, error, revoked
+  externalAccountId String? @map("external_account_id")
+  metadata          Json?
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   agentActions AgentAction[]
+  storeProducts StoreProduct[]
 
   @@index([tenantId, type])
+  @@unique([type, externalAccountId])
+}
+
+model StoreProduct {
+  id            String      @id @default(uuid())
+  tenantId      String      @map("tenant_id")
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  integrationId String      @map("integration_id")
+  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  externalId    String      @map("external_id")
+  sku           String?
+  name          String
+  description   String?     @db.Text
+  imageUrl      String?     @map("image_url")
+  productUrl    String?     @map("product_url")
+  price         Decimal?    @db.Decimal(18, 2)
+  salePrice     Decimal?    @map("sale_price") @db.Decimal(18, 2)
+  currency      String?
+  status        String
+  isAvailable   Boolean     @default(false) @map("is_available")
+  quantity      Int?
+  unlimitedQuantity Boolean @default(false) @map("unlimited_quantity")
+  variants      Json?
+  providerUpdatedAt DateTime? @map("provider_updated_at")
+  syncedAt      DateTime    @map("synced_at")
+  lastVerifiedAt DateTime?  @map("last_verified_at")
+  deletedAt     DateTime?   @map("deleted_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@unique([integrationId, externalId])
+  @@index([tenantId, integrationId, deletedAt])
+  @@index([integrationId, sku])
+  @@map("store_products")
 }
 
 // Workflows
