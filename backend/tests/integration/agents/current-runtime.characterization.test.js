@@ -52,6 +52,32 @@ describe('current runtime seam', () => {
     listen.mockRestore();
   }, 15000);
 
+  it('boots with Store disabled when Salla keys are absent', async () => {
+    const request = require('supertest');
+    const { createApp } = require('../../../src/app');
+    const integrationsRouter = require('../../../src/routes/integrations');
+    const { createSallaWebhookRouter } = require('../../../src/stores/providers/salla/sallaWebhook.routes');
+    const names = ['SALLA_CLIENT_ID', 'SALLA_CLIENT_SECRET', 'SALLA_WEBHOOK_SECRET'];
+    const original = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+    const prisma = { integration: { findFirst: fn() } };
+
+    try {
+      names.forEach((name) => delete process.env[name]);
+      const app = createApp({
+        routes: { integrations: integrationsRouter, sallaWebhooks: createSallaWebhookRouter },
+        middleware: { tenantContext: (req, res, next) => { req.user = { tenantId: 'tenant-1', role: 'admin' }; next(); } },
+        dependencies: { prisma, queues: { storeSync: {} } }
+      });
+
+      expect(app).toBeTypeOf('function');
+      await request(app).post('/api/integrations/salla/auth-url').expect(503, { error: 'SALLA_NOT_CONFIGURED' });
+      await request(app).post('/api/webhooks/salla').set('Content-Type', 'application/json').send('{}').expect(503, { error: 'SALLA_NOT_CONFIGURED' });
+      expect(prisma.integration.findFirst).not.toHaveBeenCalled();
+    } finally {
+      names.forEach((name) => original[name] === undefined ? delete process.env[name] : process.env[name] = original[name]);
+    }
+  });
+
   it('closes every resource owned by the test harness', async () => {
     const prisma = { $disconnect: fn().mockResolvedValue(undefined) };
     const redis = { quit: fn().mockResolvedValue(undefined) };

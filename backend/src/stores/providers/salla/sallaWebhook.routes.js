@@ -35,6 +35,11 @@ function createSallaWebhookRouter({ prisma, queues, sallaWebhookSecret = process
       ...(errorCode ? { errorCode } : {})
     });
 
+    if (!sallaWebhookSecret) {
+      log('rejected', 'SALLA_NOT_CONFIGURED');
+      return res.status(503).json({ error: 'SALLA_NOT_CONFIGURED' });
+    }
+
     if (!verifySallaSignature({
       rawBody: req.body,
       signature: req.get('x-salla-signature'),
