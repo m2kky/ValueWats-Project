@@ -4,7 +4,7 @@ const { createApp } = require('./app');
 const socketService = require('./services/socketService');
 const { startCommentReplyProcessing } = require('./commentReplies/commentReplyBoot');
 const { createStoreSyncQueue } = require('./stores/storeSyncQueue');
-const { createGracefulShutdown } = require('./serverShutdown');
+const { createGracefulShutdown, createSignalHandler } = require('./serverShutdown');
 
 const prisma = require('./config/database');
 const storeSyncQueue = createStoreSyncQueue({ prisma });
@@ -65,9 +65,7 @@ server.on('close', () => {
   });
 });
 
-const handleSignal = () => shutdown().catch(() => {
-  console.error('[Shutdown] Graceful shutdown failed', { errorCode: 'SERVER_SHUTDOWN_FAILED' });
-});
+const handleSignal = createSignalHandler({ shutdown });
 process.once('SIGTERM', handleSignal);
 process.once('SIGINT', handleSignal);
 

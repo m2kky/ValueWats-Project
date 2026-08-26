@@ -1,5 +1,5 @@
 const { EventEmitter } = require('events');
-const { createGracefulShutdown } = require('../../src/serverShutdown');
+const { createGracefulShutdown, createSignalHandler } = require('../../src/serverShutdown');
 
 it('closes HTTP and the Store queue once and awaits both', async () => {
   const server = new EventEmitter();
@@ -28,4 +28,35 @@ it('closes HTTP and the Store queue once and awaits both', async () => {
   finishQueueClose();
   await first;
   expect(finished).toBe(true);
+});
+
+it('exits from the signal path only after graceful shutdown finishes', async () => {
+  let finishShutdown;
+  const shutdown = vi.fn(() => new Promise((resolve) => { finishShutdown = resolve; }));
+  const exit = vi.fn();
+  const handleSignal = createSignalHandler({ shutdown, exit, log: vi.fn() });
+
+  const pending = handleSignal();
+  await Promise.resolve();
+  expect(exit).not.toHaveBeenCalled();
+
+  finishShutdown();
+  await pending;
+  expect(exit).toHaveBeenCalledOnce();
+  expect(exit).toHaveBeenCalledWith(0);
+});
+
+it('exits with failure when graceful shutdown rejects', async () => {
+  const exit = vi.fn();
+  const log = vi.fn();
+  const handleSignal = createSignalHandler({
+    shutdown: vi.fn().mockRejectedValue(new Error('close failed')),
+    exit,
+    log
+  });
+
+  await handleSignal();
+
+  expect(exit).toHaveBeenCalledWith(1);
+  expect(log).toHaveBeenCalledWith('[Shutdown] Graceful shutdown failed', { errorCode: 'SERVER_SHUTDOWN_FAILED' });
 });

@@ -20,4 +20,20 @@ function createGracefulShutdown({ server, storeSyncQueue }) {
   return { closeQueue, shutdown };
 }
 
-module.exports = { createGracefulShutdown };
+function createSignalHandler({
+  shutdown,
+  exit = process.exit,
+  log = (message, details) => console.error(message, details)
+}) {
+  return async function handleSignal() {
+    try {
+      await shutdown();
+      exit(0);
+    } catch (_) {
+      log('[Shutdown] Graceful shutdown failed', { errorCode: 'SERVER_SHUTDOWN_FAILED' });
+      exit(1);
+    }
+  };
+}
+
+module.exports = { createGracefulShutdown, createSignalHandler };
