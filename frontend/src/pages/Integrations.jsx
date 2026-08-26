@@ -9,7 +9,8 @@ import {
   DocumentIcon,
   CalendarIcon,
   TableCellsIcon,
-  ServerStackIcon
+  ServerStackIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import api from '../api/client';
 
@@ -18,6 +19,7 @@ export default function Integrations() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [authError, setAuthError] = useState(null);
+  const [notice, setNotice] = useState(null);
 
   // Form State
   const [type, setType] = useState('google_calendar_oauth');
@@ -30,11 +32,11 @@ export default function Integrations() {
     // Check if we just returned from OAuth successfully
     const params = new URLSearchParams(window.location.search);
     if (params.get('success')) {
-      alert("Successfully connected Account!");
-      window.history.replaceState({}, document.title, "/integrations"); // remove query params
+      setNotice({ type: 'success', message: 'Successfully connected account.' });
+      window.history.replaceState({}, document.title, "/settings/integrations"); // remove query params
     } else if (params.get('error')) {
       setAuthError(params.get('error'));
-      window.history.replaceState({}, document.title, "/integrations"); // remove query params
+      window.history.replaceState({}, document.title, "/settings/integrations"); // remove query params
     }
     
     fetchIntegrations();
@@ -94,6 +96,36 @@ export default function Integrations() {
     }
   };
 
+  const sallaError = (error) => error.response?.data?.error || error.message;
+
+  const startSallaAuth = async () => {
+    try {
+      const { data } = await api.post('/integrations/salla/auth-url');
+      if (data.authUrl) window.location.href = data.authUrl;
+    } catch (error) {
+      setNotice({ type: 'error', message: sallaError(error) === 'SALLA_NOT_CONFIGURED'
+        ? 'Salla App keys are not configured.'
+        : `Failed to connect Salla: ${sallaError(error)}` });
+    }
+  };
+
+  const handleSallaAction = async (action, id) => {
+    try {
+      const { data } = await api[action === 'delete' ? 'delete' : 'post'](`/integrations/salla/${id}${action === 'delete' ? '' : `/${action}`}`);
+      if (data?.authUrl) {
+        window.location.href = data.authUrl;
+        return;
+      }
+      setNotice({ type: 'success', message: action === 'sync' ? 'Salla sync started.' : 'Salla integration deleted.' });
+      fetchIntegrations();
+    } catch (error) {
+      const code = sallaError(error);
+      setNotice({ type: 'error', message: code === 'SALLA_NOT_CONFIGURED'
+        ? 'Salla App keys are not configured.'
+        : `Salla ${action} failed: ${code}` });
+    }
+  };
+
   const getIntegrationConfig = (type) => {
     switch (type) {
       case 'notion_oauth':
@@ -117,6 +149,11 @@ export default function Integrations() {
 
   const openSetupModal = async (selectedType) => {
     // 1-Click Notion Integration
+    if (selectedType === 'store_salla') {
+      await startSallaAuth();
+      return;
+    }
+
     if (selectedType === 'notion_oauth') {
       try {
         const { data } = await api.get('/integrations/notion/auth-url');
@@ -163,6 +200,13 @@ export default function Integrations() {
       color: 'bg-zinc-800'
     },
     {
+      id: 'store_salla',
+      name: 'Salla',
+      desc: 'Connect your Salla store securely. Let AI agents read your live product catalog without exposing app credentials in the browser.',
+      icon: <span className="text-3xl font-black text-white">S</span>,
+      color: 'bg-[#4f46e5]'
+    },
+    {
       id: 'webhook',
       name: 'Custom Webhook',
       desc: 'Set up advanced generic endpoints. Perfect for triggering Zapier, Make, or sending notifications to any internal system.',
@@ -203,6 +247,14 @@ export default function Integrations() {
         </div>
       )}
 
+      {notice && (
+        <div className={`p-4 rounded-xl text-sm font-semibold ${notice.type === 'error'
+          ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+          : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'}`}>
+          {notice.message}
+        </div>
+      )}
+
       {/* ACTIVE INTEGRATIONS */}
       {loading ? (
         <div className="flex justify-center items-center py-20">
@@ -227,7 +279,9 @@ export default function Integrations() {
                           {config.icon}
                         </div>
                         <button
-                          onClick={() => handleDelete(int.id)}
+                          onClick={() => int.type === 'store_salla'
+                            ? window.confirm('Are you sure? This might break active workflows.') && handleSallaAction('delete', int.id)
+                            : handleDelete(int.id)}
                           className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                           title="Delete Integration"
                         >
@@ -236,6 +290,21 @@ export default function Integrations() {
                       </div>
 
                       <h3 className="text-lg font-bold text-white mb-2">{int.name}</h3>
+
+                      {int.type === 'store_salla' && (
+                        <div className="space-y-3 mb-6 text-sm text-zinc-400">
+                          <div>Status: <span className="text-white">{int.status}</span></div>
+                          <div>Last sync: <span className="text-white">{int.metadata?.lastSyncedAt ? new Date(int.metadata.lastSyncedAt).toLocaleString() : 'Never'}</span></div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleSallaAction('sync', int.id)} className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold">
+                              <ArrowPathIcon className="h-4 w-4" /> Sync now
+                            </button>
+                            <button onClick={() => handleSallaAction('reconnect', int.id)} className="px-3 py-2 border border-white/10 hover:bg-white/5 text-white rounded-lg text-xs font-bold">
+                              Reconnect
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="flex items-center gap-3 text-xs font-semibold mb-6">
                         <span className="text-zinc-400 uppercase tracking-wider">
