@@ -1,5 +1,7 @@
+const crypto = require('node:crypto');
 const { createTestDatabase, resetDatabase } = require('../../helpers/database');
 const tenantScopedPrisma = require('../../../src/config/database');
+const { encryptStoreCredentials } = require('../../../src/stores/storeCredentialCrypto');
 
 const prisma = createTestDatabase(process.env.DATABASE_URL);
 
@@ -11,6 +13,28 @@ describe('Store persistence', () => {
   afterAll(async () => {
     await prisma.$disconnect();
     await tenantScopedPrisma.$disconnect();
+  });
+
+  it('stores one encrypted pending Salla authorization per merchant', async () => {
+    const merchantId = `merchant-${crypto.randomUUID()}`;
+    const credentials = encryptStoreCredentials({
+      accessToken: 'pending-access',
+      refreshToken: 'pending-refresh',
+      expiresAt: '2026-08-28T00:00:00.000Z'
+    });
+    const row = await prisma.sallaPendingAuthorization.create({
+      data: {
+        merchantId,
+        credentials,
+        scope: 'products.read offline_access',
+        expiresAt: new Date('2026-08-28T12:00:00.000Z')
+      }
+    });
+
+    expect(row.credentials).not.toContain('pending-access');
+    await expect(prisma.sallaPendingAuthorization.create({
+      data: { merchantId, credentials, scope: row.scope, expiresAt: row.expiresAt }
+    })).rejects.toMatchObject({ code: 'P2002' });
   });
 
   it('isolates products by tenant and integration and cascades integration deletion', async () => {
