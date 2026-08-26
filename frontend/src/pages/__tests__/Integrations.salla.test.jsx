@@ -15,7 +15,9 @@ describe('Integrations Salla card', () => {
     api.get.mockResolvedValueOnce({ data: { integrations: [] } });
     api.post.mockResolvedValueOnce({ data: {} });
     render(<Integrations />);
-    await userEvent.setup().click(await screen.findByRole('heading', { name: 'Salla' }));
+    const sallaCard = await screen.findByRole('button', { name: /Salla/i });
+    expect(sallaCard.tagName).toBe('BUTTON');
+    await userEvent.setup().click(sallaCard);
     expect(api.post).toHaveBeenCalledWith('/integrations/salla/auth-url');
     expect(screen.queryByLabelText(/Client Secret/i)).not.toBeInTheDocument();
   });

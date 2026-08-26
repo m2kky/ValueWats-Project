@@ -347,10 +347,11 @@ export default function Integrations() {
 
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
              {AVAILABLE_TOOLS.map(tool => (
-                <div 
+                <button
+                  type="button"
                   key={tool.id} 
                   onClick={() => openSetupModal(tool.id)}
-                  className="bg-[#111113] border border-white/5 rounded-3xl p-6 cursor-pointer hover:border-white/20 transition-all hover:-translate-y-1 group relative overflow-hidden flex flex-col h-full"
+                  className="bg-[#111113] border border-white/5 rounded-3xl p-6 cursor-pointer hover:border-white/20 transition-all hover:-translate-y-1 group relative overflow-hidden flex flex-col h-full text-left"
                 >
                    {/* Cool Gradient on Hover */}
                    <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/0 to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -366,7 +367,7 @@ export default function Integrations() {
                    <div className="mt-6 flex items-center text-[10px] font-bold uppercase tracking-widest text-zinc-500 group-hover:text-white transition-colors mt-auto pt-4">
                      Setup Connection &rarr;
                    </div>
-                </div>
+                </button>
              ))}
            </div>
          </div>

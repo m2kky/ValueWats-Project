@@ -107,4 +107,13 @@ describe('Salla integration API', () => {
     sallaOAuthService.completeCallback.mockRejectedValue(Object.assign(new Error('secret'), { code: 'SALLA_INVALID_STATE' }));
     await request(app).get('/api/oauth/salla/callback?code=code&state=state').expect(302).expect('Location', '/settings/integrations?error=SALLA_INVALID_STATE');
   });
+
+  it('redirects Google and Notion OAuth errors to settings', async () => {
+    const { app } = createHarness();
+
+    await request(app).get('/api/oauth/google/callback?error=access_denied')
+      .expect(302).expect('Location', '/settings/integrations?error=access_denied');
+    await request(app).get('/api/oauth/notion/callback?error=access_denied')
+      .expect(302).expect('Location', '/settings/integrations?error=access_denied');
+  });
 });

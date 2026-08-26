@@ -23,7 +23,7 @@ router.get('/google/callback', async (req, res) => {
   const { code, state, error } = req.query;
 
   if (error) {
-    return res.redirect(`/integrations?error=${encodeURIComponent(error)}`);
+    return res.redirect(`/settings/integrations?error=${encodeURIComponent(error)}`);
   }
   
   if (!code || !state) {
@@ -35,10 +35,10 @@ router.get('/google/callback', async (req, res) => {
     await integrationService.completeOAuth(integrationId, code);
     
     // Redirect back to frontend integrations page exactly as requested
-    res.redirect(`/integrations?success=true`);
+    res.redirect(`/settings/integrations?success=true`);
   } catch (err) {
     console.error('OAuth Callback Error:', err);
-    res.redirect(`/integrations?error=${encodeURIComponent(err.message)}`);
+    res.redirect(`/settings/integrations?error=${encodeURIComponent(err.message)}`);
   }
 });
 
@@ -47,7 +47,7 @@ router.get('/notion/callback', async (req, res) => {
   const { code, state, error } = req.query;
 
   if (error) {
-    return res.redirect(`/integrations?error=${encodeURIComponent(error)}`);
+    return res.redirect(`/settings/integrations?error=${encodeURIComponent(error)}`);
   }
   
   if (!code || !state) {
@@ -57,10 +57,10 @@ router.get('/notion/callback', async (req, res) => {
   try {
     const integrationId = state;
     await integrationService.completeNotionOAuth(integrationId, code);
-    res.redirect(`/integrations?success=true`);
+    res.redirect(`/settings/integrations?success=true`);
   } catch (err) {
     console.error('OAuth Callback Error:', err);
-    res.redirect(`/integrations?error=${encodeURIComponent(err.message)}`);
+    res.redirect(`/settings/integrations?error=${encodeURIComponent(err.message)}`);
   }
 });
 
