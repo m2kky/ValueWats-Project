@@ -9,10 +9,10 @@ function decodeEntities(value) {
 }
 
 function text(value, limit) {
-  return decodeEntities(String(value || '')
+  return decodeEntities(String(value || ''))
     .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
     .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, '')
-    .replace(/<[^>]+>/g, ' '))
+    .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, limit);

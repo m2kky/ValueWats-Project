@@ -37,6 +37,10 @@ describe('Salla adapter', () => {
     expect(normalizeSallaProduct({ id: 1, description: 'Safe &#999999999999999; text' }).description).toBe('Safe text');
   });
 
+  it('strips tags encoded by the provider before returning descriptions', () => {
+    expect(normalizeSallaProduct({ id: 1, description: 'Safe &lt;script&gt;ignore()&lt;/script&gt; text' }).description).toBe('Safe text');
+  });
+
   it('does not pass unexpected provider objects into normalized fields', () => {
     const product = normalizeSallaProduct({
       id: 1, price: { amount: 1, currency: { secret: 'provider-body' } }, image: { secret: 'provider-body' },
@@ -62,6 +66,30 @@ describe('Salla adapter', () => {
       params: { keyword: 'vitamin', format: 'light', per_page: 5 },
       headers: { Authorization: 'Bearer old-token' }
     });
+  });
+
+  it('caps provider search responses at five products', async () => {
+    const http = { get: vi.fn().mockResolvedValue({ data: { data: Array.from({ length: 8 }, (_, id) => ({ id })) } }) };
+    const client = createSallaClient({ http, tokenService: { getAccessToken: vi.fn().mockResolvedValue('token') } });
+
+    await expect(client.searchProducts({ tenantId: 'tenant-1', integrationId: 'integration-1' }, 'vitamin'))
+      .resolves.toEqual([{ id: 0 }, { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]);
+  });
+
+  it.each([0, -1, '2', null])('returns null for invalid Salla next pages: %s', async (nextPage) => {
+    const http = { get: vi.fn().mockResolvedValue({ data: { data: [], pagination: { next_page: nextPage } } }) };
+    const client = createSallaClient({ http, tokenService: { getAccessToken: vi.fn().mockResolvedValue('token') } });
+
+    await expect(client.listProductsPage({ tenantId: 'tenant-1', integrationId: 'integration-1' }, 1))
+      .resolves.toEqual({ products: [], nextPage: null });
+  });
+
+  it('returns a positive integer Salla next page', async () => {
+    const http = { get: vi.fn().mockResolvedValue({ data: { data: [], pagination: { next_page: 2 } } }) };
+    const client = createSallaClient({ http, tokenService: { getAccessToken: vi.fn().mockResolvedValue('token') } });
+
+    await expect(client.listProductsPage({ tenantId: 'tenant-1', integrationId: 'integration-1' }, 1))
+      .resolves.toEqual({ products: [], nextPage: 2 });
   });
 
   it('returns typed provider errors without logging provider bodies', async () => {

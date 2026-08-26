@@ -51,7 +51,7 @@ function createSallaClient({ http = axios, tokenService, timeoutMs = 2500 } = {}
   return {
     async searchProducts(context, query) {
       const response = await request(context, 'search_products', '/products', { keyword: query, format: 'light', per_page: 5 });
-      return Array.isArray(response?.data) ? response.data : [];
+      return Array.isArray(response?.data) ? response.data.slice(0, 5) : [];
     },
     async getProduct(context, productId) {
       return (await request(context, 'get_product', `/products/${encodeURIComponent(productId)}`))?.data || null;
@@ -62,7 +62,8 @@ function createSallaClient({ http = axios, tokenService, timeoutMs = 2500 } = {}
     },
     async listProductsPage(context, page) {
       const response = await request(context, 'list_products_page', '/products', { page, per_page: 100 });
-      return { products: Array.isArray(response?.data) ? response.data : [], nextPage: response?.pagination?.next_page || null };
+      const nextPage = response?.pagination?.next_page;
+      return { products: Array.isArray(response?.data) ? response.data : [], nextPage: Number.isInteger(nextPage) && nextPage > 0 ? nextPage : null };
     }
   };
 }

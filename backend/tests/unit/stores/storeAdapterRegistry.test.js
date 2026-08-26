@@ -8,10 +8,14 @@ describe('Store adapter registry', () => {
   });
 
   it('rejects unsupported providers with a stable error code', () => {
-    try {
-      createStoreAdapterRegistry({}).get('store_unknown');
-    } catch (error) {
-      expect(error).toMatchObject({ code: 'STORE_PROVIDER_UNSUPPORTED' });
-    }
+    expect(() => createStoreAdapterRegistry({}).get('store_unknown'))
+      .toThrow(expect.objectContaining({ code: 'STORE_PROVIDER_UNSUPPORTED' }));
+  });
+
+  it('does not resolve inherited adapters', () => {
+    const inherited = Object.create({ store_salla: { provider: 'salla' } });
+
+    expect(() => createStoreAdapterRegistry(inherited).get('store_salla'))
+      .toThrow(expect.objectContaining({ code: 'STORE_PROVIDER_UNSUPPORTED' }));
   });
 });

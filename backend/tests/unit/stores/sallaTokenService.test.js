@@ -62,9 +62,17 @@ describe('Salla token service', () => {
       id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla',
       credentials: encryptStoreCredentials({ accessToken: 'old-a', refreshToken: 'old-r', expiresAt: '2026-08-01T00:00:00.000Z' })
     };
+    let transactionCommitted = false;
     const prisma = {
-      integration: { findFirst: vi.fn().mockResolvedValue(integration), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
-      $transaction: vi.fn(async (callback) => callback(prisma)),
+      integration: {
+        findFirst: vi.fn().mockResolvedValue(integration),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 })
+      },
+      $transaction: vi.fn(async (callback) => {
+        const result = await callback(prisma);
+        transactionCommitted = true;
+        return result;
+      }),
       $queryRawUnsafe: vi.fn().mockResolvedValue(undefined)
     };
     const http = { post: vi.fn().mockRejectedValue(Object.assign(new Error('invalid refresh'), { response: { status: 400, data: { refresh_token: 'old-r' } } })) };
@@ -76,5 +84,61 @@ describe('Salla token service', () => {
       where: { id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla' },
       data: { status: 'reauthorization_required' }
     }));
+    expect(transactionCommitted).toBe(true);
+  });
+
+  it('does not let a normal lookup join an in-progress forced refresh', async () => {
+    const integration = {
+      id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla',
+      credentials: encryptStoreCredentials({ accessToken: 'old-a', refreshToken: 'old-r', expiresAt: '2026-09-01T00:00:00.000Z' })
+    };
+    const prisma = {
+      integration: {
+        findFirst: vi.fn().mockImplementation(async () => ({ ...integration })),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 })
+      },
+      $transaction: vi.fn(async (callback) => callback(prisma)),
+      $queryRawUnsafe: vi.fn().mockResolvedValue(undefined)
+    };
+    const http = { post: vi.fn().mockResolvedValue({ data: { access_token: 'new-a', refresh_token: 'new-r', expires_in: 1209600 } }) };
+    const service = createSallaTokenService({ prisma, http, clock: () => new Date('2026-08-26T10:00:00Z') });
+
+    const [normal, forced] = await Promise.all([
+      service.getAccessToken({ tenantId: 'tenant-1', integrationId: 'integration-1', forceRefresh: false }),
+      service.getAccessToken({ tenantId: 'tenant-1', integrationId: 'integration-1', forceRefresh: true })
+    ]);
+
+    expect(normal).toBe('old-a');
+    expect(forced).toBe('new-a');
+    expect(http.post).toHaveBeenCalledOnce();
+  });
+
+  it('sanitizes unexpected token lifecycle failures into a stable error', async () => {
+    const prisma = {
+      integration: { findFirst: vi.fn().mockRejectedValue(new Error('database password=secret-value')) },
+      $transaction: vi.fn(), $queryRawUnsafe: vi.fn()
+    };
+    const log = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await expect(createSallaTokenService({ prisma }).getAccessToken({ tenantId: 'tenant-1', integrationId: 'integration-1' }))
+      .rejects.toMatchObject({ code: 'STORE_TOKEN_REFRESH_FAILED' });
+    expect(JSON.stringify(log.mock.calls)).not.toContain('secret-value');
+  });
+
+  it('sanitizes malformed rotated-token expiries into a stable error', async () => {
+    const integration = {
+      id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla',
+      credentials: encryptStoreCredentials({ accessToken: 'old-a', refreshToken: 'old-r', expiresAt: '2026-08-01T00:00:00.000Z' })
+    };
+    const prisma = {
+      integration: { findFirst: vi.fn().mockResolvedValue(integration), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      $transaction: vi.fn(async (callback) => callback(prisma)),
+      $queryRawUnsafe: vi.fn().mockResolvedValue(undefined)
+    };
+    const http = { post: vi.fn().mockResolvedValue({ data: { access_token: 'new-a', refresh_token: 'new-r', expires_in: Number.MAX_VALUE } }) };
+
+    await expect(createSallaTokenService({ prisma, http, clock: () => new Date('2026-08-26T10:00:00Z') })
+      .getAccessToken({ tenantId: 'tenant-1', integrationId: 'integration-1', forceRefresh: true }))
+      .rejects.toMatchObject({ code: 'STORE_TOKEN_REFRESH_FAILED' });
   });
 });
