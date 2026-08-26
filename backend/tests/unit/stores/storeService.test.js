@@ -173,7 +173,10 @@ describe('Store service', () => {
     await service.completeFullSync({ tenantId: 'tenant-1', integrationId: 'integration-1', syncStartedAt, completed: false });
     expect(prisma.storeProduct.upsert).toHaveBeenCalledWith(expect.objectContaining({
       where: { integrationId_externalId: { integrationId: 'integration-1', externalId: '2' } },
-      create: expect.objectContaining({ tenantId: 'tenant-1', integrationId: 'integration-1', syncedAt: syncStartedAt })
+      create: expect.objectContaining({
+        tenantId: 'tenant-1', integrationId: 'integration-1', externalId: '2', syncedAt: syncStartedAt
+      }),
+      update: expect.not.objectContaining({ externalId: expect.anything() })
     }));
     expect(prisma.storeProduct.updateMany).not.toHaveBeenCalled();
 

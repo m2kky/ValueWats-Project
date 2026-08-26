@@ -18,6 +18,7 @@ function atMostFive(value) {
 
 function productData(product, tenantId, integrationId, syncedAt) {
   return {
+    externalId: String(product.externalId),
     sku: product.sku || null,
     name: product.name || '',
     description: product.description || null,
@@ -96,7 +97,12 @@ function createStoreService({ prisma, registry, clock = () => new Date(), enqueu
   async function upsertProduct({ tenantId, integrationId, product, syncedAt = clock() }) {
     if (!product?.externalId) return;
     const data = productData(product, tenantId, integrationId, syncedAt);
-    const { tenantId: ignoredTenantId, integrationId: ignoredIntegrationId, ...update } = data;
+    const {
+      tenantId: ignoredTenantId,
+      integrationId: ignoredIntegrationId,
+      externalId: ignoredExternalId,
+      ...update
+    } = data;
     await prisma.storeProduct.upsert({
       where: { integrationId_externalId: { integrationId, externalId: String(product.externalId) } },
       create: data,
