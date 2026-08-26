@@ -4,6 +4,7 @@ const { createStoreService } = require('./storeService');
 const { createSallaAdapter } = require('./providers/salla/sallaAdapter');
 const { createSallaClient } = require('./providers/salla/sallaClient');
 const { createSallaTokenService } = require('./providers/salla/sallaTokenService');
+const { createSallaOAuthService } = require('./providers/salla/sallaOAuthService');
 
 const RECONCILE_EVERY_MS = 6 * 60 * 60 * 1000;
 const RECONCILE_JITTER_MS = 30_000;
@@ -139,6 +140,9 @@ function createStoreSyncQueue({
   }));
 
   queue.process('reconcile_all', async () => {
+    if (typeof prisma.integration.deleteMany === 'function') {
+      await createSallaOAuthService({ prisma, clock }).reconcilePending();
+    }
     const integrations = await prisma.integration.findMany({
       where: { type: 'store_salla', status: 'active' },
       select: { id: true, tenantId: true }

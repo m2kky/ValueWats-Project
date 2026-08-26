@@ -2,11 +2,14 @@ const express = require('express');
 const router = express.Router();
 const integrationService = require('../services/integration.service');
 const prisma = require('@prisma/client').PrismaClient;
+const { createSallaIntegrationRouter } = require('../stores/providers/salla/sallaIntegration.routes');
 // Instantiate prisma for direct queries in controller logic if needed, 
 // though we should move logic to service. 
 // reusing existing services where possible.
 
 // --- INTEGRATIONS ---
+
+router.use('/salla', createSallaIntegrationRouter());
 
 router.get('/', async (req, res) => {
   try {
@@ -20,6 +23,9 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { type, name, credentials } = req.body;
+    if (/^store_/.test(type || '')) {
+      return res.status(400).json({ error: 'Store integrations must use provider authorization', code: 'RESERVED_INTEGRATION_TYPE' });
+    }
     const integration = await integrationService.upsertIntegration(
       req.user.tenantId,
       type,
