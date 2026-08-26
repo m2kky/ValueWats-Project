@@ -26,7 +26,7 @@ const prisma = new PrismaClient().$extends({
           return query(args);
         }
 
-        if (model === 'StoreProduct' && ['create', 'createMany', 'upsert'].includes(operation)) {
+        if (model === 'StoreProduct' && ['create', 'createMany', 'upsert', 'update', 'updateMany'].includes(operation)) {
           const writes = operation === 'upsert'
             ? [args.create, args.update]
             : (Array.isArray(args.data) ? args.data : [args.data]);

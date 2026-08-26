@@ -109,6 +109,16 @@ describe('Store persistence', () => {
       await expect(tenantScopedPrisma.storeProduct.create({
         data: { ...productData('mismatch'), tenantId: 'other-tenant' }
       })).rejects.toThrow('StoreProduct tenantId does not match active tenant');
+
+      await expect(tenantScopedPrisma.storeProduct.update({
+        where: { integrationId_externalId: { integrationId: integration.id, externalId: 'create' } },
+        data: { tenantId: 'other-tenant' }
+      })).rejects.toThrow('StoreProduct tenantId does not match active tenant');
+
+      await expect(tenantScopedPrisma.storeProduct.updateMany({
+        where: { integrationId: integration.id, externalId: 'create-many' },
+        data: { tenantId: 'other-tenant' }
+      })).rejects.toThrow('StoreProduct tenantId does not match active tenant');
     });
 
     expect(await prisma.storeProduct.count({ where: { tenantId: tenant.id } })).toBe(3);
