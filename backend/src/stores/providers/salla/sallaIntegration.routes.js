@@ -28,10 +28,17 @@ function createSallaIntegrationRouter() {
     const { prisma, queue } = context(req);
     const integration = await prisma.integration.findFirst({ where: { id: req.params.id, tenantId: req.user.tenantId, type: 'store_salla' } });
     if (!integration) return res.status(404).json({ error: 'STORE_INTEGRATION_NOT_FOUND' });
+    const where = { id: integration.id, tenantId: req.user.tenantId, type: 'store_salla' };
+    const activated = integration.status === 'error';
+    if (activated) {
+      const updated = await prisma.integration.updateMany({ where: { ...where, status: 'error' }, data: { status: 'active' } });
+      if (updated.count !== 1) return res.status(404).json({ error: 'STORE_INTEGRATION_NOT_FOUND' });
+    }
     try {
       await queue.enqueueFullSync({ tenantId: req.user.tenantId, integrationId: integration.id });
       res.status(202).json({ success: true });
     } catch (_) {
+      if (activated) await prisma.integration.updateMany({ where: { ...where, status: 'active' }, data: { status: 'error' } });
       res.status(503).json({ error: 'STORE_SYNC_UNAVAILABLE' });
     }
   });

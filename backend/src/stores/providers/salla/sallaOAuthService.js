@@ -136,7 +136,7 @@ function createSallaOAuthService({ prisma, http = axios, queue, clock = () => ne
 
   async function reconcilePending() {
     return prisma.integration.deleteMany({
-      where: { type: 'store_salla', status: 'pending', createdAt: { lt: new Date(clock().getTime() - 60 * 60 * 1000) } }
+      where: { type: 'store_salla', status: 'pending', updatedAt: { lt: new Date(clock().getTime() - 60 * 60 * 1000) } }
     });
   }
 

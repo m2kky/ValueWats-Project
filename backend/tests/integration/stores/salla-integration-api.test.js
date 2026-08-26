@@ -3,10 +3,14 @@ const { createApp } = require('../../../src/app');
 const integrationsRouter = require('../../../src/routes/integrations');
 const oauthRouter = require('../../../src/routes/oauth');
 
-function createHarness(role = 'admin') {
+function createHarness(role = 'admin', integration = null) {
   const prisma = {
     integration: {
-      findFirst: vi.fn(async () => null),
+      findFirst: vi.fn(async () => integration),
+      updateMany: vi.fn(async ({ data }) => {
+        Object.assign(integration, data);
+        return { count: 1 };
+      }),
       deleteMany: vi.fn(async () => ({ count: 0 }))
     }
   };
@@ -23,6 +27,10 @@ function createHarness(role = 'admin') {
     dependencies: { prisma, queues: { storeSync }, sallaOAuthService, integrationService }
   });
   return { app, prisma, storeSync, sallaOAuthService, integrationService };
+}
+
+function storeIntegration(status) {
+  return { id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla', status };
 }
 
 describe('Salla integration API', () => {
@@ -57,6 +65,39 @@ describe('Salla integration API', () => {
     await request(app).post('/api/integrations/salla/other-tenant/sync').expect(404, { error: 'STORE_INTEGRATION_NOT_FOUND' });
     expect(prisma.integration.findFirst).toHaveBeenCalledWith({ where: { id: 'other-tenant', tenantId: 'tenant-1', type: 'store_salla' } });
     expect(storeSync.enqueueFullSync).not.toHaveBeenCalled();
+  });
+
+  it('activates an errored integration before enqueuing sync work', async () => {
+    const integration = storeIntegration('error');
+    const { app, prisma, storeSync } = createHarness('admin', integration);
+    storeSync.enqueueFullSync.mockImplementation(async () => {
+      expect(integration.status).toBe('active');
+    });
+
+    await request(app).post('/api/integrations/salla/integration-1/sync').expect(202, { success: true });
+    expect(prisma.integration.updateMany).toHaveBeenCalledWith({
+      where: { id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla', status: 'error' }, data: { status: 'active' }
+    });
+  });
+
+  it('restores error status when enqueueing a manually activated sync fails', async () => {
+    const integration = storeIntegration('error');
+    const { app, prisma, storeSync } = createHarness('admin', integration);
+    storeSync.enqueueFullSync.mockRejectedValue(new Error('redis-secret'));
+
+    await request(app).post('/api/integrations/salla/integration-1/sync').expect(503, { error: 'STORE_SYNC_UNAVAILABLE' });
+    expect(integration.status).toBe('error');
+    expect(prisma.integration.updateMany).toHaveBeenNthCalledWith(2, {
+      where: { id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla', status: 'active' }, data: { status: 'error' }
+    });
+  });
+
+  it('leaves an already active integration active before enqueueing', async () => {
+    const integration = storeIntegration('active');
+    const { app, prisma } = createHarness('admin', integration);
+
+    await request(app).post('/api/integrations/salla/integration-1/sync').expect(202, { success: true });
+    expect(prisma.integration.updateMany).not.toHaveBeenCalled();
   });
 
   it('redirects the Salla callback to settings on success and stable errors', async () => {

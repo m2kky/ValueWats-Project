@@ -128,7 +128,7 @@ describe('Salla OAuth service', () => {
     expect(prisma.integration.deleteMany).toHaveBeenCalledWith({
       where: {
         type: 'store_salla', status: 'pending',
-        createdAt: { lt: new Date('2026-08-26T09:00:00.000Z') }
+        updatedAt: { lt: new Date('2026-08-26T09:00:00.000Z') }
       }
     });
   });
