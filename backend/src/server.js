@@ -3,12 +3,20 @@ const http = require('http');
 const { createApp } = require('./app');
 const socketService = require('./services/socketService');
 const { startCommentReplyProcessing } = require('./commentReplies/commentReplyBoot');
+const { createStoreSyncQueue } = require('./stores/storeSyncQueue');
+
+const prisma = require('./config/database');
+const storeSyncQueue = createStoreSyncQueue({ prisma });
 
 // Keep queue workers and provider clients in process boot, never in app construction.
 const dependencies = {
-  prisma: require('./config/database'),
+  prisma,
   modelGateway: require('./ai/deepseek.service'),
-  queues: { workflow: require('./services/workflowQueue').workflowQueue, campaign: require('./services/queueService').messageQueue },
+  queues: {
+    workflow: require('./services/workflowQueue').workflowQueue,
+    campaign: require('./services/queueService').messageQueue,
+    storeSync: storeSyncQueue
+  },
   providers: { evolution: require('./services/evolutionApi'), meta: require('./services/metaApi') },
   clock: () => new Date()
 };
@@ -16,6 +24,7 @@ const dependencies = {
 const routes = {
   auth: require('./routes/auth'), instances: require('./routes/instances'), campaigns: require('./routes/campaigns'),
   webhooks: require('./routes/webhooks'), chat: require('./routes/chat'), agents: require('./agents/agent.routes'),
+  sallaWebhooks: require('./stores/providers/salla/sallaWebhook.routes').createSallaWebhookRouter,
   commentReplies: require('./commentReplies/commentReply.routes').createCommentReplyRouter,
   knowledge: require('./agents/knowledge.routes'), integrations: require('./routes/integrations'), workflows: require('./routes/workflows'),
   plans: require('./routes/plans'), onboarding: require('./routes/onboarding'), dashboard: require('./routes/dashboard'),
@@ -42,10 +51,16 @@ server.listen(PORT, () => {
     clock: dependencies.clock
   });
   require('./services/schedulerService').startScheduler();
+  storeSyncQueue.enqueueReconciliation().catch(() => {
+    console.error('[Boot] Store reconciliation registration failed', { errorCode: 'STORE_QUEUE_UNAVAILABLE' });
+  });
 });
 
 server.on('close', () => {
   commentReplyProcessing?.stop();
+  storeSyncQueue.close().catch(() => {
+    console.error('[Shutdown] Store queue close failed', { errorCode: 'STORE_QUEUE_CLOSE_FAILED' });
+  });
 });
 
 module.exports = app;

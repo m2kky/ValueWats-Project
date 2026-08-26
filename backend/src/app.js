@@ -19,6 +19,7 @@ function createApp({ routes = {}, middleware = {}, dependencies = {} } = {}) {
   app.locals.dependencies = dependencies;
   app.set('trust proxy', 1);
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' } }));
+  if (routes.sallaWebhooks) app.use('/api/webhooks/salla', express.raw({ type: 'application/json', limit: '1mb' }), route(routes.sallaWebhooks, dependencies));
   if (routes.webhooks) app.use('/api/webhooks/meta', express.raw({ type: 'application/json', limit: '1mb' }));
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
