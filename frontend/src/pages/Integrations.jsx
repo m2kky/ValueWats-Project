@@ -20,6 +20,7 @@ export default function Integrations() {
   const [showModal, setShowModal] = useState(false);
   const [authError, setAuthError] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [sallaSetup, setSallaSetup] = useState(null);
 
   // Form State
   const [type, setType] = useState('google_calendar_oauth');
@@ -98,10 +99,22 @@ export default function Integrations() {
 
   const sallaError = (error) => error.response?.data?.error || error.message;
 
+  const consumeSallaConnection = (data) => {
+    if (data?.authUrl) {
+      window.location.href = data.authUrl;
+      return true;
+    }
+    if (data?.mode === 'easy' && data.pairingCode && data.installUrl) {
+      setSallaSetup(data);
+      return true;
+    }
+    return false;
+  };
+
   const startSallaAuth = async () => {
     try {
       const { data } = await api.post('/integrations/salla/auth-url');
-      if (data.authUrl) window.location.href = data.authUrl;
+      consumeSallaConnection(data);
     } catch (error) {
       setNotice({ type: 'error', message: sallaError(error) === 'SALLA_NOT_CONFIGURED'
         ? 'Salla App keys are not configured.'
@@ -112,10 +125,7 @@ export default function Integrations() {
   const handleSallaAction = async (action, id) => {
     try {
       const { data } = await api[action === 'delete' ? 'delete' : 'post'](`/integrations/salla/${id}${action === 'delete' ? '' : `/${action}`}`);
-      if (data?.authUrl) {
-        window.location.href = data.authUrl;
-        return;
-      }
+      if (consumeSallaConnection(data)) return;
       setNotice({ type: 'success', message: action === 'sync' ? 'Salla sync started.' : 'Salla integration deleted.' });
       fetchIntegrations();
     } catch (error) {
@@ -373,6 +383,56 @@ export default function Integrations() {
              ))}
            </div>
          </div>
+      )}
+
+      {sallaSetup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Connect Salla"
+            className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#121212] p-6 shadow-2xl"
+          >
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-400">Salla Easy Mode</p>
+            <h2 className="mt-2 text-2xl font-black text-white">Connect Salla</h2>
+            <p className="mt-3 text-sm leading-6 text-zinc-400">
+              Copy this code, open Salla, then paste it into the ValueChat Connection Code field. The code expires in 30 minutes.
+            </p>
+            <div className="mt-6 break-all rounded-2xl border border-indigo-400/30 bg-black px-4 py-5 text-center font-mono text-lg font-bold tracking-wider text-indigo-200">
+              {sallaSetup.pairingCode}
+            </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(sallaSetup.pairingCode);
+                    setNotice({ type: 'success', message: 'Salla connection code copied.' });
+                  } catch (_) {
+                    setNotice({ type: 'error', message: 'Could not copy the Salla connection code.' });
+                  }
+                }}
+                className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-white hover:bg-white/5"
+              >
+                Copy code
+              </button>
+              <button
+                type="button"
+                onClick={() => window.open(sallaSetup.installUrl, '_blank', 'noopener,noreferrer')}
+                className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-500"
+              >
+                Open Salla
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSallaSetup(null)}
+              className="mt-3 w-full rounded-xl px-4 py-3 text-sm font-semibold text-zinc-400 hover:bg-white/5 hover:text-white"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Connection Entry Modal */}
