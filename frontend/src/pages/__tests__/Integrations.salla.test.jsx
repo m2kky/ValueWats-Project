@@ -31,4 +31,18 @@ describe('Integrations Salla card', () => {
     await userEvent.setup().click(await screen.findByRole('button', { name: /Sync now/i }));
     expect(api.post).toHaveBeenCalledWith('/integrations/salla/s1/sync');
   });
+
+  it('continues pending Salla setup without offering an invalid sync', async () => {
+    api.get.mockResolvedValue({
+      data: { integrations: [{ id: 's1', type: 'store_salla', name: 'Salla Store', status: 'pending', metadata: null }] }
+    });
+    api.post.mockResolvedValueOnce({ data: {} });
+
+    render(<Integrations />);
+
+    expect(await screen.findByRole('button', { name: /Continue setup/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Sync now/i })).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: /Continue setup/i }));
+    expect(api.post).toHaveBeenCalledWith('/integrations/salla/s1/reconnect');
+  });
 });

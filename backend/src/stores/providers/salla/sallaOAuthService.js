@@ -73,11 +73,12 @@ function createSallaOAuthService({ prisma, http = axios, queue, clock = () => ne
     const integration = await prisma.integration.findFirst({
       where: {
         id: integrationId, tenantId, type: 'store_salla',
-        status: { in: ['active', 'error', 'reauthorization_required'] }
+        status: { in: ['pending', 'active', 'error', 'reauthorization_required'] }
       }
     });
     if (!integration) throw codedError('STORE_INTEGRATION_NOT_FOUND');
-    const state = createStoreOAuthState({ integrationId, tenantId, flow: 'reconnect', now: clock() });
+    const flow = integration.status === 'pending' ? 'connect' : 'reconnect';
+    const state = createStoreOAuthState({ integrationId, tenantId, flow, now: clock() });
     const url = new URL(AUTH_URL);
     url.search = new URLSearchParams({
       client_id: process.env.SALLA_CLIENT_ID, redirect_uri: redirectUri,

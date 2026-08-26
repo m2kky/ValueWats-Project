@@ -296,11 +296,13 @@ export default function Integrations() {
                           <div>Status: <span className="text-white">{int.status}</span></div>
                           <div>Last sync: <span className="text-white">{int.metadata?.lastSyncedAt ? new Date(int.metadata.lastSyncedAt).toLocaleString() : 'Never'}</span></div>
                           <div className="flex gap-2">
-                            <button onClick={() => handleSallaAction('sync', int.id)} className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold">
-                              <ArrowPathIcon className="h-4 w-4" /> Sync now
-                            </button>
+                            {int.status !== 'pending' && (
+                              <button onClick={() => handleSallaAction('sync', int.id)} className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold">
+                                <ArrowPathIcon className="h-4 w-4" /> Sync now
+                              </button>
+                            )}
                             <button onClick={() => handleSallaAction('reconnect', int.id)} className="px-3 py-2 border border-white/10 hover:bg-white/5 text-white rounded-lg text-xs font-bold">
-                              Reconnect
+                              {int.status === 'pending' ? 'Continue setup' : 'Reconnect'}
                             </button>
                           </div>
                         </div>

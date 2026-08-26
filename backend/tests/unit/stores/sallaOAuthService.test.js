@@ -95,11 +95,27 @@ describe('Salla OAuth service', () => {
     expect(prisma.integration.findFirst).toHaveBeenCalledWith({
       where: {
         id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla',
-        status: { in: ['active', 'error', 'reauthorization_required'] }
+        status: { in: ['pending', 'active', 'error', 'reauthorization_required'] }
       }
     });
     expect(verifyStoreOAuthState(new URL(authUrl).searchParams.get('state'), { now })).toEqual({
       integrationId: 'integration-1', tenantId: 'tenant-1', flow: 'reconnect'
+    });
+  });
+
+  it('continues a pending integration with the original connect flow', async () => {
+    const { service, prisma, now } = harness({ status: 'pending' });
+
+    const { authUrl } = await service.reconnect({ tenantId: 'tenant-1', integrationId: 'integration-1' });
+
+    expect(prisma.integration.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla',
+        status: { in: ['pending', 'active', 'error', 'reauthorization_required'] }
+      }
+    });
+    expect(verifyStoreOAuthState(new URL(authUrl).searchParams.get('state'), { now })).toEqual({
+      integrationId: 'integration-1', tenantId: 'tenant-1', flow: 'connect'
     });
   });
 
