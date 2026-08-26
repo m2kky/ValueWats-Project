@@ -1,4 +1,5 @@
 const { createStoreToolService } = require('../../../src/stores/storeToolService');
+const { ToolService } = require('../../../src/services/toolService');
 
 function setup({ action = null } = {}) {
   const prisma = {
@@ -252,5 +253,24 @@ describe('Store tool execution', () => {
       errorCode: 'STORE_LOOKUP_FAILED'
     });
     expect(JSON.stringify(logger.info.mock.calls)).not.toMatch(/customer secret text|secret product/);
+  });
+});
+
+describe('production Store tool wiring', () => {
+  it('lets server boot inject the StoreToolService backed by the queue StoreService', async () => {
+    const storeToolService = {
+      getToolDefinitions: vi.fn().mockReturnValue([{ type: 'function', function: { name: 'search_store_products' } }]),
+      execute: vi.fn().mockResolvedValue({ success: true, source: 'cache', products: [] })
+    };
+    const toolService = new ToolService();
+
+    toolService.configureStoreToolService(storeToolService);
+
+    expect(toolService.getToolDefinitions({ actions: [] })).toContainEqual({
+      type: 'function', function: { name: 'search_store_products' }
+    });
+    await expect(toolService.execute('search_store_products', { query: 'greens' }, { tenantId: 'tenant-1' }))
+      .resolves.toEqual({ success: true, source: 'cache', products: [] });
+    expect(storeToolService.execute).toHaveBeenCalledWith('search_store_products', { query: 'greens' }, { tenantId: 'tenant-1' });
   });
 });

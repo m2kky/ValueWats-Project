@@ -43,11 +43,12 @@ function createHarness(overrides = {}) {
   };
   const registry = { get: vi.fn().mockReturnValue(adapter) };
   const clock = vi.fn().mockReturnValue(new Date('2026-08-26T12:00:00.000Z'));
+  const sleep = vi.fn().mockResolvedValue(undefined);
   const queueApi = createStoreSyncQueue({
-    prisma, registry, storeService, Queue: FakeQueue, clock, random: () => 0.5,
+    prisma, registry, storeService, Queue: FakeQueue, clock, sleep, random: () => 0.5,
     ...overrides
   });
-  return { queueApi, queue: FakeQueue.instance, prisma, registry, adapter, storeService, integrations };
+  return { queueApi, queue: FakeQueue.instance, prisma, registry, adapter, storeService, integrations, sleep };
 }
 
 describe('Store catalog sync queue', () => {
@@ -114,6 +115,48 @@ describe('Store catalog sync queue', () => {
         lastSyncStatus: 'success', lastSyncedAt: '2026-08-26T12:00:00.000Z', lastSyncError: null
       } }
     });
+  });
+
+  it('retries only the rate-limited current page after bounded injected sleep', async () => {
+    const { queue, adapter, sleep } = createHarness();
+    adapter.listProductsPage.mockReset()
+      .mockResolvedValueOnce({ products: [{ externalId: '1' }], nextPage: 2 })
+      .mockRejectedValueOnce(Object.assign(new Error('rate limit'), { code: 'STORE_RATE_LIMITED', retryAfterMs: 120000 }))
+      .mockResolvedValueOnce({ products: [{ externalId: '2' }], nextPage: null });
+
+    await queue.processors.full_sync({
+      data: { tenantId: 'tenant-1', integrationId: 'integration-1' }, discard: vi.fn()
+    });
+
+    expect(adapter.listProductsPage.mock.calls.map((call) => call[1])).toEqual([1, 2, 2]);
+    expect(sleep).toHaveBeenCalledWith(60000);
+  });
+
+  it('stops after three rate-limited page attempts and prevents a whole-job restart', async () => {
+    const { queue, adapter, sleep } = createHarness();
+    const error = Object.assign(new Error('rate limit'), { code: 'STORE_RATE_LIMITED', retryAfterMs: 0 });
+    adapter.listProductsPage.mockReset().mockRejectedValue(error);
+    const job = { data: { tenantId: 'tenant-1', integrationId: 'integration-1' }, discard: vi.fn() };
+
+    await expect(queue.processors.full_sync(job)).rejects.toMatchObject({ code: 'STORE_RATE_LIMITED' });
+
+    expect(adapter.listProductsPage).toHaveBeenCalledTimes(3);
+    expect(sleep.mock.calls).toEqual([[1000], [1000]]);
+    expect(job.discard).toHaveBeenCalledOnce();
+  });
+
+  it('schedules delayed full and product repair jobs through the queue API', async () => {
+    const { queueApi, queue } = createHarness();
+
+    await queueApi.enqueueFullSync({ tenantId: 'tenant-1', integrationId: 'integration-1', delayMs: 7000 });
+    await queueApi.enqueueProductRefresh({ tenantId: 'tenant-1', integrationId: 'integration-1', productId: '44', delayMs: 9000 });
+
+    expect(queue.add).toHaveBeenNthCalledWith(1, 'full_sync', {
+      tenantId: 'tenant-1', integrationId: 'integration-1'
+    }, expect.objectContaining({ jobId: 'store-full:integration-1', delay: 7000 }));
+    expect(queue.add).toHaveBeenNthCalledWith(2, 'product_refresh', {
+      tenantId: 'tenant-1', integrationId: 'integration-1', productId: '44'
+    }, { removeOnComplete: true, delay: 9000 });
   });
 
   it('stores and throws only a stable internal code after a failed full sync', async () => {

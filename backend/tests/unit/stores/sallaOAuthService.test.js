@@ -1,6 +1,6 @@
 const crypto = require('crypto');
-const { decryptStoreCredentials } = require('../../../src/stores/storeCredentialCrypto');
-const { createStoreOAuthState } = require('../../../src/stores/storeOAuthState');
+const { decryptStoreCredentials, encryptStoreCredentials } = require('../../../src/stores/storeCredentialCrypto');
+const { createStoreOAuthState, verifyStoreOAuthState } = require('../../../src/stores/storeOAuthState');
 const { createSallaOAuthService } = require('../../../src/stores/providers/salla/sallaOAuthService');
 
 const key = crypto.randomBytes(32).toString('base64');
@@ -8,15 +8,16 @@ const key = crypto.randomBytes(32).toString('base64');
 function useSallaConfig() {
   process.env.SALLA_CLIENT_ID = 'salla-client';
   process.env.SALLA_CLIENT_SECRET = 'salla-secret';
-  process.env.SALLA_REDIRECT_URI = 'https://app.example.test/api/oauth/salla/callback';
+  process.env.SALLA_WEBHOOK_SECRET = 'webhook-secret';
+  process.env.BACKEND_URL = 'https://app.example.test///';
   process.env.ENCRYPTION_KEY = key;
 }
 
-function harness() {
+function harness(overrides = {}) {
   const integration = {
     id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla', name: 'Salla Store',
     credentials: null, status: 'pending', externalAccountId: null, metadata: null,
-    createdAt: new Date('2026-08-26T10:00:00Z')
+    createdAt: new Date('2026-08-26T10:00:00Z'), ...overrides
   };
   const prisma = {
     integration: {
@@ -39,7 +40,9 @@ function harness() {
 }
 
 describe('Salla OAuth service', () => {
-  const environment = Object.fromEntries(['SALLA_CLIENT_ID', 'SALLA_CLIENT_SECRET', 'SALLA_REDIRECT_URI', 'ENCRYPTION_KEY'].map((name) => [name, process.env[name]]));
+  const environment = Object.fromEntries([
+    'SALLA_CLIENT_ID', 'SALLA_CLIENT_SECRET', 'SALLA_WEBHOOK_SECRET', 'BACKEND_URL', 'ENCRYPTION_KEY'
+  ].map((name) => [name, process.env[name]]));
 
   beforeEach(useSallaConfig);
   afterEach(() => {
@@ -50,13 +53,15 @@ describe('Salla OAuth service', () => {
     }
   });
 
-  it('fails with SALLA_NOT_CONFIGURED before creating a pending integration', async () => {
+  it.each(['SALLA_CLIENT_ID', 'SALLA_CLIENT_SECRET', 'SALLA_WEBHOOK_SECRET', 'BACKEND_URL'])(
+    'fails with SALLA_NOT_CONFIGURED when %s is absent before creating a pending integration', async (name) => {
     const { service, prisma } = harness();
-    delete process.env.SALLA_CLIENT_ID;
+    delete process.env[name];
 
     await expect(service.createAuthUrl({ tenantId: 'tenant-1' })).rejects.toMatchObject({ code: 'SALLA_NOT_CONFIGURED' });
     expect(prisma.integration.create).not.toHaveBeenCalled();
-  });
+    }
+  );
 
   it('creates encrypted pending credentials and an exact offline product-read authorization URL', async () => {
     const { service, integration, now } = harness();
@@ -66,20 +71,51 @@ describe('Salla OAuth service', () => {
 
     expect(url.origin + url.pathname).toBe('https://accounts.salla.sa/oauth2/auth');
     expect(url.searchParams.get('scope')).toBe('products.read offline_access');
+    expect(url.searchParams.get('redirect_uri')).toBe('https://app.example.test/api/oauth/salla/callback');
     expect(decryptStoreCredentials(integration.credentials)).toEqual({ provider: 'salla', pending: true });
     expect(url.searchParams.get('state')).toBeTruthy();
+    expect(verifyStoreOAuthState(url.searchParams.get('state'), { now })).toEqual({
+      integrationId: 'integration-1', tenantId: 'tenant-1', flow: 'connect'
+    });
     expect(createStoreOAuthState).toBeTypeOf('function');
     expect(now).toBeInstanceOf(Date);
   });
 
+  it('leaves an abandoned reconnect integration and its catalog-ready state unchanged', async () => {
+    const credentials = encryptStoreCredentials({ accessToken: 'old-access', refreshToken: 'old-refresh', expiresAt: '2026-09-01T00:00:00.000Z' });
+    const { service, integration, prisma, now } = harness({
+      status: 'active', credentials, metadata: { merchantName: 'Existing Store' }, externalAccountId: '42'
+    });
+
+    const { authUrl } = await service.reconnect({ tenantId: 'tenant-1', integrationId: 'integration-1' });
+    await service.reconcilePending();
+
+    expect(integration).toMatchObject({ status: 'active', credentials, externalAccountId: '42', metadata: { merchantName: 'Existing Store' } });
+    expect(prisma.integration.updateMany).not.toHaveBeenCalled();
+    expect(prisma.integration.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla',
+        status: { in: ['active', 'error', 'reauthorization_required'] }
+      }
+    });
+    expect(verifyStoreOAuthState(new URL(authUrl).searchParams.get('state'), { now })).toEqual({
+      integrationId: 'integration-1', tenantId: 'tenant-1', flow: 'reconnect'
+    });
+  });
+
   it('verifies state before lookup, rotates encrypted credentials, and starts the initial sync', async () => {
     const { service, integration, prisma, http, queue, now } = harness();
-    const state = createStoreOAuthState({ integrationId: integration.id, now });
+    const state = createStoreOAuthState({
+      integrationId: integration.id, tenantId: integration.tenantId, flow: 'connect', now
+    });
 
     await service.completeCallback({ code: 'authorization-code', state });
 
-    expect(prisma.integration.findFirst).toHaveBeenCalledWith({ where: { id: integration.id, type: 'store_salla', status: 'pending' } });
+    expect(prisma.integration.findFirst).toHaveBeenCalledWith({
+      where: { id: integration.id, tenantId: integration.tenantId, type: 'store_salla', status: 'pending' }
+    });
     expect(http.post).toHaveBeenCalledWith('https://accounts.salla.sa/oauth2/token', expect.stringContaining('grant_type=authorization_code'), expect.any(Object));
+    expect(new URLSearchParams(http.post.mock.calls[0][1]).get('redirect_uri')).toBe('https://app.example.test/api/oauth/salla/callback');
     expect(http.get).toHaveBeenCalledWith('https://accounts.salla.sa/oauth2/user/info', expect.objectContaining({ headers: { Authorization: 'Bearer access-secret' } }));
     expect(decryptStoreCredentials(integration.credentials)).toEqual({
       accessToken: 'access-secret', refreshToken: 'refresh-secret', expiresAt: '2026-08-26T11:00:00.000Z'
@@ -87,6 +123,33 @@ describe('Salla OAuth service', () => {
     expect(integration).toMatchObject({ status: 'active', externalAccountId: '42', metadata: { merchantName: 'Safe Store', merchantDomain: 'safe-store' } });
     expect(queue.enqueueFullSync).toHaveBeenCalledWith({ tenantId: 'tenant-1', integrationId: 'integration-1' });
   });
+
+  it.each(['active', 'error', 'reauthorization_required'])(
+    'atomically replaces a valid %s reconnect target only after callback success', async (status) => {
+      const oldCredentials = encryptStoreCredentials({ accessToken: 'old-access', refreshToken: 'old-refresh', expiresAt: '2026-09-01T00:00:00.000Z' });
+      const { service, integration, prisma, now } = harness({ status, credentials: oldCredentials });
+      const state = createStoreOAuthState({
+        integrationId: integration.id, tenantId: integration.tenantId, flow: 'reconnect', now
+      });
+
+      await service.completeCallback({ code: 'authorization-code', state });
+
+      expect(prisma.integration.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: integration.id, tenantId: integration.tenantId, type: 'store_salla',
+          status: { in: ['active', 'error', 'reauthorization_required'] }
+        }
+      });
+      expect(prisma.integration.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: {
+          id: integration.id, tenantId: integration.tenantId, type: 'store_salla',
+          status: { in: ['active', 'error', 'reauthorization_required'] }
+        },
+        data: expect.objectContaining({ status: 'active' })
+      }));
+      expect(decryptStoreCredentials(integration.credentials).accessToken).toBe('access-secret');
+    }
+  );
 
   it('rejects tampered state without querying integrations or exchanging codes', async () => {
     const { service, prisma, http } = harness();
@@ -99,7 +162,9 @@ describe('Salla OAuth service', () => {
   it('retains credentials but marks the integration error when initial enqueue fails', async () => {
     const { service, integration, queue, now } = harness();
     queue.enqueueFullSync.mockRejectedValue(new Error('redis-password'));
-    const state = createStoreOAuthState({ integrationId: integration.id, now });
+    const state = createStoreOAuthState({
+      integrationId: integration.id, tenantId: integration.tenantId, flow: 'connect', now
+    });
 
     await expect(service.completeCallback({ code: 'authorization-code', state })).rejects.toMatchObject({ code: 'SALLA_INITIAL_SYNC_FAILED' });
     expect(integration.status).toBe('error');
@@ -110,7 +175,9 @@ describe('Salla OAuth service', () => {
     const { service, integration, http, now } = harness();
     const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     http.post.mockRejectedValue(new Error('provider-body-access-secret'));
-    const state = createStoreOAuthState({ integrationId: integration.id, now });
+    const state = createStoreOAuthState({
+      integrationId: integration.id, tenantId: integration.tenantId, flow: 'connect', now
+    });
 
     await expect(service.completeCallback({ code: 'authorization-code', state })).rejects.toMatchObject({ code: 'SALLA_TOKEN_EXCHANGE_FAILED' });
     const output = JSON.stringify(info.mock.calls);

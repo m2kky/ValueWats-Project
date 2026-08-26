@@ -14,15 +14,17 @@ describe('Store OAuth state', () => {
   it('creates and verifies a signed OAuth state', () => {
     process.env.SALLA_CLIENT_SECRET = 'state-secret';
     const now = new Date('2026-08-26T10:00:00Z');
-    const state = createStoreOAuthState({ integrationId: 'integration-1', now });
+    const state = createStoreOAuthState({ integrationId: 'integration-1', tenantId: 'tenant-1', flow: 'connect', now });
 
-    expect(verifyStoreOAuthState(state, { now })).toEqual({ integrationId: 'integration-1' });
+    expect(verifyStoreOAuthState(state, { now })).toEqual({
+      integrationId: 'integration-1', tenantId: 'tenant-1', flow: 'connect'
+    });
   });
 
   it('rejects expired and modified OAuth state', () => {
     process.env.SALLA_CLIENT_SECRET = 'state-secret';
     const now = new Date('2026-08-26T10:00:00Z');
-    const state = createStoreOAuthState({ integrationId: 'integration-1', now });
+    const state = createStoreOAuthState({ integrationId: 'integration-1', tenantId: 'tenant-1', flow: 'reconnect', now });
 
     expect(() => verifyStoreOAuthState(`${state}x`, { now })).toThrow('Invalid OAuth state');
     expect(() => verifyStoreOAuthState(state, { now: new Date('2026-08-26T10:11:00Z') })).toThrow('OAuth state expired');
@@ -31,10 +33,12 @@ describe('Store OAuth state', () => {
   it('rejects invalid state shape, secret, and clock input', () => {
     process.env.SALLA_CLIENT_SECRET = 'state-secret';
     const now = new Date('2026-08-26T10:00:00Z');
-    const state = createStoreOAuthState({ integrationId: 'integration-1', now });
+    const state = createStoreOAuthState({ integrationId: 'integration-1', tenantId: 'tenant-1', flow: 'connect', now });
 
-    expect(() => createStoreOAuthState({ integrationId: '', now })).toThrow();
-    expect(() => createStoreOAuthState({ integrationId: 'integration-1', now: new Date('invalid') })).toThrow();
+    expect(() => createStoreOAuthState({ integrationId: '', tenantId: 'tenant-1', flow: 'connect', now })).toThrow();
+    expect(() => createStoreOAuthState({ integrationId: 'integration-1', tenantId: '', flow: 'connect', now })).toThrow();
+    expect(() => createStoreOAuthState({ integrationId: 'integration-1', tenantId: 'tenant-1', flow: 'invalid', now })).toThrow();
+    expect(() => createStoreOAuthState({ integrationId: 'integration-1', tenantId: 'tenant-1', flow: 'connect', now: new Date('invalid') })).toThrow();
     delete process.env.SALLA_CLIENT_SECRET;
     expect(() => verifyStoreOAuthState(state, { now })).toThrow('Invalid OAuth state');
   });

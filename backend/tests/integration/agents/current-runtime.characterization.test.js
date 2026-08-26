@@ -57,7 +57,7 @@ describe('current runtime seam', () => {
     const { createApp } = require('../../../src/app');
     const integrationsRouter = require('../../../src/routes/integrations');
     const { createSallaWebhookRouter } = require('../../../src/stores/providers/salla/sallaWebhook.routes');
-    const names = ['SALLA_CLIENT_ID', 'SALLA_CLIENT_SECRET', 'SALLA_WEBHOOK_SECRET'];
+    const names = ['SALLA_CLIENT_ID', 'SALLA_CLIENT_SECRET', 'SALLA_WEBHOOK_SECRET', 'BACKEND_URL'];
     const original = Object.fromEntries(names.map((name) => [name, process.env[name]]));
     const prisma = { integration: { findFirst: fn() } };
 
@@ -76,6 +76,13 @@ describe('current runtime seam', () => {
     } finally {
       names.forEach((name) => original[name] === undefined ? delete process.env[name] : process.env[name] = original[name]);
     }
+  });
+
+  it('wires production Store tools to the queue-owned StoreService', () => {
+    const serverSource = fs.readFileSync(path.join(__dirname, '../../../src/server.js'), 'utf8');
+
+    expect(serverSource).toContain('configureStoreToolService(createStoreToolService({');
+    expect(serverSource).toContain('storeService: storeSyncQueue.storeService');
   });
 
   it('closes every resource owned by the test harness', async () => {

@@ -248,5 +248,9 @@ function createDefaultService() {
   });
 }
 
-module.exports = createDefaultService();
-module.exports.createStoreToolService = createStoreToolService;
+let defaultService;
+module.exports = {
+  getToolDefinitions: (...args) => (defaultService ||= createDefaultService()).getToolDefinitions(...args),
+  execute: (...args) => (defaultService ||= createDefaultService()).execute(...args),
+  createStoreToolService
+};

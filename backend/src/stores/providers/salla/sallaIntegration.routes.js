@@ -1,6 +1,13 @@
 const express = require('express');
 const checkPermission = require('../../../middleware/checkPermission');
 const { createSallaOAuthService } = require('./sallaOAuthService');
+const { createStoreOAuthVerifier } = require('../../storeOAuthState');
+
+function setVerifierCookie(res, result) {
+  const state = new URL(result.authUrl).searchParams.get('state');
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `salla_oauth_verifier=${createStoreOAuthVerifier(state)}; Max-Age=600; Path=/api/oauth/salla/callback; HttpOnly; SameSite=Lax${secure}`);
+}
 
 function createSallaIntegrationRouter() {
   const router = express.Router();
@@ -18,7 +25,9 @@ function createSallaIntegrationRouter() {
 
   router.post('/auth-url', checkPermission('integrations.manage'), async (req, res) => {
     try {
-      res.json(await context(req).sallaOAuthService.createAuthUrl({ tenantId: req.user.tenantId }));
+      const result = await context(req).sallaOAuthService.createAuthUrl({ tenantId: req.user.tenantId });
+      setVerifierCookie(res, result);
+      res.json(result);
     } catch (error) {
       res.status(error.code === 'SALLA_NOT_CONFIGURED' ? 503 : 500).json({ error: error.code || 'SALLA_OAUTH_FAILED' });
     }
@@ -45,7 +54,9 @@ function createSallaIntegrationRouter() {
 
   router.post('/:id/reconnect', checkPermission('integrations.manage'), async (req, res) => {
     try {
-      res.json(await context(req).sallaOAuthService.reconnect({ tenantId: req.user.tenantId, integrationId: req.params.id }));
+      const result = await context(req).sallaOAuthService.reconnect({ tenantId: req.user.tenantId, integrationId: req.params.id });
+      setVerifierCookie(res, result);
+      res.json(result);
     } catch (error) {
       const status = error.code === 'STORE_INTEGRATION_NOT_FOUND' ? 404 : error.code === 'SALLA_NOT_CONFIGURED' ? 503 : 500;
       res.status(status).json({ error: error.code || 'SALLA_OAUTH_FAILED' });

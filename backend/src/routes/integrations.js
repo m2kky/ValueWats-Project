@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const integrationService = require('../services/integration.service');
 const prisma = require('@prisma/client').PrismaClient;
+const checkPermission = require('../middleware/checkPermission');
 const { createSallaIntegrationRouter } = require('../stores/providers/salla/sallaIntegration.routes');
 // Instantiate prisma for direct queries in controller logic if needed, 
 // though we should move logic to service. 
@@ -38,12 +39,20 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', checkPermission('integrations.manage'), async (req, res) => {
   try {
-    const db = new prisma();
-    await db.integration.delete({
-      where: { id: req.params.id, tenantId: req.user.tenantId } // Ensure ownership
+    const db = req.app.locals.dependencies?.prisma || require('../config/database');
+    const integration = await db.integration.findFirst({
+      where: { id: req.params.id, tenantId: req.user.tenantId }, select: { type: true }
     });
+    if (!integration) return res.status(404).json({ error: 'Integration not found' });
+    if (/^store_/.test(integration.type)) {
+      return res.status(400).json({ error: 'Store integrations must use provider deletion', code: 'RESERVED_INTEGRATION_TYPE' });
+    }
+    const deleted = await db.integration.deleteMany({
+      where: { id: req.params.id, tenantId: req.user.tenantId, type: integration.type }
+    });
+    if (deleted.count !== 1) return res.status(404).json({ error: 'Integration not found' });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

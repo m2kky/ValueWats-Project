@@ -64,9 +64,11 @@ describe('Store service', () => {
     expect(result.products).toEqual([expect.objectContaining({ externalId: '2', name: 'Live Greens', price: '90.00', liveVerified: true })]);
   });
 
-  it.each(['STORE_PROVIDER_TIMEOUT', 'STORE_PROVIDER_RATE_LIMITED', 'STORE_PROVIDER_UNAVAILABLE'])('returns descriptive cache and enqueues a delayed refresh after %s', async (code) => {
+  it.each(['STORE_PROVIDER_TIMEOUT', 'STORE_RATE_LIMITED', 'STORE_PROVIDER_UNAVAILABLE'])('returns descriptive cache and enqueues a delayed full sync after %s', async (code) => {
     const { service, adapter, enqueueRefresh } = createService();
-    adapter.searchProducts.mockRejectedValue(Object.assign(new Error('provider-secret'), { code }));
+    adapter.searchProducts.mockRejectedValue(Object.assign(new Error('provider-secret'), {
+      code, ...(code === 'STORE_RATE_LIMITED' ? { retryAfterMs: 7000 } : {})
+    }));
     const log = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const result = await service.searchProducts({ tenantId: 'tenant-1', integrationId: 'integration-1', query: 'greens', maxResults: 5 });
@@ -74,8 +76,41 @@ describe('Store service', () => {
     expect(result).toMatchObject({ source: 'cache', products: [{ externalId: '1', liveVerified: false, currentPriceVerified: false, currentAvailabilityVerified: false }] });
     expect(result.products[0]).not.toHaveProperty('price');
     expect(result.products[0]).not.toHaveProperty('isAvailable');
-    expect(enqueueRefresh).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 'tenant-1', integrationId: 'integration-1', operation: 'search_products', delayMs: 60000 }));
+    expect(enqueueRefresh).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1', integrationId: 'integration-1', operation: 'search_products',
+      delayMs: code === 'STORE_RATE_LIMITED' ? 7000 : 60000
+    }));
     expect(JSON.stringify(log.mock.calls)).not.toContain('provider-secret');
+    log.mockRestore();
+  });
+
+  it('returns cached details and enqueues a delayed product refresh after a transient failure', async () => {
+    const { service, adapter, enqueueRefresh } = createService();
+    adapter.getProduct.mockRejectedValue(Object.assign(new Error('rate limited'), {
+      code: 'STORE_RATE_LIMITED', retryAfterMs: 9000
+    }));
+
+    const result = await service.getProduct({ tenantId: 'tenant-1', integrationId: 'integration-1', productId: '1' });
+
+    expect(result).toMatchObject({ source: 'cache', product: { externalId: '1', liveVerified: false } });
+    expect(enqueueRefresh).toHaveBeenCalledWith({
+      tenantId: 'tenant-1', integrationId: 'integration-1', productId: '1',
+      operation: 'get_product', delayMs: 9000
+    });
+  });
+
+  it('keeps the cached response when repair enqueue fails and logs only a stable error', async () => {
+    const { service, adapter, enqueueRefresh } = createService();
+    adapter.searchProducts.mockRejectedValue(Object.assign(new Error('provider-secret'), { code: 'STORE_PROVIDER_TIMEOUT' }));
+    enqueueRefresh.mockRejectedValue(new Error('redis-password=queue-secret'));
+    const log = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await expect(service.searchProducts({
+      tenantId: 'tenant-1', integrationId: 'integration-1', query: 'greens', maxResults: 5
+    })).resolves.toMatchObject({ source: 'cache', products: [{ externalId: '1', liveVerified: false }] });
+
+    expect(JSON.stringify(log.mock.calls)).toContain('STORE_QUEUE_UNAVAILABLE');
+    expect(JSON.stringify(log.mock.calls)).not.toContain('queue-secret');
     log.mockRestore();
   });
 

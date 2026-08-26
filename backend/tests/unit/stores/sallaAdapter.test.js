@@ -92,14 +92,28 @@ describe('Salla adapter', () => {
       .resolves.toEqual({ products: [], nextPage: 2 });
   });
 
-  it('returns typed provider errors without logging provider bodies', async () => {
+  it.each([
+    ['7', '2026-08-26T12:00:00.000Z', 7000],
+    ['Wed, 26 Aug 2026 12:00:20 GMT', '2026-08-26T12:00:00.000Z', 20000],
+    ['0', '2026-08-26T12:00:00.000Z', 1000],
+    ['999', '2026-08-26T12:00:00.000Z', 60000],
+    ['invalid', '2026-08-26T12:00:00.000Z', 1000]
+  ])('returns a bounded typed rate limit for Retry-After %s', async (retryAfter, now, expectedMs) => {
     const http = { get: vi.fn().mockRejectedValue(Object.assign(new Error('provider leaked token=provider-secret'), {
-      response: { status: 429, data: { access_token: 'provider-secret', details: 'do not log' } }
+      response: {
+        status: 429, headers: { 'retry-after': retryAfter },
+        data: { access_token: 'provider-secret', details: 'do not log' }
+      }
     })) };
     const log = vi.spyOn(console, 'info').mockImplementation(() => {});
-    const client = createSallaClient({ http, tokenService: { getAccessToken: vi.fn().mockResolvedValue('token') } });
+    const client = createSallaClient({
+      http,
+      tokenService: { getAccessToken: vi.fn().mockResolvedValue('token') },
+      clock: () => new Date(now).getTime()
+    });
 
-    await expect(client.getProduct({ tenantId: 'tenant-1', integrationId: 'integration-1' }, '44')).rejects.toMatchObject({ code: 'STORE_PROVIDER_RATE_LIMITED' });
+    await expect(client.getProduct({ tenantId: 'tenant-1', integrationId: 'integration-1' }, '44'))
+      .rejects.toMatchObject({ code: 'STORE_RATE_LIMITED', retryAfterMs: expectedMs });
     expect(JSON.stringify(log.mock.calls)).not.toContain('provider-secret');
     expect(JSON.stringify(log.mock.calls)).not.toContain('do not log');
     log.mockRestore();

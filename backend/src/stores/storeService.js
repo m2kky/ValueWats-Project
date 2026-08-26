@@ -2,7 +2,7 @@ const { redactForLog } = require('../logging/redaction');
 
 const REFRESH_DELAY_MS = 60_000;
 const TRANSIENT_PROVIDER_ERRORS = new Set([
-  'STORE_PROVIDER_TIMEOUT', 'STORE_PROVIDER_RATE_LIMITED', 'STORE_PROVIDER_UNAVAILABLE'
+  'STORE_PROVIDER_TIMEOUT', 'STORE_RATE_LIMITED', 'STORE_PROVIDER_UNAVAILABLE'
 ]);
 
 function storeError(code) {
@@ -68,6 +68,23 @@ function compactProduct(product, { liveVerified, verifiedAt }) {
 }
 
 function createStoreService({ prisma, registry, clock = () => new Date(), enqueueRefresh = async () => {} } = {}) {
+  async function scheduleRepair(input) {
+    try {
+      await enqueueRefresh(input);
+    } catch (_) {
+      console.info('store.repair.enqueue', redactForLog({
+        integrationId: input.integrationId,
+        operation: input.operation,
+        outcome: 'error',
+        errorCode: 'STORE_QUEUE_UNAVAILABLE'
+      }));
+    }
+  }
+
+  const repairDelay = (error) => error?.code === 'STORE_RATE_LIMITED'
+    ? Math.min(60_000, Math.max(1000, Number(error.retryAfterMs) || 1000))
+    : REFRESH_DELAY_MS;
+
   async function integrationFor(tenantId, integrationId) {
     const integration = await prisma.integration.findFirst({
       where: { id: integrationId, tenantId, type: 'store_salla', status: 'active' }
@@ -126,7 +143,7 @@ function createStoreService({ prisma, registry, clock = () => new Date(), enqueu
       } catch (error) {
         if (!TRANSIENT_PROVIDER_ERRORS.has(error?.code)) throw storeError('STORE_LOOKUP_FAILED');
         const products = cached.slice(0, limit).map((product) => compactProduct(product, { liveVerified: false }));
-        await enqueueRefresh({ tenantId, integrationId, operation: 'search_products', delayMs: REFRESH_DELAY_MS });
+        await scheduleRepair({ tenantId, integrationId, operation: 'search_products', delayMs: repairDelay(error) });
         logLookup({ integrationId, operation: 'search_products', source, startedAt, resultCount: products.length, outcome: 'fallback', errorCode: error.code });
         return { source, products };
       }
@@ -169,7 +186,10 @@ function createStoreService({ prisma, registry, clock = () => new Date(), enqueu
         if (error?.code === 'STORE_INVALID_PROVIDER_RESPONSE') throw error;
         if (!TRANSIENT_PROVIDER_ERRORS.has(error?.code)) throw storeError('STORE_LOOKUP_FAILED');
         const result = compactProduct(cached, { liveVerified: false });
-        await enqueueRefresh({ tenantId, integrationId, productId: requestedProductId, operation: 'get_product', delayMs: REFRESH_DELAY_MS });
+        await scheduleRepair({
+          tenantId, integrationId, productId: requestedProductId,
+          operation: 'get_product', delayMs: repairDelay(error)
+        });
         logLookup({ integrationId, operation: 'get_product', source, startedAt, resultCount: 1, outcome: 'fallback', errorCode: error.code });
         return { source, product: result };
       }

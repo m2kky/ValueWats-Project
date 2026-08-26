@@ -1,4 +1,5 @@
 const request = require('supertest');
+const crypto = require('node:crypto');
 const { createApp } = require('../../../src/app');
 const integrationsRouter = require('../../../src/routes/integrations');
 const oauthRouter = require('../../../src/routes/oauth');
@@ -16,8 +17,8 @@ function createHarness(role = 'admin', integration = null) {
   };
   const storeSync = { enqueueFullSync: vi.fn(async () => ({ id: 'job-1' })) };
   const sallaOAuthService = {
-    createAuthUrl: vi.fn(async () => ({ authUrl: 'https://accounts.salla.sa/oauth2/auth?scope=products.read+offline_access' })),
-    reconnect: vi.fn(async () => ({ authUrl: 'https://accounts.salla.sa/oauth2/auth?state=reconnect' })),
+    createAuthUrl: vi.fn(async () => ({ authUrl: 'https://accounts.salla.sa/oauth2/auth?scope=products.read+offline_access&state=connect-state' })),
+    reconnect: vi.fn(async () => ({ authUrl: 'https://accounts.salla.sa/oauth2/auth?state=reconnect-state' })),
     completeCallback: vi.fn(async () => ({ id: 'integration-1' }))
   };
   const integrationService = { listIntegrations: vi.fn(), upsertIntegration: vi.fn() };
@@ -27,6 +28,10 @@ function createHarness(role = 'admin', integration = null) {
     dependencies: { prisma, queues: { storeSync }, sallaOAuthService, integrationService }
   });
   return { app, prisma, storeSync, sallaOAuthService, integrationService };
+}
+
+function verifier(state) {
+  return crypto.createHash('sha256').update(state).digest('hex');
 }
 
 function storeIntegration(status) {
@@ -44,10 +49,30 @@ describe('Salla integration API', () => {
   it('starts authorization for the authenticated tenant', async () => {
     const { app, sallaOAuthService } = createHarness();
 
-    await request(app).post('/api/integrations/salla/auth-url').expect(200, {
-      authUrl: 'https://accounts.salla.sa/oauth2/auth?scope=products.read+offline_access'
+    const response = await request(app).post('/api/integrations/salla/auth-url').expect(200);
+
+    expect(response.body).toEqual({
+      authUrl: 'https://accounts.salla.sa/oauth2/auth?scope=products.read+offline_access&state=connect-state'
     });
+    expect(response.headers['set-cookie']).toEqual([
+      `salla_oauth_verifier=${verifier('connect-state')}; Max-Age=600; Path=/api/oauth/salla/callback; HttpOnly; SameSite=Lax`
+    ]);
     expect(sallaOAuthService.createAuthUrl).toHaveBeenCalledWith({ tenantId: 'tenant-1' });
+  });
+
+  it('sets the same browser-binding cookie for reconnect and marks it Secure in production', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const { app } = createHarness('admin', storeIntegration('active'));
+    process.env.NODE_ENV = 'production';
+    try {
+      const response = await request(app).post('/api/integrations/salla/integration-1/reconnect').expect(200);
+      expect(response.headers['set-cookie']).toEqual([
+        `salla_oauth_verifier=${verifier('reconnect-state')}; Max-Age=600; Path=/api/oauth/salla/callback; HttpOnly; SameSite=Lax; Secure`
+      ]);
+    } finally {
+      if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = originalNodeEnv;
+    }
   });
 
   it('blocks reserved Store types on generic integration creation', async () => {
@@ -57,6 +82,33 @@ describe('Salla integration API', () => {
       error: 'Store integrations must use provider authorization', code: 'RESERVED_INTEGRATION_TYPE'
     });
     expect(integrationService.upsertIntegration).not.toHaveBeenCalled();
+  });
+
+  it('requires integrations.manage for generic integration deletion', async () => {
+    const { app, prisma } = createHarness('agent', { id: 'generic-1', tenantId: 'tenant-1', type: 'notion' });
+
+    await request(app).delete('/api/integrations/generic-1').expect(403);
+    expect(prisma.integration.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects Store rows on generic deletion so the provider route is mandatory', async () => {
+    const { app, prisma } = createHarness('admin', storeIntegration('active'));
+
+    await request(app).delete('/api/integrations/integration-1').expect(400, {
+      error: 'Store integrations must use provider deletion', code: 'RESERVED_INTEGRATION_TYPE'
+    });
+    expect(prisma.integration.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('deletes a tenant-owned non-Store integration through the generic route', async () => {
+    const generic = { id: 'generic-1', tenantId: 'tenant-1', type: 'notion' };
+    const { app, prisma } = createHarness('admin', generic);
+    prisma.integration.deleteMany.mockResolvedValue({ count: 1 });
+
+    await request(app).delete('/api/integrations/generic-1').expect(200, { success: true });
+    expect(prisma.integration.deleteMany).toHaveBeenCalledWith({
+      where: { id: 'generic-1', tenantId: 'tenant-1', type: 'notion' }
+    });
   });
 
   it('does not enqueue a sync for an ID outside the tenant-owned Salla scope', async () => {
@@ -100,12 +152,28 @@ describe('Salla integration API', () => {
     expect(prisma.integration.updateMany).not.toHaveBeenCalled();
   });
 
-  it('redirects the Salla callback to settings on success and stable errors', async () => {
+  it('requires the browser verifier before invoking the Salla callback service and clears it', async () => {
     const { app, sallaOAuthService } = createHarness();
 
-    await request(app).get('/api/oauth/salla/callback?code=code&state=state').expect(302).expect('Location', '/settings/integrations?success=true');
+    await request(app).get('/api/oauth/salla/callback?code=code&state=state')
+      .expect(302).expect('Location', '/settings/integrations?error=SALLA_INVALID_STATE');
+    await request(app).get('/api/oauth/salla/callback?code=code&state=state')
+      .set('Cookie', 'salla_oauth_verifier=mismatch')
+      .expect(302).expect('Location', '/settings/integrations?error=SALLA_INVALID_STATE');
+    expect(sallaOAuthService.completeCallback).not.toHaveBeenCalled();
+
+    const response = await request(app).get('/api/oauth/salla/callback?code=code&state=state')
+      .set('Cookie', `other=value; salla_oauth_verifier=${verifier('state')}`)
+      .expect(302).expect('Location', '/settings/integrations?success=true');
+    expect(response.headers['set-cookie']).toEqual([
+      'salla_oauth_verifier=; Max-Age=0; Path=/api/oauth/salla/callback; HttpOnly; SameSite=Lax'
+    ]);
+    expect(sallaOAuthService.completeCallback).toHaveBeenCalledWith({ code: 'code', state: 'state' });
+
     sallaOAuthService.completeCallback.mockRejectedValue(Object.assign(new Error('secret'), { code: 'SALLA_INVALID_STATE' }));
-    await request(app).get('/api/oauth/salla/callback?code=code&state=state').expect(302).expect('Location', '/settings/integrations?error=SALLA_INVALID_STATE');
+    await request(app).get('/api/oauth/salla/callback?code=code&state=state')
+      .set('Cookie', `salla_oauth_verifier=${verifier('state')}`)
+      .expect(302).expect('Location', '/settings/integrations?error=SALLA_INVALID_STATE');
   });
 
   it('redirects Google and Notion OAuth errors to settings', async () => {

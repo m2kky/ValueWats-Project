@@ -8,6 +8,7 @@ const { createSallaOAuthService } = require('./providers/salla/sallaOAuthService
 
 const RECONCILE_EVERY_MS = 6 * 60 * 60 * 1000;
 const RECONCILE_JITTER_MS = 30_000;
+const defaultSleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 function safeCode(error) {
   return /^STORE_[A-Z0-9_]+$/.test(error?.code || '') ? error.code : 'STORE_SYNC_FAILED';
@@ -23,15 +24,9 @@ function createStoreSyncQueue({
   storeService,
   Queue = BullQueue,
   clock = () => new Date(),
+  sleep = defaultSleep,
   random = Math.random
 } = {}) {
-  if (!registry || !storeService) {
-    const tokenService = createSallaTokenService({ prisma });
-    const client = createSallaClient({ tokenService });
-    registry ||= createStoreAdapterRegistry({ store_salla: createSallaAdapter({ client, tokenService }) });
-    storeService ||= createStoreService({ prisma, registry });
-  }
-
   const queue = new Queue('store-catalog-sync', {
     redis: {
       host: process.env.REDIS_HOST || 'localhost',
@@ -44,6 +39,19 @@ function createStoreSyncQueue({
       removeOnFail: 100
     }
   });
+
+  if (!registry || !storeService) {
+    const tokenService = createSallaTokenService({ prisma });
+    const client = createSallaClient({ tokenService });
+    registry ||= createStoreAdapterRegistry({ store_salla: createSallaAdapter({ client, tokenService }) });
+    storeService ||= createStoreService({
+      prisma,
+      registry,
+      enqueueRefresh: ({ operation, delayMs, ...input }) => operation === 'get_product'
+        ? addProductRefresh(input, delayMs)
+        : addFullSync(input, delayMs)
+    });
+  }
 
   async function activeIntegration(tenantId, integrationId) {
     const integration = await prisma.integration.findFirst({
@@ -72,6 +80,13 @@ function createStoreSyncQueue({
     });
   }
 
+  function addProductRefresh(input, delay) {
+    return queue.add('product_refresh', input, {
+      removeOnComplete: true,
+      ...(delay === undefined ? {} : { delay })
+    });
+  }
+
   queue.process('full_sync', async (job) => {
     const { tenantId, integrationId } = job.data;
     const syncStartedAt = clock();
@@ -86,7 +101,20 @@ function createStoreSyncQueue({
       while (page !== null) {
         if (visitedPages.has(page)) throw stableError('STORE_SYNC_INVALID_PAGE');
         visitedPages.add(page);
-        const result = await adapter.listProductsPage({ tenantId, integrationId }, page);
+        let result;
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+          try {
+            result = await adapter.listProductsPage({ tenantId, integrationId }, page);
+            break;
+          } catch (error) {
+            if (error?.code !== 'STORE_RATE_LIMITED') throw error;
+            if (attempt === 3) {
+              job.discard?.();
+              throw error;
+            }
+            await sleep(Math.min(60_000, Math.max(1000, Number(error.retryAfterMs) || 1000)));
+          }
+        }
         await storeService.syncCatalogPage({ tenantId, integrationId, products: result.products, syncStartedAt });
         scanned += Array.isArray(result.products) ? result.products.length : 0;
         pages += 1;
@@ -158,9 +186,9 @@ function createStoreSyncQueue({
     return { integrations: integrations.length };
   });
 
-  const enqueueFullSync = (input) => addFullSync(input);
+  const enqueueFullSync = ({ delayMs, ...input }) => addFullSync(input, delayMs);
 
-  const enqueueProductRefresh = (input) => queue.add('product_refresh', input, { removeOnComplete: true });
+  const enqueueProductRefresh = ({ delayMs, ...input }) => addProductRefresh(input, delayMs);
   const enqueueDelete = (input) => queue.add('product_delete', input, { removeOnComplete: true });
   const enqueueReconciliation = () => queue.add('reconcile_all', {}, {
     jobId: 'store-reconcile-v1',
@@ -173,6 +201,7 @@ function createStoreSyncQueue({
     enqueueProductRefresh,
     enqueueDelete,
     enqueueReconciliation,
+    storeService,
     close: () => queue.close()
   };
 }

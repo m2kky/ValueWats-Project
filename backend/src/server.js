@@ -4,10 +4,15 @@ const { createApp } = require('./app');
 const socketService = require('./services/socketService');
 const { startCommentReplyProcessing } = require('./commentReplies/commentReplyBoot');
 const { createStoreSyncQueue } = require('./stores/storeSyncQueue');
+const { createStoreToolService } = require('./stores/storeToolService');
 const { createGracefulShutdown, createSignalHandler } = require('./serverShutdown');
 
 const prisma = require('./config/database');
 const storeSyncQueue = createStoreSyncQueue({ prisma });
+require('./services/toolService').configureStoreToolService(createStoreToolService({
+  prisma,
+  storeService: storeSyncQueue.storeService
+}));
 
 // Keep queue workers and provider clients in process boot, never in app construction.
 const dependencies = {

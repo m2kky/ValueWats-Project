@@ -6,7 +6,6 @@ const prisma = require('../config/database');
 const { decrypt } = require('../utils/encryption');
 const NotionService = require('./notionService');
 const { sanitizeError } = require('../logging/redaction');
-const storeToolService = require('../stores/storeToolService');
 
 const toolFailure = (error, prefix = '') => ({
     success: false,
@@ -14,7 +13,8 @@ const toolFailure = (error, prefix = '') => ({
 });
 
 class ToolService {
-    constructor() {
+    constructor({ storeToolService = require('../stores/storeToolService') } = {}) {
+        this.storeToolService = storeToolService;
         this.handlers = {
             send_email: this.handleSendEmail.bind(this),
             create_calendar_event: this.handleCreateCalendarEvent.bind(this),
@@ -29,9 +29,13 @@ class ToolService {
             update_notion_page: this.handleUpdateNotionPage.bind(this),
             append_notion_block: this.handleAppendNotionBlock.bind(this),
             archive_notion_page: this.handleArchiveNotionPage.bind(this),
-            search_store_products: (args, context) => storeToolService.execute('search_store_products', args, context),
-            get_store_product: (args, context) => storeToolService.execute('get_store_product', args, context)
+            search_store_products: (args, context) => this.storeToolService.execute('search_store_products', args, context),
+            get_store_product: (args, context) => this.storeToolService.execute('get_store_product', args, context)
         };
+    }
+
+    configureStoreToolService(storeToolService) {
+        this.storeToolService = storeToolService;
     }
 
     /**
@@ -247,7 +251,7 @@ class ToolService {
             });
         }
 
-        tools.push(...storeToolService.getToolDefinitions(actions));
+        tools.push(...this.storeToolService.getToolDefinitions(actions));
         return tools;
     }
 
@@ -427,3 +431,4 @@ class ToolService {
 }
 
 module.exports = new ToolService();
+module.exports.ToolService = ToolService;

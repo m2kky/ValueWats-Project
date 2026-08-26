@@ -16,9 +16,11 @@ function configured() {
   } catch (_) {
     throw codedError('SALLA_NOT_CONFIGURED');
   }
-  if (!process.env.SALLA_CLIENT_ID || !process.env.SALLA_CLIENT_SECRET || !process.env.SALLA_REDIRECT_URI) {
+  if (['SALLA_CLIENT_ID', 'SALLA_CLIENT_SECRET', 'SALLA_WEBHOOK_SECRET', 'BACKEND_URL']
+    .some((name) => !process.env[name]?.trim())) {
     throw codedError('SALLA_NOT_CONFIGURED');
   }
+  return `${process.env.BACKEND_URL.replace(/\/+$/, '')}/api/oauth/salla/callback`;
 }
 
 function merchant(data) {
@@ -50,33 +52,35 @@ function oauthLog(integrationId, startedAt, outcome, errorCode) {
 
 function createSallaOAuthService({ prisma, http = axios, queue, clock = () => new Date() } = {}) {
   async function createAuthUrl({ tenantId }) {
-    configured();
+    const redirectUri = configured();
     const integration = await prisma.integration.create({
       data: {
         tenantId, type: 'store_salla', name: 'Salla Store', status: 'pending',
         credentials: encryptStoreCredentials({ provider: 'salla', pending: true })
       }
     });
-    const state = createStoreOAuthState({ integrationId: integration.id, now: clock() });
+    const state = createStoreOAuthState({ integrationId: integration.id, tenantId, flow: 'connect', now: clock() });
     const url = new URL(AUTH_URL);
     url.search = new URLSearchParams({
-      client_id: process.env.SALLA_CLIENT_ID, redirect_uri: process.env.SALLA_REDIRECT_URI,
+      client_id: process.env.SALLA_CLIENT_ID, redirect_uri: redirectUri,
       response_type: 'code', scope: 'products.read offline_access', state
     }).toString();
     return { authUrl: url.toString() };
   }
 
   async function reconnect({ tenantId, integrationId }) {
-    configured();
-    const updated = await prisma.integration.updateMany({
-      where: { id: integrationId, tenantId, type: 'store_salla' },
-      data: { status: 'pending', credentials: encryptStoreCredentials({ provider: 'salla', pending: true }) }
+    const redirectUri = configured();
+    const integration = await prisma.integration.findFirst({
+      where: {
+        id: integrationId, tenantId, type: 'store_salla',
+        status: { in: ['active', 'error', 'reauthorization_required'] }
+      }
     });
-    if (updated.count !== 1) throw codedError('STORE_INTEGRATION_NOT_FOUND');
-    const state = createStoreOAuthState({ integrationId, now: clock() });
+    if (!integration) throw codedError('STORE_INTEGRATION_NOT_FOUND');
+    const state = createStoreOAuthState({ integrationId, tenantId, flow: 'reconnect', now: clock() });
     const url = new URL(AUTH_URL);
     url.search = new URLSearchParams({
-      client_id: process.env.SALLA_CLIENT_ID, redirect_uri: process.env.SALLA_REDIRECT_URI,
+      client_id: process.env.SALLA_CLIENT_ID, redirect_uri: redirectUri,
       response_type: 'code', scope: 'products.read offline_access', state
     }).toString();
     return { authUrl: url.toString() };
@@ -86,20 +90,26 @@ function createSallaOAuthService({ prisma, http = axios, queue, clock = () => ne
     const startedAt = Date.now();
     let integrationId;
     try {
-      configured();
+      const redirectUri = configured();
+      let tenantId;
+      let flow;
       try {
-        ({ integrationId } = verifyStoreOAuthState(state, { now: clock() }));
+        ({ integrationId, tenantId, flow } = verifyStoreOAuthState(state, { now: clock() }));
       } catch (_) {
         throw codedError('SALLA_INVALID_STATE');
       }
       if (typeof code !== 'string' || !code) throw codedError('SALLA_INVALID_CALLBACK');
-      const integration = await prisma.integration.findFirst({ where: { id: integrationId, type: 'store_salla', status: 'pending' } });
+      const targetStatus = flow === 'reconnect'
+        ? { in: ['active', 'error', 'reauthorization_required'] }
+        : 'pending';
+      const targetWhere = { id: integrationId, tenantId, type: 'store_salla', status: targetStatus };
+      const integration = await prisma.integration.findFirst({ where: targetWhere });
       if (!integration) throw codedError('STORE_INTEGRATION_NOT_FOUND');
       let tokenResponse;
       try {
         tokenResponse = await http.post(TOKEN_URL, new URLSearchParams({
           grant_type: 'authorization_code', code, client_id: process.env.SALLA_CLIENT_ID,
-          client_secret: process.env.SALLA_CLIENT_SECRET, redirect_uri: process.env.SALLA_REDIRECT_URI
+          client_secret: process.env.SALLA_CLIENT_SECRET, redirect_uri: redirectUri
         }).toString(), { timeout: 2500, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
       } catch (_) {
         throw codedError('SALLA_TOKEN_EXCHANGE_FAILED');
@@ -113,7 +123,7 @@ function createSallaOAuthService({ prisma, http = axios, queue, clock = () => ne
       }
       const account = merchant(merchantResponse?.data);
       const saved = await prisma.integration.updateMany({
-        where: { id: integration.id, tenantId: integration.tenantId, type: 'store_salla', status: 'pending' },
+        where: targetWhere,
         data: { credentials: encryptStoreCredentials(credentials), externalAccountId: account.id, metadata: account.metadata, status: 'active' }
       });
       if (saved.count !== 1) throw codedError('STORE_INTEGRATION_NOT_FOUND');
