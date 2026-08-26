@@ -15,7 +15,7 @@ const refreshEvents = [
   'product.quantity.low'
 ];
 
-function createHarness() {
+function createHarness(authMode = 'custom') {
   const integration = {
     id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla',
     externalAccountId: '12', status: 'active'
@@ -30,11 +30,19 @@ function createHarness() {
     enqueueProductRefresh: vi.fn().mockResolvedValue({ id: 'refresh-job' }),
     enqueueDelete: vi.fn().mockResolvedValue({ id: 'delete-job' })
   };
+  const sallaEasyModeService = {
+    handleAuthorization: vi.fn().mockResolvedValue({ outcome: 'staged', activated: false }),
+    handleSettingsUpdated: vi.fn().mockResolvedValue({ outcome: 'staged', activated: false }),
+    handleUninstalled: vi.fn().mockResolvedValue({ outcome: 'revoked' })
+  };
   const app = createApp({
     routes: { sallaWebhooks: createSallaWebhookRouter },
-    dependencies: { prisma, queues: { storeSync: queue }, sallaWebhookSecret: secret }
+    dependencies: {
+      prisma, queues: { storeSync: queue }, sallaWebhookSecret: secret,
+      sallaEasyModeService, sallaAuthMode: authMode
+    }
   });
-  return { app, prisma, queue };
+  return { app, prisma, queue, sallaEasyModeService };
 }
 
 function signedRequest(app, body, signatureBody = body) {
@@ -50,7 +58,7 @@ describe('Salla webhook route', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('rejects invalid signatures before parsing, resolving, or enqueueing', async () => {
-    const { app, prisma, queue } = createHarness();
+    const { app, prisma, queue, sallaEasyModeService } = createHarness('easy');
 
     await request(app)
       .post('/api/webhooks/salla')
@@ -61,6 +69,59 @@ describe('Salla webhook route', () => {
 
     expect(prisma.integration.findFirst).not.toHaveBeenCalled();
     expect(queue.enqueueProductRefresh).not.toHaveBeenCalled();
+    expect(sallaEasyModeService.handleAuthorization).not.toHaveBeenCalled();
+  });
+
+  it('passes signed Easy Mode authorization to the pairing service', async () => {
+    const { app, prisma, queue, sallaEasyModeService } = createHarness('easy');
+    const body = JSON.stringify({
+      event: 'app.store.authorize', merchant: 12,
+      data: {
+        access_token: 'access-secret', refresh_token: 'refresh-secret',
+        expires: 1787875200, scope: 'products.read offline_access'
+      }
+    });
+
+    await signedRequest(app, body).expect(202);
+
+    expect(sallaEasyModeService.handleAuthorization).toHaveBeenCalledWith({
+      merchantId: '12',
+      data: {
+        access_token: 'access-secret', refresh_token: 'refresh-secret',
+        expires: 1787875200, scope: 'products.read offline_access'
+      }
+    });
+    expect(prisma.integration.findFirst).not.toHaveBeenCalled();
+    expect(queue.enqueueProductRefresh).not.toHaveBeenCalled();
+  });
+
+  it('passes signed Easy Mode settings without logging the connection code', async () => {
+    const { app, sallaEasyModeService } = createHarness('easy');
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const body = JSON.stringify({
+      event: 'app.settings.updated', merchant: 12,
+      data: { settings: { valuechat_connection_code: 'pair-code-secret' } }
+    });
+
+    await signedRequest(app, body).expect(202);
+
+    expect(sallaEasyModeService.handleSettingsUpdated).toHaveBeenCalledWith({
+      merchantId: '12', settings: { valuechat_connection_code: 'pair-code-secret' }
+    });
+    expect(JSON.stringify(info.mock.calls)).not.toContain('pair-code-secret');
+  });
+
+  it('rejects invalid Easy Mode authorization with a stable safe code', async () => {
+    const { app, sallaEasyModeService } = createHarness('easy');
+    sallaEasyModeService.handleAuthorization.mockRejectedValue(
+      Object.assign(new Error('SALLA_REQUIRED_SCOPE_MISSING'), { code: 'SALLA_REQUIRED_SCOPE_MISSING' })
+    );
+    const body = JSON.stringify({
+      event: 'app.store.authorize', merchant: 12,
+      data: { access_token: 'secret', refresh_token: 'secret', expires: 1787875200, scope: 'settings.read' }
+    });
+
+    await signedRequest(app, body).expect(400, { error: 'SALLA_REQUIRED_SCOPE_MISSING' });
   });
 
   it('passes exact raw bytes to verification and enqueues once', async () => {
@@ -120,6 +181,16 @@ describe('Salla webhook route', () => {
     });
     expect(queue.enqueueProductRefresh).not.toHaveBeenCalled();
     expect(queue.enqueueDelete).not.toHaveBeenCalled();
+  });
+
+  it('delegates uninstall cleanup to Easy Mode pairing', async () => {
+    const { app, prisma, sallaEasyModeService } = createHarness('easy');
+    const body = JSON.stringify({ event: 'app.uninstalled', merchant: 12 });
+
+    await signedRequest(app, body).expect(202);
+
+    expect(sallaEasyModeService.handleUninstalled).toHaveBeenCalledWith({ merchantId: '12' });
+    expect(prisma.integration.update).not.toHaveBeenCalled();
   });
 
   it('acknowledges valid unknown events without resolving or enqueueing', async () => {
