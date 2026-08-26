@@ -1,0 +1,207 @@
+const { redactForLog } = require('../logging/redaction');
+
+const REFRESH_DELAY_MS = 60_000;
+const TRANSIENT_PROVIDER_ERRORS = new Set([
+  'STORE_PROVIDER_TIMEOUT', 'STORE_PROVIDER_RATE_LIMITED', 'STORE_PROVIDER_UNAVAILABLE'
+]);
+
+function storeError(code) {
+  const error = new Error(code);
+  error.code = code;
+  return error;
+}
+
+function atMostFive(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? Math.min(number, 5) : 5;
+}
+
+function productData(product, tenantId, integrationId, syncedAt) {
+  return {
+    sku: product.sku || null,
+    name: product.name || '',
+    description: product.description || null,
+    imageUrl: product.imageUrl || null,
+    productUrl: product.productUrl || product.storefrontUrl || null,
+    price: product.price || null,
+    salePrice: product.salePrice || null,
+    currency: product.currency || null,
+    status: product.status || (product.isAvailable ? 'sale' : 'out'),
+    isAvailable: Boolean(product.isAvailable),
+    quantity: Number.isInteger(product.quantity) ? product.quantity : null,
+    unlimitedQuantity: Boolean(product.unlimitedQuantity),
+    variants: Array.isArray(product.variants) ? product.variants : [],
+    providerUpdatedAt: product.providerUpdatedAt || null,
+    syncedAt,
+    lastVerifiedAt: syncedAt,
+    deletedAt: null,
+    ...(tenantId ? { tenantId, integrationId } : {})
+  };
+}
+
+function compactProduct(product, { liveVerified, verifiedAt }) {
+  const result = {
+    externalId: product.externalId,
+    sku: product.sku || null,
+    name: product.name || '',
+    description: product.description || null,
+    imageUrl: product.imageUrl || null,
+    productUrl: product.productUrl || product.storefrontUrl || null,
+    liveVerified,
+    currentPriceVerified: liveVerified,
+    currentAvailabilityVerified: liveVerified,
+    verifiedAt: liveVerified ? new Date(verifiedAt).toISOString() : (product.lastVerifiedAt ? new Date(product.lastVerifiedAt).toISOString() : null)
+  };
+
+  if (liveVerified) {
+    Object.assign(result, {
+      price: product.price || null,
+      salePrice: product.salePrice || null,
+      currency: product.currency || null,
+      isAvailable: Boolean(product.isAvailable),
+      quantity: Number.isInteger(product.quantity) ? product.quantity : null,
+      unlimitedQuantity: Boolean(product.unlimitedQuantity),
+      variants: Array.isArray(product.variants) ? product.variants : []
+    });
+  }
+  return result;
+}
+
+function createStoreService({ prisma, registry, clock = () => new Date(), enqueueRefresh = async () => {} } = {}) {
+  async function integrationFor(tenantId, integrationId) {
+    const integration = await prisma.integration.findFirst({
+      where: { id: integrationId, tenantId, type: 'store_salla', status: 'active' }
+    });
+    if (!integration) throw storeError('STORE_INTEGRATION_NOT_FOUND');
+    return integration;
+  }
+
+  async function upsertProduct({ tenantId, integrationId, product, syncedAt = clock() }) {
+    if (!product?.externalId) return;
+    const data = productData(product, tenantId, integrationId, syncedAt);
+    const { tenantId: ignoredTenantId, integrationId: ignoredIntegrationId, ...update } = data;
+    await prisma.storeProduct.upsert({
+      where: { integrationId_externalId: { integrationId, externalId: String(product.externalId) } },
+      create: data,
+      update
+    });
+  }
+
+  function logLookup({ integrationId, operation, source, startedAt, resultCount, outcome, errorCode }) {
+    console.info('store.lookup', redactForLog({
+      integrationId, operation, source, durationMs: Date.now() - startedAt, resultCount, outcome,
+      ...(errorCode ? { errorCode } : {})
+    }));
+  }
+
+  async function searchProducts({ tenantId, integrationId, query, maxResults } = {}) {
+    const startedAt = Date.now();
+    const limit = atMostFive(maxResults);
+    let source = 'cache';
+    try {
+      const integration = await integrationFor(tenantId, integrationId);
+      const cached = await prisma.storeProduct.findMany({
+        where: {
+          tenantId, integrationId, deletedAt: null,
+          OR: ['name', 'sku', 'description'].map((field) => ({ [field]: { contains: String(query || ''), mode: 'insensitive' } }))
+        },
+        take: limit
+      });
+      const adapter = registry.get(integration.type);
+      try {
+        const live = await adapter.searchProducts({ tenantId, integrationId }, String(query || ''));
+        const verifiedAt = clock();
+        await Promise.all((Array.isArray(live) ? live : []).slice(0, 5).map((product) => upsertProduct({ tenantId, integrationId, product, syncedAt: verifiedAt })));
+        const merged = new Map();
+        for (const product of (Array.isArray(live) ? live : []).slice(0, 5)) {
+          if (product?.externalId) merged.set(String(product.externalId), { product, liveVerified: true, verifiedAt });
+        }
+        for (const product of cached) {
+          if (!merged.has(product.externalId)) merged.set(product.externalId, { product, liveVerified: false });
+        }
+        const products = [...merged.values()].slice(0, limit).map(({ product, liveVerified, verifiedAt: productVerifiedAt }) => compactProduct(product, { liveVerified, verifiedAt: productVerifiedAt }));
+        source = 'live';
+        logLookup({ integrationId, operation: 'search_products', source, startedAt, resultCount: products.length, outcome: 'success' });
+        return { source, products };
+      } catch (error) {
+        if (!TRANSIENT_PROVIDER_ERRORS.has(error?.code)) throw storeError('STORE_LOOKUP_FAILED');
+        const products = cached.slice(0, limit).map((product) => compactProduct(product, { liveVerified: false }));
+        await enqueueRefresh({ tenantId, integrationId, operation: 'search_products', delayMs: REFRESH_DELAY_MS });
+        logLookup({ integrationId, operation: 'search_products', source, startedAt, resultCount: products.length, outcome: 'fallback', errorCode: error.code });
+        return { source, products };
+      }
+    } catch (error) {
+      logLookup({ integrationId, operation: 'search_products', source, startedAt, resultCount: 0, outcome: 'error', errorCode: error?.code || 'STORE_LOOKUP_FAILED' });
+      throw error?.code ? error : storeError('STORE_LOOKUP_FAILED');
+    }
+  }
+
+  async function getProduct({ tenantId, integrationId, productId } = {}) {
+    const startedAt = Date.now();
+    let source = 'cache';
+    try {
+      const integration = await integrationFor(tenantId, integrationId);
+      const cached = await prisma.storeProduct.findFirst({
+        where: { tenantId, integrationId, externalId: String(productId), deletedAt: null }
+      });
+      if (!cached) throw storeError('STORE_PRODUCT_NOT_FOUND');
+      const adapter = registry.get(integration.type);
+      try {
+        const product = await adapter.getProduct({ tenantId, integrationId }, String(productId));
+        if (!product) {
+          await prisma.storeProduct.updateMany({
+            where: { tenantId, integrationId, externalId: String(productId), deletedAt: null }, data: { deletedAt: clock() }
+          });
+          source = 'live';
+          logLookup({ integrationId, operation: 'get_product', source, startedAt, resultCount: 0, outcome: 'not_found' });
+          return { source, product: null, notFound: true };
+        }
+        await upsertProduct({ tenantId, integrationId, product });
+        source = 'live';
+        const result = compactProduct(product, { liveVerified: true, verifiedAt: clock() });
+        logLookup({ integrationId, operation: 'get_product', source, startedAt, resultCount: 1, outcome: 'success' });
+        return { source, product: result };
+      } catch (error) {
+        if (!TRANSIENT_PROVIDER_ERRORS.has(error?.code)) throw storeError('STORE_LOOKUP_FAILED');
+        const result = compactProduct(cached, { liveVerified: false });
+        await enqueueRefresh({ tenantId, integrationId, productId: String(productId), operation: 'get_product', delayMs: REFRESH_DELAY_MS });
+        logLookup({ integrationId, operation: 'get_product', source, startedAt, resultCount: 1, outcome: 'fallback', errorCode: error.code });
+        return { source, product: result };
+      }
+    } catch (error) {
+      logLookup({ integrationId, operation: 'get_product', source, startedAt, resultCount: 0, outcome: 'error', errorCode: error?.code || 'STORE_LOOKUP_FAILED' });
+      throw error?.code ? error : storeError('STORE_LOOKUP_FAILED');
+    }
+  }
+
+  async function syncCatalogPage({ tenantId, integrationId, products, syncStartedAt } = {}) {
+    await integrationFor(tenantId, integrationId);
+    const syncedAt = syncStartedAt || clock();
+    const items = Array.isArray(products) ? products : [];
+    await Promise.all(items.map((product) => upsertProduct({ tenantId, integrationId, product, syncedAt })));
+    return { scanned: items.length };
+  }
+
+  async function completeFullSync({ tenantId, integrationId, syncStartedAt, completed = false } = {}) {
+    await integrationFor(tenantId, integrationId);
+    if (!completed) return { deleted: 0 };
+    const startedAt = new Date(syncStartedAt);
+    if (!Number.isFinite(startedAt.getTime())) throw storeError('STORE_SYNC_INCOMPLETE');
+    const deleted = await prisma.storeProduct.updateMany({
+      where: { tenantId, integrationId, deletedAt: null, syncedAt: { lt: startedAt } }, data: { deletedAt: clock() }
+    });
+    return { deleted: deleted.count };
+  }
+
+  async function deleteCachedProduct({ tenantId, integrationId, productId } = {}) {
+    await integrationFor(tenantId, integrationId);
+    const deleted = await prisma.storeProduct.updateMany({
+      where: { tenantId, integrationId, externalId: String(productId), deletedAt: null }, data: { deletedAt: clock() }
+    });
+    return { deleted: deleted.count };
+  }
+
+  return { searchProducts, getProduct, syncCatalogPage, completeFullSync, deleteCachedProduct };
+}
+
+module.exports = { createStoreService };
