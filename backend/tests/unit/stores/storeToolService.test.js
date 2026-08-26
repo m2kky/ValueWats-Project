@@ -75,6 +75,25 @@ describe('Store tool definitions', () => {
 });
 
 describe('Store tool execution', () => {
+  it.each([
+    ['missing tenantId', { agentId: 'agent-1' }],
+    ['missing agentId', { tenantId: 'tenant-1' }],
+    ['blank tenantId', { tenantId: ' ', agentId: 'agent-1' }],
+    ['non-string agentId', { tenantId: 'tenant-1', agentId: 1 }]
+  ])('rejects %s before authorization', async (label, context) => {
+    const { service, prisma, storeService } = setup({ action: capability() });
+
+    await expect(service.execute('search_store_products', { query: 'greens' }, context)).resolves.toEqual({
+      success: false,
+      code: 'STORE_CAPABILITY_DISABLED',
+      message: 'Live store data is unavailable.'
+    });
+
+    expect(prisma.agentAction.findFirst).not.toHaveBeenCalled();
+    expect(storeService.searchProducts).not.toHaveBeenCalled();
+    expect(storeService.getProduct).not.toHaveBeenCalled();
+  });
+
   it('re-reads capability authorization before executing a Store call', async () => {
     const { service, prisma, storeService } = setup();
 

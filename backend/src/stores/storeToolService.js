@@ -146,7 +146,8 @@ function createStoreToolService({ prisma, storeService, logger = console, now = 
     ];
   }
 
-  async function execute(toolName, args, { tenantId, agentId } = {}) {
+  async function execute(toolName, args, context = {}) {
+    const { tenantId, agentId } = context || {};
     const startedAt = now();
     let integrationId = null;
     let source = 'none';
@@ -155,6 +156,9 @@ function createStoreToolService({ prisma, storeService, logger = console, now = 
     let errorCode;
 
     try {
+      if (![tenantId, agentId].every((value) => typeof value === 'string' && value.trim())) {
+        throw Object.assign(new Error('Store capability disabled'), { code: 'STORE_CAPABILITY_DISABLED' });
+      }
       if (!STORE_TOOL_NAMES.has(toolName) || !validArguments(toolName, args)) {
         throw Object.assign(new Error('Invalid Store tool arguments'), { code: 'STORE_INVALID_ARGUMENTS' });
       }
