@@ -1150,6 +1150,7 @@ model Integration {
   storeProducts StoreProduct[]
 
   @@index([tenantId, type])
+  @@unique([id, tenantId])
   @@unique([type, externalAccountId])
 }
 
@@ -1158,7 +1159,7 @@ model StoreProduct {
   tenantId      String      @map("tenant_id")
   tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   integrationId String      @map("integration_id")
-  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  integration   Integration @relation(fields: [integrationId, tenantId], references: [id, tenantId], onDelete: Cascade)
   externalId    String      @map("external_id")
   sku           String?
   name          String

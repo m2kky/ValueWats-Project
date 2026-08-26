@@ -26,6 +26,19 @@ const prisma = new PrismaClient().$extends({
           return query(args);
         }
 
+        if (model === 'StoreProduct' && ['create', 'createMany', 'upsert'].includes(operation)) {
+          const writes = operation === 'upsert'
+            ? [args.create, args.update]
+            : (Array.isArray(args.data) ? args.data : [args.data]);
+
+          for (const write of writes) {
+            if (write && write.tenantId !== undefined && write.tenantId !== tenantId) {
+              throw new Error('StoreProduct tenantId does not match active tenant');
+            }
+            if (write) write.tenantId = tenantId;
+          }
+        }
+
         // Methods that take a 'where' clause
         if (['findUnique', 'findFirst', 'findMany', 'update', 'updateMany', 'delete', 'deleteMany', 'count'].includes(operation)) {
           args.where = { ...args.where, tenantId };
