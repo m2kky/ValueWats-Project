@@ -63,14 +63,14 @@ describe('Salla OAuth service', () => {
     }
   );
 
-  it('creates encrypted pending credentials and requests offline access through the configured app scopes', async () => {
+  it('creates encrypted pending credentials and requests product read with offline access', async () => {
     const { service, integration, now } = harness();
 
     const { authUrl } = await service.createAuthUrl({ tenantId: 'tenant-1' });
     const url = new URL(authUrl);
 
     expect(url.origin + url.pathname).toBe('https://accounts.salla.sa/oauth2/auth');
-    expect(url.searchParams.get('scope')).toBe('offline_access');
+    expect(url.searchParams.get('scope')).toBe('products.read offline_access');
     expect(url.searchParams.get('redirect_uri')).toBe('https://app.example.test/api/oauth/salla/callback');
     expect(decryptStoreCredentials(integration.credentials)).toEqual({ provider: 'salla', pending: true });
     expect(url.searchParams.get('state')).toBeTruthy();

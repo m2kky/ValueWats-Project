@@ -1,5 +1,6 @@
 const request = require('supertest');
 const crypto = require('node:crypto');
+const express = require('express');
 const { createApp } = require('../../../src/app');
 const integrationsRouter = require('../../../src/routes/integrations');
 const oauthRouter = require('../../../src/routes/oauth');
@@ -17,7 +18,7 @@ function createHarness(role = 'admin', integration = null) {
   };
   const storeSync = { enqueueFullSync: vi.fn(async () => ({ id: 'job-1' })) };
   const sallaOAuthService = {
-    createAuthUrl: vi.fn(async () => ({ authUrl: 'https://accounts.salla.sa/oauth2/auth?scope=offline_access&state=connect-state' })),
+    createAuthUrl: vi.fn(async () => ({ authUrl: 'https://accounts.salla.sa/oauth2/auth?scope=products.read+offline_access&state=connect-state' })),
     reconnect: vi.fn(async () => ({ authUrl: 'https://accounts.salla.sa/oauth2/auth?state=reconnect-state' })),
     completeCallback: vi.fn(async () => ({ id: 'integration-1' }))
   };
@@ -52,7 +53,7 @@ describe('Salla integration API', () => {
     const response = await request(app).post('/api/integrations/salla/auth-url').expect(200);
 
     expect(response.body).toEqual({
-      authUrl: 'https://accounts.salla.sa/oauth2/auth?scope=offline_access&state=connect-state'
+      authUrl: 'https://accounts.salla.sa/oauth2/auth?scope=products.read+offline_access&state=connect-state'
     });
     expect(response.headers['set-cookie']).toEqual([
       `salla_oauth_verifier=${verifier('connect-state')}; Max-Age=600; Path=/api/oauth/salla/callback; HttpOnly; SameSite=Lax`
@@ -174,6 +175,27 @@ describe('Salla integration API', () => {
     await request(app).get('/api/oauth/salla/callback?code=code&state=state')
       .set('Cookie', `salla_oauth_verifier=${verifier('state')}`)
       .expect(302).expect('Location', '/settings/integrations?error=SALLA_INVALID_STATE');
+  });
+
+  it('keeps the OAuth callback public when protected routes are mounted at /api', async () => {
+    const sallaOAuthService = {
+      completeCallback: vi.fn(async () => ({ id: 'integration-1' }))
+    };
+    const app = createApp({
+      routes: { oauth: oauthRouter, commentReplies: express.Router() },
+      middleware: {
+        tenantContext: (req, res) => res.status(401).json({ error: 'No token provided' })
+      },
+      dependencies: { sallaOAuthService }
+    });
+    const state = 'public-callback-state';
+
+    await request(app)
+      .get(`/api/oauth/salla/callback?code=authorization-code&state=${state}`)
+      .set('Cookie', `salla_oauth_verifier=${verifier(state)}`)
+      .expect(302)
+      .expect('Location', '/settings/integrations?success=true');
+    expect(sallaOAuthService.completeCallback).toHaveBeenCalledWith({ code: 'authorization-code', state });
   });
 
   it('redirects Google and Notion OAuth errors to settings', async () => {
