@@ -7,8 +7,8 @@ const checkPermission = require('../middleware/checkPermission');
 const agentService = require('./agent.service');
 const { AgentSetupError, agentSetupService } = require('./config/agentSetupService');
 const {
-  terminalCapabilityService
-} = require('./config/terminalCapabilityService');
+  agentCapabilityService
+} = require('./config/agentCapabilityService');
 
 function sendSetupError(res, error) {
   if (error instanceof AgentSetupError) {
@@ -118,9 +118,9 @@ router.put('/:id', tenantContext, checkPermission('agents.manage'), async (req, 
   }
 });
 
-router.put('/:id/terminal-capabilities', tenantContext, checkPermission('agents.manage'), async (req, res) => {
+router.put(['/:id/capabilities', '/:id/terminal-capabilities'], tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
-    const updated = await terminalCapabilityService.update({
+    const updated = await agentCapabilityService.update({
       tenantId: req.user.tenantId,
       agentId: req.params.id,
       expectedConfigVersion: req.body.expectedConfigVersion,
@@ -131,8 +131,8 @@ router.put('/:id/terminal-capabilities', tenantContext, checkPermission('agents.
     try {
       return sendSetupError(res, error);
     } catch {}
-    console.error('[Agents] Terminal capability update error:', error);
-    res.status(500).json({ error: 'Failed to update terminal capabilities' });
+    console.error('[Agents] Capability update error:', error);
+    res.status(500).json({ error: 'Failed to update capabilities' });
   }
 });
 

@@ -1,89 +1,67 @@
-# Task 5 Report: Durable Comment Processing and Public Replies
+# Task 5 Report: Canonical Store Capability Persistence
 
-## Summary
+## Status
 
-Implemented durable fixed-rule public comment replies for Facebook and Instagram.
+Implemented from `main` HEAD `6720e99` with one generalized capability service and a terminal compatibility re-export.
 
-- Verified Meta webhook bodies are normalized into bounded canonical events.
-- Provider identity resolves the binding and tenant; webhook body tenant fields are ignored.
-- Database uniqueness provides inbound deduplication.
-- Database workers claim executions with expiring UUID lease tokens.
-- Every processing write is fenced by `status = processing` and `leaseToken`.
-- Eligibility checks cover self comments, stale events, missing text, disabled/unready bindings, disabled profiles, inactive Agents, and post overrides.
-- Rule priority, stable ordering, platform-specific variant preference, and per-pool rotation use `commentReplyRules.js`.
-- Rule cursor advancement, execution finalization, and one strict outbox intent share one transaction.
-- Comment outbox payloads accept exactly:
+Planned commit message: `feat(agents): add canonical Store capability`
 
-```json
-{
-  "executionId": "<id>",
-  "providerReference": {
-    "provider": "facebook|instagram",
-    "instanceId": "<id>"
-  }
-}
-```
+## Implementation
 
-- The dispatcher reloads the tenant-scoped execution and Instance, while Meta token decryption remains inside `metaApi`.
-- Facebook publishes to `/{comment-id}/comments`; Instagram publishes to `/{comment-id}/replies`.
-- Delivery distinguishes pre-request, response-received, and ambiguous outcomes.
-- Provider reply IDs are durable before outbox success; stale dispatches reconcile from the stored ID.
-- Root `npm start` reaches `backend/src/server.js`, which now starts the reusable comment execution and comment outbox loop by default without Redis.
-- The separate worker process reuses the same comment worker and dispatcher composition.
-- No AI, Agent command, conversation, contact, or CRM runtime is invoked by this flow.
+- Added strict Store config schema `{ maxResults: integer 1..5 }`.
+- Added catalog capability `store_catalog_read` with `external_read` risk, internal delivery, no terminal command, and a required `store_salla` integration policy.
+- Moved the existing capability update implementation to `agentCapabilityService.js`.
+- Kept `terminalCapabilityService.js` as aliases to the generalized factory, normalizer, and singleton; there is no second implementation.
+- Added canonical Store normalization:
+  - Enabled: trimmed integration ID/instructions and validated `maxResults`.
+  - Disabled: `integrationId: null`, empty instructions, and `{ maxResults: 5 }`.
+- Validated an enabled Store integration inside the existing serializable transaction as active, same-tenant, and type `store_salla` before any capability write.
+- Preserved one compare-and-increment `configVersion` update per successful request and existing `P2034` conflict handling.
+- Preserved fail-closed duplicate detection and one canonical row update/create path per agent/key.
+- Added Store to the legacy projection as enabled/instructions/config only. The integration ID remains only on the canonical row.
+- Added preferred `PUT /api/agents/:id/capabilities` and retained `PUT /api/agents/:id/terminal-capabilities` as two paths on the same handler and singleton, both requiring `agents.manage`.
+- Kept runtime authority canonical: no Store runtime reads were added against legacy `actionConfig`; existing runtime policy loads `AgentAction` rows.
+- Kept Store catalog reads out of the mutation command registry.
 
-## Changed Files
+## Tests
 
-### Runtime and delivery
-
-- `backend/src/commentReplies/commentEventNormalizer.js`
-- `backend/src/commentReplies/commentReplyRuntime.js`
-- `backend/src/commentReplies/commentReplyWorker.js`
-- `backend/src/commentReplies/commentReplyDispatcher.js`
-- `backend/src/commentReplies/commentReplyBoot.js`
-- `backend/src/events/outboxService.js`
-- `backend/src/events/outboxWorker.js`
-- `backend/src/services/metaApi.js`
-
-### Webhook and process boot
-
-- `backend/src/controllers/metaWebhookController.js`
-- `backend/src/routes/webhooks.js`
-- `backend/src/server.js`
-- `backend/src/worker.js`
-
-### Tests
-
-- `backend/tests/unit/commentReplies/commentEventNormalizer.test.js`
-- `backend/tests/unit/commentReplies/commentReplyBoot.test.js`
-- `backend/tests/integration/commentReplies/commentReplyRuntime.test.js`
-- `backend/tests/integration/commentReplies/commentReplyDelivery.test.js`
-- `backend/tests/integration/meta/meta-webhook-route.test.js`
-
-No dependency or Prisma schema change was required.
+- Added DB integration coverage for:
+  - Enabled canonical Store persistence and legacy projection.
+  - Foreign, inactive, wrong-type, and missing integrations.
+  - Disabled default persistence.
+  - Strict `maxResults` rejection.
+  - Duplicate canonical rows failing closed.
+  - Preferred and legacy endpoints sharing behavior, permission enforcement, one row, and one version increment per call.
+- Added compatibility coverage proving the terminal factory re-exports the generalized factory.
+- Updated the command registry assertion to preserve all six existing mutation commands while explicitly excluding the read-only Store capability.
 
 ## Verification
 
-- Focused comment normalizer, rules, runtime, delivery, boot, and verified webhook suites: passing.
-- Existing Comment Reply configuration API and Meta webhook/security/logging suites: passing.
-- Existing worker runtime test: passing.
-- JavaScript syntax checks for all changed backend runtime files: passing.
-- `npx prisma validate`: passing.
-- `git diff --check`: passing.
+- TDD RED: direct normalization assertion failed because the prior service returned no `store_catalog_read`.
+- `npx prisma validate`: passed.
+- `npx prisma generate`: passed.
+- Node syntax checks for every changed JavaScript source and test file: passed.
+- `npx vitest run tests/unit/agents/commandRegistry.test.js`: passed, 19 tests.
+- Direct no-DB transaction contract check: passed for serializable isolation, enabled/disabled Store persistence, integration query scope, one row on repeat update, one increment per call, and compatibility identity.
+- `git diff --check`: passed; only Git line-ending notices were emitted.
+- Focused integration command attempted once with a 15-second hard bound:
 
-The existing PostgreSQL-backed outbox integration cases could not run because the configured local test database at `localhost:5434` is unavailable. Task 5 runtime, dedupe, transaction, fencing, delivery, and reconciliation behavior is covered with focused Prisma transaction mocks as requested.
+  `node ./node_modules/vitest/vitest.mjs run tests/integration/agents/terminal-capabilities.test.js tests/integration/agents/store-capability.test.js --pool=threads --maxWorkers=1 --testTimeout=5000 --hookTimeout=5000 --teardownTimeout=1000`
+
+  Result: unavailable. Vitest started but PostgreSQL at `localhost:5434` is known unavailable and the process produced no test result before the bound, so it was terminated. The integration tests were not weakened or skipped.
 
 ## Self-Review
 
-- **Tenant isolation:** Binding identity is globally resolved first; execution, override, rule, Instance, and delivery queries all reapply the derived tenant.
-- **Duplicate delivery:** The execution unique key is the durable inbound gate; the execution has one deterministic outbox idempotency key.
-- **Stale leases:** Processing completion, skips, failures, requeues, cursor advancement, and ready transition are fenced. Exhausted received and stale processing work becomes failed.
-- **Crash windows:** Pre-publish crashes recover through the execution lease. Post-finalization crashes leave a pending outbox event. Dispatch crashes reconcile to succeeded only when `providerReplyId` is durable; otherwise they become `outcome_unknown`.
-- **Secret leakage:** Outbox validation rejects extra text/token fields. Public adapters do not log provider bodies, tokens, or reply text. Provider errors are converted to bounded generic errors.
-- **Production boot:** Root and backend start scripts reach `node src/server.js`; the server starts both comment execution and matching comment outbox processing. Multiple processes remain safe through database claims and conditional state transitions.
+- Tenant boundary: the agent lookup and integration lookup both require the request tenant; foreign integrations fail before writes.
+- Integration state: enabled Store requires exactly the referenced active `store_salla` row; blank and nonexistent IDs return `CAPABILITY_INTEGRATION_INVALID`.
+- Atomicity: integration validation, duplicate check, canonical writes, legacy projection, and version update share one serializable transaction.
+- Concurrency: the compare-and-increment update and `P2034` mapping preserve stale-write behavior and a single successful version increment.
+- Canonical authority: Store integration linkage exists only on `AgentAction`; legacy projection carries no integration authority.
+- API surface: there is one save handler, one singleton service, one preferred endpoint, and one compatibility alias.
+- Scope: no dependency, Prisma schema, migration, Store runtime, or command implementation was added.
 
-## Residual Risks
+## Concerns
 
-- Live Meta contract behavior, permissions, and owned-account smoke tests require configured Facebook and Instagram accounts and are not executable locally.
-- PostgreSQL-backed outbox regression tests should be rerun when the local test database is available.
-- Network failures are treated as ambiguous unless the client explicitly proves no request transmission. This is intentionally conservative to prevent duplicate public replies.
+- PostgreSQL-backed integration results remain unverified locally and must be rerun when `valuewats_agent_test` is available on port 5434.
+- `AgentAction` has no database unique constraint on `(agentId, key)`. The existing serializable service path prevents normal duplicate creation and fails closed if duplicates exist, but out-of-band writes can still create duplicates. A schema migration was intentionally not added because it is outside the Task 5 brief and listed files.
+- Unrelated pre-existing changes in `logs/CHANGELOG.md` and `docs/superpowers/plans/2026-07-25-agents-command-platform.md` were preserved and excluded from the Task 5 commit.

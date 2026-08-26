@@ -5,9 +5,18 @@ const {
 const {
   createTerminalCapabilityService
 } = require('../../../src/agents/config/terminalCapabilityService');
+const {
+  createAgentCapabilityService
+} = require('../../../src/agents/config/agentCapabilityService');
 
 const prisma = createTestDatabase(process.env.DATABASE_URL);
 const service = createTerminalCapabilityService({ prisma });
+
+describe('terminal capability compatibility', () => {
+  it('re-exports the generalized capability service', () => {
+    expect(createTerminalCapabilityService).toBe(createAgentCapabilityService);
+  });
+});
 
 describe('terminal capability setup', () => {
   beforeEach(async () => {

@@ -11,7 +11,8 @@ function buildLegacyActionConfigProjection({ existingActionConfig, canonicalActi
     update_contact: 'updateFields',
     update_lifecycle: 'updateLifecycle',
     modify_tags: 'updateTags',
-    add_internal_comment: 'addComment'
+    add_internal_comment: 'addComment',
+    store_catalog_read: 'store'
   };
 
   for (const action of canonicalActions) {

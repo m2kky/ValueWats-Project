@@ -2,7 +2,8 @@ const { compileStrictObjectSchema } = require('./capabilitySchemas');
 const {
   assignmentCapabilityConfigSchema,
   closeCapabilityConfigSchema,
-  emptyCapabilityConfigSchema
+  emptyCapabilityConfigSchema,
+  storeCapabilityConfigSchema
 } = require('./capabilitySchemas');
 
 function createCapabilityCatalog(entries = []) {
@@ -66,6 +67,14 @@ const capabilityCatalog = createCapabilityCatalog([
     delivery: 'internal',
     terminalConversationCommand: true,
     configSchema: closeCapabilityConfigSchema
+  },
+  {
+    type: 'store_catalog_read',
+    risk: 'external_read',
+    delivery: 'internal',
+    terminalConversationCommand: false,
+    integration: { required: true, types: ['store_salla'] },
+    configSchema: storeCapabilityConfigSchema
   },
   ...['update_contact', 'update_lifecycle', 'modify_tags', 'add_internal_comment'].map((type) => ({
     type,

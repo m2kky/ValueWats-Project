@@ -71,6 +71,14 @@ const closeCapabilityConfigSchema = Object.freeze({
   additionalProperties: false,
   properties: {}
 });
+const storeCapabilityConfigSchema = Object.freeze({
+  type: 'object',
+  additionalProperties: false,
+  required: ['maxResults'],
+  properties: {
+    maxResults: { type: 'integer', minimum: 1, maximum: 5 }
+  }
+});
 const emptyCapabilityConfigSchema = closeCapabilityConfigSchema;
 function assertStrictObjectNode(schema) {
   if (
@@ -145,6 +153,7 @@ module.exports = {
   ASSIGNMENT_REASON_CODES,
   assignmentCapabilityConfigSchema,
   closeCapabilityConfigSchema,
+  storeCapabilityConfigSchema,
   emptyCapabilityConfigSchema,
   assertStrictObjectSchema,
   compileStrictObjectSchema
