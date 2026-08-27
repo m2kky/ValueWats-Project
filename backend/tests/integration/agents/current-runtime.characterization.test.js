@@ -420,7 +420,13 @@ describe('adjacent runtime behavior', () => {
     app.use(express.json());
     app.use('/agents', router);
 
-    const response = await request(app).post('/agents/agent-preview/test').send({ message: 'Find greens' });
+    const response = await request(app).post('/agents/agent-preview/test').send({
+      message: 'Which ones are available?',
+      history: [
+        { role: 'user', content: 'Do you have dresses?' },
+        { role: 'assistant', content: 'I will check the store.' }
+      ]
+    });
     clearCommonJsModule('../../../src/agents/agent.routes');
     clearCommonJsModule('../../../src/agents/agent.service');
     clearCommonJsModule('../../../src/agents/config/agentSetupService');
@@ -439,7 +445,9 @@ describe('adjacent runtime behavior', () => {
       agent: previewAgent,
       messages: [
         { role: 'system', content: 'Preview prompt' },
-        { role: 'user', content: 'Find greens' }
+        { role: 'user', content: 'Do you have dresses?' },
+        { role: 'assistant', content: 'I will check the store.' },
+        { role: 'user', content: 'Which ones are available?' }
       ],
       tenantId: 'tenant-1',
       conversationId: null,

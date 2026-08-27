@@ -10,6 +10,18 @@ const {
   agentCapabilityService
 } = require('./config/agentCapabilityService');
 
+const TEST_HISTORY_LIMIT = 20;
+const TEST_MESSAGE_LIMIT = 4000;
+
+function testHistory(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(-TEST_HISTORY_LIMIT)
+    .filter((entry) => ['user', 'assistant'].includes(entry?.role) && typeof entry.content === 'string')
+    .map((entry) => ({ role: entry.role, content: entry.content.trim().slice(0, TEST_MESSAGE_LIMIT) }))
+    .filter((entry) => entry.content);
+}
+
 function sendSetupError(res, error) {
   if (error instanceof AgentSetupError) {
     return res.status(error.status).json({
@@ -158,7 +170,9 @@ router.delete('/:id', tenantContext, checkPermission('agents.manage'), async (re
 // Test chat with agent (for live preview in editor)
 router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async (req, res) => {
   try {
-    const { message } = req.body;
+    const message = typeof req.body?.message === 'string'
+      ? req.body.message.trim().slice(0, TEST_MESSAGE_LIMIT)
+      : '';
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
@@ -189,6 +203,7 @@ router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async 
 
     const messages = [
       { role: 'system', content: systemPrompt },
+      ...testHistory(req.body?.history),
       { role: 'user', content: message }
     ];
 

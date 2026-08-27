@@ -16,6 +16,52 @@ function atMostFive(value) {
   return Number.isInteger(number) && number > 0 ? Math.min(number, 5) : 5;
 }
 
+function normalizeSearchToken(value) {
+  return String(value || '')
+    .normalize('NFKC')
+    .replace(/[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .toLocaleLowerCase();
+}
+
+function words(value) {
+  return String(value || '').match(/[\p{L}\p{N}]+/gu) || [];
+}
+
+function editDistance(left, right) {
+  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex++) {
+    let diagonal = previous[0];
+    previous[0] = leftIndex;
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex++) {
+      const above = previous[rightIndex];
+      previous[rightIndex] = left[leftIndex - 1] === right[rightIndex - 1]
+        ? diagonal
+        : 1 + Math.min(diagonal, above, previous[rightIndex - 1]);
+      diagonal = above;
+    }
+  }
+  return previous[right.length];
+}
+
+function closestCachedTerm(products, query) {
+  const queryTokens = words(query).map(normalizeSearchToken).filter((token) => token.length >= 3);
+  let best = null;
+  for (const product of products) {
+    for (const rawTerm of words(product.name)) {
+      const term = normalizeSearchToken(rawTerm);
+      if (term.length < 3) continue;
+      for (const queryToken of queryTokens) {
+        const score = 1 - (editDistance(term, queryToken) / Math.max(term.length, queryToken.length));
+        if (score >= 0.6 && (!best || score > best.score)) best = { rawTerm, score };
+      }
+    }
+  }
+  return best?.rawTerm || null;
+}
+
 function productData(product, tenantId, integrationId, syncedAt) {
   return {
     externalId: String(product.externalId),
@@ -123,7 +169,7 @@ function createStoreService({ prisma, registry, clock = () => new Date(), enqueu
     let source = 'cache';
     try {
       const integration = await integrationFor(tenantId, integrationId);
-      const cached = await prisma.storeProduct.findMany({
+      let cached = await prisma.storeProduct.findMany({
         where: {
           tenantId, integrationId, deletedAt: null,
           OR: ['name', 'sku', 'description'].map((field) => ({ [field]: { contains: String(query || ''), mode: 'insensitive' } }))
@@ -132,7 +178,20 @@ function createStoreService({ prisma, registry, clock = () => new Date(), enqueu
       });
       const adapter = registry.get(integration.type);
       try {
-        const live = await adapter.searchProducts({ tenantId, integrationId }, String(query || ''));
+        let live = await adapter.searchProducts({ tenantId, integrationId }, String(query || ''));
+        if ((!Array.isArray(live) || live.length === 0) && cached.length === 0) {
+          const catalog = await prisma.storeProduct.findMany({
+            where: { tenantId, integrationId, deletedAt: null },
+            take: 100
+          });
+          const retryTerm = closestCachedTerm(catalog, query);
+          if (retryTerm) {
+            cached = catalog.filter((product) => words(product.name).some(
+              (term) => normalizeSearchToken(term) === normalizeSearchToken(retryTerm)
+            )).slice(0, limit);
+            live = await adapter.searchProducts({ tenantId, integrationId }, retryTerm);
+          }
+        }
         const verifiedAt = clock();
         await Promise.all((Array.isArray(live) ? live : []).slice(0, 5).map((product) => upsertProduct({ tenantId, integrationId, product, syncedAt: verifiedAt })));
         const merged = new Map();

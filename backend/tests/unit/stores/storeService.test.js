@@ -64,6 +64,27 @@ describe('Store service', () => {
     expect(result.products).toEqual([expect.objectContaining({ externalId: '2', name: 'Live Greens', price: '90.00', liveVerified: true })]);
   });
 
+  it('retries an Arabic plural query with the closest synced product term', async () => {
+    const dress = cachedProduct({ externalId: '9', sku: 'DRESS-9', name: 'فستان', description: 'فستان تجريبي' });
+    const { service, prisma, adapter } = createService({ cached: [], live: [] });
+    prisma.storeProduct.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([dress]);
+    adapter.searchProducts
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([liveProduct({ externalId: '9', sku: 'DRESS-9', name: 'فستان' })]);
+
+    const result = await service.searchProducts({
+      tenantId: 'tenant-1', integrationId: 'integration-1', query: 'فساتين', maxResults: 5
+    });
+
+    expect(adapter.searchProducts.mock.calls.map((call) => call[1])).toEqual(['فساتين', 'فستان']);
+    expect(result).toMatchObject({
+      source: 'live',
+      products: [expect.objectContaining({ externalId: '9', name: 'فستان', liveVerified: true })]
+    });
+  });
+
   it.each(['STORE_PROVIDER_TIMEOUT', 'STORE_RATE_LIMITED', 'STORE_PROVIDER_UNAVAILABLE'])('returns descriptive cache and enqueues a delayed full sync after %s', async (code) => {
     const { service, adapter, enqueueRefresh } = createService();
     adapter.searchProducts.mockRejectedValue(Object.assign(new Error('provider-secret'), {

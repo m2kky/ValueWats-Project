@@ -291,7 +291,7 @@ export default function Agents() {
     setChatInput('');
     setChatLoading(true);
     try {
-      const res = await testChat(editingId, userMsg);
+      const res = await testChat(editingId, userMsg, chatMessages);
       const content = res.response || res.message || 'No response';
       setChatMessages(prev => [...prev, { role: 'assistant', content }]);
 

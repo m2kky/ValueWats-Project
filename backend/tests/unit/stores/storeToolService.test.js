@@ -61,6 +61,7 @@ describe('Store tool definitions', () => {
       required: ['productId']
     });
     expect(JSON.stringify([search, detail])).not.toMatch(/integrationId|tenantId/);
+    expect(search.function.description).toContain('Always use this before answering');
   });
 
   it('appends bounded plain-text capability instructions', () => {

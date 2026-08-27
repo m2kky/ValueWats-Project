@@ -229,9 +229,9 @@ export default function useAgents() {
     }
   }, []);
 
-  const testChat = useCallback(async (agentId, message) => {
+  const testChat = useCallback(async (agentId, message, history = []) => {
     try {
-      const res = await api.post(`/agents/${agentId}/test`, { message });
+      const res = await api.post(`/agents/${agentId}/test`, { message, history });
       return res.data;
     } catch (err) {
       console.error('[useAgents] testChat error:', err);

@@ -121,7 +121,7 @@ function createStoreToolService({ prisma, storeService, logger = console, now = 
         type: 'function',
         function: {
           name: 'search_store_products',
-          description: `Search the connected store catalog for up to five matching products.${untrusted}${suffix}`,
+          description: `Always use this before answering whether a product exists, is available, or what products the store has. Search the connected store catalog for up to five matching products; never infer a zero-result answer without calling it.${untrusted}${suffix}`,
           parameters: {
             type: 'object',
             additionalProperties: false,
