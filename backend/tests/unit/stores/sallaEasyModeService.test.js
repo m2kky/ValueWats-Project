@@ -195,6 +195,34 @@ describe('Salla Easy Mode service', () => {
     );
   });
 
+  it('casts every nested advisory lock throughout the Easy Mode lifecycle', async () => {
+    const pairingCode = 'connection-code-locks';
+    const { service, prisma } = createHarness({
+      integrationOverrides: {
+        metadata: {
+          installationMode: 'easy',
+          pairingCodeHash: crypto.createHash('sha256').update(pairingCode).digest('hex'),
+          pairingExpiresAt: '2026-08-27T10:30:00.000Z'
+        }
+      }
+    });
+    prisma.$queryRawUnsafe.mockImplementation(async (query) => {
+      if (!query.includes('::text')) {
+        throw Object.assign(new Error("Failed to deserialize column of type 'void'"), { code: 'P2010' });
+      }
+      return [{ lock: '' }];
+    });
+
+    await service.handleAuthorization({ merchantId: '42', data: authorizationData });
+    await expect(service.handleSettingsUpdated({
+      merchantId: '42', settings: { valuechat_connection_code: pairingCode }
+    })).resolves.toMatchObject({ outcome: 'activated', activated: true });
+    await expect(service.handleAuthorization({ merchantId: '42', data: authorizationData }))
+      .resolves.toMatchObject({ outcome: 'duplicate', activated: false });
+    await expect(service.handleUninstalled({ merchantId: '42' })).resolves.toEqual({ outcome: 'revoked' });
+    expect(prisma.$queryRawUnsafe.mock.calls.every(([query]) => query.includes('::text'))).toBe(true);
+  });
+
   it('activates and syncs when authorization arrives before settings', async () => {
     const pairingCode = 'connection-code-123';
     const { service, integrations, pending, queue } = createHarness({
@@ -219,6 +247,36 @@ describe('Salla Easy Mode service', () => {
     });
     expect(pending.has('42')).toBe(false);
     expect(queue.enqueueFullSync).toHaveBeenCalledOnce();
+  });
+
+  it('resumes a claimed pairing when Salla retries settings after a transient finalization failure', async () => {
+    const pairingCode = 'connection-code-resume';
+    const { service, integrations, prisma } = createHarness({
+      integrationOverrides: {
+        metadata: {
+          installationMode: 'easy',
+          pairingCodeHash: crypto.createHash('sha256').update(pairingCode).digest('hex'),
+          pairingExpiresAt: '2026-08-27T10:30:00.000Z'
+        }
+      }
+    });
+    await service.handleAuthorization({ merchantId: '42', data: authorizationData });
+    let lockCalls = 0;
+    prisma.$queryRawUnsafe.mockImplementation(async () => {
+      lockCalls += 1;
+      if (lockCalls === 2) throw Object.assign(new Error('transient lock failure'), { code: 'P2010' });
+      return [{ lock: '' }];
+    });
+
+    await expect(service.handleSettingsUpdated({
+      merchantId: '42', settings: { valuechat_connection_code: pairingCode }
+    })).rejects.toMatchObject({ code: 'P2010' });
+    prisma.$queryRawUnsafe.mockResolvedValue([{ lock: '' }]);
+
+    await expect(service.handleSettingsUpdated({
+      merchantId: '42', settings: { valuechat_connection_code: pairingCode }
+    })).resolves.toMatchObject({ outcome: 'activated', activated: true });
+    expect(integrations[0]).toMatchObject({ status: 'active', externalAccountId: '42' });
   });
 
   it('activates and syncs when settings arrive before authorization', async () => {
@@ -415,7 +473,7 @@ describe('Salla Easy Mode service', () => {
     })).resolves.toMatchObject({ outcome: 'staged' });
     await expect(service.handleSettingsUpdated({
       merchantId: '42', settings: { valuechat_connection_code: secondCode }
-    })).resolves.toEqual({ outcome: 'ignored', activated: false });
+    })).resolves.toEqual({ outcome: 'staged', activated: false });
     expect(pairings.get('42')).toMatchObject({ integrationId: 'integration-1', tenantId: 'tenant-1' });
   });
 

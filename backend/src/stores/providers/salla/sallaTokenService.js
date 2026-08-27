@@ -39,7 +39,7 @@ function createSallaTokenService({ prisma, http = axios, clock = () => new Date(
       if (!forceRefresh && validToken(initialCredentials, now)) return initialCredentials.accessToken;
 
       const result = await prisma.$transaction(async (tx) => {
-        await tx.$queryRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))', `salla:${integrationId}`);
+        await tx.$queryRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))::text AS lock', `salla:${integrationId}`);
         const integration = await tx.integration.findFirst({ where });
         if (!integration) throw tokenError('STORE_INTEGRATION_NOT_FOUND');
         const credentials = decryptStoreCredentials(integration.credentials);

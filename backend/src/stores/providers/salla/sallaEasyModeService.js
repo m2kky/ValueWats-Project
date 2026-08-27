@@ -238,7 +238,7 @@ function createSallaEasyModeService({
         }
       });
       if (!integration) return null;
-      await tx.$queryRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))', `salla:${integration.id}`);
+      await tx.$queryRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))::text AS lock', `salla:${integration.id}`);
       const tokenExpiresAt = credentialExpiry(pending.credentials);
       if (!tokenExpiresAt) throw codedError('SALLA_INVALID_AUTHORIZATION_EVENT');
       const activationMetadata = {
@@ -286,7 +286,7 @@ function createSallaEasyModeService({
         where: { type: 'store_salla', externalAccountId: merchantId, status: { in: RECOVERABLE_STATUSES } }
       });
       if (owner) {
-        await tx.$queryRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))', `salla:${owner.id}`);
+        await tx.$queryRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))::text AS lock', `salla:${owner.id}`);
         const current = await tx.integration.findFirst({
           where: {
             id: owner.id,
@@ -393,6 +393,10 @@ function createSallaEasyModeService({
     if (typeof pairingCode !== 'string' || pairingCode.length < 8 || pairingCode.length > 128) {
       return { outcome: 'ignored', activated: false };
     }
+    const existingPairing = await prisma.sallaPendingPairing.findUnique({ where: { merchantId } });
+    if (existingPairing && existingPairing.expiresAt > clock()) {
+      return tryFinalize(merchantId);
+    }
     const integration = await prisma.integration.findFirst({
       where: {
         type: 'store_salla',
@@ -479,7 +483,7 @@ function createSallaEasyModeService({
         : null);
       let revoked = { count: 0 };
       if (target) {
-        await tx.$queryRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))', `salla:${target.id}`);
+        await tx.$queryRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))::text AS lock', `salla:${target.id}`);
         revoked = await tx.integration.updateMany({
           where: { id: target.id, tenantId: target.tenantId, type: 'store_salla' },
           data: { status: 'revoked', metadata: { installationMode: 'easy' } }

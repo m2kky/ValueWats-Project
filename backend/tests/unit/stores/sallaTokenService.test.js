@@ -57,6 +57,38 @@ describe('Salla token service', () => {
     expect(JSON.stringify(log.mock.calls)).not.toContain('new-r');
   });
 
+  it('casts the refresh advisory lock result so Prisma does not deserialize PostgreSQL void', async () => {
+    const integration = {
+      credentials: encryptStoreCredentials({
+        accessToken: 'expired-access', refreshToken: 'refresh-token', expiresAt: '2026-08-26T00:00:00.000Z'
+      })
+    };
+    const prisma = {
+      integration: {
+        findFirst: vi.fn(async () => integration),
+        updateMany: vi.fn(async () => ({ count: 1 }))
+      }
+    };
+    prisma.$queryRawUnsafe = vi.fn(async (query) => {
+      if (!query.includes('::text')) {
+        throw Object.assign(new Error("Failed to deserialize column of type 'void'"), { code: 'P2010' });
+      }
+      return [{ lock: '' }];
+    });
+    prisma.$transaction = vi.fn(async (operation) => operation(prisma));
+    const http = { post: vi.fn(async () => ({
+      data: { access_token: 'new-access', refresh_token: 'new-refresh', expires_in: 1209600 }
+    })) };
+    const service = createSallaTokenService({ prisma, http, clock: () => new Date('2026-08-27T10:00:00.000Z') });
+
+    await expect(service.getAccessToken({ tenantId: 'tenant-1', integrationId: 'integration-1' }))
+      .resolves.toBe('new-access');
+    expect(prisma.$queryRawUnsafe).toHaveBeenCalledWith(
+      'SELECT pg_advisory_xact_lock(hashtext($1))::text AS lock',
+      'salla:integration-1'
+    );
+  });
+
   it('marks a tenant-scoped integration for reauthorization after an unrecoverable OAuth response', async () => {
     const integration = {
       id: 'integration-1', tenantId: 'tenant-1', type: 'store_salla',
