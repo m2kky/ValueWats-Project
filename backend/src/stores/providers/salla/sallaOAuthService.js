@@ -152,8 +152,19 @@ function createSallaOAuthService({ prisma, http = axios, queue, clock = () => ne
   }
 
   async function reconcilePending() {
+    const pending = await prisma.integration.findMany({
+      where: {
+        type: 'store_salla', status: 'pending',
+        updatedAt: { lt: new Date(clock().getTime() - 60 * 60 * 1000) }
+      },
+      select: { id: true, metadata: true }
+    });
+    const customIds = pending
+      .filter((integration) => integration.metadata?.installationMode !== 'easy')
+      .map((integration) => integration.id);
+    if (!customIds.length) return { count: 0 };
     return prisma.integration.deleteMany({
-      where: { type: 'store_salla', status: 'pending', updatedAt: { lt: new Date(clock().getTime() - 60 * 60 * 1000) } }
+      where: { id: { in: customIds }, type: 'store_salla', status: 'pending' }
     });
   }
 

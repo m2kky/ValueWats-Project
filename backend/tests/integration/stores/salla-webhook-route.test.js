@@ -75,7 +75,7 @@ describe('Salla webhook route', () => {
   it('passes signed Easy Mode authorization to the pairing service', async () => {
     const { app, prisma, queue, sallaEasyModeService } = createHarness('easy');
     const body = JSON.stringify({
-      event: 'app.store.authorize', merchant: 12,
+      event: 'app.store.authorize', merchant: 12, created_at: '2026-08-27 10:00:00',
       data: {
         access_token: 'access-secret', refresh_token: 'refresh-secret',
         expires: 1787875200, scope: 'products.read offline_access'
@@ -86,6 +86,7 @@ describe('Salla webhook route', () => {
 
     expect(sallaEasyModeService.handleAuthorization).toHaveBeenCalledWith({
       merchantId: '12',
+      eventCreatedAt: '2026-08-27 10:00:00',
       data: {
         access_token: 'access-secret', refresh_token: 'refresh-secret',
         expires: 1787875200, scope: 'products.read offline_access'

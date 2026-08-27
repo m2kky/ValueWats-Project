@@ -37,6 +37,30 @@ describe('Store persistence', () => {
     })).rejects.toMatchObject({ code: 'P2002' });
   });
 
+  it('allows only one pending Salla pairing per merchant and integration', async () => {
+    const tenant = await prisma.tenant.create({
+      data: { name: 'Pairing Store', email: `pairing-${crypto.randomUUID()}@example.test` }
+    });
+    const [first, second] = await Promise.all(['First', 'Second'].map((name) => prisma.integration.create({
+      data: { tenantId: tenant.id, type: 'store_salla', name, credentials: 'store:v1:test', status: 'pending' }
+    })));
+    const merchantId = `merchant-${crypto.randomUUID()}`;
+    const expiresAt = new Date('2026-08-28T12:00:00.000Z');
+    await prisma.sallaPendingPairing.create({
+      data: { merchantId, integrationId: first.id, tenantId: tenant.id, expiresAt }
+    });
+
+    await expect(prisma.sallaPendingPairing.create({
+      data: { merchantId, integrationId: second.id, tenantId: tenant.id, expiresAt }
+    })).rejects.toMatchObject({ code: 'P2002' });
+    await expect(prisma.sallaPendingPairing.create({
+      data: { merchantId: `${merchantId}-other`, integrationId: first.id, tenantId: tenant.id, expiresAt }
+    })).rejects.toMatchObject({ code: 'P2002' });
+
+    await prisma.integration.delete({ where: { id: first.id } });
+    expect(await prisma.sallaPendingPairing.count({ where: { merchantId } })).toBe(0);
+  });
+
   it('isolates products by tenant and integration and cascades integration deletion', async () => {
     const tenant = await prisma.tenant.create({ data: { name: 'Store A', email: 'store-a@example.test' } });
     const integration = await prisma.integration.create({

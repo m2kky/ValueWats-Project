@@ -23,6 +23,7 @@ function harness(overrides = {}) {
     integration: {
       create: vi.fn(async ({ data }) => Object.assign(integration, data)),
       findFirst: vi.fn(async () => integration),
+      findMany: vi.fn(async () => [integration]),
       updateMany: vi.fn(async ({ data }) => {
         Object.assign(integration, data);
         return { count: 1 };
@@ -224,11 +225,26 @@ describe('Salla OAuth service', () => {
 
     await service.reconcilePending();
 
-    expect(prisma.integration.deleteMany).toHaveBeenCalledWith({
+    expect(prisma.integration.findMany).toHaveBeenCalledWith({
       where: {
         type: 'store_salla', status: 'pending',
         updatedAt: { lt: new Date('2026-08-26T09:00:00.000Z') }
-      }
+      },
+      select: { id: true, metadata: true }
     });
+    expect(prisma.integration.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['integration-1'] }, type: 'store_salla', status: 'pending' }
+    });
+  });
+
+  it('does not delete pending Easy Mode pairings during Custom Mode reconciliation', async () => {
+    const { service, integration, prisma } = harness({
+      metadata: { installationMode: 'easy' }
+    });
+
+    await service.reconcilePending();
+
+    expect(integration.status).toBe('pending');
+    expect(prisma.integration.deleteMany).not.toHaveBeenCalled();
   });
 });

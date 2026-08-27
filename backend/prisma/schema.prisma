@@ -1148,6 +1148,7 @@ model Integration {
   updatedAt    DateTime      @updatedAt
   agentActions AgentAction[]
   storeProducts StoreProduct[]
+  sallaPendingPairing SallaPendingPairing?
 
   @@index([tenantId, type])
   @@unique([id, tenantId])
@@ -1158,12 +1159,26 @@ model SallaPendingAuthorization {
   merchantId  String   @id @map("merchant_id")
   credentials String   @db.Text
   scope       String   @db.Text
+  eventCreatedAt DateTime? @map("event_created_at")
   expiresAt   DateTime @map("expires_at")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@index([expiresAt])
   @@map("salla_pending_authorizations")
+}
+
+model SallaPendingPairing {
+  merchantId    String      @id @map("merchant_id")
+  integrationId String      @unique @map("integration_id")
+  tenantId      String      @map("tenant_id")
+  expiresAt     DateTime    @map("expires_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("salla_pending_pairings")
 }
 
 model StoreProduct {

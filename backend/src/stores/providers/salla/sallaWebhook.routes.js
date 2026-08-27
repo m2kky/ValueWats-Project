@@ -81,7 +81,7 @@ function createSallaWebhookRouter({
 
     try {
       if (easyMode && event === 'app.store.authorize') {
-        await easyService.handleAuthorization({ merchantId, data: body.data });
+        await easyService.handleAuthorization({ merchantId, data: body.data, eventCreatedAt: body.created_at });
         log('accepted');
         return res.sendStatus(202);
       }
