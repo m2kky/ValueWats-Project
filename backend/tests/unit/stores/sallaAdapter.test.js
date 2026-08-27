@@ -47,7 +47,7 @@ describe('Salla adapter', () => {
       url: { secret: 'provider-body' }, is_available: { secret: 'provider-body' }
     });
 
-    expect(product).toMatchObject({ currency: null, imageUrl: null, storefrontUrl: null, isAvailable: false });
+    expect(product).toMatchObject({ currency: null, imageUrl: null, storefrontUrl: null, isAvailable: null });
     expect(JSON.stringify(product)).not.toContain('provider-body');
   });
 
@@ -63,7 +63,7 @@ describe('Salla adapter', () => {
     expect(tokenService.getAccessToken).toHaveBeenLastCalledWith({ tenantId: 'tenant-1', integrationId: 'integration-1', forceRefresh: true });
     expect(http.get.mock.calls[0][1]).toMatchObject({
       timeout: 2500,
-      params: { keyword: 'vitamin', format: 'light', per_page: 5 },
+      params: { keyword: 'vitamin', per_page: 5 },
       headers: { Authorization: 'Bearer old-token' }
     });
   });

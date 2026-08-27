@@ -70,7 +70,7 @@ function createSallaClient({ http = axios, tokenService, timeoutMs = 2500, clock
 
   return {
     async searchProducts(context, query) {
-      const response = await request(context, 'search_products', '/products', { keyword: query, format: 'light', per_page: 5 });
+      const response = await request(context, 'search_products', '/products', { keyword: query, per_page: 5 });
       return Array.isArray(response?.data) ? response.data.slice(0, 5) : [];
     },
     async getProduct(context, productId) {

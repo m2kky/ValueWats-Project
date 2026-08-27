@@ -105,9 +105,9 @@ function compactProduct(product, { liveVerified, verifiedAt }) {
       price: product.price || null,
       salePrice: product.salePrice || null,
       currency: product.currency || null,
-      isAvailable: Boolean(product.isAvailable),
+      isAvailable: typeof product.isAvailable === 'boolean' ? product.isAvailable : null,
       quantity: Number.isInteger(product.quantity) ? product.quantity : null,
-      unlimitedQuantity: Boolean(product.unlimitedQuantity),
+      unlimitedQuantity: typeof product.unlimitedQuantity === 'boolean' ? product.unlimitedQuantity : null,
       variants: Array.isArray(product.variants) ? product.variants : []
     });
   }

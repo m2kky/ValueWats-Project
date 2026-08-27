@@ -62,6 +62,7 @@ describe('Store tool definitions', () => {
     });
     expect(JSON.stringify([search, detail])).not.toMatch(/integrationId|tenantId/);
     expect(search.function.description).toContain('Always use this before answering');
+    expect(search.function.description).toContain('not the complete catalog');
   });
 
   it('appends bounded plain-text capability instructions', () => {
@@ -173,7 +174,12 @@ describe('Store tool execution', () => {
       query: 'greens',
       maxResults: 4
     });
-    expect(result).toMatchObject({ success: true, source: 'live' });
+    expect(result).toMatchObject({
+      success: true,
+      source: 'live',
+      resultScope: 'matching_products_only',
+      catalogComplete: false
+    });
     expect(result.products).toHaveLength(4);
     expect(result.products[0]).toEqual({
       id: '1',
@@ -221,7 +227,7 @@ describe('Store tool execution', () => {
         currency: null,
         available: null,
         quantity: null,
-        unlimitedQuantity: false,
+        unlimitedQuantity: null,
         variants: [],
         imageUrl: null,
         url: null,

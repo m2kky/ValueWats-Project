@@ -36,9 +36,18 @@ function availability(value, fallback) {
   return typeof value === 'boolean' ? value : fallback;
 }
 
+function inferredAvailability({ quantity, unlimitedQuantity, status }) {
+  if (unlimitedQuantity === true) return true;
+  if (status === 'out') return false;
+  if (!Number.isFinite(quantity)) return null;
+  if (quantity > 0) return true;
+  return unlimitedQuantity === false ? false : null;
+}
+
 function normalizeSallaVariant(variant, currency) {
-  const quantity = Number(variant?.quantity);
-  const unlimitedQuantity = Boolean(variant?.unlimited_quantity ?? variant?.is_unlimited);
+  const quantity = variant?.quantity === undefined || variant?.quantity === null ? NaN : Number(variant.quantity);
+  const rawUnlimitedQuantity = variant?.unlimited_quantity ?? variant?.is_unlimited;
+  const unlimitedQuantity = typeof rawUnlimitedQuantity === 'boolean' ? rawUnlimitedQuantity : null;
   return {
     externalId: productId(variant?.id),
     sku: variant?.sku ? String(variant.sku) : null,
@@ -46,15 +55,19 @@ function normalizeSallaVariant(variant, currency) {
     price: money(variant?.price),
     salePrice: money(variant?.sale_price),
     currency: string(variant?.price?.currency) || string(variant?.currency) || currency || null,
-    isAvailable: availability(variant?.is_available ?? variant?.available, unlimitedQuantity || (Number.isFinite(quantity) && quantity > 0)),
+    isAvailable: availability(
+      variant?.is_available ?? variant?.available,
+      inferredAvailability({ quantity, unlimitedQuantity })
+    ),
     quantity: Number.isFinite(quantity) ? quantity : null,
     unlimitedQuantity
   };
 }
 
 function normalizeSallaProduct(product, { descriptionLimit = 4000, variants = product?.variants } = {}) {
-  const quantity = Number(product?.quantity);
-  const unlimitedQuantity = Boolean(product?.unlimited_quantity ?? product?.is_unlimited);
+  const quantity = product?.quantity === undefined || product?.quantity === null ? NaN : Number(product.quantity);
+  const rawUnlimitedQuantity = product?.unlimited_quantity ?? product?.is_unlimited;
+  const unlimitedQuantity = typeof rawUnlimitedQuantity === 'boolean' ? rawUnlimitedQuantity : null;
   const currency = string(product?.price?.currency) || string(product?.currency);
   return {
     externalId: productId(product?.id),
@@ -65,7 +78,10 @@ function normalizeSallaProduct(product, { descriptionLimit = 4000, variants = pr
     salePrice: money(product?.sale_price),
     currency,
     status: product?.status ? String(product.status) : null,
-    isAvailable: availability(product?.is_available ?? product?.available, unlimitedQuantity || (product?.status !== 'out' && Number.isFinite(quantity) && quantity > 0)),
+    isAvailable: availability(
+      product?.is_available ?? product?.available,
+      inferredAvailability({ quantity, unlimitedQuantity, status: product?.status })
+    ),
     quantity: Number.isFinite(quantity) ? quantity : null,
     unlimitedQuantity,
     imageUrl: string(product?.image?.url) || string(product?.image) || string(product?.thumbnail),

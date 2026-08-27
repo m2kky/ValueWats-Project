@@ -70,7 +70,7 @@ function compactVariant(variant = {}) {
     currency: textOrNull(variant.currency, 12),
     available: typeof variant.isAvailable === 'boolean' ? variant.isAvailable : null,
     quantity: Number.isInteger(variant.quantity) ? variant.quantity : null,
-    unlimitedQuantity: variant.unlimitedQuantity === true
+    unlimitedQuantity: typeof variant.unlimitedQuantity === 'boolean' ? variant.unlimitedQuantity : null
   };
 }
 
@@ -79,7 +79,7 @@ function compactProduct(product) {
     ...compactBase(product),
     description: plainText(product.description, 2000),
     quantity: Number.isInteger(product.quantity) ? product.quantity : null,
-    unlimitedQuantity: product.unlimitedQuantity === true,
+    unlimitedQuantity: typeof product.unlimitedQuantity === 'boolean' ? product.unlimitedQuantity : null,
     variants: (Array.isArray(product.variants) ? product.variants : []).slice(0, 20).map(compactVariant),
     imageUrl: safeUrl(product.imageUrl),
     url: safeUrl(product.productUrl)
@@ -121,7 +121,7 @@ function createStoreToolService({ prisma, storeService, logger = console, now = 
         type: 'function',
         function: {
           name: 'search_store_products',
-          description: `Always use this before answering whether a product exists, is available, or what products the store has. Search the connected store catalog for up to five matching products; never infer a zero-result answer without calling it.${untrusted}${suffix}`,
+          description: `Always use this before answering whether a product exists, is available, or what products the store has. It returns up to five matching products, not the complete catalog, so never claim that no other products exist. A null availability is unknown, not out of stock. For exact stock details, call get_store_product for returned IDs.${untrusted}${suffix}`,
           parameters: {
             type: 'object',
             additionalProperties: false,
@@ -196,7 +196,14 @@ function createStoreToolService({ prisma, storeService, logger = console, now = 
           .slice(0, maxResults)
           .map(compactSearchProduct);
         resultCount = products.length;
-        output = { success: true, source, products };
+        output = {
+          success: true,
+          source,
+          resultScope: 'matching_products_only',
+          catalogComplete: false,
+          availabilitySemantics: 'true=available, false=out_of_stock, null=unknown',
+          products
+        };
       } else {
         const result = await storeService.getProduct({
           tenantId,

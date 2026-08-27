@@ -64,6 +64,19 @@ describe('Store service', () => {
     expect(result.products).toEqual([expect.objectContaining({ externalId: '2', name: 'Live Greens', price: '90.00', liveVerified: true })]);
   });
 
+  it('keeps missing live availability unknown instead of reporting out of stock', async () => {
+    const { service } = createService({
+      cached: [],
+      live: [liveProduct({ isAvailable: undefined, quantity: null, unlimitedQuantity: false })]
+    });
+
+    const result = await service.searchProducts({
+      tenantId: 'tenant-1', integrationId: 'integration-1', query: 'greens', maxResults: 5
+    });
+
+    expect(result.products[0]).toMatchObject({ liveVerified: true, isAvailable: null });
+  });
+
   it('retries an Arabic plural query with the closest synced product term', async () => {
     const dress = cachedProduct({ externalId: '9', sku: 'DRESS-9', name: 'فستان', description: 'فستان تجريبي' });
     const { service, prisma, adapter } = createService({ cached: [], live: [] });
