@@ -179,6 +179,22 @@ describe('Salla Easy Mode service', () => {
     expect(prisma.integration.create).not.toHaveBeenCalled();
   });
 
+  it('casts the advisory lock result so Prisma does not deserialize PostgreSQL void', async () => {
+    const { service, prisma } = createHarness();
+    prisma.$queryRawUnsafe.mockImplementation(async (query) => {
+      if (!query.includes('::text')) {
+        throw Object.assign(new Error("Failed to deserialize column of type 'void'"), { code: 'P2010' });
+      }
+      return [{ lock: '' }];
+    });
+
+    await expect(service.handleUninstalled({ merchantId: 'merchant-1' })).resolves.toEqual({ outcome: 'ignored' });
+    expect(prisma.$queryRawUnsafe).toHaveBeenCalledWith(
+      'SELECT pg_advisory_xact_lock(hashtext($1))::text AS lock',
+      'salla-easy:merchant-1'
+    );
+  });
+
   it('activates and syncs when authorization arrives before settings', async () => {
     const pairingCode = 'connection-code-123';
     const { service, integrations, pending, queue } = createHarness({

@@ -186,7 +186,7 @@ function createSallaEasyModeService({
 
   async function withMerchantLock(merchantId, operation) {
     return prisma.$transaction(async (tx) => {
-      await tx.$queryRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))', `salla-easy:${merchantId}`);
+      await tx.$queryRawUnsafe('SELECT pg_advisory_xact_lock(hashtext($1))::text AS lock', `salla-easy:${merchantId}`);
       return operation(tx);
     }, { maxWait: 5000, timeout: 10000 });
   }
