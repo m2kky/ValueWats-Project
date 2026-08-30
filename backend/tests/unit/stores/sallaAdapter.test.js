@@ -24,6 +24,13 @@ describe('Salla adapter', () => {
     expect(product).not.toHaveProperty('raw');
   });
 
+  it('keeps missing prices null instead of turning them into zero', () => {
+    expect(normalizeSallaProduct({ id: 1, price: null, sale_price: null })).toMatchObject({
+      price: null,
+      salePrice: null
+    });
+  });
+
   it('bounds normalized detailed descriptions and search snippets', async () => {
     const longDescription = `<p>${'x'.repeat(5_000)}</p>`;
     const client = { searchProducts: vi.fn().mockResolvedValue([{ id: 1, description: longDescription }]) };

@@ -1,4 +1,5 @@
 const { redactForLog } = require('../logging/redaction');
+const { storeAdapterKey } = require('./storeAdapterRegistry');
 
 const REFRESH_DELAY_MS = 60_000;
 const TRANSIENT_PROVIDER_ERRORS = new Set([
@@ -176,7 +177,7 @@ function createStoreService({ prisma, registry, clock = () => new Date(), enqueu
         },
         take: limit
       });
-      const adapter = registry.get(integration.type);
+      const adapter = registry.get(storeAdapterKey(integration));
       try {
         let live = await adapter.searchProducts({ tenantId, integrationId }, String(query || ''));
         if ((!Array.isArray(live) || live.length === 0) && cached.length === 0) {
@@ -227,7 +228,7 @@ function createStoreService({ prisma, registry, clock = () => new Date(), enqueu
         where: { tenantId, integrationId, externalId: String(productId), deletedAt: null }
       });
       if (!cached) throw storeError('STORE_PRODUCT_NOT_FOUND');
-      const adapter = registry.get(integration.type);
+      const adapter = registry.get(storeAdapterKey(integration));
       const requestedProductId = String(productId);
       const notFound = async () => {
         await prisma.storeProduct.updateMany({

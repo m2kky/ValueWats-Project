@@ -20,6 +20,7 @@ function text(value, limit) {
 
 function money(value) {
   const amount = value && typeof value === 'object' ? value.amount : value;
+  if (amount === null || amount === undefined || amount === '') return null;
   const number = Number(amount);
   return Number.isFinite(number) ? number.toFixed(2) : null;
 }

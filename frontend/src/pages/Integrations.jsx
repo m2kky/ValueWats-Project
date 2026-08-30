@@ -21,6 +21,9 @@ export default function Integrations() {
   const [authError, setAuthError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [sallaSetup, setSallaSetup] = useState(null);
+  const [showSallaPublic, setShowSallaPublic] = useState(false);
+  const [sallaStoreName, setSallaStoreName] = useState('');
+  const [sallaStoreUrl, setSallaStoreUrl] = useState('');
 
   // Form State
   const [type, setType] = useState('google_calendar_oauth');
@@ -122,6 +125,23 @@ export default function Integrations() {
     }
   };
 
+  const connectSallaPublic = async (event) => {
+    event.preventDefault();
+    try {
+      await api.post('/integrations/salla/public', {
+        name: sallaStoreName,
+        storeUrl: sallaStoreUrl
+      });
+      setShowSallaPublic(false);
+      setSallaStoreName('');
+      setSallaStoreUrl('');
+      setNotice({ type: 'success', message: 'Salla public catalog connected. Initial sync started.' });
+      fetchIntegrations();
+    } catch (error) {
+      setNotice({ type: 'error', message: `Failed to connect Salla catalog: ${sallaError(error)}` });
+    }
+  };
+
   const handleSallaAction = async (action, id) => {
     try {
       const { data } = await api[action === 'delete' ? 'delete' : 'post'](`/integrations/salla/${id}${action === 'delete' ? '' : `/${action}`}`);
@@ -160,7 +180,7 @@ export default function Integrations() {
   const openSetupModal = async (selectedType) => {
     // 1-Click Notion Integration
     if (selectedType === 'store_salla') {
-      await startSallaAuth();
+      setShowSallaPublic(true);
       return;
     }
 
@@ -212,7 +232,7 @@ export default function Integrations() {
     {
       id: 'store_salla',
       name: 'Salla',
-      desc: 'Connect your Salla store securely. Let AI agents read your live product catalog without exposing app credentials in the browser.',
+      desc: 'Connect a public Salla storefront by URL so AI agents can read live products, prices, availability, and links.',
       icon: <span className="text-3xl font-black text-white">S</span>,
       color: 'bg-[#4f46e5]'
     },
@@ -304,6 +324,9 @@ export default function Integrations() {
                       {int.type === 'store_salla' && (
                         <div className="space-y-3 mb-6 text-sm text-zinc-400">
                           <div>Status: <span className="text-white">{int.status}</span></div>
+                          {int.metadata?.accessMode === 'public_storefront' && (
+                            <div className="text-emerald-400 font-semibold">Public catalog</div>
+                          )}
                           <div>Last sync: <span className="text-white">{int.metadata?.lastSyncedAt ? new Date(int.metadata.lastSyncedAt).toLocaleString() : 'Never'}</span></div>
                           <div className="flex gap-2">
                             {int.status !== 'pending' && (
@@ -311,9 +334,11 @@ export default function Integrations() {
                                 <ArrowPathIcon className="h-4 w-4" /> Sync now
                               </button>
                             )}
-                            <button onClick={() => handleSallaAction('reconnect', int.id)} className="px-3 py-2 border border-white/10 hover:bg-white/5 text-white rounded-lg text-xs font-bold">
-                              {int.status === 'pending' ? 'Continue setup' : 'Reconnect'}
-                            </button>
+                            {int.metadata?.accessMode !== 'public_storefront' && (
+                              <button onClick={() => handleSallaAction('reconnect', int.id)} className="px-3 py-2 border border-white/10 hover:bg-white/5 text-white rounded-lg text-xs font-bold">
+                                {int.status === 'pending' ? 'Continue setup' : 'Reconnect'}
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -385,6 +410,72 @@ export default function Integrations() {
          </div>
       )}
 
+      {showSallaPublic && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <form
+            onSubmit={connectSallaPublic}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Connect Salla public catalog"
+            className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#121212] p-6 shadow-2xl"
+          >
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400">No app or token required</p>
+            <h2 className="mt-2 text-2xl font-black text-white">Connect Salla catalog</h2>
+            <p className="mt-3 text-sm leading-6 text-zinc-400">
+              Enter the public storefront URL. ValueChat detects the Store ID and product categories automatically.
+            </p>
+            <div className="mt-6 space-y-4">
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                Connection Name
+                <input
+                  required
+                  value={sallaStoreName}
+                  onChange={(event) => setSallaStoreName(event.target.value)}
+                  placeholder="Greens"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-sm normal-case text-white outline-none focus:border-emerald-500"
+                />
+              </label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                Store URL
+                <input
+                  required
+                  type="url"
+                  value={sallaStoreUrl}
+                  onChange={(event) => setSallaStoreUrl(event.target.value)}
+                  placeholder="https://your-store.com/"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-sm normal-case text-white outline-none focus:border-emerald-500"
+                />
+              </label>
+            </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setShowSallaPublic(false)}
+                className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-white hover:bg-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-500"
+              >
+                Connect catalog
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                setShowSallaPublic(false);
+                await startSallaAuth();
+              }}
+              className="mt-3 w-full rounded-xl px-4 py-3 text-sm font-semibold text-zinc-400 hover:bg-white/5 hover:text-white"
+            >
+              Use Salla app instead
+            </button>
+          </form>
+        </div>
+      )}
+
       {sallaSetup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div
@@ -408,7 +499,7 @@ export default function Integrations() {
                   try {
                     await navigator.clipboard.writeText(sallaSetup.pairingCode);
                     setNotice({ type: 'success', message: 'Salla connection code copied.' });
-                  } catch (_) {
+                  } catch {
                     setNotice({ type: 'error', message: 'Could not copy the Salla connection code.' });
                   }
                 }}

@@ -32,16 +32,22 @@ function createHarness(role = 'admin', integration = null, authMode = 'custom') 
       installUrl: 'https://s.salla.sa/apps/install/946600964'
     }))
   };
+  const sallaPublicService = {
+    connect: vi.fn(async () => ({
+      id: 'public-1', type: 'store_salla', name: 'Greens', status: 'active',
+      metadata: { accessMode: 'public_storefront', storeUrl: 'https://greens-cg.com/' }
+    }))
+  };
   const integrationService = { listIntegrations: vi.fn(), upsertIntegration: vi.fn() };
   const app = createApp({
     routes: { integrations: integrationsRouter, oauth: oauthRouter },
     middleware: { tenantContext: (req, res, next) => { req.user = { tenantId: 'tenant-1', role }; next(); } },
     dependencies: {
       prisma, queues: { storeSync }, sallaOAuthService, sallaEasyModeService,
-      sallaAuthMode: authMode, integrationService
+      sallaAuthMode: authMode, integrationService, sallaPublicService
     }
   });
-  return { app, prisma, storeSync, sallaOAuthService, sallaEasyModeService, integrationService };
+  return { app, prisma, storeSync, sallaOAuthService, sallaEasyModeService, sallaPublicService, integrationService };
 }
 
 function verifier(state) {
@@ -53,6 +59,19 @@ function storeIntegration(status) {
 }
 
 describe('Salla integration API', () => {
+  it('connects a public storefront from its URL without OAuth', async () => {
+    const { app, sallaPublicService } = createHarness();
+
+    const response = await request(app).post('/api/integrations/salla/public').send({
+      name: 'Greens', storeUrl: 'https://greens-cg.com/'
+    }).expect(201);
+
+    expect(response.body).toMatchObject({ id: 'public-1', status: 'active' });
+    expect(sallaPublicService.connect).toHaveBeenCalledWith({
+      tenantId: 'tenant-1', name: 'Greens', storeUrl: 'https://greens-cg.com/'
+    });
+  });
+
   it('requires integrations.manage before starting Salla authorization', async () => {
     const { app, sallaOAuthService } = createHarness('agent');
 

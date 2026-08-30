@@ -14,14 +14,21 @@ describe('Integrations Salla card', () => {
     vi.clearAllMocks();
   });
 
-  it('starts Salla OAuth without asking for client secrets', async () => {
-    api.get.mockResolvedValueOnce({ data: { integrations: [] } });
-    api.post.mockResolvedValueOnce({ data: {} });
+  it('connects a public Salla storefront from its URL without asking for app credentials', async () => {
+    api.get.mockResolvedValue({ data: { integrations: [] } });
+    api.post.mockResolvedValueOnce({ data: { id: 'public-1', status: 'active' } });
     render(<Integrations />);
+    const user = userEvent.setup();
     const sallaCard = await screen.findByRole('button', { name: /Salla/i });
     expect(sallaCard.tagName).toBe('BUTTON');
-    await userEvent.setup().click(sallaCard);
-    expect(api.post).toHaveBeenCalledWith('/integrations/salla/auth-url');
+    await user.click(sallaCard);
+    expect(await screen.findByRole('dialog', { name: /Connect Salla public catalog/i })).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Connection Name/i), 'Greens');
+    await user.type(screen.getByLabelText(/Store URL/i), 'https://greens-cg.com/');
+    await user.click(screen.getByRole('button', { name: /Connect catalog/i }));
+    expect(api.post).toHaveBeenCalledWith('/integrations/salla/public', {
+      name: 'Greens', storeUrl: 'https://greens-cg.com/'
+    });
     expect(screen.queryByLabelText(/Client Secret/i)).not.toBeInTheDocument();
   });
 
@@ -41,6 +48,7 @@ describe('Integrations Salla card', () => {
 
     render(<Integrations />);
     await user.click(await screen.findByRole('button', { name: /Salla/i }));
+    await user.click(await screen.findByRole('button', { name: /Use Salla app instead/i }));
 
     expect(await screen.findByRole('dialog', { name: /Connect Salla/i })).toBeInTheDocument();
     expect(screen.getByText('PAIR-CODE-123')).toBeInTheDocument();
@@ -80,6 +88,21 @@ describe('Integrations Salla card', () => {
     render(<Integrations />);
     await userEvent.setup().click(await screen.findByRole('button', { name: /Sync now/i }));
     expect(api.post).toHaveBeenCalledWith('/integrations/salla/s1/sync');
+  });
+
+  it('does not offer token reconnect for public storefronts', async () => {
+    api.get.mockResolvedValueOnce({
+      data: { integrations: [{
+        id: 'public-1', type: 'store_salla', name: 'Greens', status: 'active',
+        metadata: { accessMode: 'public_storefront', storeUrl: 'https://greens-cg.com/' }
+      }] }
+    });
+
+    render(<Integrations />);
+
+    expect(await screen.findByText('Public catalog')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Reconnect/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sync now/i })).toBeInTheDocument();
   });
 
   it('continues pending Salla setup without offering an invalid sync', async () => {

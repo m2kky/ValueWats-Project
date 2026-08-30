@@ -1,6 +1,8 @@
 const { createStoreService } = require('./storeService');
 const { createStoreAdapterRegistry } = require('./storeAdapterRegistry');
 const { createSallaAdapter } = require('./providers/salla/sallaAdapter');
+const { createSallaPublicClient } = require('./providers/salla/sallaPublicClient');
+const { createSallaPublicAdapter } = require('./providers/salla/sallaPublicAdapter');
 const { createSallaClient } = require('./providers/salla/sallaClient');
 const { createSallaTokenService } = require('./providers/salla/sallaTokenService');
 
@@ -248,7 +250,11 @@ function createDefaultService() {
   const prisma = require('../config/database');
   const tokenService = createSallaTokenService({ prisma });
   const client = createSallaClient({ tokenService });
-  const registry = createStoreAdapterRegistry({ store_salla: createSallaAdapter({ client, tokenService }) });
+  const publicClient = createSallaPublicClient({ prisma });
+  const registry = createStoreAdapterRegistry({
+    store_salla: createSallaAdapter({ client, tokenService }),
+    store_salla_public: createSallaPublicAdapter({ client: publicClient })
+  });
   return createStoreToolService({
     prisma,
     storeService: createStoreService({ prisma, registry })

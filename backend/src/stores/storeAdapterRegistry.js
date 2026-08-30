@@ -11,4 +11,10 @@ function createStoreAdapterRegistry(adapters) {
   };
 }
 
-module.exports = { createStoreAdapterRegistry };
+function storeAdapterKey(integration) {
+  return integration?.metadata?.accessMode === 'public_storefront'
+    ? 'store_salla_public'
+    : integration?.type;
+}
+
+module.exports = { createStoreAdapterRegistry, storeAdapterKey };

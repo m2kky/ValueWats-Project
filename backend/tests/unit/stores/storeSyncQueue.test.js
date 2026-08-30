@@ -123,6 +123,17 @@ describe('Store catalog sync queue', () => {
     });
   });
 
+  it('uses the public storefront adapter for public Salla integrations', async () => {
+    const { queue, integrations, registry } = createHarness();
+    integrations[0].metadata.accessMode = 'public_storefront';
+
+    await queue.processors.full_sync({
+      data: { tenantId: 'tenant-1', integrationId: 'integration-1' }
+    });
+
+    expect(registry.get).toHaveBeenCalledWith('store_salla_public');
+  });
+
   it('retries only the rate-limited current page after bounded injected sleep', async () => {
     const { queue, adapter, sleep } = createHarness();
     adapter.listProductsPage.mockReset()

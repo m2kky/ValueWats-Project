@@ -1,11 +1,13 @@
 const BullQueue = require('bull');
-const { createStoreAdapterRegistry } = require('./storeAdapterRegistry');
+const { createStoreAdapterRegistry, storeAdapterKey } = require('./storeAdapterRegistry');
 const { createStoreService } = require('./storeService');
 const { createSallaAdapter } = require('./providers/salla/sallaAdapter');
 const { createSallaClient } = require('./providers/salla/sallaClient');
 const { createSallaTokenService } = require('./providers/salla/sallaTokenService');
 const { createSallaOAuthService } = require('./providers/salla/sallaOAuthService');
 const { createSallaEasyModeService } = require('./providers/salla/sallaEasyModeService');
+const { createSallaPublicClient } = require('./providers/salla/sallaPublicClient');
+const { createSallaPublicAdapter } = require('./providers/salla/sallaPublicAdapter');
 
 const RECONCILE_EVERY_MS = 6 * 60 * 60 * 1000;
 const RECONCILE_JITTER_MS = 30_000;
@@ -46,7 +48,11 @@ function createStoreSyncQueue({
   if (!registry || !storeService) {
     const tokenService = createSallaTokenService({ prisma });
     const client = createSallaClient({ tokenService });
-    registry ||= createStoreAdapterRegistry({ store_salla: createSallaAdapter({ client, tokenService }) });
+    const publicClient = createSallaPublicClient({ prisma });
+    registry ||= createStoreAdapterRegistry({
+      store_salla: createSallaAdapter({ client, tokenService }),
+      store_salla_public: createSallaPublicAdapter({ client: publicClient })
+    });
     storeService ||= createStoreService({
       prisma,
       registry,
@@ -95,7 +101,7 @@ function createStoreSyncQueue({
     const syncStartedAt = clock();
     try {
       const integration = await activeIntegration(tenantId, integrationId);
-      const adapter = registry.get(integration.type);
+      const adapter = registry.get(storeAdapterKey(integration));
       const visitedPages = new Set();
       let page = 1;
       let pages = 0;
@@ -153,7 +159,7 @@ function createStoreSyncQueue({
   queue.process('product_refresh', async (job) => {
     const { tenantId, integrationId, productId } = job.data;
     const integration = await activeIntegration(tenantId, integrationId);
-    const adapter = registry.get(integration.type);
+    const adapter = registry.get(storeAdapterKey(integration));
     let product;
     try {
       product = await adapter.getProduct({ tenantId, integrationId }, String(productId));

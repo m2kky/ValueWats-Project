@@ -3,6 +3,7 @@ const checkPermission = require('../../../middleware/checkPermission');
 const { createSallaOAuthService } = require('./sallaOAuthService');
 const { createSallaEasyModeService } = require('./sallaEasyModeService');
 const { createStoreOAuthVerifier } = require('../../storeOAuthState');
+const { createSallaPublicService } = require('./sallaPublicService');
 
 function setVerifierCookie(res, result) {
   if (!result.authUrl) return;
@@ -27,7 +28,8 @@ function createSallaIntegrationRouter() {
       }),
       sallaEasyModeService: values.sallaEasyModeService || createSallaEasyModeService({
         prisma, queue, clock: values.clock
-      })
+      }),
+      sallaPublicService: values.sallaPublicService || createSallaPublicService({ prisma, queue })
     };
   };
 
@@ -42,6 +44,25 @@ function createSallaIntegrationRouter() {
     } catch (error) {
       const unavailable = ['SALLA_NOT_CONFIGURED', 'SALLA_EASY_MODE_NOT_CONFIGURED'].includes(error.code);
       res.status(unavailable ? 503 : 500).json({ error: error.code || 'SALLA_OAUTH_FAILED' });
+    }
+  });
+
+  router.post('/public', checkPermission('integrations.manage'), async (req, res) => {
+    try {
+      const { sallaPublicService } = context(req);
+      const result = await sallaPublicService.connect({
+        tenantId: req.user.tenantId,
+        name: req.body?.name,
+        storeUrl: req.body?.storeUrl
+      });
+      res.status(201).json(result);
+    } catch (error) {
+      const clientError = [
+        'SALLA_PUBLIC_STORE_URL_INVALID',
+        'SALLA_PUBLIC_STORE_UNREACHABLE',
+        'SALLA_PUBLIC_STORE_NOT_DETECTED'
+      ].includes(error.code);
+      res.status(clientError ? 400 : 500).json({ error: error.code || 'SALLA_PUBLIC_STORE_CONNECT_FAILED' });
     }
   });
 
