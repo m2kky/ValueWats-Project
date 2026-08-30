@@ -79,6 +79,33 @@ const storeCapabilityConfigSchema = Object.freeze({
     maxResults: { type: 'integer', minimum: 1, maximum: 5 }
   }
 });
+const googleSheetsCapabilityConfigSchema = Object.freeze({
+  type: 'object',
+  additionalProperties: false,
+  required: ['sources'],
+  properties: {
+    sources: {
+      type: 'array',
+      minItems: 0,
+      maxItems: 20,
+      uniqueItems: true,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['id', 'name', 'spreadsheetId', 'range', 'purpose', 'useWhen', 'priority'],
+        properties: {
+          id: { type: 'string', minLength: 36, maxLength: 36, pattern: '^[0-9a-fA-F-]{36}$' },
+          name: { type: 'string', minLength: 1, maxLength: 120 },
+          spreadsheetId: { type: 'string', minLength: 20, maxLength: 200, pattern: '^[A-Za-z0-9_-]+$' },
+          range: { type: 'string', minLength: 1, maxLength: 200 },
+          purpose: { type: 'string', minLength: 1, maxLength: 500 },
+          useWhen: { type: 'string', minLength: 1, maxLength: 500 },
+          priority: { type: 'integer', minimum: 0, maximum: 1000 }
+        }
+      }
+    }
+  }
+});
 const emptyCapabilityConfigSchema = closeCapabilityConfigSchema;
 function assertStrictObjectNode(schema) {
   if (
@@ -154,6 +181,7 @@ module.exports = {
   assignmentCapabilityConfigSchema,
   closeCapabilityConfigSchema,
   storeCapabilityConfigSchema,
+  googleSheetsCapabilityConfigSchema,
   emptyCapabilityConfigSchema,
   assertStrictObjectSchema,
   compileStrictObjectSchema

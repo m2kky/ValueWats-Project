@@ -3,7 +3,8 @@ const {
   assignmentCapabilityConfigSchema,
   closeCapabilityConfigSchema,
   emptyCapabilityConfigSchema,
-  storeCapabilityConfigSchema
+  storeCapabilityConfigSchema,
+  googleSheetsCapabilityConfigSchema
 } = require('./capabilitySchemas');
 
 function createCapabilityCatalog(entries = []) {
@@ -75,6 +76,14 @@ const capabilityCatalog = createCapabilityCatalog([
     terminalConversationCommand: false,
     integration: { required: true, types: ['store_salla'] },
     configSchema: storeCapabilityConfigSchema
+  },
+  {
+    type: 'google_sheets_read',
+    risk: 'external_read',
+    delivery: 'internal',
+    terminalConversationCommand: false,
+    integration: { required: true, types: ['google_sheets_oauth'] },
+    configSchema: googleSheetsCapabilityConfigSchema
   },
   ...['update_contact', 'update_lifecycle', 'modify_tags', 'add_internal_comment'].map((type) => ({
     type,

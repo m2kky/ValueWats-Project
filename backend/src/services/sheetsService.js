@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const { sanitizeError } = require('../logging/redaction');
 
 /**
  * Google Sheets Service
@@ -84,15 +85,16 @@ class SheetsService {
             const response = await sheets.spreadsheets.values.get({
                 spreadsheetId,
                 range: range || 'Sheet1!A:Z',
-            });
+                valueRenderOption: 'FORMATTED_VALUE'
+            }, { timeout: 10000 });
 
             return { 
                 success: true, 
                 rows: response.data.values || [] 
             };
         } catch (error) {
-            console.error('[SheetsService] Read Error:', error);
-            return { success: false, error: error.message };
+            console.error('[SheetsService] Read Error:', sanitizeError(error));
+            return { success: false, error: 'Google Sheets read failed' };
         }
     }
 }

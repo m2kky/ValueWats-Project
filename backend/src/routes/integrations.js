@@ -63,6 +63,9 @@ router.delete('/:id', checkPermission('integrations.manage'), async (req, res) =
 router.post('/google/auth-url', async (req, res) => {
   try {
     const { name, clientId, clientSecret, redirectUri, type } = req.body;
+    if (!['google_sheets_oauth', 'google_calendar_oauth', 'google_drive_oauth'].includes(type)) {
+      return res.status(400).json({ error: 'Unsupported Google integration type' });
+    }
     if (!clientId || !clientSecret || !redirectUri) {
        return res.status(400).json({ error: 'Missing OAuth parameters' });
     }

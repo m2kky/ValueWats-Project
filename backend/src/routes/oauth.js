@@ -3,6 +3,7 @@ const router = express.Router();
 const integrationService = require('../services/integration.service');
 const { createSallaOAuthService } = require('../stores/providers/salla/sallaOAuthService');
 const { verifyStoreOAuthVerifier } = require('../stores/storeOAuthState');
+const { verifyGoogleOAuthState } = require('../googleSheets/googleOAuthState');
 
 function cookieValue(header, name) {
   if (typeof header !== 'string') return null;
@@ -54,8 +55,8 @@ router.get('/google/callback', async (req, res) => {
   }
 
   try {
-    const integrationId = state;
-    await integrationService.completeOAuth(integrationId, code);
+    const oauthState = verifyGoogleOAuthState(state);
+    await integrationService.completeOAuth(oauthState.integrationId, code, oauthState);
     
     // Redirect back to frontend integrations page exactly as requested
     res.redirect(`/settings/integrations?success=true`);

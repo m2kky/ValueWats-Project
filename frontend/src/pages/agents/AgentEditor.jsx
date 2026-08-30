@@ -17,6 +17,14 @@ export default function AgentEditor({
 }) {
   const storeEnabled = form.actionConfig?.store?.enabled || false;
   const storeConnectionMissing = storeEnabled && !form.actionConfig?.store?.integrationId;
+  const googleSheets = form.actionConfig?.googleSheets || {};
+  const googleSheetsEnabled = googleSheets.enabled || false;
+  const googleSheetsInvalid = googleSheetsEnabled && (
+    !googleSheets.integrationId
+    || !Array.isArray(googleSheets.sources)
+    || googleSheets.sources.length === 0
+    || googleSheets.sources.some((source) => !source.name || !source.spreadsheetId || !source.range || !source.purpose || !source.useWhen)
+  );
 
   return (
     <div className="w-3/5 overflow-y-auto border-r border-white/5 custom-scrollbar">
@@ -50,14 +58,14 @@ export default function AgentEditor({
           </button>
           <button
             onClick={() => handleSave(false)}
-            disabled={saving || !form.name || !form.instructions || instructionOverLimit || storeConnectionMissing}
+            disabled={saving || !form.name || !form.instructions || instructionOverLimit || storeConnectionMissing || googleSheetsInvalid}
             className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest transition-all active:scale-95"
           >
             Save Draft
           </button>
           <button
             onClick={() => handleSave(true)}
-            disabled={saving || !form.name || !form.instructions || instructionOverLimit || storeConnectionMissing}
+            disabled={saving || !form.name || !form.instructions || instructionOverLimit || storeConnectionMissing || googleSheetsInvalid}
             className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 px-6 py-2.5 rounded-xl text-xs font-black text-white uppercase tracking-widest shadow-lg shadow-indigo-500/10 transition-all active:scale-95"
           >
             {saving ? 'Uploading...' : (form.isPublished ? 'Update Published' : 'Publish Agent')}
@@ -66,6 +74,11 @@ export default function AgentEditor({
         {storeConnectionMissing && (
           <p className="px-8 pb-3 text-[10px] font-bold uppercase tracking-widest text-rose-400">
             Select one active Store connection before saving or publishing.
+          </p>
+        )}
+        {googleSheetsInvalid && (
+          <p className="px-8 pb-3 text-[10px] font-bold uppercase tracking-widest text-rose-400">
+            Select an active Google Sheets connection and complete every source before saving.
           </p>
         )}
       </div>
@@ -554,6 +567,129 @@ export default function AgentEditor({
                     <option key={i.id} value={i.id}>{i.name}</option>
                   ))}
                 </select>
+              </div>
+            </ActionCard>
+
+            <ActionCard
+              title="Google Sheets Sources"
+              description="ALLOW AGENT TO READ ONLY FROM NAMED, PRE-APPROVED SHEET RANGES."
+              enabled={googleSheetsEnabled}
+              setEnabled={(enabled) => setForm((current) => ({
+                ...current,
+                actionConfig: {
+                  ...current.actionConfig,
+                  googleSheets: { ...current.actionConfig.googleSheets, enabled }
+                }
+              }))}
+              config={googleSheets.instructions || ''}
+              setConfig={(instructions) => setForm((current) => ({
+                ...current,
+                actionConfig: {
+                  ...current.actionConfig,
+                  googleSheets: { ...current.actionConfig.googleSheets, instructions }
+                }
+              }))}
+              placeholder="EXPLAIN HOW THE AGENT SHOULD USE THESE REFERENCE SOURCES..."
+              mentions={mentionTargets}
+              showMentions={true}
+              tags={availableTags}
+              variables={availableVariables}
+              showTags={true}
+            >
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="google-sheets-integration" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
+                    Google Sheets Connection
+                  </label>
+                  <select
+                    id="google-sheets-integration"
+                    className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs font-medium text-white outline-none focus:border-emerald-500/50"
+                    value={googleSheets.integrationId || ''}
+                    onChange={(event) => setForm((current) => ({
+                      ...current,
+                      actionConfig: {
+                        ...current.actionConfig,
+                        googleSheets: { ...current.actionConfig.googleSheets, integrationId: event.target.value }
+                      }
+                    }))}
+                  >
+                    <option value="">-- Select Google Sheets Connection --</option>
+                    {availableIntegrations
+                      .filter((integration) => integration.type === 'google_sheets_oauth' && integration.status === 'active')
+                      .map((integration) => <option key={integration.id} value={integration.id}>{integration.name}</option>)}
+                  </select>
+                </div>
+
+                {(googleSheets.sources || []).map((source, index) => (
+                  <div key={source.id || index} className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Source {index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => setForm((current) => ({
+                          ...current,
+                          actionConfig: {
+                            ...current.actionConfig,
+                            googleSheets: {
+                              ...current.actionConfig.googleSheets,
+                              sources: current.actionConfig.googleSheets.sources.filter((_, sourceIndex) => sourceIndex !== index)
+                            }
+                          }
+                        }))}
+                        className="text-[10px] font-bold uppercase text-rose-400"
+                      >Remove</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        ['name', 'Source name', 'Approved FAQ'],
+                        ['spreadsheetId', 'Spreadsheet URL or ID', 'Paste the Google Sheets URL or ID'],
+                        ['range', 'Bounded range', 'Sheet1!A1:F500'],
+                        ['purpose', 'Purpose', 'What this source contains'],
+                        ['useWhen', 'Use when', 'When the agent should consult it']
+                      ].map(([field, label, placeholder]) => (
+                        <label key={field} className={field === 'purpose' || field === 'useWhen' ? 'col-span-2' : ''}>
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">{label}</span>
+                          <input
+                            aria-label={`${label} ${index + 1}`}
+                            value={source[field] || ''}
+                            placeholder={placeholder}
+                            onChange={(event) => setForm((current) => {
+                              const sources = [...current.actionConfig.googleSheets.sources];
+                              sources[index] = { ...sources[index], [field]: event.target.value };
+                              return {
+                                ...current,
+                                actionConfig: {
+                                  ...current.actionConfig,
+                                  googleSheets: { ...current.actionConfig.googleSheets, sources }
+                                }
+                              };
+                            })}
+                            className="mt-1 w-full bg-zinc-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-emerald-500/40"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {(googleSheets.sources || []).length < 20 && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((current) => ({
+                      ...current,
+                      actionConfig: {
+                        ...current.actionConfig,
+                        googleSheets: {
+                          ...current.actionConfig.googleSheets,
+                          sources: [...(current.actionConfig.googleSheets.sources || []), {
+                            name: '', spreadsheetId: '', range: 'Sheet1!A1:Z500', purpose: '', useWhen: '', priority: current.actionConfig.googleSheets.sources?.length || 0
+                          }]
+                        }
+                      }
+                    }))}
+                    className="w-full rounded-lg border border-dashed border-emerald-500/30 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:bg-emerald-500/5"
+                  >Add Sheet Source</button>
+                )}
               </div>
             </ActionCard>
 

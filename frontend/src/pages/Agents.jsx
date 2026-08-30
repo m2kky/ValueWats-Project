@@ -61,6 +61,7 @@ const defaultForm = {
     triggerWorkflow: { enabled: false, instructions: '' },
     addComment: { enabled: false, instructions: '' },
     store: { enabled: false, integrationId: '', instructions: '' },
+    googleSheets: { enabled: false, integrationId: '', instructions: '', sources: [] },
     httpRequests: { enabled: false, actions: [] },
   },
 };
@@ -226,6 +227,7 @@ export default function Agents() {
     const full = await fetchAgent(agent.id);
     if (full) {
       const storeAction = full.actions?.find((action) => action.key === 'store_catalog_read');
+      const googleSheetsAction = full.actions?.find((action) => action.key === 'google_sheets_read');
       setForm({
         ...defaultForm, ...full,
         name: full.name || '', description: full.description || '', instructions: full.instructions || '',
@@ -248,6 +250,14 @@ export default function Agents() {
             enabled: Boolean(storeAction?.isEnabled),
             integrationId: storeAction?.integrationId || '',
             instructions: storeAction?.instructions || '',
+          },
+          googleSheets: {
+            enabled: Boolean(googleSheetsAction?.isEnabled),
+            integrationId: googleSheetsAction?.integrationId || '',
+            instructions: googleSheetsAction?.instructions || '',
+            sources: Array.isArray(googleSheetsAction?.config?.sources)
+              ? googleSheetsAction.config.sources
+              : [],
           },
         },
       });

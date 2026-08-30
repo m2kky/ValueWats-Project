@@ -69,13 +69,14 @@ describe('command registry', () => {
     expect(new Set(terminalCommands.map(({ capabilityType }) => capabilityType)).size).toBe(2);
   });
 
-  it('registers every static command capability without treating Store reads as mutations', () => {
+  it('registers every static command capability without treating external reads as mutations', () => {
     expect(staticCommandRegistry.list().map(({ capabilityType }) => capabilityType).sort())
       .toEqual(staticCapabilityCatalog.list()
-        .filter(({ type }) => type !== 'store_catalog_read')
+        .filter(({ risk }) => risk !== 'external_read')
         .map(({ type }) => type)
         .sort());
     expect(staticCommandRegistry.get('store_catalog_read')).toBeUndefined();
+    expect(staticCommandRegistry.get('google_sheets_read')).toBeUndefined();
   });
 
   it('resolves only exact, statically registered command names', () => {

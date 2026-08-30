@@ -58,6 +58,7 @@ export function buildAgentCapabilities(data = {}) {
   const close = data.actionConfig?.closeConversation || {};
   const internal = data.actionConfig || {};
   const store = internal.store || {};
+  const googleSheets = internal.googleSheets || {};
   return {
     assignConversation: {
       enabled: assignment.enabled === true,
@@ -96,6 +97,12 @@ export function buildAgentCapabilities(data = {}) {
       integrationId: store.integrationId || '',
       instructions: store.instructions || '',
       maxResults: 5,
+    },
+    googleSheets: {
+      enabled: googleSheets.enabled === true,
+      integrationId: googleSheets.integrationId || '',
+      instructions: googleSheets.instructions || '',
+      sources: Array.isArray(googleSheets.sources) ? googleSheets.sources : [],
     },
   };
 }

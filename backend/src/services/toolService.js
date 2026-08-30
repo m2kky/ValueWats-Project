@@ -13,8 +13,12 @@ const toolFailure = (error, prefix = '') => ({
 });
 
 class ToolService {
-    constructor({ storeToolService = require('../stores/storeToolService') } = {}) {
+    constructor({
+        storeToolService = require('../stores/storeToolService'),
+        googleSheetsSourceToolService = require('../googleSheets/googleSheetsSourceToolService')
+    } = {}) {
         this.storeToolService = storeToolService;
+        this.googleSheetsSourceToolService = googleSheetsSourceToolService;
         this.handlers = {
             send_email: this.handleSendEmail.bind(this),
             create_calendar_event: this.handleCreateCalendarEvent.bind(this),
@@ -30,7 +34,9 @@ class ToolService {
             append_notion_block: this.handleAppendNotionBlock.bind(this),
             archive_notion_page: this.handleArchiveNotionPage.bind(this),
             search_store_products: (args, context) => this.storeToolService.execute('search_store_products', args, context),
-            get_store_product: (args, context) => this.storeToolService.execute('get_store_product', args, context)
+            get_store_product: (args, context) => this.storeToolService.execute('get_store_product', args, context),
+            list_google_sheet_sources: (args, context) => this.googleSheetsSourceToolService.execute('list_google_sheet_sources', args, context),
+            query_google_sheet_source: (args, context) => this.googleSheetsSourceToolService.execute('query_google_sheet_source', args, context)
         };
     }
 
@@ -252,6 +258,7 @@ class ToolService {
         }
 
         tools.push(...this.storeToolService.getToolDefinitions(actions));
+        tools.push(...this.googleSheetsSourceToolService.getToolDefinitions(actions));
         return tools;
     }
 

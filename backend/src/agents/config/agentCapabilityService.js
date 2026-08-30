@@ -2,6 +2,7 @@ const prismaDefault = require('../../config/database');
 const { capabilityCatalog } = require('./capabilityCatalog');
 const { buildLegacyActionConfigProjection } = require('./legacyActionConfigProjection');
 const { AgentSetupError } = require('./agentSetupService');
+const { normalizeSources } = require('../../googleSheets/googleSheetsSourceConfig');
 
 const CAPABILITY_KEYS = [
   'assign_conversation',
@@ -10,7 +11,8 @@ const CAPABILITY_KEYS = [
   'update_lifecycle',
   'modify_tags',
   'add_internal_comment',
-  'store_catalog_read'
+  'store_catalog_read',
+  'google_sheets_read'
 ];
 
 function normalizeTarget(value) {
@@ -22,6 +24,8 @@ function normalizeCapabilities(input = {}) {
   const close = input.closeConversation || {};
   const store = input.store || {};
   const storeEnabled = store.enabled === true;
+  const googleSheets = input.googleSheets || {};
+  const googleSheetsEnabled = googleSheets.enabled === true;
   const internal = {
     update_contact: input.updateContact || {},
     update_lifecycle: input.updateLifecycle || {},
@@ -57,6 +61,14 @@ function normalizeCapabilities(input = {}) {
   if (!capabilityCatalog.get('store_catalog_read').validateConfig(storeConfig)) {
     throw new AgentSetupError(400, 'CAPABILITY_CONFIG_INVALID', 'Invalid Store capability configuration');
   }
+  const sheetSources = googleSheetsEnabled ? normalizeSources(googleSheets.sources) : [];
+  const googleSheetsConfig = { sources: sheetSources || [] };
+  if (googleSheetsEnabled && (
+    !sheetSources
+    || !capabilityCatalog.get('google_sheets_read').validateConfig(googleSheetsConfig)
+  )) {
+    throw new AgentSetupError(400, 'CAPABILITY_CONFIG_INVALID', 'Invalid Google Sheets capability configuration');
+  }
 
   return {
     assign_conversation: {
@@ -84,6 +96,14 @@ function normalizeCapabilities(input = {}) {
         : null,
       instructions: storeEnabled ? String(store.instructions || '').trim() : '',
       config: storeConfig
+    },
+    google_sheets_read: {
+      isEnabled: googleSheetsEnabled,
+      integrationId: googleSheetsEnabled && typeof googleSheets.integrationId === 'string'
+        ? googleSheets.integrationId.trim() || null
+        : null,
+      instructions: googleSheetsEnabled ? String(googleSheets.instructions || '').trim() : '',
+      config: googleSheetsConfig
     }
   };
 }
@@ -104,22 +124,27 @@ function createAgentCapabilityService({ prisma = prismaDefault } = {}) {
             throw new AgentSetupError(409, 'CONFIG_VERSION_CONFLICT', 'Agent config version is stale');
           }
 
-          const store = normalized.store_catalog_read;
-          if (store.isEnabled) {
-            if (!store.integrationId) {
-              throw new AgentSetupError(400, 'CAPABILITY_INTEGRATION_INVALID', 'Invalid Store capability integration');
-            }
-            const integrationPolicy = capabilityCatalog.get('store_catalog_read').integration;
-            const integration = await transaction.integration.findFirst({
-              where: {
-                id: store.integrationId,
-                tenantId,
-                status: 'active',
-                type: { in: integrationPolicy.types }
+          for (const [key, label] of [
+            ['store_catalog_read', 'Store'],
+            ['google_sheets_read', 'Google Sheets']
+          ]) {
+            const capability = normalized[key];
+            if (capability.isEnabled) {
+              if (!capability.integrationId) {
+                throw new AgentSetupError(400, 'CAPABILITY_INTEGRATION_INVALID', `Invalid ${label} capability integration`);
               }
-            });
-            if (!integration) {
-              throw new AgentSetupError(400, 'CAPABILITY_INTEGRATION_INVALID', 'Invalid Store capability integration');
+              const integrationPolicy = capabilityCatalog.get(key).integration;
+              const integration = await transaction.integration.findFirst({
+                where: {
+                  id: capability.integrationId,
+                  tenantId,
+                  status: 'active',
+                  type: { in: integrationPolicy.types }
+                }
+              });
+              if (!integration) {
+                throw new AgentSetupError(400, 'CAPABILITY_INTEGRATION_INVALID', `Invalid ${label} capability integration`);
+              }
             }
           }
 

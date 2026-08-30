@@ -1,6 +1,24 @@
 const prisma = require('../config/database');
 const { encrypt, decrypt } = require('../utils/encryption');
 const axios = require('axios');
+const { createGoogleOAuthState } = require('../googleSheets/googleOAuthState');
+
+const GOOGLE_SCOPES = Object.freeze({
+  google_sheets_oauth: [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/spreadsheets.readonly'
+  ],
+  google_calendar_oauth: [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/calendar.readonly'
+  ],
+  google_drive_oauth: [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/drive.readonly'
+  ]
+});
 
 class IntegrationService {
 
@@ -82,29 +100,25 @@ class IntegrationService {
   async createOAuthPending(tenantId, name, clientId, clientSecret, redirectUri, specificType) {
     const { google } = require('googleapis');
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
-    const url = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      prompt: 'consent',
-      scope: [
-        'https://www.googleapis.com/auth/userinfo.email',
-        'https://www.googleapis.com/auth/calendar.events', 
-        'https://www.googleapis.com/auth/calendar.readonly', 
-        'https://www.googleapis.com/auth/drive.file', 
-        'https://www.googleapis.com/auth/drive.readonly', 
-        'https://www.googleapis.com/auth/spreadsheets'
-      ]
-    });
-
+    const scopes = GOOGLE_SCOPES[specificType];
+    if (!scopes) throw new Error('Unsupported Google integration type');
     const integration = await prisma.integration.create({
       data: {
         tenantId,
-        type: specificType || 'google_oauth',
+        type: specificType,
         name,
         credentials: encrypt(JSON.stringify({ clientId, clientSecret, redirectUri })),
         status: 'pending'
       }
     });
-    return { authUrl: url + '&state=' + integration.id };
+    const state = createGoogleOAuthState({ integrationId: integration.id, tenantId, type: specificType });
+    const url = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      prompt: 'consent',
+      scope: scopes,
+      state
+    });
+    return { authUrl: url };
   }
 
   async createNotionOAuthPending(tenantId) {
@@ -129,9 +143,16 @@ class IntegrationService {
     return { authUrl };
   }
 
-  async completeOAuth(integrationId, code) {
+  async completeOAuth(integrationId, code, expected = {}) {
     const { google } = require('googleapis');
-    const integration = await prisma.integration.findUnique({ where: { id: integrationId } });
+    const integration = await prisma.integration.findFirst({
+      where: {
+        id: integrationId,
+        tenantId: expected.tenantId,
+        type: expected.type,
+        status: 'pending'
+      }
+    });
     if (!integration) throw new Error('Integration not found');
     const creds = JSON.parse(decrypt(integration.credentials));
     

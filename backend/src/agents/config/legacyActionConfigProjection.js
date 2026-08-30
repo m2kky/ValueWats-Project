@@ -15,9 +15,16 @@ function buildLegacyActionConfigProjection({ existingActionConfig, canonicalActi
     store_catalog_read: 'store'
   };
 
+  if (canonicalActions.some((action) => action?.key === 'google_sheets_read')) {
+    delete projection.google_sheets;
+    delete projection.googleSheetsRead;
+  }
+
   for (const action of canonicalActions) {
     if (!action || !action.key) continue;
-    projection[legacyKeys[action.key] || action.key] = {
+    const legacyKey = legacyKeys[action.key];
+    if (!legacyKey) continue;
+    projection[legacyKey] = {
       enabled: Boolean(action.isEnabled),
       instructions: action.instructions,
       config: cloneJson(action.config) || {}

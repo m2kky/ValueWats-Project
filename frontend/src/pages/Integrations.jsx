@@ -198,7 +198,7 @@ export default function Integrations() {
     {
       id: 'google_sheets_oauth',
       name: 'Google Sheets',
-      desc: 'Read, modify and append data directly to your sheets on your behalf. Ideal for AI data collection and seamless CRM syncing.',
+      desc: 'Connect named spreadsheet ranges as read-only reference sources for AI agents.',
       icon: <img src="/assets/google-icons/google-sheets.svg" alt="Google Sheets" className="w-10 h-10 object-contain drop-shadow-lg" />,
       color: 'bg-white'
     },

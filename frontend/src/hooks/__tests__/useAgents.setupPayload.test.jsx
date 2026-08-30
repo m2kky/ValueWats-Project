@@ -111,7 +111,8 @@ describe('agent setup payload compatibility', () => {
       updateLifecycle: { enabled: false, instructions: '' },
       modifyTags: { enabled: false, instructions: '' },
       addInternalComment: { enabled: false, instructions: '' },
-      store: { enabled: false, integrationId: '', instructions: '', maxResults: 5 }
+      store: { enabled: false, integrationId: '', instructions: '', maxResults: 5 },
+      googleSheets: { enabled: false, integrationId: '', instructions: '', sources: [] }
     });
   });
 
@@ -119,6 +120,28 @@ describe('agent setup payload compatibility', () => {
     expect(buildAgentCapabilities({
       actionConfig: { store: { enabled: true, integrationId: 'salla-1', instructions: 'Use for products.' } }
     }).store).toEqual({ enabled: true, integrationId: 'salla-1', instructions: 'Use for products.', maxResults: 5 });
+  });
+
+  it('builds one read-only Google Sheets capability with named sources', () => {
+    const sources = [{
+      id: 'source-1', name: 'FAQ', spreadsheetId: 'sheet-1', range: 'FAQ!A1:C100',
+      purpose: 'Approved FAQ', useWhen: 'Use for FAQ questions', priority: 1
+    }];
+    expect(buildAgentCapabilities({
+      actionConfig: {
+        googleSheets: {
+          enabled: true,
+          integrationId: 'google-1',
+          instructions: 'Use approved data only.',
+          sources
+        }
+      }
+    }).googleSheets).toEqual({
+      enabled: true,
+      integrationId: 'google-1',
+      instructions: 'Use approved data only.',
+      sources
+    });
   });
 
   it('sends expectedConfigVersion on update, toggle, and delete requests without raw actionConfig', async () => {
