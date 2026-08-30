@@ -47,12 +47,15 @@ function validateDecision(output, platform, privateReplyEnabled) {
 
 function createDefaultModelGateway(chatGateway) {
   return {
-    async generate({ messages, model, temperature, maxTokens }) {
+    async generate({ messages, model, temperature, maxTokens, responseFormat }) {
       const response = await chatGateway.chat({
         messages,
         model,
         temperature,
         max_tokens: maxTokens,
+        response_format: responseFormat === 'json'
+          ? { type: 'json_object' }
+          : responseFormat || null,
         tools: null,
         tool_choice: null
       });
@@ -98,8 +101,9 @@ function createCommentAiDecisionService({
       comment
     });
 
+    let output;
     try {
-      const output = await modelGateway.generate({
+      output = await modelGateway.generate({
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
         model: resolveChatModel(agent.aiModel),
         temperature: agent.temperature,
@@ -112,6 +116,14 @@ function createCommentAiDecisionService({
       const reason = error instanceof SyntaxError || /(?:Invalid|Unexpected|Unsafe|too long|decision|JSON)/iu.test(error.message)
         ? 'invalid_ai_output'
         : 'ai_unavailable';
+      console.warn('comment.ai.decision_failed', {
+        agentId: agent.id,
+        platform: execution.platform,
+        reasonCode: reason,
+        error: String(error?.message || error).slice(0, 200),
+        outputType: Array.isArray(output) ? 'array' : typeof output,
+        outputLength: typeof output === 'string' ? output.length : null
+      });
       return closed(reason);
     }
   }
@@ -121,5 +133,6 @@ function createCommentAiDecisionService({
 
 module.exports = {
   createCommentAiDecisionService,
+  createDefaultModelGateway,
   validateDecision
 };

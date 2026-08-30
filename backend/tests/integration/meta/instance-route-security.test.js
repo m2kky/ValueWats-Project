@@ -141,7 +141,7 @@ describe('Instance route token boundary', () => {
     expect(list.body.instances[0]).not.toHaveProperty('accessToken');
   });
 
-  it('subscribes Instagram through the linked page without dropping Facebook feed events', async () => {
+  it('subscribes both the linked page and Instagram account webhooks', async () => {
     process.env.ENCRYPTION_KEY = Buffer.alloc(32, 5).toString('base64');
     const prisma = {
       instance: {
@@ -177,7 +177,7 @@ describe('Instance route token boundary', () => {
       .send({ channelType: 'instagram', userAccessToken: 'user-access-token' })
       .expect(201);
 
-    expect(subscribe).toHaveBeenCalledTimes(1);
+    expect(subscribe).toHaveBeenCalledTimes(2);
     expect(subscribe).toHaveBeenCalledWith(
       expect.stringContaining('/page-1/subscribed_apps'),
       null,
@@ -188,7 +188,16 @@ describe('Instance route token boundary', () => {
         })
       })
     );
-    expect(subscribe.mock.calls[0][0]).not.toContain('instagram-account-1');
+    expect(subscribe).toHaveBeenCalledWith(
+      expect.stringContaining('/instagram-account-1/subscribed_apps'),
+      null,
+      expect.objectContaining({
+        params: expect.objectContaining({
+          subscribed_fields: expect.stringContaining('comments'),
+          access_token: 'page-access-token'
+        })
+      })
+    );
   });
 
   it('connects a selected Messenger page directly when /me/accounts omits it', async () => {

@@ -1,4 +1,7 @@
-const { createCommentAiDecisionService } = require('../../../src/commentReplies/commentAiDecisionService');
+const {
+  createCommentAiDecisionService,
+  createDefaultModelGateway
+} = require('../../../src/commentReplies/commentAiDecisionService');
 
 function subject(output, overrides = {}) {
   const modelGateway = { generate: vi.fn().mockResolvedValue(output) };
@@ -22,6 +25,25 @@ function subject(output, overrides = {}) {
 }
 
 describe('read-only Comment AI decisions', () => {
+  it('forwards JSON response enforcement to the shared chat gateway', async () => {
+    const chatGateway = {
+      chat: vi.fn().mockResolvedValue({ content: '{"action":"skip"}' })
+    };
+    const gateway = createDefaultModelGateway(chatGateway);
+
+    await gateway.generate({
+      messages: [{ role: 'user', content: 'Test' }],
+      model: 'openai/gpt-4o-mini',
+      temperature: 0.2,
+      maxTokens: 300,
+      responseFormat: 'json'
+    });
+
+    expect(chatGateway.chat).toHaveBeenCalledWith(expect.objectContaining({
+      response_format: { type: 'json_object' }
+    }));
+  });
+
   it.each([
     [{ action: 'skip', publicReply: null, privateReply: null, reasonCode: 'not_actionable' }, 'skip'],
     [{ action: 'human_review', publicReply: null, privateReply: null, reasonCode: 'needs_staff' }, 'human_review'],

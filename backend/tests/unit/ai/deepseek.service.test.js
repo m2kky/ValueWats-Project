@@ -39,6 +39,28 @@ describe('OpenRouter chat gateway', () => {
     );
   });
 
+  it('passes structured response format through to OpenRouter', async () => {
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
+    vi.stubEnv('OPENROUTER_BASE_URL', 'https://openrouter.test/api/v1');
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        provider: 'fast-provider',
+        choices: [{ message: { role: 'assistant', content: '{"action":"skip"}' } }]
+      }
+    });
+
+    vi.resetModules();
+    const gateway = require('../../../src/ai/deepseek.service');
+    await gateway.chat({
+      messages: [{ role: 'user', content: 'Return JSON' }],
+      response_format: { type: 'json_object' }
+    });
+
+    expect(post.mock.calls[0][1]).toEqual(expect.objectContaining({
+      response_format: { type: 'json_object' }
+    }));
+  });
+
   it('falls back once to DeepSeek V3.2 when the global default provider is unavailable', async () => {
     vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
     vi.stubEnv('OPENROUTER_BASE_URL', 'https://openrouter.test/api/v1');

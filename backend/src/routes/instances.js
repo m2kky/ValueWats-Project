@@ -24,6 +24,7 @@ const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
 const FB_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 const META_PAGE_SUBSCRIPTION_FIELDS =
   'messages,messaging_postbacks,messaging_referrals,message_reads,message_deliveries,feed';
+const META_INSTAGRAM_SUBSCRIPTION_FIELDS = 'comments';
 const PRIMARY_AGENT_SELECT = {
   id: true,
   name: true,
@@ -90,12 +91,21 @@ const subscribeMetaAsset = async ({ assetId, accessToken, fields, label }) => {
 };
 
 const subscribeMetaChannel = async ({ page, channelType }) => {
-  return subscribeMetaAsset({
+  const pageReady = await subscribeMetaAsset({
     assetId: page.pageId,
     accessToken: page.pageAccessToken,
     fields: META_PAGE_SUBSCRIPTION_FIELDS,
     label: channelType
   });
+  if (channelType !== 'instagram') return pageReady;
+
+  const instagramReady = await subscribeMetaAsset({
+    assetId: page.instagramId,
+    accessToken: page.pageAccessToken,
+    fields: META_INSTAGRAM_SUBSCRIPTION_FIELDS,
+    label: 'instagram comments'
+  });
+  return pageReady && instagramReady;
 };
 
 const persistCommentReplyReadiness = async ({ tenantId, instanceId, ready }) => {

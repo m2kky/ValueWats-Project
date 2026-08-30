@@ -12,7 +12,7 @@ class DeepseekService {
     this.baseURL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
   }
 
-  async chat({ messages, temperature = DEFAULT_TEMPERATURE, max_tokens = DEFAULT_MAX_TOKENS, model = DEFAULT_CHAT_MODEL, tools = null, tool_choice = null }) {
+  async chat({ messages, temperature = DEFAULT_TEMPERATURE, max_tokens = DEFAULT_MAX_TOKENS, model = DEFAULT_CHAT_MODEL, tools = null, tool_choice = null, response_format = null }) {
     const startedAt = Date.now();
     if (!this.apiKey) {
       throw new Error('OPENROUTER_API_KEY is not set in environment variables');
@@ -32,6 +32,7 @@ class DeepseekService {
 
       if (tools) body.tools = tools;
       if (tool_choice) body.tool_choice = tool_choice;
+      if (response_format) body.response_format = response_format;
 
       try {
         const response = await axios.post(
