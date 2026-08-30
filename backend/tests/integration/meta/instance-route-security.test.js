@@ -114,6 +114,56 @@ describe('Instance route token boundary', () => {
     );
   });
 
+  it('paginates Meta pages so later Instagram accounts remain selectable', async () => {
+    process.env.ENCRYPTION_KEY = Buffer.alloc(32, 8).toString('base64');
+    const prisma = {
+      instance: {
+        count: vi.fn().mockResolvedValue(0),
+        findFirst: vi.fn().mockResolvedValue(null)
+      }
+    };
+    const get = vi.spyOn(axios, 'get')
+      .mockResolvedValueOnce({ data: { access_token: 'long-lived-user-token' } })
+      .mockResolvedValueOnce({
+        data: {
+          data: [{
+            id: 'page-1',
+            name: 'First Page',
+            access_token: 'page-token-1',
+            instagram_business_account: { id: 'instagram-1', username: 'first' }
+          }],
+          paging: { cursors: { after: 'next-page-cursor' }, next: 'https://graph.facebook.com/next' }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [{
+            id: 'greens-page',
+            name: 'Greens.us',
+            access_token: 'greens-page-token',
+            instagram_business_account: { id: 'greens-instagram', username: 'greens.us' }
+          }]
+        }
+      });
+    const app = loadInstancesApp(prisma);
+
+    const response = await request(app)
+      .post('/api/instances/meta/embedded')
+      .send({ channelType: 'instagram', userAccessToken: 'short-lived-user-token' })
+      .expect(409);
+
+    expect(response.body.pages).toEqual(expect.arrayContaining([
+      expect.objectContaining({ pageId: 'greens-page', instagramId: 'greens-instagram' })
+    ]));
+    expect(get).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('/me/accounts'),
+      expect.objectContaining({
+        params: expect.objectContaining({ after: 'next-page-cursor' })
+      })
+    );
+  });
+
   it('encrypts Meta writes and omits stored tokens from create and list responses', async () => {
     process.env.ENCRYPTION_KEY = Buffer.alloc(32, 4).toString('base64');
     const stored = { id: 'instance-1', instanceName: 'Cloud', channelType: 'whatsapp_cloud', accessToken: 'meta:v1:stored' };

@@ -176,15 +176,34 @@ const exchangeMetaUserToken = async (shortLivedToken) => {
 };
 
 const getMetaPagesFromUserToken = async (userAccessToken) => {
-  const response = await axios.get(`${FB_BASE}/me/accounts`, {
-    params: {
-      fields: 'id,name,access_token,instagram_business_account{id,username}',
-      access_token: userAccessToken
-    }
-  });
+  const pagesById = new Map();
+  const seenCursors = new Set();
+  let after;
 
-  const pages = response.data?.data || [];
-  return pages.map(normalizeMetaPage);
+  for (let pageNumber = 0; pageNumber < 10; pageNumber += 1) {
+    const response = await axios.get(`${FB_BASE}/me/accounts`, {
+      params: {
+        fields: 'id,name,access_token,instagram_business_account{id,username}',
+        access_token: userAccessToken,
+        limit: 100,
+        ...(after ? { after } : {})
+      }
+    });
+
+    for (const page of response.data?.data || []) {
+      const normalized = normalizeMetaPage(page);
+      pagesById.set(normalized.pageId, normalized);
+    }
+
+    const nextCursor = response.data?.paging?.next
+      ? String(response.data?.paging?.cursors?.after || '').trim()
+      : '';
+    if (!nextCursor || seenCursors.has(nextCursor)) break;
+    seenCursors.add(nextCursor);
+    after = nextCursor;
+  }
+
+  return [...pagesById.values()];
 };
 
 const getMetaPageByIdFromUserToken = async ({ userAccessToken, pageId, includeInstagram }) => {
