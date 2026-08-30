@@ -5,6 +5,10 @@ const ACTION_KEY = 'google_sheets_read';
 const TOOL_NAMES = new Set(['list_google_sheet_sources', 'query_google_sheet_source']);
 const PAGE_SIZE = 20;
 const MAX_CELL_LENGTH = 300;
+const SEARCH_STOP_WORDS = new Set([
+  'اي', 'ايه', 'المنتج', 'المنتجات', 'السعر', 'سعر', 'عندك', 'في', 'فيه', 'كم', 'هل',
+  'is', 'of', 'price', 'product', 'products', 'the', 'what'
+]);
 
 function plainText(value, limit = MAX_CELL_LENGTH) {
   return String(value ?? '')
@@ -24,6 +28,58 @@ function sourceLookupKey(value) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+function normalizeSearchText(value) {
+  return plainText(value, 500)
+    .toLocaleLowerCase()
+    .replace(/[إأآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f\u0640\u064b-\u065f\u0670\u06d6-\u06ed]/g, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function searchTokens(value) {
+  const tokens = normalizeSearchText(value).split(' ').filter(Boolean);
+  const significant = tokens.filter((token) => (
+    !SEARCH_STOP_WORDS.has(token) && (token.length > 1 || /\d/.test(token))
+  ));
+  return significant.length > 0 ? significant : tokens;
+}
+
+function isWithinEditDistance(left, right, maxDistance) {
+  if (Math.abs(left.length - right.length) > maxDistance) return false;
+  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    const current = [leftIndex];
+    let rowMinimum = current[0];
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      const substitutionCost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
+      current[rightIndex] = Math.min(
+        current[rightIndex - 1] + 1,
+        previous[rightIndex] + 1,
+        previous[rightIndex - 1] + substitutionCost
+      );
+      rowMinimum = Math.min(rowMinimum, current[rightIndex]);
+    }
+    if (rowMinimum > maxDistance) return false;
+    previous = current;
+  }
+  return previous[right.length] <= maxDistance;
+}
+
+function rowMatchesToken(searchableRow, rowTokens, queryToken) {
+  if (searchableRow.includes(queryToken)) return true;
+  if (/^\d+$/.test(queryToken) || queryToken.length < 4) return false;
+  const maxDistance = queryToken.length >= 8 ? 2 : 1;
+  return rowTokens.some((rowToken) => (
+    rowToken.length >= 4
+    && !/^\d+$/.test(rowToken)
+    && isWithinEditDistance(queryToken, rowToken, maxDistance)
+  ));
 }
 
 function validArguments(toolName, args) {
@@ -175,9 +231,13 @@ function createGoogleSheetsSourceToolService({
       const rows = rawRows.slice(1).map((row) => (
         columns.map((_, index) => plainText(row?.[index]))
       ));
-      const query = plainText(args.query || '', 500).toLocaleLowerCase();
-      const matches = query
-        ? rows.filter((row) => row.some((cell) => cell.toLocaleLowerCase().includes(query)))
+      const queryTokens = searchTokens(args.query || '');
+      const matches = queryTokens.length > 0
+        ? rows.filter((row) => {
+          const searchableRow = normalizeSearchText(row.join(' '));
+          const rowTokens = searchableRow.split(' ').filter(Boolean);
+          return queryTokens.every((token) => rowMatchesToken(searchableRow, rowTokens, token));
+        })
         : rows;
       const page = args.page || 1;
       const offset = (page - 1) * PAGE_SIZE;

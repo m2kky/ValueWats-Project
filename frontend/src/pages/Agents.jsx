@@ -44,6 +44,7 @@ const defaultForm = {
   outOfHoursMessage: '',
   isActive: true,
   priority: 0,
+  aiProvider: 'openrouter',
   aiModel: 'qwen/qwen3.5-flash-02-23',
   actionConfig: {
     closeConversation: { enabled: false, instructions: '' },
@@ -237,6 +238,7 @@ export default function Agents() {
         followUpEnabled: full.followUpEnabled ?? false, followUpDelay: full.followUpDelay ?? 300, followUpMessage: full.followUpMessage || '',
         workingHoursEnabled: full.workingHoursEnabled ?? false, workingHours: full.workingHours, outOfHoursMessage: full.outOfHoursMessage || '',
         isActive: full.isActive ?? true, priority: full.priority ?? 0, isPublished: full.isPublished ?? false,
+        aiProvider: full.aiProvider || 'openrouter',
         aiModel: full.aiModel || full.model || 'qwen/qwen3.5-flash-02-23',
         actionConfig: {
           ...defaultForm.actionConfig,

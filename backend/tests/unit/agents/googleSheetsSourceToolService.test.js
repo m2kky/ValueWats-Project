@@ -133,6 +133,60 @@ describe('Google Sheets source tool execution', () => {
     expect(sheetsService.readRows).toHaveBeenCalledOnce();
   });
 
+  it('matches Arabic product questions across the complete row', async () => {
+    const { service } = setup({
+      action: capability(),
+      rows: [
+        ['Product', 'Arabic name', 'Price'],
+        ['OMEGA-3', 'أوميجا', '109.25 ريال'],
+        ['BELLOGEN', 'بيلوجين', '741.75 ريال']
+      ]
+    });
+
+    const omega = await service.execute('query_google_sheet_source', {
+      sourceId: 'source-1', query: 'كم سعر اوميجا 3؟', page: 1
+    }, { tenantId: 'tenant-1', agentId: 'agent-1' });
+    const bellogen = await service.execute('query_google_sheet_source', {
+      sourceId: 'source-1', query: 'سعر بيلوجين', page: 1
+    }, { tenantId: 'tenant-1', agentId: 'agent-1' });
+
+    expect(omega).toMatchObject({
+      success: true,
+      totalMatches: 1,
+      rows: [['OMEGA-3', 'أوميجا', '109.25 ريال']]
+    });
+    expect(bellogen).toMatchObject({
+      success: true,
+      totalMatches: 1,
+      rows: [['BELLOGEN', 'بيلوجين', '741.75 ريال']]
+    });
+  });
+
+  it('tolerates a small typo in a product name without inventing a result', async () => {
+    const { service } = setup({
+      action: capability(),
+      rows: [
+        ['Product', 'Arabic name', 'Price'],
+        ['BELLOGEN', 'بيلوجين', '741.75 ريال'],
+        ['CITROXY', 'سيتروكسي', '120 ريال']
+      ]
+    });
+
+    const closeMatch = await service.execute('query_google_sheet_source', {
+      sourceId: 'source-1', query: 'سعر بيلوجن', page: 1
+    }, { tenantId: 'tenant-1', agentId: 'agent-1' });
+    const unknown = await service.execute('query_google_sheet_source', {
+      sourceId: 'source-1', query: 'سعر شطور', page: 1
+    }, { tenantId: 'tenant-1', agentId: 'agent-1' });
+
+    expect(closeMatch).toMatchObject({
+      success: true,
+      totalMatches: 1,
+      rows: [['BELLOGEN', 'بيلوجين', '741.75 ريال']]
+    });
+    expect(unknown).toMatchObject({ success: true, totalMatches: 0, rows: [] });
+  });
+
   it('rejects unknown sources and infrastructure arguments before reading Google', async () => {
     const { service, sheetsService } = setup({ action: capability() });
 

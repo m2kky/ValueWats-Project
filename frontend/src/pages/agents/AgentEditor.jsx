@@ -125,6 +125,30 @@ export default function AgentEditor({
                 />
               </div>
             </div>
+
+            <div>
+              <label htmlFor="agent-ai-model" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">
+                AI Model
+              </label>
+              <select
+                id="agent-ai-model"
+                value={form.aiModel || 'qwen/qwen3.5-flash-02-23'}
+                onChange={(event) => setForm((current) => ({
+                  ...current,
+                  aiProvider: 'openrouter',
+                  aiModel: event.target.value
+                }))}
+                className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/30 transition-all"
+              >
+                <option value="qwen/qwen3.5-flash-02-23">Qwen 3.5 Flash</option>
+                <option value="openai/gpt-4o-mini">GPT-4o mini</option>
+                <option value="deepseek/deepseek-v3.2">DeepSeek V3.2</option>
+                <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
+              </select>
+              <p className="mt-2 text-[10px] font-medium text-zinc-600">
+                Applies only to this agent. All models use the configured OpenRouter connection.
+              </p>
+            </div>
           </div>
         </div>
 

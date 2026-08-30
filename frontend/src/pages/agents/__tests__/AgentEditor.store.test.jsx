@@ -58,3 +58,30 @@ it('configures a read-only named Google Sheets source', async () => {
   expect(screen.getByDisplayValue('Sheet1!A1:Z500')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /append/i })).not.toBeInTheDocument();
 });
+
+it('selects GPT-4o mini for this agent through OpenRouter', async () => {
+  const user = userEvent.setup();
+  function Wrapper() {
+    const [state, setState] = useState({
+      ...form,
+      aiProvider: 'openrouter',
+      aiModel: 'qwen/qwen3.5-flash-02-23'
+    });
+    return <>
+      <AgentEditor
+        form={state} setForm={setState} editingId={null} saving={false} handleSave={vi.fn()} setView={vi.fn()} fetchAgents={vi.fn()}
+        instructionCharacters={form.instructions.length} instructionOverLimit={false} instructionChecklist={[]} missingInstructionSections={[]}
+        mentionTargets={[]} availableTags={[]} availableVariables={[]} availableLifecycleStages={[]} availableIntegrations={[]}
+        setHttpActionToEdit={vi.fn()} setIsHttpSheetOpen={vi.fn()} setEditingHttpIndex={vi.fn()}
+        kbMode="text" setKbMode={vi.fn()} kbTitle="" setKbTitle={vi.fn()} kbContent="" setKbContent={vi.fn()} kbFile={null} setKbFile={vi.fn()}
+        knowledgeSources={[]} knowledgeLoading={false} fetchKnowledge={vi.fn()} addTextKnowledge={vi.fn()} uploadFileKnowledge={vi.fn()} deleteKnowledge={vi.fn()}
+      />
+      <output data-testid="model-state">{state.aiProvider}:{state.aiModel}</output>
+    </>;
+  }
+
+  render(<Wrapper />);
+  await user.selectOptions(screen.getByLabelText(/AI Model/i), 'openai/gpt-4o-mini');
+
+  expect(screen.getByTestId('model-state')).toHaveTextContent('openrouter:openai/gpt-4o-mini');
+});
