@@ -250,6 +250,64 @@ describe('Instance route token boundary', () => {
     );
   });
 
+  it('inherits the linked Page Primary Agent when reconnecting Instagram', async () => {
+    process.env.ENCRYPTION_KEY = Buffer.alloc(32, 9).toString('base64');
+    const existingInstagram = {
+      id: 'instagram-1',
+      tenantId: 'tenant-1',
+      channelType: 'instagram',
+      phoneNumberId: 'instagram-account-1',
+      phoneNumber: 'page-1',
+      primaryAgentId: null
+    };
+    const prisma = {
+      instance: {
+        count: vi.fn().mockResolvedValue(0),
+        findFirst: vi.fn()
+          .mockResolvedValueOnce(existingInstagram)
+          .mockResolvedValueOnce({
+            primaryAgentId: 'agent-greens',
+            primaryAgent: {
+              id: 'agent-greens', isActive: true, isPublished: true, deletedAt: null
+            }
+          }),
+        update: vi.fn().mockImplementation(async ({ data }) => ({ ...existingInstagram, ...data }))
+      },
+      integration: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({ id: 'config-1' })
+      },
+      commentChannelBinding: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 })
+      }
+    };
+    vi.spyOn(axios, 'get')
+      .mockResolvedValueOnce({ data: { access_token: 'long-lived-user-token' } })
+      .mockResolvedValueOnce({
+        data: {
+          data: [{
+            id: 'page-1',
+            name: 'Greens Page',
+            access_token: 'page-access-token',
+            instagram_business_account: { id: 'instagram-account-1', username: 'greens' }
+          }]
+        }
+      });
+    vi.spyOn(axios, 'post').mockResolvedValue({ data: { success: true } });
+    const app = loadInstancesApp(prisma);
+
+    const response = await request(app)
+      .post('/api/instances/meta/embedded')
+      .send({ channelType: 'instagram', userAccessToken: 'user-access-token' })
+      .expect(200);
+
+    expect(prisma.instance.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'instagram-1' },
+      data: expect.objectContaining({ primaryAgentId: 'agent-greens' })
+    }));
+    expect(response.body.instance.primaryAgentId).toBe('agent-greens');
+  });
+
   it('connects a selected Messenger page directly when /me/accounts omits it', async () => {
     process.env.ENCRYPTION_KEY = Buffer.alloc(32, 6).toString('base64');
     const prisma = {

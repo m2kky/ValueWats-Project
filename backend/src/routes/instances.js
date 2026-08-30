@@ -222,6 +222,33 @@ const getTenantInstanceById = async (tenantId, instanceId) => {
   });
 };
 
+const getLinkedMetaPrimaryAgentId = async ({ tenantId, channelType, pageId }) => {
+  const linkedInstance = await prisma.instance.findFirst({
+    where: channelType === 'instagram'
+      ? {
+          tenantId,
+          channelType: 'messenger',
+          phoneNumberId: String(pageId),
+          primaryAgentId: { not: null }
+        }
+      : {
+          tenantId,
+          channelType: 'instagram',
+          phoneNumber: String(pageId),
+          primaryAgentId: { not: null }
+        },
+    select: {
+      primaryAgentId: true,
+      primaryAgent: {
+        select: { id: true, isActive: true, isPublished: true, deletedAt: true }
+      }
+    }
+  });
+  const agent = linkedInstance?.primaryAgent;
+  if (!agent?.id || !agent.isActive || !agent.isPublished || agent.deletedAt) return null;
+  return linkedInstance.primaryAgentId === agent.id ? agent.id : null;
+};
+
 /**
  * POST /api/instances/meta/embedded
  * Connect Messenger / Instagram via Meta Embedded Signup (no manual token input)
@@ -310,6 +337,12 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
         phoneNumberId: String(identifier)
       }
     });
+    const inheritedPrimaryAgentId = alreadyConnected?.primaryAgentId
+      || await getLinkedMetaPrimaryAgentId({
+        tenantId: req.tenantId,
+        channelType,
+        pageId: chosenPage.pageId
+      });
 
     if (alreadyConnected) {
       // If the token is expired or they are just re-authenticating, update the token!
@@ -317,7 +350,10 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
         where: { id: alreadyConnected.id },
         data: {
           accessToken: encryptMetaToken(chosenPage.pageAccessToken),
-          status: 'connected'
+          status: 'connected',
+          ...(!alreadyConnected.primaryAgentId && inheritedPrimaryAgentId
+            ? { primaryAgentId: inheritedPrimaryAgentId }
+            : {})
         }
       });
 
@@ -353,7 +389,8 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
         phoneNumberId: String(identifier),
         phoneNumber: channelType === 'instagram' ? chosenPage.pageId : null,
         accessToken: encryptMetaToken(chosenPage.pageAccessToken),
-        status: 'connected'
+        status: 'connected',
+        ...(inheritedPrimaryAgentId ? { primaryAgentId: inheritedPrimaryAgentId } : {})
       }
     });
 
