@@ -87,6 +87,64 @@ describe('Store tool runtime', () => {
     expect(messages[2]).toMatchObject({ role: 'tool', tool_call_id: 'call-1' });
   });
 
+  it('recovers when the model prints a pseudo tool directive instead of calling a tool', async () => {
+    const modelGateway = {
+      chat: vi.fn()
+        .mockResolvedValueOnce({
+          role: 'assistant',
+          content: 'Let me check. [QUERY: sourceId="greens-product-master", query=""]'
+        })
+        .mockResolvedValueOnce({
+          role: 'assistant',
+          content: null,
+          tool_calls: [{
+            id: 'call-1',
+            function: {
+              name: 'query_google_sheet_source',
+              arguments: '{"sourceId":"greens-product-master","query":""}'
+            }
+          }]
+        })
+        .mockResolvedValueOnce({ role: 'assistant', content: 'Nine products are registered.' })
+    };
+    const runtimeTools = {
+      getToolDefinitions: vi.fn().mockReturnValue([{
+        type: 'function',
+        function: { name: 'query_google_sheet_source' }
+      }]),
+      execute: vi.fn().mockResolvedValue({ success: true, rows: [] })
+    };
+    const service = createAgentService({ modelGateway, toolService: runtimeTools });
+
+    await expect(service.runModelToolLoop({
+      agent: {
+        id: 'agent-1',
+        actionConfig: {},
+        actions: [],
+        aiModel: 'qwen/qwen3.5-flash-02-23',
+        temperature: 0.2,
+        maxTokens: 300
+      },
+      messages: [{ role: 'user', content: 'What products do you have?' }],
+      tenantId: 'tenant-1',
+      conversationId: 'conversation-1',
+      allowCommands: true
+    })).resolves.toBe('Nine products are registered.');
+
+    expect(modelGateway.chat).toHaveBeenCalledTimes(3);
+    expect(modelGateway.chat.mock.calls[1][0]).toMatchObject({
+      tool_choice: {
+        type: 'function',
+        function: { name: 'query_google_sheet_source' }
+      }
+    });
+    expect(runtimeTools.execute).toHaveBeenCalledWith(
+      'query_google_sheet_source',
+      { sourceId: 'greens-product-master', query: '' },
+      expect.any(Object)
+    );
+  });
+
   it('preserves the maximum of five model/tool iterations', async () => {
     const response = {
       role: 'assistant',

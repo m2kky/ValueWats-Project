@@ -109,6 +109,30 @@ describe('Google Sheets source tool execution', () => {
     expect(JSON.stringify(result)).not.toMatch(/<script>|<b>/);
   });
 
+  it('resolves a configured source by a normalized source name', async () => {
+    const productSource = {
+      ...source,
+      id: '80e744f8-47bf-4512-b662-643e5c9feb90',
+      name: 'Greens Product Master'
+    };
+    const { service, sheetsService } = setup({
+      action: capability({ config: { sources: [productSource] } }),
+      rows: [['Product'], ['Bellogen']]
+    });
+
+    const result = await service.execute('query_google_sheet_source', {
+      sourceId: 'greens-product-master', query: '', page: 1
+    }, { tenantId: 'tenant-1', agentId: 'agent-1' });
+
+    expect(result).toMatchObject({
+      success: true,
+      sourceId: productSource.id,
+      sourceName: 'Greens Product Master',
+      rows: [['Bellogen']]
+    });
+    expect(sheetsService.readRows).toHaveBeenCalledOnce();
+  });
+
   it('rejects unknown sources and infrastructure arguments before reading Google', async () => {
     const { service, sheetsService } = setup({ action: capability() });
 

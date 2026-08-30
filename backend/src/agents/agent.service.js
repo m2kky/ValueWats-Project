@@ -17,6 +17,16 @@ const { resolveAgentRuntimeMode } = require('./runtime/runtimeFlags');
 const { isWithinWorkingHours } = require('./runtime/workingHoursPolicy');
 const { resolveChatModel } = require('../ai/modelPolicy');
 
+const PSEUDO_TOOL_DIRECTIVE = /\[(?:QUERY|TOOL(?:_CALL)?|FUNCTION)\s*:/i;
+
+function unavailableReferenceMessage(messages) {
+  const userMessage = [...messages].reverse().find((item) => item?.role === 'user');
+  const content = String(userMessage?.content || '');
+  return /[\u0600-\u06ff]/.test(content)
+    ? 'تعذر الوصول إلى البيانات المطلوبة حاليًا. حاول مرة أخرى لاحقًا.'
+    : 'The requested data could not be retrieved right now. Please try again later.';
+}
+
 class AgentService {
   constructor({
     prisma = lazyDependency(() => require('../config/database')),
@@ -41,6 +51,8 @@ class AgentService {
   async runModelToolLoop({ agent, messages, tenantId, conversationId, allowCommands = true }) {
     let finalContent = '';
     let loopCount = 0;
+    let pseudoToolRecoveryUsed = false;
+    let recoveryToolChoice = null;
     const maxLoops = 5;
     const actionConfig = allowCommands ? agent.actionConfig : {};
     const resolvedModel = resolveChatModel(agent.aiModel);
@@ -53,8 +65,10 @@ class AgentService {
         temperature: agent.temperature,
         max_tokens: agent.maxTokens,
         model: resolvedModel,
-        tools
+        tools,
+        tool_choice: recoveryToolChoice
       });
+      recoveryToolChoice = null;
       const responseMessage = typeof response === 'string'
         ? { role: 'assistant', content: response }
         : response;
@@ -88,6 +102,26 @@ class AgentService {
         }
         loopCount++;
       } else {
+        const pseudoToolDirective = tools.length > 0
+          && typeof responseMessage.content === 'string'
+          && PSEUDO_TOOL_DIRECTIVE.test(responseMessage.content);
+        if (pseudoToolDirective && !pseudoToolRecoveryUsed) {
+          pseudoToolRecoveryUsed = true;
+          recoveryToolChoice = allowedToolNames.has('query_google_sheet_source')
+            ? { type: 'function', function: { name: 'query_google_sheet_source' } }
+            : 'required';
+          messages.push({
+            role: 'system',
+            content: 'Do not write pseudo tool directives such as [QUERY: ...] in customer-facing text. Invoke the required operation now using the native tool-call protocol and wait for its result before answering.'
+          });
+          loopCount++;
+          continue;
+        }
+        if (pseudoToolDirective) {
+          console.warn('[AgentService] Model repeated a pseudo tool directive after forced recovery');
+          finalContent = unavailableReferenceMessage(messages);
+          break;
+        }
         finalContent = responseMessage.content;
         break;
       }
