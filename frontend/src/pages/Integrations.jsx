@@ -24,6 +24,7 @@ export default function Integrations() {
   const [showSallaPublic, setShowSallaPublic] = useState(false);
   const [sallaStoreName, setSallaStoreName] = useState('');
   const [sallaStoreUrl, setSallaStoreUrl] = useState('');
+  const [sallaStoreIdentifier, setSallaStoreIdentifier] = useState('');
 
   // Form State
   const [type, setType] = useState('google_calendar_oauth');
@@ -130,11 +131,13 @@ export default function Integrations() {
     try {
       await api.post('/integrations/salla/public', {
         name: sallaStoreName,
-        storeUrl: sallaStoreUrl
+        storeUrl: sallaStoreUrl,
+        ...(sallaStoreIdentifier.trim() && { storeIdentifier: sallaStoreIdentifier.trim() })
       });
       setShowSallaPublic(false);
       setSallaStoreName('');
       setSallaStoreUrl('');
+      setSallaStoreIdentifier('');
       setNotice({ type: 'success', message: 'Salla public catalog connected. Initial sync started.' });
       fetchIntegrations();
     } catch (error) {
@@ -445,6 +448,20 @@ export default function Integrations() {
                   placeholder="https://your-store.com/"
                   className="mt-2 w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-sm normal-case text-white outline-none focus:border-emerald-500"
                 />
+              </label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                Store ID (recommended)
+                <input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={sallaStoreIdentifier}
+                  onChange={(event) => setSallaStoreIdentifier(event.target.value)}
+                  placeholder="112506134"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-sm normal-case text-white outline-none focus:border-emerald-500"
+                />
+                <span className="mt-2 block normal-case font-normal text-zinc-500">
+                  Uses Salla API directly when the storefront blocks server access. This is not a secret.
+                </span>
               </label>
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">

@@ -25,9 +25,10 @@ describe('Integrations Salla card', () => {
     expect(await screen.findByRole('dialog', { name: /Connect Salla public catalog/i })).toBeInTheDocument();
     await user.type(screen.getByLabelText(/Connection Name/i), 'Greens');
     await user.type(screen.getByLabelText(/Store URL/i), 'https://greens-cg.com/');
+    await user.type(screen.getByLabelText(/Store ID/i), '112506134');
     await user.click(screen.getByRole('button', { name: /Connect catalog/i }));
     expect(api.post).toHaveBeenCalledWith('/integrations/salla/public', {
-      name: 'Greens', storeUrl: 'https://greens-cg.com/'
+      name: 'Greens', storeUrl: 'https://greens-cg.com/', storeIdentifier: '112506134'
     });
     expect(screen.queryByLabelText(/Client Secret/i)).not.toBeInTheDocument();
   });

@@ -63,12 +63,13 @@ describe('Salla integration API', () => {
     const { app, sallaPublicService } = createHarness();
 
     const response = await request(app).post('/api/integrations/salla/public').send({
-      name: 'Greens', storeUrl: 'https://greens-cg.com/'
+      name: 'Greens', storeUrl: 'https://greens-cg.com/', storeIdentifier: '112506134'
     }).expect(201);
 
     expect(response.body).toMatchObject({ id: 'public-1', status: 'active' });
     expect(sallaPublicService.connect).toHaveBeenCalledWith({
-      tenantId: 'tenant-1', name: 'Greens', storeUrl: 'https://greens-cg.com/'
+      tenantId: 'tenant-1', name: 'Greens', storeUrl: 'https://greens-cg.com/',
+      storeIdentifier: '112506134'
     });
   });
 

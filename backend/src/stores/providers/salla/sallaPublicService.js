@@ -36,6 +36,13 @@ function normalizedUrl(value) {
   return `${url.origin}/`;
 }
 
+function normalizedStoreIdentifier(value) {
+  const identifier = String(value || '').trim();
+  if (!identifier) return null;
+  if (!/^\d{6,}$/.test(identifier)) throw typedError('SALLA_PUBLIC_STORE_ID_INVALID');
+  return identifier;
+}
+
 function storeIdentifier(html) {
   const patterns = [
     /\/theme\/(\d{6,})\//i,
@@ -53,46 +60,86 @@ function categoryIds(html) {
   return [...ids];
 }
 
+function menuCategoryIds(items, ids = new Set()) {
+  for (const item of Array.isArray(items) ? items : []) {
+    const match = String(item?.url || '').match(/\/c(\d+)(?:$|[/?#])/);
+    if (match) ids.add(match[1]);
+    menuCategoryIds(item?.children, ids);
+  }
+  return [...ids];
+}
+
 function createSallaPublicService({
   prisma, queue, http = axios,
   resolveHostname = (hostname) => dns.lookup(hostname, { all: true })
 } = {}) {
   return {
-    async connect({ tenantId, name, storeUrl }) {
+    async connect({ tenantId, name, storeUrl, storeIdentifier: suppliedIdentifier }) {
       const normalizedStoreUrl = normalizedUrl(storeUrl);
-      const hostname = new URL(normalizedStoreUrl).hostname;
-      let addresses;
-      try {
-        addresses = net.isIP(hostname)
-          ? [{ address: hostname, family: net.isIPv4(hostname) ? 4 : 6 }]
-          : await resolveHostname(hostname);
-      } catch (_) {
-        throw typedError('SALLA_PUBLIC_STORE_UNREACHABLE');
-      }
-      if (!addresses.length || addresses.some(({ address }) => privateAddress(address))) {
-        throw typedError('SALLA_PUBLIC_STORE_URL_INVALID');
-      }
+      let identifier = normalizedStoreIdentifier(suppliedIdentifier);
+      let categories;
 
-      const pinned = addresses[0];
-      let response;
-      try {
-        response = await http.get(normalizedStoreUrl, {
-          timeout: 5000,
-          maxRedirects: 0,
-          responseType: 'text',
-          headers: { 'User-Agent': 'ValueChat Store Connector/1.0' },
-          httpsAgent: new https.Agent({
-            lookup: (_hostname, options, callback) => options?.all
-              ? callback(null, [pinned])
-              : callback(null, pinned.address, pinned.family)
-          })
-        });
-      } catch (_) {
-        throw typedError('SALLA_PUBLIC_STORE_UNREACHABLE');
-      }
+      if (identifier) {
+        try {
+          const response = await http.get(
+            `https://api.salla.dev/store/v1/menus/header?store_id=${identifier}&lang=ar`,
+            {
+              timeout: 5000,
+              headers: {
+                'store-identifier': identifier,
+                'Accept-Language': 'ar',
+                Referer: normalizedStoreUrl,
+                'User-Agent': 'ValueChat Store Connector/1.0'
+              }
+            }
+          );
+          if (response.data?.success !== true) throw typedError('SALLA_PUBLIC_STORE_NOT_DETECTED');
+          categories = menuCategoryIds(response.data.data);
+        } catch (error) {
+          if (error.code === 'SALLA_PUBLIC_STORE_NOT_DETECTED') throw error;
+          throw typedError('SALLA_PUBLIC_STORE_UNREACHABLE');
+        }
+      } else {
+        const hostname = new URL(normalizedStoreUrl).hostname;
+        let addresses;
+        try {
+          addresses = net.isIP(hostname)
+            ? [{ address: hostname, family: net.isIPv4(hostname) ? 4 : 6 }]
+            : await resolveHostname(hostname);
+        } catch (_) {
+          throw typedError('SALLA_PUBLIC_STORE_UNREACHABLE');
+        }
+        if (!addresses.length || addresses.some(({ address }) => privateAddress(address))) {
+          throw typedError('SALLA_PUBLIC_STORE_URL_INVALID');
+        }
 
-      const identifier = storeIdentifier(response.data);
-      const categories = categoryIds(response.data);
+        const pinned = addresses[0];
+        let response;
+        try {
+          response = await http.get(normalizedStoreUrl, {
+            timeout: 5000,
+            maxRedirects: 0,
+            responseType: 'text',
+            headers: { 'User-Agent': 'ValueChat Store Connector/1.0' },
+            httpsAgent: new https.Agent({
+              lookup: (_hostname, options, callback) => options?.all
+                ? callback(null, [pinned])
+                : callback(null, pinned.address, pinned.family)
+            })
+          });
+        } catch (error) {
+          console.info('store.salla.public.connect', {
+            stage: 'homepage',
+            outcome: 'error',
+            networkCode: error?.code || null,
+            httpStatus: error?.response?.status || null
+          });
+          throw typedError('SALLA_PUBLIC_STORE_UNREACHABLE');
+        }
+
+        identifier = storeIdentifier(response.data);
+        categories = categoryIds(response.data);
+      }
       if (!identifier || !categories.length) throw typedError('SALLA_PUBLIC_STORE_NOT_DETECTED');
 
       const integration = await prisma.integration.create({

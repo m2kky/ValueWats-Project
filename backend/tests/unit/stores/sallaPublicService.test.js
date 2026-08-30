@@ -65,6 +65,35 @@ describe('Salla public storefront connection', () => {
     expect(http.get).not.toHaveBeenCalled();
   });
 
+  it('connects by Store ID through Salla API without requesting the storefront domain', async () => {
+    const http = { get: vi.fn().mockResolvedValue({
+      data: {
+        success: true,
+        data: [
+          { url: 'https://greens-cg.com/-/c2040974692', children: [] },
+          { url: '#', children: [{ url: 'https://greens-cg.com/-/c2138383176' }] }
+        ]
+      }
+    }) };
+    let created;
+    const prisma = { integration: { create: vi.fn(async ({ data }) => (created = { id: 'public-2', ...data })) } };
+    const queue = { enqueueFullSync: vi.fn().mockResolvedValue({ id: 'sync-2' }) };
+    const resolveHostname = vi.fn();
+    const service = createSallaPublicService({ prisma, queue, http, resolveHostname });
+
+    await service.connect({
+      tenantId: 'tenant-1', name: 'Greens', storeUrl: 'https://greens-cg.com/',
+      storeIdentifier: '112506134'
+    });
+
+    expect(resolveHostname).not.toHaveBeenCalled();
+    expect(http.get).toHaveBeenCalledWith(
+      'https://api.salla.dev/store/v1/menus/header?store_id=112506134&lang=ar',
+      expect.objectContaining({ headers: expect.objectContaining({ 'store-identifier': '112506134' }) })
+    );
+    expect(decryptStoreCredentials(created.credentials).categoryIds).toEqual(['2040974692', '2138383176']);
+  });
+
   it('returns a stable client error when DNS discovery fails', async () => {
     const service = createSallaPublicService({
       prisma: {}, queue: {}, http: { get: vi.fn() },

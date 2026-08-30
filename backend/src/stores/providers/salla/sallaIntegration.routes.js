@@ -53,12 +53,14 @@ function createSallaIntegrationRouter() {
       const result = await sallaPublicService.connect({
         tenantId: req.user.tenantId,
         name: req.body?.name,
-        storeUrl: req.body?.storeUrl
+        storeUrl: req.body?.storeUrl,
+        storeIdentifier: req.body?.storeIdentifier
       });
       res.status(201).json(result);
     } catch (error) {
       const clientError = [
         'SALLA_PUBLIC_STORE_URL_INVALID',
+        'SALLA_PUBLIC_STORE_ID_INVALID',
         'SALLA_PUBLIC_STORE_UNREACHABLE',
         'SALLA_PUBLIC_STORE_NOT_DETECTED'
       ].includes(error.code);
