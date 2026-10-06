@@ -33,6 +33,11 @@ class DeepseekService {
       if (tools) body.tools = tools;
       if (tool_choice) body.tool_choice = tool_choice;
       if (response_format) body.response_format = response_format;
+      if (response_format?.type === 'json_schema') {
+        body.provider.require_parameters = true;
+        // GPT-4o endpoints support schemas but do not expose reasoning parameters.
+        if (selectedModel.startsWith('openai/gpt-4o')) delete body.reasoning;
+      }
 
       try {
         const response = await axios.post(

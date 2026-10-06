@@ -84,4 +84,37 @@ describe('OpenRouter chat gateway', () => {
       'deepseek/deepseek-v3.2'
     ]);
   });
+
+  it('requires provider support for strict structured responses', async () => {
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
+    vi.stubEnv('OPENROUTER_BASE_URL', 'https://openrouter.test/api/v1');
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { choices: [{ message: { role: 'assistant', content: '{"action":"skip"}' } }] }
+    });
+    const gateway = require('../../../src/ai/deepseek.service');
+    const format = { type: 'json_schema', json_schema: {
+      name: 'test_decision', strict: true,
+      schema: { type: 'object', properties: { action: { type: 'string' } }, required: ['action'], additionalProperties: false }
+    } };
+    await gateway.chat({ messages: [{ role: 'user', content: 'Return a decision' }], response_format: format });
+    expect(post.mock.calls[0][1]).toMatchObject({
+      response_format: format, provider: { sort: 'latency', require_parameters: true }
+    });
+  });
+
+  it('omits unsupported reasoning parameters from strict GPT-4o requests', async () => {
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { choices: [{ message: { role: 'assistant', content: '{}' } }] }
+    });
+    const gateway = require('../../../src/ai/deepseek.service');
+    await gateway.chat({
+      model: 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'Return a decision' }],
+      response_format: { type: 'json_schema', json_schema: { name: 'decision', strict: true, schema: {
+        type: 'object', properties: {}, required: [], additionalProperties: false
+      } } }
+    });
+    expect(post.mock.calls[0][1]).not.toHaveProperty('reasoning');
+    expect(post.mock.calls[0][1].provider.require_parameters).toBe(true);
+  });
 });

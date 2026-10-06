@@ -67,7 +67,7 @@ describe('read-only Comment AI decisions', () => {
       model: 'qwen/qwen3.5-flash-02-23',
       maxTokens: 300,
       tools: [],
-      responseFormat: 'json'
+      responseFormat: expect.objectContaining({ type: 'json_schema' })
     }));
   });
 
@@ -85,6 +85,63 @@ describe('read-only Comment AI decisions', () => {
       privateReply: null,
       reasonCode: 'invalid_ai_output'
     });
+  });
+
+  it('requests a schema that rejects unknown actions and non-ASCII reason codes', async () => {
+    const { input, modelGateway, service } = subject({
+      action: 'reply_only', publicReply: 'التقديم متاح.', privateReply: null, reasonCode: 'answered'
+    });
+    await service.decide(input);
+    const format = modelGateway.generate.mock.calls[0][0].responseFormat;
+    expect(format.type).toBe('json_schema');
+    expect(format.json_schema.strict).toBe(true);
+    const validate = new (require('ajv'))().compile(format.json_schema.schema);
+    expect(validate({ action: 'reply_only', publicReply: 'التقديم متاح.', privateReply: null, reasonCode: 'answered' })).toBe(true);
+    expect(validate({ action: 'reply', publicReply: 'التقديم متاح.', privateReply: null, reasonCode: 'answered' })).toBe(false);
+    expect(validate({ action: 'reply_only', publicReply: 'التقديم متاح.', privateReply: null, reasonCode: 'تم الرد' })).toBe(false);
+    expect(validate({ action: 'reply_only', publicReply: 'التقديم متاح.', privateReply: null })).toBe(false);
+  });
+
+  it('excludes private-message decisions from the requested schema when DM is disabled', async () => {
+    const { input, modelGateway, service } = subject({
+      action: 'reply_only', publicReply: 'Hello', privateReply: null, reasonCode: 'answered'
+    });
+    input.profile.privateReplyEnabled = false;
+    await service.decide(input);
+    const format = modelGateway.generate.mock.calls[0][0].responseFormat;
+    expect(format.type).toBe('json_schema');
+    const validate = new (require('ajv'))().compile(format.json_schema.schema);
+    expect(validate({ action: 'reply_and_dm', publicReply: 'Hello', privateReply: 'Details', reasonCode: 'answered' })).toBe(false);
+  });
+
+  it.each([
+    { action: 'reply', publicReply: 'Hello', privateReply: null, reasonCode: 'answered' },
+    { action: 'reply_only', publicReply: 'Hello', privateReply: null, reasonCode: 'تم الرد' },
+    'not JSON',
+  ])('recovers a malformed decision with one validated correction: %j', async (invalid) => {
+    const { input, modelGateway, service } = subject(invalid);
+    modelGateway.generate.mockResolvedValueOnce(invalid).mockResolvedValueOnce({
+      action: 'reply_only', publicReply: 'التقديم متاح.', privateReply: null, reasonCode: 'answered'
+    });
+    await expect(service.decide(input)).resolves.toEqual({
+      action: 'reply_only', publicReply: 'التقديم متاح.', privateReply: null, reasonCode: 'answered'
+    });
+    expect(modelGateway.generate).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops after one correction when the decision remains invalid', async () => {
+    const { input, modelGateway, service } = subject({
+      action: 'reply', publicReply: 'Hello', privateReply: null, reasonCode: 'answered'
+    });
+    await expect(service.decide(input)).resolves.toMatchObject({ action: 'human_review', reasonCode: 'invalid_ai_output' });
+    expect(modelGateway.generate).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry model transport failures as malformed output', async () => {
+    const { input, modelGateway, service } = subject(null);
+    modelGateway.generate.mockRejectedValue(new Error('Invalid API credentials'));
+    await expect(service.decide(input)).resolves.toMatchObject({ action: 'human_review', reasonCode: 'ai_unavailable' });
+    expect(modelGateway.generate).toHaveBeenCalledTimes(1);
   });
 
   it('fails closed when DM is disabled or the model call fails', async () => {
