@@ -365,7 +365,7 @@ describe('agent behavior with injected dependencies', () => {
     expect(modelGateway.calls[0].model).toBe('anthropic/claude-sonnet-4');
   });
 
-  it.fails('does not load history when useHistory is disabled', async () => {
+  it('does not load history when useHistory is disabled', async () => {
     const prisma = database(); const configured = agent({ isPublished: true, useHistory: false, knowledgeSources: [], actions: [] }); prisma.conversation.findFirst.mockResolvedValue({ ...conversation(), currentAgent: configured }); prisma.chatMessage.findMany.mockResolvedValue([]); prisma.agentRoutingRule.findMany.mockResolvedValue([]); prisma.conversationAgent.findFirst.mockResolvedValue(null);
     const service = createAgentService(testDeps(prisma));
     await service.processMessage({ conversationId: 'c1', message: 'hello', tenantId: 'tenant-1' });

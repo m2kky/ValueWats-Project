@@ -190,7 +190,9 @@ class AgentService {
       }
 
       // 4. Get conversation history
-      const history = await this.getConversationHistory(conversationId, agent.historyLength);
+      const history = agent.useHistory === false
+        ? []
+        : await this.getConversationHistory(conversationId, agent.historyLength);
 
       // 1. Check if group chat is allowed
       const isGroup = message.key?.remoteJid?.endsWith('@g.us');

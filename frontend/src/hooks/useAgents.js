@@ -238,11 +238,17 @@ export default function useAgents() {
 
   const testChat = useCallback(async (agentId, message, history = []) => {
     try {
-      const res = await api.post(`/agents/${agentId}/test`, { message, history });
+      const conversationHistory = history.filter(entry => ['user', 'assistant'].includes(entry?.role));
+      const res = await api.post(`/agents/${agentId}/test`, { message, history: conversationHistory });
       return res.data;
     } catch (err) {
-      console.error('[useAgents] testChat error:', err);
-      return { response: 'Error: Could not get response from agent.' };
+      console.error('[useAgents] testChat error:', { status: err.response?.status, code: err.code });
+      const detail = err.response?.data?.response || err.response?.data?.error;
+      return { error: typeof detail === 'string' ? detail : (
+        err.response
+          ? 'Failed to get test response. Please try again.'
+          : 'Could not reach the backend. Check that the backend is running and the API connection is available.'
+      ) };
     }
   }, []);
 

@@ -13,13 +13,14 @@ const {
 const TEST_HISTORY_LIMIT = 20;
 const TEST_MESSAGE_LIMIT = 4000;
 
-function testHistory(value) {
+function testHistory(value, historyLength = 10) {
   if (!Array.isArray(value)) return [];
+  const limit = Math.min(TEST_HISTORY_LIMIT, Math.max(1, historyLength));
   return value
-    .slice(-TEST_HISTORY_LIMIT)
     .filter((entry) => ['user', 'assistant'].includes(entry?.role) && typeof entry.content === 'string')
     .map((entry) => ({ role: entry.role, content: entry.content.trim().slice(0, TEST_MESSAGE_LIMIT) }))
-    .filter((entry) => entry.content);
+    .filter((entry) => entry.content)
+    .slice(-limit);
 }
 
 function sendSetupError(res, error) {
@@ -181,9 +182,7 @@ router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async 
       where: {
         id: req.params.id,
         tenantId: req.user.tenantId,
-        deletedAt: null,
-        isActive: true,
-        isPublished: true
+        deletedAt: null
       },
       include: {
         knowledgeSources: { where: { isActive: true } },
@@ -203,7 +202,7 @@ router.post('/:id/test', tenantContext, checkPermission('agents.manage'), async 
 
     const messages = [
       { role: 'system', content: systemPrompt },
-      ...testHistory(req.body?.history),
+      ...(agent.useHistory === false ? [] : testHistory(req.body?.history, agent.historyLength)),
       { role: 'user', content: message }
     ];
 

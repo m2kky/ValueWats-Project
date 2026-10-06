@@ -297,13 +297,17 @@ export default function Agents() {
   };
 
   const handleSendTest = async () => {
-    if (!chatInput.trim() || !editingId) return;
+    if (!chatInput.trim() || !editingId || chatLoading) return;
     const userMsg = chatInput.trim();
     setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setChatInput('');
     setChatLoading(true);
     try {
       const res = await testChat(editingId, userMsg, chatMessages);
+      if (res.error) {
+        setChatMessages(prev => [...prev, { role: 'error', content: res.error }]);
+        return;
+      }
       const content = res.response || res.message || 'No response';
       setChatMessages(prev => [...prev, { role: 'assistant', content }]);
 
@@ -345,7 +349,7 @@ export default function Agents() {
         });
       }
     } catch {
-      setChatMessages(prev => [...prev, { role: 'assistant', content: '❌ Error getting response' }]);
+      setChatMessages(prev => [...prev, { role: 'error', content: 'Error getting test response. Please try again.' }]);
     } finally {
       setChatLoading(false);
     }

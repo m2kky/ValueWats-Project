@@ -101,10 +101,12 @@ export default function AgentTestChat({
           )}
           {chatMessages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-              <div className={`relative max-w-[85%] px-5 py-3.5 text-xs font-medium leading-relaxed
+              <div role={msg.role === 'error' ? 'alert' : undefined} className={`relative max-w-[85%] px-5 py-3.5 text-xs font-medium leading-relaxed
               ${msg.role === 'user'
                   ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-none shadow-lg shadow-indigo-500/10 border border-indigo-400/20'
-                  : 'bg-[#121215] border border-white/5 text-zinc-300 rounded-2xl rounded-tl-none'
+                  : msg.role === 'error'
+                    ? 'bg-red-500/10 border border-red-500/30 text-red-300 rounded-2xl'
+                    : 'bg-[#121215] border border-white/5 text-zinc-300 rounded-2xl rounded-tl-none'
                 }`}>
                 {msg.role === 'assistant' && (
                   <div className="absolute -left-2 -top-2 w-4 h-4 rounded-full bg-[#121215] border border-white/10 flex items-center justify-center">
@@ -193,6 +195,9 @@ export default function AgentTestChat({
 
       {/* Chat Input */}
       <div className="p-6 border-t border-white/5 bg-zinc-950/40 backdrop-blur-xl">
+        <p className="mb-3 text-[10px] text-zinc-500">
+          Preview uses saved settings. Save changes before testing. Contact fields are sample data.
+        </p>
         <div className="relative group">
           <input
             type="text"
