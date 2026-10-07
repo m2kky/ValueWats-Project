@@ -34,6 +34,54 @@ function loadInstancesApp(prisma, plan = null) {
   return app;
 }
 
+function loadPageSubscriptionFixture(initialFields = []) {
+  const instances = [];
+  const subscription = { fields: new Set(initialFields) };
+  const prisma = {
+    instance: {
+      count: vi.fn().mockImplementation(async () => instances.length),
+      findFirst: vi.fn().mockImplementation(async ({ where }) => instances.find((instance) => (
+        Object.entries(where).every(([key, value]) => value?.not === null
+          ? instance[key] != null : instance[key] === value)
+      )) || null),
+      create: vi.fn().mockImplementation(async ({ data }) => {
+        const instance = { id: `instance-${data.channelType}`, primaryAgentId: null, ...data };
+        instances.push(instance);
+        return instance;
+      }),
+      update: vi.fn().mockImplementation(async ({ where, data }) => {
+        const instance = instances.find((item) => item.id === where.id);
+        Object.assign(instance, data);
+        return instance;
+      })
+    },
+    integration: {
+      findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({ id: 'config-1' })
+    },
+    commentChannelBinding: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) }
+  };
+  axios.get.mockReset().mockImplementation(async (url) => {
+    if (url.endsWith('/oauth/access_token')) return { data: { access_token: 'durable-user-token' } };
+    if (url.endsWith('/me/accounts')) return { data: { data: [{
+      id: 'page-1', name: 'NASA', access_token: 'page-token',
+      instagram_business_account: { id: 'instagram-account-1', username: 'nasa' }
+    }] } };
+    if (url.endsWith('/me/permissions')) return { data: { data: grantedInstagramCommentPermissions } };
+    if (url.endsWith('/page-1/subscribed_apps')) return { data: { data: [
+      { id: 'meta-app-id', subscribed_fields: [...subscription.fields] },
+      { id: 'unrelated-app', subscribed_fields: ['leadgen'] }
+    ] } };
+    throw new Error(`Unexpected Meta GET ${url}`);
+  });
+  vi.spyOn(axios, 'post').mockImplementation(async (url, body, { params }) => {
+    if (!url.endsWith('/page-1/subscribed_apps')) throw new Error(`Unexpected Meta POST ${url}`);
+    // Model the Page API's replacement of this app's complete field selection.
+    subscription.fields = new Set(params.subscribed_fields.split(','));
+    return { data: { success: true } };
+  });
+  return { app: loadInstancesApp(prisma), subscription };
+}
+
 describe('Instance route token boundary', () => {
   const originalKey = process.env.ENCRYPTION_KEY;
   const originalMetaAppId = process.env.META_APP_ID;
@@ -44,6 +92,7 @@ describe('Instance route token boundary', () => {
     process.env.META_APP_SECRET = 'meta-app-secret';
     vi.spyOn(axios, 'get').mockImplementation(async (url) => {
       if (url.endsWith('/me/permissions')) return { data: { data: grantedInstagramCommentPermissions } };
+      if (url.endsWith('/subscribed_apps')) return { data: { data: [] } };
       throw new Error(`Unexpected Meta GET ${url}`);
     });
   });
@@ -252,6 +301,93 @@ describe('Instance route token boundary', () => {
     expect(prisma.commentChannelBinding.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ permissionState: 'ready' })
     }));
+  });
+
+  it.each([
+    ['messenger', 'instagram'], ['instagram', 'messenger']
+  ])('preserves messages and comments when connecting %s then %s and reconnecting both', async (first, second) => {
+    process.env.ENCRYPTION_KEY = Buffer.alloc(32, 11).toString('base64');
+    const { app, subscription } = loadPageSubscriptionFixture();
+    for (const channelType of [first, second]) {
+      await request(app).post('/api/instances/meta/embedded')
+        .send({ channelType, userAccessToken: 'login-token' }).expect(201);
+    }
+    for (const channelType of [first, second]) {
+      await request(app).post('/api/instances/meta/embedded')
+        .send({ channelType, userAccessToken: 'login-token', reconnectInstanceId: `instance-${channelType}` })
+        .expect(200);
+      expect(subscription.fields.has('messages')).toBe(true);
+      expect(subscription.fields.has('messaging_postbacks')).toBe(true);
+      expect(subscription.fields.has('message_reads')).toBe(true);
+      expect(subscription.fields.has('message_deliveries')).toBe(true);
+      expect(subscription.fields.has('feed')).toBe(true);
+      expect(subscription.fields.has('leadgen')).toBe(false);
+    }
+  });
+
+  it.each(['instagram', 'messenger'])('preserves existing custom fields for this app during %s signup', async (channelType) => {
+    process.env.ENCRYPTION_KEY = Buffer.alloc(32, 11).toString('base64');
+    const { app, subscription } = loadPageSubscriptionFixture(['message_reactions']);
+    await request(app).post('/api/instances/meta/embedded')
+      .send({ channelType, userAccessToken: 'login-token' }).expect(201);
+    expect(subscription.fields.has('message_reactions')).toBe(true);
+    expect(subscription.fields.has('feed')).toBe(true);
+    expect(subscription.fields.has('leadgen')).toBe(false);
+  });
+
+  it('does not rewrite an existing shared Page subscription using an Instagram-only login', async () => {
+    process.env.ENCRYPTION_KEY = Buffer.alloc(32, 11).toString('base64');
+    const { app, subscription } = loadPageSubscriptionFixture(['messages', 'feed']);
+    const response = await request(app).post('/api/instances/meta/embedded')
+      .send({ channelType: 'instagram', userAccessToken: 'instagram-login-token' }).expect(201);
+    expect(response.body.commentPermissionsReady).toBe(true);
+    expect(subscription.fields.has('messages')).toBe(true);
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
+  it('finds this app on later subscription pages before changing its field selection', async () => {
+    process.env.ENCRYPTION_KEY = Buffer.alloc(32, 11).toString('base64');
+    const { app, subscription } = loadPageSubscriptionFixture(['messages', 'message_reactions']);
+    const originalGet = axios.get.getMockImplementation();
+    axios.get.mockImplementation(async (url, options) => {
+      if (url.endsWith('/subscribed_apps') && !options.params.after) return { data: {
+        data: [{ id: 'unrelated-app', subscribed_fields: ['leadgen'] }],
+        paging: { next: 'https://graph.facebook.com/next', cursors: { after: 'second-page' } }
+      } };
+      return originalGet(url, options);
+    });
+    await request(app).post('/api/instances/meta/embedded')
+      .send({ channelType: 'instagram', userAccessToken: 'login-token' }).expect(201);
+    expect(subscription.fields.has('messages')).toBe(true);
+    expect(subscription.fields.has('message_reactions')).toBe(true);
+    expect(subscription.fields.has('feed')).toBe(true);
+    expect(subscription.fields.has('leadgen')).toBe(false);
+    expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('/subscribed_apps'), expect.objectContaining({
+      params: expect.objectContaining({ after: 'second-page' })
+    }));
+  });
+
+  it.each([
+    { error: { response: { status: 503 }, message: 'Unavailable' } },
+    { body: { error: { message: 'Malformed result' } } },
+    { body: { data: [{ id: 'meta-app-id' }] } },
+    { body: { data: [], paging: { next: 'https://graph.facebook.com/next' } } }
+  ])('leaves the shared subscription untouched if its existing fields cannot be read %#', async ({ error, body }) => {
+    process.env.ENCRYPTION_KEY = Buffer.alloc(32, 11).toString('base64');
+    const { app, subscription } = loadPageSubscriptionFixture(['messages', 'feed']);
+    const originalGet = axios.get.getMockImplementation();
+    axios.get.mockImplementation(async (url, options) => {
+      if (url.endsWith('/subscribed_apps')) {
+        if (error) throw error;
+        return { data: body };
+      }
+      return originalGet(url, options);
+    });
+    const response = await request(app).post('/api/instances/meta/embedded')
+      .send({ channelType: 'instagram', userAccessToken: 'login-token' }).expect(201);
+    expect(response.body.commentPermissionsReady).toBe(false);
+    expect(subscription.fields.has('messages')).toBe(true);
+    expect(axios.post).not.toHaveBeenCalled();
   });
 
   it('inherits the linked Page Primary Agent when reconnecting Instagram', async () => {
@@ -503,6 +639,7 @@ describe('Instance route token boundary', () => {
     });
 
     it.each(['declined', 'expired', 'missing'])('keeps comments blocked when the Instagram comment grant is %s', async (status) => {
+      axios.get.mockResolvedValueOnce({ data: { data: [] } });
       axios.get.mockResolvedValueOnce({ data: { data: grantedInstagramCommentPermissions
         .filter(({ permission }) => permission !== 'instagram_manage_comments')
         .concat(status === 'missing' ? [] : [{ permission: 'instagram_manage_comments', status }]) } });
@@ -517,6 +654,7 @@ describe('Instance route token boundary', () => {
     });
 
     it('accepts pages_read_engagement as the documented alternative to pages_show_list', async () => {
+      axios.get.mockResolvedValueOnce({ data: { data: [] } });
       axios.get.mockResolvedValueOnce({ data: { data: grantedInstagramCommentPermissions
         .map((grant) => ({ ...grant, permission: grant.permission === 'pages_show_list' ? 'pages_read_engagement' : grant.permission })) } });
       const response = await request(loadInstancesApp(prisma))
@@ -527,6 +665,7 @@ describe('Instance route token boundary', () => {
     });
 
     it('keeps comments blocked if Meta cannot verify the granted permissions', async () => {
+      axios.get.mockResolvedValueOnce({ data: { data: [] } });
       axios.get.mockRejectedValueOnce({ response: { status: 503 }, message: 'Meta unavailable' });
       const response = await request(loadInstancesApp(prisma))
         .post('/api/instances/meta/embedded')

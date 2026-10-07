@@ -8,17 +8,11 @@ const modulePaths = {
 const controllerPath = require.resolve('../../../src/controllers/metaWebhookController');
 const originalModules = new Map();
 
-function inbound(mid, text = 'Customer question') {
-  return {
-    sender: { id: 'customer-1' }, recipient: { id: 'instagram-account-1' },
-    message: { mid, text }
-  };
-}
-
-function createFixture() {
+function createFixture(channelType) {
   const instance = {
-    id: 'instance-ig', tenantId: 'tenant-1', channelType: 'instagram',
-    phoneNumberId: 'instagram-account-1', primaryAgentId: 'agent-1', accessToken: 'do-not-log-token'
+    id: `instance-${channelType}`, tenantId: 'tenant-1', channelType,
+    phoneNumberId: channelType === 'instagram' ? 'instagram-account-1' : 'page-1',
+    primaryAgentId: 'agent-1', accessToken: 'do-not-log-token'
   };
   const conversation = {
     id: 'conversation-1', instanceId: instance.id, currentAgentId: 'agent-1',
@@ -59,22 +53,29 @@ function createFixture() {
     const res = { sendStatus: vi.fn(), status: vi.fn().mockReturnThis(), json: vi.fn() };
     await handleMetaWebhook({
       metaWebhookVerified: true,
-      body: { object: 'instagram', entry: [{ id: instance.phoneNumberId, messaging }] }
+      body: { object: channelType === 'instagram' ? 'instagram' : 'page', entry: [{ id: instance.phoneNumberId, messaging }] }
     }, res);
     expect(res.sendStatus).toHaveBeenCalledWith(200);
   };
   return { ...dependencies, instance, conversation, handle };
 }
 
-describe('Instagram DM ingestion', () => {
+describe.each(['instagram', 'messenger'])('%s DM ingestion', (channelType) => {
   let fixture;
   let log;
   let errorLog;
 
+  function inbound(mid, text = 'Customer question') {
+    return {
+      sender: { id: 'customer-1' }, recipient: { id: fixture.instance.phoneNumberId },
+      message: { mid, text }
+    };
+  }
+
   beforeEach(() => {
     log = vi.spyOn(console, 'info').mockImplementation(() => {});
     errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
-    fixture = createFixture();
+    fixture = createFixture(channelType);
   });
 
   afterEach(() => {
@@ -87,16 +88,16 @@ describe('Instagram DM ingestion', () => {
     vi.restoreAllMocks();
   });
 
-  it('routes a normal Instagram DM through its own channel to an Agent reply', async () => {
+  it('routes a normal DM through its own channel to an Agent reply', async () => {
     await fixture.handle([inbound('dm-1')]);
     expect(fixture.chatService.upsertConversation).toHaveBeenCalledWith('tenant-1', 'customer-1', expect.objectContaining({
-      instanceId: 'instance-ig', channelType: 'instagram'
+      instanceId: fixture.instance.id, channelType
     }));
     expect(fixture.agentService.processMessage).toHaveBeenCalledWith(expect.objectContaining({ inboundMessageId: 'stored-dm-1' }));
     expect(fixture.metaApi.sendMetaMessage).toHaveBeenCalledWith(fixture.instance, 'customer-1', 'Agent answer');
-    expect(fixture.chatService.saveMessage).toHaveBeenCalledWith('conversation-1', expect.objectContaining({ channelType: 'instagram' }));
+    expect(fixture.chatService.saveMessage).toHaveBeenCalledWith('conversation-1', expect.objectContaining({ channelType }));
     expect(fixture.prisma.chatMessage.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ channelType: 'instagram' })
+      data: expect.objectContaining({ channelType })
     }));
   });
 
@@ -158,7 +159,7 @@ describe('Instagram DM ingestion', () => {
 
   it('does not lose a DM when a read receipt appears first in the same webhook', async () => {
     await fixture.handle([
-      { sender: { id: 'customer-1' }, recipient: { id: 'instagram-account-1' }, read: { mid: 'previous-1' } },
+      { sender: { id: 'customer-1' }, recipient: { id: fixture.instance.phoneNumberId }, read: { mid: 'previous-1' } },
       inbound('dm-1')
     ]);
     expect(fixture.metaApi.sendMetaMessage).toHaveBeenCalledTimes(1);
@@ -189,7 +190,7 @@ describe('Instagram DM ingestion', () => {
     expect(fixture.agentService.processMessage).not.toHaveBeenCalled();
     expect(fixture.metaApi.sendMetaMessage).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith('[MetaWebhook] Message reply skipped:', expect.objectContaining({
-      channelType: 'instagram', instanceId: 'instance-ig', conversationId: 'conversation-1', reasonCode
+      channelType, instanceId: fixture.instance.id, conversationId: 'conversation-1', reasonCode
     }));
     const output = JSON.stringify(log.mock.calls);
     expect(output).not.toContain('private customer message');
@@ -218,7 +219,7 @@ describe('Instagram DM ingestion', () => {
     fixture.prisma.instance.findFirst.mockResolvedValue(null);
     await fixture.handle([inbound('dm-1', 'private customer message')]);
     expect(log).toHaveBeenCalledWith('[MetaWebhook] Message reply skipped:', expect.objectContaining({
-      channelType: 'instagram', reasonCode: 'instance_not_found'
+      channelType, reasonCode: 'instance_not_found'
     }));
     expect(fixture.chatService.saveMessage).not.toHaveBeenCalled();
     expect(JSON.stringify(log.mock.calls)).not.toContain('private customer message');

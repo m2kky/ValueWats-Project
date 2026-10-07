@@ -88,9 +88,44 @@ const subscribeMetaAsset = async ({ assetId, accessToken, fields, label }) => {
   if (!assetId || !accessToken) return false;
 
   try {
+    // A Page subscription is shared by Messenger and Instagram. Read this app's
+    // fields before posting the complete selection so reconnecting one channel
+    // cannot remove the other channel's webhook events.
+    const appId = String(process.env.META_APP_ID || process.env.VITE_META_APP_ID || '');
+    if (!appId) throw new Error('Meta app ID is required to preserve Page subscriptions');
+    let existingFields = [];
+    let after;
+    const seenCursors = new Set();
+    for (let pageNumber = 0; pageNumber < 10; pageNumber += 1) {
+      const subscriptions = await axios.get(`${FB_BASE}/${assetId}/subscribed_apps`, {
+        params: { access_token: accessToken, limit: 100, ...(after ? { after } : {}) },
+        timeout: 15000
+      });
+      if (!Array.isArray(subscriptions.data?.data)) throw new Error('Invalid Meta Page subscriptions response');
+      const current = subscriptions.data.data.find((app) => String(app.id) === appId);
+      if (current) {
+        if (!Array.isArray(current.subscribed_fields)
+          || current.subscribed_fields.some((field) => typeof field !== 'string' || !field)) {
+          throw new Error('Invalid Meta Page subscription fields');
+        }
+        existingFields = current.subscribed_fields;
+        break;
+      }
+      if (!subscriptions.data.paging?.next) break;
+      after = subscriptions.data.paging.cursors?.after;
+      if (!after || seenCursors.has(after) || pageNumber === 9) {
+        throw new Error('Could not read all Meta Page subscriptions');
+      }
+      seenCursors.add(after);
+    }
+    const requiredFields = fields.split(',');
+    // An Instagram login need not rewrite Messenger fields (which require
+    // pages_messaging) when the Page already has the required feed subscription.
+    if (requiredFields.every((field) => existingFields.includes(field))) return true;
+    const subscribedFields = [...new Set([...existingFields, ...requiredFields])].join(',');
     const response = await axios.post(`${FB_BASE}/${assetId}/subscribed_apps`, null, {
       params: {
-        subscribed_fields: fields,
+        subscribed_fields: subscribedFields,
         access_token: accessToken
       },
       timeout: 15000
