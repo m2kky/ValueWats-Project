@@ -366,7 +366,7 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
       return null;
     }
 
-    await this.ownershipGateway.ensureDefaultOwner({
+    const assignment = await this.ownershipGateway.ensureDefaultOwner({
       tenantId,
       conversationId,
       targetAgentId: defaultAgent.id,
@@ -374,7 +374,7 @@ ${isGroup ? 'In this group chat, be helpful but brief.' : 'Engage directly with 
       reason: 'Default agent selected'
     });
 
-    return defaultAgent;
+    return assignment?.assigned === false ? null : defaultAgent;
   }
 
   /**

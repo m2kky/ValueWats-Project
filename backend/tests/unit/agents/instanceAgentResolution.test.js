@@ -85,4 +85,12 @@ describe('Instance-scoped default Agent resolution', () => {
     expect(prisma.aIAgent.findFirst).not.toHaveBeenCalled();
     expect(ownershipGateway.ensureDefaultOwner).not.toHaveBeenCalled();
   });
+
+  it('returns no default Agent if another owner takes the conversation before the transaction commits', async () => {
+    const { ownershipGateway, service } = createServiceFixture({
+      id: 'agent-greens', tenantId: 'tenant-1', isActive: true, isPublished: true, deletedAt: null
+    });
+    ownershipGateway.ensureDefaultOwner.mockResolvedValue({ assigned: false });
+    await expect(service.assignDefaultAgent('conversation-1', 'tenant-1')).resolves.toBeNull();
+  });
 });

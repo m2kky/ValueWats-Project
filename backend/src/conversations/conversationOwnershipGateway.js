@@ -47,7 +47,11 @@ function createConversationOwnershipGateway({
           status: true,
           currentAgentId: true,
           assignedUserId: true,
-          assignmentVersion: true
+          assignmentVersion: true,
+          ...(operation === 'ensureDefaultOwner' ? {
+            escalated: true,
+            instance: { select: { primaryAgentId: true, tenantId: true } }
+          } : {})
         }
       });
       if (!conversation) {
@@ -61,6 +65,19 @@ function createConversationOwnershipGateway({
           status: 'closed',
           assignmentVersion: conversation.assignmentVersion
         };
+      }
+
+      // Default assignment must never replace a fresh human or specialist owner.
+      // Recheck the account's Primary Agent inside the same ownership transaction.
+      if (operation === 'ensureDefaultOwner') {
+        if (conversation.currentAgentId || conversation.assignedUserId || conversation.escalated || conversation.status === 'closed') {
+          return { conversationId, assigned: false, reasonCode: 'conversation_not_unassigned' };
+        }
+        if (!conversation.instance
+          || conversation.instance.tenantId !== tenantId
+          || conversation.instance.primaryAgentId !== input.targetAgentId) {
+          return { conversationId, assigned: false, reasonCode: 'primary_agent_changed' };
+        }
       }
 
       return ownershipService[operation](transaction, {

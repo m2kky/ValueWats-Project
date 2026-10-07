@@ -142,7 +142,7 @@ const processIncomingMessage = async ({
 
   const safeText = text || (messageType ? `[${messageType}]` : '[Message]');
 
-  const conversation = await chatService.upsertConversation(
+  let conversation = await chatService.upsertConversation(
     instance.tenantId,
     contactNumber,
     {
@@ -156,6 +156,7 @@ const processIncomingMessage = async ({
 
   const chatMsg = await chatService.saveMessage(conversation.id, {
     instanceId: instance.id,
+    channelType,
     fromMe: false,
     senderNumber: contactNumber,
     recipientNumber: instance.phoneNumberId,
@@ -166,15 +167,45 @@ const processIncomingMessage = async ({
     status: 'delivered'
   });
 
-  if (chatMsg) {
-    socketService.emitChatMessage(instance.tenantId, 'chat:message_received', {
-      conversation,
-      message: chatMsg
-    });
+  if (!chatMsg) return;
+  // Resolve the account owner before the AI gate. Unassigned conversations may
+  // retain aiEnabled=false after an unassign or after being closed and reopened.
+  if (text
+    && ['instagram', 'messenger'].includes(channelType)
+    && instance.primaryAgentId
+    && !conversation.currentAgentId
+    && !conversation.assignedUserId
+    && !conversation.escalated) {
+    try {
+      await agentService.assignDefaultAgent(conversation.id, instance.tenantId);
+    } catch (error) {
+      if (error?.code !== 'OWNERSHIP_STALE') throw error;
+    }
+    // The assignment may race with a human handoff; use the fresh AI flags.
+    conversation = await prisma.conversation.findFirst({
+      where: { id: conversation.id, tenantId: instance.tenantId }
+    }) || conversation;
   }
 
-  if (!chatMsg) return;
-  if (!text) return;
+  socketService.emitChatMessage(instance.tenantId, 'chat:message_received', {
+    conversation,
+    message: chatMsg
+  });
+  const replyContext = {
+    channelType,
+    instanceId: instance.id,
+    conversationId: conversation.id,
+    inboundMessageId: chatMsg.id,
+    primaryAgentId: instance.primaryAgentId || null,
+    currentAgentId: conversation.currentAgentId || null
+  };
+  console.info('[MetaWebhook] Message received:', {
+    ...replyContext, aiEnabled: conversation.aiEnabled, escalated: conversation.escalated
+  });
+  if (!text) {
+    console.info('[MetaWebhook] Message reply skipped:', { ...replyContext, reasonCode: 'empty_message' });
+    return;
+  }
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: instance.tenantId },
@@ -230,7 +261,15 @@ const processIncomingMessage = async ({
     }
   }
 
-  if (!matched && conversation.aiEnabled && !conversation.escalated) {
+  if (!matched) {
+    if (conversation.assignedUserId || !conversation.aiEnabled || conversation.escalated) {
+      console.info('[MetaWebhook] Message reply skipped:', {
+        ...replyContext,
+        reasonCode: conversation.assignedUserId ? 'human_assigned'
+          : !conversation.aiEnabled ? 'ai_disabled' : 'conversation_escalated'
+      });
+      return;
+    }
     const aiResult = await agentService.processMessage({
       conversationId: conversation.id,
       message: text,
@@ -250,6 +289,7 @@ const processIncomingMessage = async ({
         data: {
           conversationId: conversation.id,
           instanceId: conversation.instanceId || instance.id,
+          channelType,
           content: aiResult.response,
           direction: 'outgoing',
           senderNumber: instance.phoneNumberId,
@@ -263,6 +303,12 @@ const processIncomingMessage = async ({
       socketService.emitChatMessage(instance.tenantId, 'chat:message_received', {
         conversation,
         message: saved
+      });
+    } else {
+      console.info('[MetaWebhook] Message reply skipped:', {
+        ...replyContext,
+        reasonCode: aiResult?.terminalCommand ? 'terminal_command' : 'no_agent_response',
+        ...(aiResult?.terminalCommand ? { terminalCommand: aiResult.terminalCommand } : {})
       });
     }
   }
@@ -288,6 +334,46 @@ const ingestVerifiedCommentReplies = async (body, runtime = commentReplyRuntime)
   }
 };
 
+const processMessagingEvent = async ({ payload, entry, channelType }) => {
+  if (shouldIgnoreMessagingEvent(payload, entry.id)) return;
+  const identifier = String(entry.id || payload.recipient?.id || '');
+  if (!identifier) return;
+  const instance = await findMetaInstance(identifier, channelType, payload.recipient?.id);
+  if (!instance) {
+    console.info('[MetaWebhook] Message reply skipped:', { channelType, reasonCode: 'instance_not_found' });
+    return;
+  }
+
+  const contactNumber = String(payload.sender?.id || '').trim();
+  if (!contactNumber) return;
+
+  let messageType = 'text';
+  let text = '';
+  let mediaUrl = null;
+  const wamid = payload.message?.mid || payload.postback?.mid || `meta-${Date.now()}`;
+
+  if (payload.postback) {
+    messageType = 'postback';
+    text = payload.postback.payload || payload.postback.title || '[Postback]';
+  } else if (payload.message) {
+    text = payload.message.text || '';
+    if (Array.isArray(payload.message.attachments) && payload.message.attachments.length > 0) {
+      const attachment = payload.message.attachments[0];
+      messageType = attachment.type || 'file';
+      if (messageType === 'file') messageType = 'document';
+      mediaUrl = attachment.payload?.url || null;
+      if (!text) text = `[${messageType.charAt(0).toUpperCase()}${messageType.slice(1)}]`;
+    }
+  } else {
+    return;
+  }
+
+  const profile = await metaApi.getUserProfile(instance, contactNumber);
+  await processIncomingMessage({
+    instance, channelType, contactNumber, pushName: profile.name, text, messageType, mediaUrl, wamid
+  });
+};
+
 const handleMetaWebhook = async (req, res) => {
   if (req.metaWebhookVerified !== true) {
     return res.status(401).json({ error: 'UNVERIFIED_META_BODY' });
@@ -307,59 +393,15 @@ const handleMetaWebhook = async (req, res) => {
     if (!entries.length) return;
     
     for (const entry of entries) {
-      if (entry.messaging?.length) {
-        const payload = entry.messaging[0];
+      if (Array.isArray(entry.messaging) && entry.messaging.length) {
         const channelType = req.body.object === 'instagram' ? 'instagram' : 'messenger';
-        const identifier = String(entry.id || payload.recipient?.id || '');
-
-        if (!identifier) continue;
-
-        const instance = await findMetaInstance(identifier, channelType, payload.recipient?.id);
-        if (!instance) continue;
-
-        if (shouldIgnoreMessagingEvent(payload, entry.id)) continue;
-
-        const contactNumber = String(payload.sender?.id || '').trim();
-        if (!contactNumber) continue;
-
-        let messageType = 'text';
-        let text = '';
-        let mediaUrl = null;
-        const wamid = payload.message?.mid || payload.postback?.mid || `meta-${Date.now()}`;
-
-        if (payload.postback) {
-          messageType = 'postback';
-          text = payload.postback.payload || payload.postback.title || '[Postback]';
-        } else if (payload.message) {
-          text = payload.message.text || '';
-
-          if (Array.isArray(payload.message.attachments) && payload.message.attachments.length > 0) {
-            const attachment = payload.message.attachments[0];
-            messageType = attachment.type || 'file';
-            if (messageType === 'file') messageType = 'document';
-            mediaUrl = attachment.payload?.url || null;
-
-            if (!text) {
-              text = `[${messageType.charAt(0).toUpperCase()}${messageType.slice(1)}]`;
-            }
+        for (const payload of entry.messaging) {
+          try {
+            await processMessagingEvent({ payload, entry, channelType });
+          } catch (error) {
+            console.error('[MetaWebhook] Messaging event failed:', { channelType, ...sanitizeError(error) });
           }
-        } else {
-          continue;
         }
-
-        const profile = await metaApi.getUserProfile(instance, contactNumber);
-
-        await processIncomingMessage({
-          instance,
-          channelType,
-          contactNumber,
-          pushName: profile.name,
-          text,
-          messageType,
-          mediaUrl,
-          wamid
-        });
-
         continue;
       }
 
