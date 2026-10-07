@@ -24,7 +24,6 @@ const META_API_VERSION = process.env.META_API_VERSION || 'v20.0';
 const FB_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 const META_PAGE_SUBSCRIPTION_FIELDS =
   'messages,messaging_postbacks,messaging_referrals,message_reads,message_deliveries,feed';
-const META_INSTAGRAM_SUBSCRIPTION_FIELDS = 'comments';
 const PRIMARY_AGENT_SELECT = {
   id: true,
   name: true,
@@ -70,42 +69,82 @@ const ensureUniqueInstanceName = async (tenantId, preferredName) => {
   }
 };
 
+const sanitizeMetaGraphError = (error, accessToken) => {
+  const safeMessage = (message) => sanitizeError({
+    message: accessToken ? String(message || '').split(accessToken).join('[REDACTED]') : message
+  }).message;
+  const graphError = error.response?.data?.error;
+  return {
+    ...sanitizeError(error),
+    message: safeMessage(error.message),
+    status: error.response?.status,
+    graphCode: typeof graphError?.code === 'number' ? graphError.code : undefined,
+    graphSubcode: typeof graphError?.error_subcode === 'number' ? graphError.error_subcode : undefined,
+    graphMessage: typeof graphError?.message === 'string' ? safeMessage(graphError.message) : undefined
+  };
+};
+
 const subscribeMetaAsset = async ({ assetId, accessToken, fields, label }) => {
   if (!assetId || !accessToken) return false;
 
   try {
-    await axios.post(`${FB_BASE}/${assetId}/subscribed_apps`, null, {
+    const response = await axios.post(`${FB_BASE}/${assetId}/subscribed_apps`, null, {
       params: {
         subscribed_fields: fields,
         access_token: accessToken
-      }
+      },
+      timeout: 15000
     });
-    return true;
+    if (response.data?.success === true) return true;
+    console.warn(`[Meta] Subscription not confirmed for ${label} ${assetId}`);
+    return false;
   } catch (err) {
     console.warn(
       `[Meta] Failed to subscribe ${label} ${assetId}:`,
-      sanitizeError(err)
+      sanitizeMetaGraphError(err, accessToken)
     );
     return false;
   }
 };
 
-const subscribeMetaChannel = async ({ page, channelType }) => {
+const hasInstagramCommentPermissions = async (userAccessToken) => {
+  if (!userAccessToken) return false;
+  try {
+    const response = await axios.get(`${FB_BASE}/me/permissions`, {
+      params: { access_token: userAccessToken },
+      timeout: 15000
+    });
+    const permissions = Array.isArray(response.data?.data) ? response.data.data : [];
+    const granted = new Set(permissions.filter((entry) => entry?.status === 'granted').map((entry) => entry.permission));
+    const missingPermissions = ['instagram_manage_comments', 'pages_manage_metadata']
+      .filter((permission) => !granted.has(permission));
+    if (!granted.has('pages_read_engagement') && !granted.has('pages_show_list')) {
+      missingPermissions.push('pages_read_engagement or pages_show_list');
+    }
+    if (missingPermissions.length) {
+      console.warn('[Meta] Instagram comment permissions missing:', { missingPermissions });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.warn('[Meta] Failed to verify Instagram comment permissions:', sanitizeMetaGraphError(error, userAccessToken));
+    return false;
+  }
+};
+
+const subscribeMetaChannel = async ({ page, channelType, userAccessToken }) => {
+  // Facebook Login uses the linked Page's subscription for Instagram webhooks.
+  // The Instagram `comments` field is configured on the app in Meta's dashboard.
+  // See https://developers.facebook.com/docs/graph-api/webhooks/getting-started/webhooks-for-instagram
   const pageReady = await subscribeMetaAsset({
     assetId: page.pageId,
     accessToken: page.pageAccessToken,
-    fields: META_PAGE_SUBSCRIPTION_FIELDS,
+    fields: channelType === 'instagram' ? 'feed' : META_PAGE_SUBSCRIPTION_FIELDS,
     label: channelType
   });
   if (channelType !== 'instagram') return pageReady;
 
-  const instagramReady = await subscribeMetaAsset({
-    assetId: page.instagramId,
-    accessToken: page.pageAccessToken,
-    fields: META_INSTAGRAM_SUBSCRIPTION_FIELDS,
-    label: 'instagram comments'
-  });
-  return pageReady && instagramReady;
+  return pageReady && await hasInstagramCommentPermissions(userAccessToken);
 };
 
 const persistCommentReplyReadiness = async ({ tenantId, instanceId, ready }) => {
@@ -393,7 +432,8 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
       // Re-subscribe the page to webhooks just in case it was dropped due to expiration
       const commentPermissionsReady = await subscribeMetaChannel({
         page: chosenPage,
-        channelType
+        channelType,
+        userAccessToken: durableUserAccessToken
       });
       await persistCommentReplyReadiness({
         tenantId: req.tenantId,
@@ -433,7 +473,8 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
 
     const commentPermissionsReady = await subscribeMetaChannel({
       page: chosenPage,
-      channelType
+      channelType,
+      userAccessToken: durableUserAccessToken
     });
     await persistCommentReplyReadiness({
       tenantId: req.tenantId,
@@ -443,6 +484,7 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
 
     res.status(201).json({
       message: `${channelType === 'instagram' ? 'Instagram' : 'Messenger'} connected successfully via Embedded Signup.`,
+      commentPermissionsReady,
       instance: toSafeInstanceDto(instance),
       connectedAsset: {
         pageId: chosenPage.pageId,

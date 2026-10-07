@@ -9,6 +9,8 @@ const routePath = require.resolve('../../../src/routes/instances');
 const originalDatabase = require(databasePath);
 const originalPlanLimit = require(planLimitPath);
 const originalChannelConfig = require(channelConfigPath);
+const grantedInstagramCommentPermissions = ['instagram_manage_comments', 'pages_manage_metadata', 'pages_show_list']
+  .map((permission) => ({ permission, status: 'granted' }));
 
 function loadInstancesApp(prisma, plan = null) {
   delete require.cache[routePath];
@@ -40,6 +42,10 @@ describe('Instance route token boundary', () => {
   beforeEach(() => {
     process.env.META_APP_ID = 'meta-app-id';
     process.env.META_APP_SECRET = 'meta-app-secret';
+    vi.spyOn(axios, 'get').mockImplementation(async (url) => {
+      if (url.endsWith('/me/permissions')) return { data: { data: grantedInstagramCommentPermissions } };
+      throw new Error(`Unexpected Meta GET ${url}`);
+    });
   });
 
   afterEach(() => {
@@ -191,7 +197,7 @@ describe('Instance route token boundary', () => {
     expect(list.body.instances[0]).not.toHaveProperty('accessToken');
   });
 
-  it('subscribes both the linked page and Instagram account webhooks', async () => {
+  it('enables Instagram webhooks through the linked Page for Facebook Login', async () => {
     process.env.ENCRYPTION_KEY = Buffer.alloc(32, 5).toString('base64');
     const prisma = {
       instance: {
@@ -222,32 +228,30 @@ describe('Instance route token boundary', () => {
     const subscribe = vi.spyOn(axios, 'post').mockResolvedValue({ data: { success: true } });
     const app = loadInstancesApp(prisma);
 
-    await request(app)
+    const response = await request(app)
       .post('/api/instances/meta/embedded')
       .send({ channelType: 'instagram', userAccessToken: 'user-access-token' })
       .expect(201);
 
-    expect(subscribe).toHaveBeenCalledTimes(2);
+    expect(subscribe).toHaveBeenCalledTimes(1);
     expect(subscribe).toHaveBeenCalledWith(
       expect.stringContaining('/page-1/subscribed_apps'),
       null,
       expect.objectContaining({
         params: expect.objectContaining({
-          subscribed_fields: expect.stringContaining('feed'),
+          subscribed_fields: 'feed',
           access_token: 'page-access-token'
         })
       })
     );
-    expect(subscribe).toHaveBeenCalledWith(
-      expect.stringContaining('/instagram-account-1/subscribed_apps'),
-      null,
-      expect.objectContaining({
-        params: expect.objectContaining({
-          subscribed_fields: expect.stringContaining('comments'),
-          access_token: 'page-access-token'
-        })
-      })
+    expect(response.body.commentPermissionsReady).toBe(true);
+    expect(axios.get).toHaveBeenCalledWith(
+      expect.stringContaining('/me/permissions'),
+      expect.objectContaining({ params: { access_token: 'long-lived-user-token' } })
     );
+    expect(prisma.commentChannelBinding.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ permissionState: 'ready' })
+    }));
   });
 
   it('inherits the linked Page Primary Agent when reconnecting Instagram', async () => {
@@ -496,6 +500,71 @@ describe('Instance route token boundary', () => {
       expect(prisma.commentChannelBinding.updateMany).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({ permissionState: 'reconnect_required' })
       }));
+    });
+
+    it.each(['declined', 'expired', 'missing'])('keeps comments blocked when the Instagram comment grant is %s', async (status) => {
+      axios.get.mockResolvedValueOnce({ data: { data: grantedInstagramCommentPermissions
+        .filter(({ permission }) => permission !== 'instagram_manage_comments')
+        .concat(status === 'missing' ? [] : [{ permission: 'instagram_manage_comments', status }]) } });
+      const response = await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(200);
+      expect(response.body.commentPermissionsReady).toBe(false);
+      expect(prisma.commentChannelBinding.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ permissionState: 'reconnect_required' })
+      }));
+    });
+
+    it('accepts pages_read_engagement as the documented alternative to pages_show_list', async () => {
+      axios.get.mockResolvedValueOnce({ data: { data: grantedInstagramCommentPermissions
+        .map((grant) => ({ ...grant, permission: grant.permission === 'pages_show_list' ? 'pages_read_engagement' : grant.permission })) } });
+      const response = await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(200);
+      expect(response.body.commentPermissionsReady).toBe(true);
+    });
+
+    it('keeps comments blocked if Meta cannot verify the granted permissions', async () => {
+      axios.get.mockRejectedValueOnce({ response: { status: 503 }, message: 'Meta unavailable' });
+      const response = await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(200);
+      expect(response.body.commentPermissionsReady).toBe(false);
+    });
+
+    it('requires Meta to confirm subscription success even for an HTTP 200 response', async () => {
+      axios.post.mockResolvedValue({ data: { success: false } });
+      const response = await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(200);
+      expect(response.body.commentPermissionsReady).toBe(false);
+    });
+
+    it('logs useful Meta failure details without exposing credentials or unrelated response data', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      axios.post.mockRejectedValue({
+        code: 'ERR_BAD_REQUEST', message: 'Request failed with status code 400',
+        config: { params: { access_token: 'fresh-page-token' } },
+        response: { status: 400, data: {
+          error: { code: 190, error_subcode: 463, message: 'Expired credential fresh-page-token; access_token=other-secret' },
+          access_token: 'response-secret'
+        } }
+      });
+      await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(200);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('[Meta] Failed to subscribe'), expect.objectContaining({
+        status: 400, graphCode: 190, graphSubcode: 463, graphMessage: expect.stringContaining('Expired credential')
+      }));
+      const output = JSON.stringify(warn.mock.calls);
+      expect(output).not.toContain('fresh-page-token');
+      expect(output).not.toContain('other-secret');
+      expect(output).not.toContain('response-secret');
     });
 
     it('still enforces the limit when connecting a new channel', async () => {
