@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import api from '../api/client';
 import { 
   ArrowLeftIcon, 
@@ -110,6 +110,9 @@ const channelConfigs = {
 export default function ConnectChannel() {
   const navigate = useNavigate();
   const { type } = useParams();
+  const [searchParams] = useSearchParams();
+  const reconnectInstanceId = searchParams.get('reconnect');
+  const isReconnecting = reconnectInstanceId !== null;
   const visibleChannelTypes = ['whatsapp', 'messenger', 'instagram', 'whatsapp_cloud'];
   const isSupportedChannel = visibleChannelTypes.includes(type);
   const config = channelConfigs[type] || {
@@ -131,6 +134,9 @@ export default function ConnectChannel() {
   const [selectedMetaPageId, setSelectedMetaPageId] = useState('');
   const [metaUserAccessToken, setMetaUserAccessToken] = useState('');
   const [metaSdkLoading, setMetaSdkLoading] = useState(false);
+  const [reconnectInstance, setReconnectInstance] = useState(null);
+  const [reconnectLoading, setReconnectLoading] = useState(isReconnecting);
+  const [reconnectSdk, setReconnectSdk] = useState(null);
 
   const isWhatsAppQR = type === 'whatsapp';
   const isCloudAPI = type === 'whatsapp_cloud';
@@ -152,12 +158,55 @@ export default function ConnectChannel() {
     setMetaUserAccessToken('');
   }, [type, isSupportedChannel]);
 
-  const loadMetaSdk = () => new Promise((resolve, reject) => {
+  useEffect(() => {
+    if (!isReconnecting) return;
+    let cancelled = false;
+    setReconnectLoading(true);
+    setReconnectInstance(null);
+    setError(null);
+    const loadChannel = async () => {
+      try {
+        if (!isMetaChannel || !reconnectInstanceId) throw new Error('Choose an existing Messenger or Instagram channel to reconnect.');
+        const res = await api.get(`/instances/${encodeURIComponent(reconnectInstanceId)}/details`);
+        const channel = res.data?.instance;
+        if (!channel || channel.channelType !== type) throw new Error('The channel platform does not match this reconnect page.');
+        if (cancelled) return;
+        setReconnectInstance(channel);
+        setInstanceName(channel.instanceName);
+        setSelectedMetaPageId((type === 'instagram' ? channel.phoneNumber : channel.phoneNumberId) || '');
+      } catch (err) {
+        if (!cancelled) setError(err.response?.data?.error || err.message || 'Unable to load this channel.');
+      } finally {
+        if (!cancelled) setReconnectLoading(false);
+      }
+    };
+    loadChannel();
+    return () => { cancelled = true; };
+  }, [reconnectInstanceId, isReconnecting, isMetaChannel, type]);
+
+  const backPath = isReconnecting && reconnectInstanceId
+    ? `/channels/manage/${encodeURIComponent(reconnectInstanceId)}`
+    : '/channels';
+  const submitDisabled = loading || (isMetaChannel && metaSdkLoading)
+    || (isReconnecting && (reconnectLoading || !reconnectInstance || !reconnectSdk));
+
+  const loadMetaSdk = useCallback(() => new Promise((resolve, reject) => {
     if (!metaAppId) {
       reject(new Error('Missing VITE_META_APP_ID. Please set it in frontend environment variables.'));
       return;
     }
 
+    let waitTimer;
+    const timeout = setTimeout(() => {
+      clearTimeout(waitTimer);
+      reject(new Error('Meta took too long to load. Refresh this page and try again.'));
+    }, 20000);
+    const finish = (err) => {
+      clearTimeout(timeout);
+      clearTimeout(waitTimer);
+      if (err) reject(err);
+      else resolve(window.FB);
+    };
     const initSdk = () => {
       try {
         window.FB.init({
@@ -166,9 +215,9 @@ export default function ConnectChannel() {
           xfbml: false,
           version: metaApiVersion.startsWith('v') ? metaApiVersion : `v${metaApiVersion}`
         });
-        resolve(window.FB);
+        finish();
       } catch (err) {
-        reject(err);
+        finish(err);
       }
     };
 
@@ -183,7 +232,7 @@ export default function ConnectChannel() {
         if (window.FB) {
           initSdk();
         } else {
-          setTimeout(waitForSdk, 100);
+          waitTimer = setTimeout(waitForSdk, 100);
         }
       };
       waitForSdk();
@@ -196,9 +245,27 @@ export default function ConnectChannel() {
     script.async = true;
     script.defer = true;
     script.src = 'https://connect.facebook.net/en_US/sdk.js';
-    script.onerror = () => reject(new Error('Failed to load Facebook SDK'));
+    script.onerror = () => {
+      script.remove();
+      finish(new Error('Failed to load Facebook SDK'));
+    };
     document.body.appendChild(script);
-  });
+  }), [metaAppId, metaApiVersion]);
+
+  useEffect(() => {
+    if (!isReconnecting || !reconnectInstance) return;
+    let cancelled = false;
+    setMetaSdkLoading(true);
+    setReconnectSdk(null);
+    loadMetaSdk().then((sdk) => {
+      if (!cancelled) setReconnectSdk(sdk);
+    }).catch((err) => {
+      if (!cancelled) setError(err.message || 'Unable to prepare Meta login.');
+    }).finally(() => {
+      if (!cancelled) setMetaSdkLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [isReconnecting, reconnectInstance, loadMetaSdk]);
 
   const connectMetaWithToken = async (userToken, pageId = '') => {
     setLoading(true);
@@ -212,11 +279,14 @@ export default function ConnectChannel() {
       };
 
       if (pageId) payload.selectedPageId = pageId;
+      if (isReconnecting) payload.reconnectInstanceId = reconnectInstanceId;
 
-      await api.post('/instances/meta/embedded', payload);
-      navigate('/channels');
+      const res = await api.post('/instances/meta/embedded', payload);
+      navigate(isReconnecting
+        ? `${backPath}?reconnected=${res.data?.commentPermissionsReady === false ? 'partial' : 'success'}`
+        : '/channels');
     } catch (err) {
-      if (err.response?.status === 409 && err.response?.data?.code === 'MULTIPLE_PAGES') {
+      if (!isReconnecting && err.response?.status === 409 && err.response?.data?.code === 'MULTIPLE_PAGES') {
         setMetaPages(err.response.data.pages || []);
         setError('Please select the Page you want to connect.');
         return;
@@ -231,11 +301,11 @@ export default function ConnectChannel() {
   const startMetaEmbeddedSignup = async () => {
     setError(null);
     setMetaPages([]);
-    setSelectedMetaPageId('');
+    if (!isReconnecting) setSelectedMetaPageId('');
     setMetaSdkLoading(true);
 
     try {
-      const FB = await loadMetaSdk();
+      const FB = isReconnecting ? reconnectSdk : await loadMetaSdk();
       const loginOptions = metaConfigId
         ? {
             config_id: metaConfigId,
@@ -245,6 +315,7 @@ export default function ConnectChannel() {
         : {
             scope: metaScopes
           };
+      if (isReconnecting) loginOptions.auth_type = 'rerequest';
 
       FB.login((response) => {
         setMetaSdkLoading(false);
@@ -269,7 +340,7 @@ export default function ConnectChannel() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isSupportedChannel) return;
+    if (!isSupportedChannel || submitDisabled) return;
 
     if (isMetaChannel) {
       if (metaPages.length > 0) {
@@ -386,7 +457,7 @@ export default function ConnectChannel() {
         <div className="max-w-2xl">
           {/* Back Navigation */}
           <button 
-            onClick={() => navigate('/channels')}
+            onClick={() => navigate(backPath)}
             className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors mb-8 group"
           >
             <ArrowLeftIcon className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
@@ -394,11 +465,17 @@ export default function ConnectChannel() {
           </button>
 
           <header className="mb-10">
-            <h1 className="text-[28px] font-bold tracking-tight">Connect {config.name}</h1>
+            <h1 className="text-[28px] font-bold tracking-tight">{isReconnecting ? 'Reconnect' : 'Connect'} {config.name}</h1>
+            {isReconnecting && (
+              <p className="mt-3 text-sm text-zinc-400">
+                Sign in to Meta and grant access to the same account to renew its connection.
+                Your conversations, Primary AI Agent, and channel settings will be kept.
+              </p>
+            )}
           </header>
 
           {error && (
-            <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-400 text-sm font-medium">
+            <div role="alert" className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-400 text-sm font-medium">
               <ExclamationCircleIcon className="w-5 h-5 shrink-0" />
               {error}
             </div>
@@ -410,7 +487,7 @@ export default function ConnectChannel() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] text-zinc-400">?</div>
-                  <span className="text-sm font-bold text-zinc-300">Unknown Account</span>
+                  <span className="text-sm font-bold text-zinc-300">{isReconnecting ? (reconnectLoading ? 'Loading channel...' : reconnectInstance?.instanceName || 'Channel unavailable') : 'Unknown Account'}</span>
                 </div>
                 
                 {type !== 'whatsapp' && (
@@ -423,6 +500,7 @@ export default function ConnectChannel() {
                         className="w-full bg-[#1c1f26] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-bold tracking-tight"
                         value={instanceName}
                         onChange={(e) => setInstanceName(e.target.value)}
+                        readOnly={isReconnecting}
                         placeholder={`e.g., My ${config.name} Channel`}
                         required
                       />
@@ -503,7 +581,7 @@ export default function ConnectChannel() {
                     {/* Messenger / Instagram now use Embedded Signup only */}
                     {isMetaChannel && (
                       <>
-                        <div>
+                        {!isReconnecting && <div>
                           <label
                             htmlFor="meta-page-id"
                             className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider"
@@ -522,9 +600,9 @@ export default function ConnectChannel() {
                           <p className="text-[11px] text-zinc-600 mt-1.5">
                             Use this when Meta does not include a Page in the automatic list. The Page ID is verified against your Meta access before connection.
                           </p>
-                        </div>
+                        </div>}
 
-                        <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-5 space-y-4 mb-4 mt-2">
+                        {!isReconnecting && <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-5 space-y-4 mb-4 mt-2">
                           <div>
                             <h4 className="text-sm font-bold text-indigo-400">1. {config.name} Webhook Setup</h4>
                             <p className="text-xs text-zinc-500 mb-2">Configure Webhooks in your Meta App Dashboard under {config.name} &gt; Configuration:</p>
@@ -553,12 +631,14 @@ export default function ConnectChannel() {
                               </div>
                             </div>
                           </div>
-                        </div>
+                        </div>}
 
                         <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4">
-                          <h4 className="text-sm font-bold text-emerald-400 mb-1">2. Connect with Meta Embedded Signup</h4>
+                          <h4 className="text-sm font-bold text-emerald-400 mb-1">{isReconnecting ? 'Renew Meta permissions' : '2. Connect with Meta Embedded Signup'}</h4>
                           <p className="text-xs text-zinc-400">
-                            No manual token is required. Click <strong>Connect with Meta</strong> below, approve permissions, and choose your Page when asked.
+                            {isReconnecting
+                              ? 'Click Reconnect with Meta below, sign in to the account that manages this Page, and approve the required permissions.'
+                              : <>No manual token is required. Click <strong>Connect with Meta</strong> below, approve permissions, and choose your Page when asked.</>}
                           </p>
                         </div>
 
@@ -627,13 +707,13 @@ export default function ConnectChannel() {
               <div className="pt-6">
                 <button
                   type="submit"
-                  disabled={loading || (isMetaChannel && metaSdkLoading)}
+                  disabled={submitDisabled}
                   className={`px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-xl
-                    ${(loading || (isMetaChannel && metaSdkLoading)) ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#6366f1] hover:bg-[#5558e3] text-white shadow-indigo-500/20'}`}
+                    ${submitDisabled ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#6366f1] hover:bg-[#5558e3] text-white shadow-indigo-500/20'}`}
                 >
                   {loading ? 'Processing...'
                     : isMetaChannel
-                      ? (metaSdkLoading ? 'Opening Meta...' : (metaPages.length > 0 ? 'Complete Connection' : 'Connect with Meta'))
+                      ? (metaSdkLoading ? (isReconnecting && !reconnectSdk ? 'Preparing Meta...' : 'Opening Meta...') : isReconnecting ? 'Reconnect with Meta' : (metaPages.length > 0 ? 'Complete Connection' : 'Connect with Meta'))
                       : isWhatsAppQR
                         ? 'Generate QR Code'
                         : isCloudAPI

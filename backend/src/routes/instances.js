@@ -255,7 +255,8 @@ const getLinkedMetaPrimaryAgentId = async ({ tenantId, channelType, pageId }) =>
  */
 router.post('/meta/embedded', checkPermission('channels.manage'), async (req, res) => {
   try {
-    const { channelType, userAccessToken, selectedPageId, instanceName } = req.body;
+    const { channelType, userAccessToken, instanceName, reconnectInstanceId } = req.body;
+    let { selectedPageId } = req.body;
 
     if (!['messenger', 'instagram'].includes(channelType)) {
       return res.status(400).json({ error: 'channelType must be messenger or instagram' });
@@ -265,7 +266,21 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
       return res.status(400).json({ error: 'userAccessToken is required' });
     }
 
-    await enforceInstanceLimit(req.tenantId);
+    let reconnectInstance = null;
+    if (reconnectInstanceId !== undefined) {
+      if (typeof reconnectInstanceId !== 'string' || !reconnectInstanceId.trim()) {
+        return res.status(400).json({ error: 'A valid reconnectInstanceId is required.' });
+      }
+      reconnectInstance = await getTenantInstanceById(req.tenantId, reconnectInstanceId);
+      if (!reconnectInstance) return res.status(404).json({ error: 'Instance not found' });
+      if (reconnectInstance.channelType !== channelType) {
+        return res.status(400).json({ error: 'Reconnect must use the existing channel platform.' });
+      }
+      // Resolve the Page from the stored channel, never from a new account selection.
+      selectedPageId = channelType === 'instagram'
+        ? reconnectInstance.phoneNumber
+        : reconnectInstance.phoneNumberId;
+    }
 
     const durableUserAccessToken = await exchangeMetaUserToken(userAccessToken);
     const pages = await getMetaPagesFromUserToken(durableUserAccessToken);
@@ -291,9 +306,17 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
       }
     }
 
+    if (reconnectInstance && !selectedPageId) {
+      eligiblePages = eligiblePages.filter((page) => (
+        String(channelType === 'instagram' ? page.instagramId : page.pageId) === reconnectInstance.phoneNumberId
+      ));
+    }
+
     if (!eligiblePages.length) {
       return res.status(400).json({
-        error: channelType === 'instagram'
+        error: reconnectInstance
+          ? 'Sign in to the Meta account that owns this channel and grant access to its Page.'
+          : channelType === 'instagram'
           ? 'No Instagram Professional account linked to your pages was found.'
           : 'No eligible Facebook pages were found for this account.'
       });
@@ -317,7 +340,9 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
       : eligiblePages[0];
 
     if (!chosenPage) {
-      return res.status(400).json({ error: 'Selected page not found in your Meta account.' });
+      return res.status(400).json({ error: reconnectInstance
+        ? 'Sign in to the Meta account that owns this channel and grant access to its Page.'
+        : 'Selected page not found in your Meta account.' });
     }
 
     const identifier = channelType === 'instagram'
@@ -330,14 +355,21 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
       });
     }
 
-    const alreadyConnected = await prisma.instance.findFirst({
+    if (reconnectInstance && String(identifier) !== reconnectInstance.phoneNumberId) {
+      return res.status(409).json({
+        code: 'META_RECONNECT_ACCOUNT_MISMATCH',
+        error: 'The selected Page is linked to a different account. Restore the original account link before reconnecting.'
+      });
+    }
+
+    const alreadyConnected = reconnectInstance || await prisma.instance.findFirst({
       where: {
         tenantId: req.tenantId,
         channelType,
         phoneNumberId: String(identifier)
       }
     });
-    const inheritedPrimaryAgentId = alreadyConnected?.primaryAgentId
+    const inheritedPrimaryAgentId = reconnectInstance ? reconnectInstance.primaryAgentId : alreadyConnected?.primaryAgentId
       || await getLinkedMetaPrimaryAgentId({
         tenantId: req.tenantId,
         channelType,
@@ -350,7 +382,8 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
         where: { id: alreadyConnected.id },
         data: {
           accessToken: encryptMetaToken(chosenPage.pageAccessToken),
-          status: 'connected',
+          status: alreadyConnected.status === 'disabled' ? 'disabled' : 'connected',
+          ...(channelType === 'instagram' ? { phoneNumber: chosenPage.pageId } : {}),
           ...(!alreadyConnected.primaryAgentId && inheritedPrimaryAgentId
             ? { primaryAgentId: inheritedPrimaryAgentId }
             : {})
@@ -371,9 +404,13 @@ router.post('/meta/embedded', checkPermission('channels.manage'), async (req, re
       return res.json({
         message: 'Channel re-authenticated successfully. Token updated.',
         alreadyConnected: true,
+        commentPermissionsReady,
         instance: toSafeInstanceDto(updatedInstance)
       });
     }
+
+    // Renewing an existing channel does not consume another slot in the plan.
+    await enforceInstanceLimit(req.tenantId);
 
     const defaultName = channelType === 'instagram'
       ? `Instagram ${chosenPage.instagramUsername ? `@${chosenPage.instagramUsername}` : chosenPage.pageName}`

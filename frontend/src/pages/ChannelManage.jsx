@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import api from '../api/client';
 import { 
   ArrowLeftIcon,
@@ -193,6 +193,7 @@ const templatePayloadExample = `{
 // ─── Main Component ─────────────────────────────────────────────────────
 export default function ChannelManage() {
   const { instanceId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [instance, setInstance] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -516,6 +517,10 @@ export default function ChannelManage() {
     }
   };
 
+  const handleMetaReconnect = () => {
+    navigate(`/channels/connect/${instance.channelType}?reconnect=${encodeURIComponent(instanceId)}`);
+  };
+
   const handleDisconnect = async () => {
     if (!window.confirm('Disconnect this WhatsApp number?')) return;
     setDisconnecting(true);
@@ -806,6 +811,30 @@ export default function ChannelManage() {
                   </button>
                 </div>
               </div>
+
+              {['messenger', 'instagram'].includes(instance.channelType) && (
+                <div className="border-t border-white/5 pt-6 space-y-4">
+                  <h4 className="text-sm font-bold text-white">Connection</h4>
+                  <p className="text-sm text-zinc-400">
+                    Renew access to this account if the connection expires or permissions change.
+                    Your conversations and channel settings will be kept.
+                  </p>
+                  {searchParams.get('reconnected') && (
+                    <p role="status" className={`text-sm ${searchParams.get('reconnected') === 'partial' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                      {searchParams.get('reconnected') === 'partial'
+                        ? 'Channel access renewed, but comment permissions still need attention. Review permissions in Meta and reconnect again.'
+                        : `Channel reconnected successfully.${instance.status === 'disabled' ? ' This channel remains paused.' : ''}`}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleMetaReconnect}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 text-white hover:bg-indigo-500 transition-all uppercase tracking-wider"
+                  >
+                    <ArrowPathIcon className="w-4 h-4" />
+                    Reconnect with Meta
+                  </button>
+                </div>
+              )}
 
               {/* WhatsApp Reconnect / Disconnect */}
               {(!instance.channelType || instance.channelType === 'whatsapp') && (
@@ -1297,7 +1326,7 @@ export default function ChannelManage() {
                       <div className="flex-1">
                         <p className="text-sm text-zinc-300 leading-relaxed">{step.text}</p>
                         {step.hasAction && (
-                          <button className="mt-3 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white uppercase tracking-wider transition-all">
+                          <button onClick={handleMetaReconnect} className="mt-3 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white uppercase tracking-wider transition-all">
                             <ArrowPathIcon className="w-3.5 h-3.5" />
                             {step.actionLabel}
                           </button>

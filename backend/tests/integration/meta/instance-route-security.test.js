@@ -10,7 +10,7 @@ const originalDatabase = require(databasePath);
 const originalPlanLimit = require(planLimitPath);
 const originalChannelConfig = require(channelConfigPath);
 
-function loadInstancesApp(prisma) {
+function loadInstancesApp(prisma, plan = null) {
   delete require.cache[routePath];
   delete require.cache[channelConfigPath];
   require.cache[databasePath] = { id: databasePath, filename: databasePath, loaded: true, exports: prisma };
@@ -18,7 +18,7 @@ function loadInstancesApp(prisma) {
     id: planLimitPath,
     filename: planLimitPath,
     loaded: true,
-    exports: { ...originalPlanLimit, resolveTenantPlanByTenantId: vi.fn().mockResolvedValue({ plan: null }) }
+    exports: { ...originalPlanLimit, resolveTenantPlanByTenantId: vi.fn().mockResolvedValue({ plan }) }
   };
 
   const app = express();
@@ -357,6 +357,154 @@ describe('Instance route token boundary', () => {
     expect(response.body.connectedAsset).toMatchObject({
       pageId: '359509670571259',
       pageName: 'NASA International Schools'
+    });
+  });
+
+  describe('explicit channel reconnect', () => {
+    let instance;
+    let prisma;
+
+    beforeEach(() => {
+      process.env.ENCRYPTION_KEY = Buffer.alloc(32, 10).toString('base64');
+      instance = {
+        id: 'instagram-1', tenantId: 'tenant-1', channelType: 'instagram',
+        instanceName: 'NASA Instagram', phoneNumberId: 'instagram-account-1', phoneNumber: 'page-1',
+        primaryAgentId: 'agent-1', status: 'disconnected', accessToken: 'old-token'
+      };
+      prisma = {
+        instance: {
+          count: vi.fn().mockResolvedValue(1),
+          findFirst: vi.fn().mockImplementation(async ({ where }) => (
+            where.tenantId === instance.tenantId && (where.id === instance.id || (
+              where.channelType === instance.channelType && where.phoneNumberId === instance.phoneNumberId
+            )) ? instance : null
+          )),
+          update: vi.fn().mockImplementation(async ({ data }) => ({ ...instance, ...data })),
+          create: vi.fn()
+        },
+        integration: {
+          findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({ id: 'config-1' })
+        },
+        commentChannelBinding: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) }
+      };
+      vi.spyOn(axios, 'get')
+        .mockResolvedValueOnce({ data: { access_token: 'fresh-durable-token' } })
+        .mockResolvedValueOnce({ data: { data: [{
+          id: 'page-1', name: 'NASA', access_token: 'fresh-page-token',
+          instagram_business_account: { id: 'instagram-account-1', username: 'nasa' }
+        }] } });
+      vi.spyOn(axios, 'post').mockResolvedValue({ data: { success: true } });
+    });
+
+    it.each(['instagram', 'messenger'])('refreshes the same %s channel at the plan limit', async (channelType) => {
+      instance.channelType = channelType;
+      if (channelType === 'messenger') instance.phoneNumberId = 'page-1';
+      const response = await request(loadInstancesApp(prisma, { maxInstances: 1 }))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType, reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(200);
+
+      expect(response.body.instance).toMatchObject({
+        id: instance.id, instanceName: 'NASA Instagram', primaryAgentId: 'agent-1', status: 'connected'
+      });
+      expect(response.body.instance).not.toHaveProperty('accessToken');
+      expect(response.body.commentPermissionsReady).toBe(true);
+      expect(prisma.instance.create).not.toHaveBeenCalled();
+      expect(prisma.instance.count).not.toHaveBeenCalled();
+      expect(prisma.instance.update.mock.calls[0][0].data.accessToken).toMatch(/^meta:v1:/);
+      expect(prisma.commentChannelBinding.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: { tenantId: 'tenant-1', instanceId: instance.id }, data: expect.objectContaining({ permissionState: 'ready' })
+      }));
+    });
+
+    it('keeps a paused channel paused while refreshing its credentials', async () => {
+      instance.status = 'disabled';
+      const response = await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(200);
+      expect(response.body.instance.status).toBe('disabled');
+    });
+
+    it('also renews a matching account from the regular connect flow at the plan limit', async () => {
+      await request(loadInstancesApp(prisma, { maxInstances: 1 }))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', userAccessToken: 'fresh-login-token' })
+        .expect(200);
+      expect(prisma.instance.create).not.toHaveBeenCalled();
+      expect(prisma.instance.count).not.toHaveBeenCalled();
+    });
+
+    it('finds a legacy Instagram channel by its account ID when its Page ID is missing', async () => {
+      instance.phoneNumber = null;
+      await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(200);
+      expect(prisma.instance.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: instance.id }, data: expect.objectContaining({ phoneNumber: 'page-1' })
+      }));
+    });
+
+    it('does not replace an unassigned Primary Agent during explicit reconnect', async () => {
+      instance.primaryAgentId = null;
+      await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(200);
+      expect(prisma.instance.update.mock.calls[0][0].data).not.toHaveProperty('primaryAgentId');
+    });
+
+    it('rejects a missing or cross-tenant target before requesting Meta credentials', async () => {
+      await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', reconnectInstanceId: 'another-channel', userAccessToken: 'fresh-login-token' })
+        .expect(404);
+      expect(prisma.instance.findFirst).toHaveBeenCalledWith({ where: { id: 'another-channel', tenantId: 'tenant-1' } });
+      expect(axios.get).not.toHaveBeenCalled();
+      expect(prisma.instance.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects reconnecting a channel through the wrong platform', async () => {
+      await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'messenger', reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(400);
+      expect(axios.get).not.toHaveBeenCalled();
+      expect(prisma.instance.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses to replace the original Instagram account with a different account', async () => {
+      instance.phoneNumberId = 'original-instagram-account';
+      await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(409)
+        .expect(({ body }) => expect(body.code).toBe('META_RECONNECT_ACCOUNT_MISMATCH'));
+      expect(prisma.instance.update).not.toHaveBeenCalled();
+      expect(prisma.instance.create).not.toHaveBeenCalled();
+      expect(axios.post).not.toHaveBeenCalled();
+    });
+
+    it('reports incomplete comment permissions when webhook subscription fails', async () => {
+      axios.post.mockRejectedValue({ response: { status: 403 }, message: 'Permission denied' });
+      const response = await request(loadInstancesApp(prisma))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', reconnectInstanceId: instance.id, userAccessToken: 'fresh-login-token' })
+        .expect(200);
+      expect(response.body.commentPermissionsReady).toBe(false);
+      expect(prisma.commentChannelBinding.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ permissionState: 'reconnect_required' })
+      }));
+    });
+
+    it('still enforces the limit when connecting a new channel', async () => {
+      prisma.instance.findFirst.mockResolvedValue(null);
+      await request(loadInstancesApp(prisma, { maxInstances: 1 }))
+        .post('/api/instances/meta/embedded')
+        .send({ channelType: 'instagram', userAccessToken: 'fresh-login-token' })
+        .expect(402);
+      expect(prisma.instance.create).not.toHaveBeenCalled();
     });
   });
 
